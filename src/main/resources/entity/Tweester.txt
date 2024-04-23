@@ -1,0 +1,8 @@
+dl	1CD0 / / 13F0	% main twister body
+dl	1CF0 / / 13F0	% inner cone
+
+dl	1B10 / / 18C0	% eyes
+mode 5
+dl	19E8 / / 18C0	% shadow
+
+% what is matrix 1968 for?

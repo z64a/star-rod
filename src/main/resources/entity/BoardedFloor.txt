@@ -1,0 +1,15 @@
+
+% note:
+% could be found from call to func_802bb710(entity,0A002E18,0A002478) at 802BB890
+dl	2E08 / 2478
+dl	2D68 / 24B8
+dl	2CC8 / 24F8
+dl	2C28 / 2538
+dl	2B88 / 2578
+dl	2B08 / 25B8
+dl	2A88 / 25F8
+dl	29F0 / 2638
+dl	2958 / 2678
+dl	28D8 / 26B8
+dl	2858 / 26F8
+dl	27E8 / 2738

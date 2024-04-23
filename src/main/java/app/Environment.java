@@ -1,0 +1,553 @@
+package app;
+
+import java.awt.Image;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
+import java.security.CodeSource;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.SystemUtils;
+import org.yaml.snakeyaml.Yaml;
+
+import app.Resource.ResourceType;
+import app.config.Config;
+import app.config.Options;
+import app.config.Options.Scope;
+import app.input.IOUtils;
+import assets.AssetExtractor;
+import assets.ExpectedAsset;
+import game.ProjectDatabase;
+import game.entity.EntityExtractor;
+import game.map.editor.ui.dialogs.ChooseDialogResult;
+import game.map.editor.ui.dialogs.DirChooser;
+import game.message.font.FontManager;
+import util.Logger;
+import util.Priority;
+
+public abstract class Environment
+{
+	private static final String FN_MAIN_CONFIG = "cfg/main.cfg";
+	private static final String FN_PROJ_CONFIG = "star_rod.cfg";
+	private static final String FN_BASEROM = "ver/us/baserom.z64";
+	private static final String FN_SPLAT = "splat.yaml";
+
+	public static ImageIcon ICON_DEFAULT = loadIconResource(ResourceType.Icon, "icon.png");
+	public static ImageIcon ICON_ERROR = null;
+
+	private static enum OSFamily
+	{
+		Windows,
+		Mac,
+		Linux,
+		Unknown
+	}
+
+	private static OSFamily osFamily = OSFamily.Unknown;
+
+	private static boolean commandLine = false;
+	private static boolean fromJar = false;
+	private static File codeSource;
+
+	public static Config mainConfig = null;
+	public static Config projectConfig = null;
+
+	private static DirChooser projectChooser;
+	private static File projectDirectory = null;
+
+	private static String gameVersion = "";
+
+	private static File usBaseRom;
+	private static ByteBuffer romBytes;
+
+	public static List<File> assetDirectories;
+
+	private static boolean initialized = false;
+
+	private static boolean isDeluxe = false;
+
+	private static String versionString;
+	private static String gitBuildBranch;
+	private static String gitBuildCommit;
+	private static String gitBuildTag;
+
+	public static boolean isDeluxe()
+	{ return isDeluxe; }
+
+	public static String getVersionString()
+	{ return versionString; }
+
+	public static String decorateTitle(String title)
+	{
+		StringBuilder sb = new StringBuilder();
+
+		if (isDeluxe)
+			sb.append("Deluxe ");
+		sb.append(title);
+
+		sb.append(" (v").append(versionString).append(")");
+
+		if (fromJar && (gitBuildTag == null || !gitBuildTag.startsWith("v")) && gitBuildCommit != null)
+			sb.append(" (").append(gitBuildCommit.substring(0, 8)).append(")");
+
+		return sb.toString();
+	}
+
+	public static void initialize()
+	{
+		initialize(false);
+	}
+
+	public static void initialize(boolean isCommandLine)
+	{
+		if (initialized)
+			return;
+
+		if (SystemUtils.IS_OS_WINDOWS)
+			osFamily = OSFamily.Windows;
+		else if (SystemUtils.IS_OS_LINUX)
+			osFamily = OSFamily.Linux;
+		else if (SystemUtils.IS_OS_MAC)
+			osFamily = OSFamily.Mac;
+		else
+			osFamily = OSFamily.Unknown;
+
+		commandLine = isCommandLine;
+
+		isDeluxe = (Math.random() < 0.001);
+
+		// running from a jar, we need to set the natives directory at runtime
+		try {
+			CodeSource src = StarRodMain.class.getProtectionDomain().getCodeSource();
+			String sourceName = src.getLocation().toURI().toString();
+
+			Matcher matcher = Pattern.compile("%[0-9A-Fa-f]{2}").matcher(sourceName);
+			StringBuffer sb = new StringBuffer(sourceName.length());
+			while (matcher.find()) {
+				String encoded = matcher.group(0).substring(1);
+				matcher.appendReplacement(sb, "" + (char) Integer.parseInt(encoded, 16));
+			}
+			matcher.appendTail(sb);
+			sourceName = sb.toString();
+
+			// WSL
+			if (sourceName.startsWith("file:/"))
+				sourceName = sourceName.substring(5);
+
+			codeSource = new File(sourceName);
+			fromJar = (sourceName.endsWith(".jar"));
+			Logger.log("Executing from " + codeSource.getAbsolutePath());
+		}
+		catch (URISyntaxException e) {
+			Logger.logError("Could not determine path to StarRod code source!");
+			StarRodMain.handleEarlyCrash(e);
+		}
+
+		if (fromJar) {
+			ClassLoader cl = Environment.class.getClassLoader();
+			try {
+				Manifest manifest = new Manifest(cl.getResourceAsStream("META-INF/MANIFEST.MF"));
+				Attributes attr = manifest.getMainAttributes();
+				versionString = attr.getValue("App-Version");
+				gitBuildBranch = attr.getValue("Build-Branch");
+				gitBuildCommit = attr.getValue("Build-Commit");
+				gitBuildTag = attr.getValue("Build-Tag");
+
+				Logger.logf("Detected version %s (%s-%s)", versionString, gitBuildBranch, gitBuildCommit.subSequence(0, 8));
+			}
+			catch (IOException e) {
+				Logger.logError("Could not read MANIFEST.MF");
+				Logger.printStackTrace(e);
+			}
+		}
+		else {
+			try {
+				Properties prop = new Properties();
+				prop.load(new FileInputStream(new File("./app.properties")));
+				versionString = prop.getProperty("version");
+				Logger.logf("Detected version %s (IDE)", versionString);
+			}
+			catch (IOException e) {
+				Logger.logError("Could not read version properties file: " + e.getMessage());
+			}
+		}
+
+		projectChooser = new DirChooser(codeSource.getParentFile(), "Select Project Directory");
+
+		try {
+			checkForDependencies();
+			File projDir = readMainConfig();
+
+			boolean logDetails = mainConfig.getBoolean(Options.LogDetails);
+			Logger.setDefaultOuputPriority(logDetails ? Priority.DETAIL : Priority.STANDARD);
+
+			if (!isCommandLine) {
+				Themes.setThemeByKey(Environment.mainConfig.getString(Options.Theme));
+				// UIManager.put("TabbedPane.tabWidthMode", "compact");
+				// UIManager.put("TabbedPane.showTabSeparators", true);
+				// UIManager.put("TabbedPane.tabSeparatorsFullHeight", true);
+			}
+
+			SplashScreen.show("Loading Project");
+			boolean validProject = loadProject(projDir);
+			if (!validProject)
+				exit();
+		}
+		catch (Throwable t) {
+			StarRodMain.handleEarlyCrash(t);
+		}
+		finally {
+			SplashScreen.dismiss();
+		}
+
+		initialized = true;
+	}
+
+	public static void exit()
+	{
+		exit(0);
+	}
+
+	public static void exit(int status)
+	{
+		System.exit(status);
+	}
+
+	public static boolean isCommandLine()
+	{ return commandLine; }
+
+	public static File getWorkingDirectory()
+	{
+		if (fromJar)
+			return codeSource.getParentFile();
+		else
+			return new File(".");
+	}
+
+	public static File getProjectDirectory()
+	{ return projectDirectory; }
+
+	public static File getSourceDirectory()
+	{ return new File(projectDirectory, "/src/"); }
+
+	public static File getProjectFile(String relativePath)
+	{
+		return new File(projectDirectory, relativePath);
+	}
+
+	private static final void checkForDependencies() throws IOException
+	{
+		File db = Directories.DATABASE.toFile();
+
+		if (!db.exists() || !db.isDirectory()) {
+			SwingUtils.showFramedMessageDialog(null,
+				"Could not find required directory: " + db.getName() + System.lineSeparator() +
+					"It should be in the same directory as StarRod.jar" + System.lineSeparator() +
+					"Did you extract ALL the files for Star Rod?",
+				"Missing Directory",
+				JOptionPane.ERROR_MESSAGE);
+			exit();
+		}
+	}
+
+	private static final File readMainConfig() throws IOException
+	{
+		File configFile = new File(codeSource.getParent(), FN_MAIN_CONFIG);
+
+		// we may need to create a new config file here
+		if (!configFile.exists()) {
+			int choice = SwingUtils.showFramedConfirmDialog(null,
+				String.format("Could not find Star Rod config! %nCreate a new one?"),
+				"Missing Config",
+				JOptionPane.YES_NO_OPTION,
+				JOptionPane.QUESTION_MESSAGE);
+
+			if (choice != JOptionPane.OK_OPTION)
+				exit();
+
+			mainConfig = makeConfig(configFile, Scope.Main);
+
+			SwingUtils.showFramedMessageDialog(null,
+				"Select your project directory.",
+				"Select Project Directory",
+				JOptionPane.PLAIN_MESSAGE);
+
+			return promptSelectProject();
+		}
+		else {
+			// read existing config
+			mainConfig = new Config(configFile, Scope.Main);
+			mainConfig.readConfig();
+
+			// get project directory from config
+			String directoryName = mainConfig.getString(Options.ProjPath);
+			if (directoryName != null) {
+				File dir;
+				if (directoryName.startsWith("."))
+					dir = new File(codeSource.getParent(), directoryName);
+				else
+					dir = new File(directoryName);
+
+				if (dir.exists() && dir.isDirectory()) {
+					return dir;
+				}
+			}
+
+			// project directory is missing, prompt to select new one
+			SwingUtils.showFramedMessageDialog(null,
+				String.format("Could not find project directory! %nPlease select a new one."),
+				"Missing Project Directory",
+				JOptionPane.ERROR_MESSAGE);
+
+			return promptSelectProject();
+		}
+	}
+
+	public static void promptChangeProject() throws IOException
+	{
+		if (projectChooser.prompt() == ChooseDialogResult.APPROVE) {
+			File dirChoice = projectChooser.getSelectedFile();
+			loadProject(dirChoice);
+		}
+	}
+
+	private static File promptSelectProject()
+	{
+		if (projectChooser.prompt() == ChooseDialogResult.APPROVE)
+			return projectChooser.getSelectedFile();
+		else
+			return null;
+	}
+
+	private static void showErrorMessage(String title, String fmt, Object ... args)
+	{
+		String message = String.format(fmt, args);
+		if (isCommandLine())
+			Logger.logError(message);
+		else
+			SwingUtils.showFramedMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
+	}
+
+	public static boolean loadProject(File projectDir) throws IOException
+	{
+		if (projectDir == null) {
+			showErrorMessage("Invalid Decomp Project", "No project directory is set.");
+			return false;
+		}
+
+		if (!projectDir.exists() || !projectDir.isDirectory()) {
+			showErrorMessage("Invalid Decomp Project", "Not a valid directory: %n%s", projectDir.getAbsolutePath());
+			return false;
+		}
+
+		// check version to get appropriate splat
+		gameVersion = mainConfig.getString(Options.GameVersion);
+		File versionDir = new File(projectDir, "ver/" + gameVersion);
+		if (!versionDir.exists()) {
+			showErrorMessage("Invalid Decomp Project",
+				"Project does not have game version: %s", gameVersion);
+			return false;
+		}
+
+		// get splat config
+		File decompCfg = new File(versionDir, FN_SPLAT);
+		if (!decompCfg.exists()) {
+			showErrorMessage("Invalid Decomp Project",
+				"Could not find splat file for directory: %n%s", decompCfg.getAbsolutePath());
+			return false;
+		}
+
+		// resolve asset dirs
+		try {
+			assetDirectories = getAssetDirs(projectDir, decompCfg);
+		}
+		catch (IOException e) {
+			Logger.printStackTrace(e);
+			showErrorMessage("Splat Read Exception",
+				"IOException while attempting to read splat file: %n%s %n%s", decompCfg.getAbsolutePath(),
+				e.getMessage());
+			return false;
+		}
+
+		// get US baserom
+		usBaseRom = new File(projectDir, FN_BASEROM);
+		if (!usBaseRom.exists()) {
+			showErrorMessage("Missing US Base ROM",
+				"Could not find US baserom for project. %n" +
+					"Star Rod requries one for asset extraction.");
+			return false;
+		}
+
+		// save project dir
+		projectDirectory = projectDir;
+		SwingUtilities.invokeLater(() -> {
+			projectChooser.setCurrentDirectory(projectDir);
+		});
+		Directories.setProjectDirectory(projectDirectory.getAbsolutePath());
+
+		mainConfig.setString(Options.ProjPath, projectDirectory.getAbsolutePath());
+		mainConfig.saveConfigFile();
+
+		readProjectConfig();
+
+		ProjectDatabase.initialize();
+		reloadIcons();
+
+		// set dump dir
+		File dumpDir = new File(usBaseRom.getParentFile(), "/dump/");
+		Directories.setDumpDirectory(dumpDir.getAbsolutePath());
+
+		// dump if missing
+		if (!dumpDir.exists()) {
+			LoadingBar.show("Extracting Baserom");
+			Logger.log("Extracting assets from baserom");
+			Directories.createDumpDirectories();
+			EntityExtractor.extractAll();
+			FontManager.dump();
+		}
+
+		AssetExtractor.extractAll();
+
+		return true;
+	}
+
+	private static void readProjectConfig() throws IOException
+	{
+		File configFile = new File(projectDirectory, FN_PROJ_CONFIG);
+
+		if (!configFile.exists()) {
+			int choice = SwingUtils.showFramedConfirmDialog(null,
+				"Could not find project config!\nCreate a new one?",
+				"Missing Config",
+				JOptionPane.YES_NO_OPTION,
+				JOptionPane.QUESTION_MESSAGE);
+
+			if (choice != JOptionPane.OK_OPTION)
+				exit();
+
+			projectConfig = makeConfig(configFile, Scope.Project);
+			projectConfig.saveConfigFile();
+		}
+		else {
+			// config exists, read it
+			projectConfig = new Config(configFile, Scope.Project);
+			projectConfig.readConfig();
+		}
+	}
+
+	private static Config makeConfig(File configFile, Scope scope) throws IOException
+	{
+		FileUtils.touch(configFile);
+		Config cfg = new Config(configFile, scope);
+
+		// set default values for options
+		for (Options opt : Options.values()) {
+			if (opt.scope == scope) {
+				opt.setToDefault(cfg);
+			}
+		}
+
+		return cfg;
+	}
+
+	public static ByteBuffer getBaseRomBuffer()
+	{
+		// lazy load
+		if (romBytes != null)
+			return romBytes;
+
+		try {
+			romBytes = IOUtils.getDirectBuffer(usBaseRom).asReadOnlyBuffer();
+		}
+		catch (IOException e) {
+			Logger.printStackTrace(e);
+			showErrorMessage("Base ROM Read Exception",
+				"IOException while attempting to read baserom: %n%s %n%s", usBaseRom.getAbsolutePath());
+			return null;
+		}
+
+		return romBytes;
+	}
+
+	private static List<File> getAssetDirs(File directory, File splatFile) throws IOException
+	{
+		Map<String, Object> topLevelMap = new Yaml().load(new FileInputStream(splatFile));
+
+		@SuppressWarnings("unchecked")
+		List<String> assetDirNames = (List<String>) topLevelMap.get("asset_stack");
+
+		File assetsDir = new File(directory, "assets");
+
+		List<File> assetDirectories = new ArrayList<>();
+		for (String dirName : assetDirNames) {
+			assetDirectories.add(new File(assetsDir, dirName));
+		}
+		return assetDirectories;
+	}
+
+	public static boolean isWindows()
+	{ return osFamily == OSFamily.Windows; }
+
+	public static boolean isMacOS()
+	{ return osFamily == OSFamily.Mac; }
+
+	public static boolean isLinux()
+	{ return osFamily == OSFamily.Linux; }
+
+	public static void reloadIcons()
+	{
+		ICON_DEFAULT = loadIconAsset(ExpectedAsset.ICON_APP);
+		if (ICON_DEFAULT == null)
+			ICON_DEFAULT = loadIconResource(ResourceType.Icon, "icon.png");
+		ICON_ERROR = loadIconAsset(ExpectedAsset.CRASH_GUY);
+	}
+
+	public static final Image getDefaultIconImage()
+	{ return (ICON_DEFAULT == null) ? null : ICON_DEFAULT.getImage(); }
+
+	public static final Image getErrorIconImage()
+	{ return (ICON_DEFAULT == null) ? null : ICON_DEFAULT.getImage(); }
+
+	private static ImageIcon loadIconAsset(ExpectedAsset asset)
+	{
+		File imgFile = asset.getFile();
+		if (imgFile == null) {
+			Logger.logError("Unable to find asset " + asset.getPath());
+			return null;
+		}
+
+		try {
+			return new ImageIcon(ImageIO.read(imgFile));
+		}
+		catch (IOException e) {
+			Logger.logError("Exception while loading image " + asset.getPath());
+			return null;
+		}
+	}
+
+	private static ImageIcon loadIconResource(ResourceType type, String resourceName)
+	{
+		try {
+			return new ImageIcon(ImageIO.read(Resource.getStream(type, resourceName)));
+		}
+		catch (IOException e) {
+			Logger.logError("Exception while loading image " + resourceName);
+			return null;
+		}
+	}
+}

@@ -1,0 +1,8 @@
+{
+    "editor.foldingImportsByDefault": true,
+    "java.format.settings.url": ".vscode/eclipse-format.xml", 
+    "editor.formatOnSave": true,
+    "editor.rulers": [
+        150
+    ]
+}

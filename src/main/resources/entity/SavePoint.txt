@@ -1,0 +1,7 @@
+translate 0 12.5 0
+mode 14
+dl	34E0
+mode 1A
+dl	32A0
+mode 13
+dl	3360

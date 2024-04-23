@@ -1,0 +1,90 @@
+arn_bt01,arn_bt01_shape,arn_bt01_hit,arn_tex,arn_bg,Wasteland 1
+arn_bt02,arn_bt02_shape,arn_bt02_hit,arn_tex,arn_bg,Outside Windmill
+arn_bt03,arn_bt03_shape,arn_bt03_hit,arn_tex,arn_bg,Wasteland 2
+arn_bt04,arn_bt04_shape,arn_bt04_hit,arn_tex,none,Windmill Tunnel Exit
+arn_bt05,arn_bt05_shape,arn_bt05_hit,arn_tex,none,Windmill Tunnel
+arn_bt06,arn_bt06_shape,arn_bt06_hit,arn_tex,none,Tubba's Heart Arena
+dgb_bt01,dgb_bt01_shape,dgb_bt01_hit,dgb_tex,none,Hall with Door
+dgb_bt02,dgb_bt02_shape,dgb_bt02_hit,dgb_tex,none,Dining Hall
+dgb_bt03,dgb_bt03_shape,dgb_bt03_hit,dgb_tex,none,Hall with Windows
+dgb_bt04,dgb_bt04_shape,dgb_bt04_hit,dgb_tex,none,Basement
+dgb_bt05,dgb_bt05_shape,dgb_bt05_hit,dgb_tex,none,Master Bedroom
+flo_bt01,flo_bt01_shape,flo_bt01_hit,flo_tex,fla_bg,Wide Open Path
+flo_bt02,flo_bt02_shape,flo_bt02_hit,flo_tex,fla_bg,Walls and Tree
+flo_bt03,flo_bt03_shape,flo_bt03_hit,flo_tex,fla_bg,Puff Puff Machine
+flo_bt04,flo_bt04_shape,flo_bt04_hit,flo_tex,sra_bg,Clouds
+flo_bt05,flo_bt05_shape,flo_bt05_hit,flo_tex,fla_bg,Hedge Maze
+flo_bt06,flo_bt06_shape,flo_bt06_hit,flo_tex,fla_bg,Empty Wasteland
+hos_bt01,hos_bt01_shape,hos_bt01_hit,hos_tex,hos_bg,Star Way
+hos_bt02,hos_bt02_shape,hos_bt02_hit,hos_tex,nok_bg,Shooting Star Path
+isk_bt01,isk_bt01_shape,isk_bt01_hit,isk_tex,none,Tutankoopa Arena
+isk_bt02,isk_bt02_shape,isk_bt02_hit,isk_tex,none,Generic Ruins Hall
+isk_bt03,isk_bt03_shape,isk_bt03_hit,isk_tex,none,Surface Level Hall
+isk_bt04,isk_bt04_shape,isk_bt04_hit,isk_tex,none,Statues Room
+isk_bt05,isk_bt05_shape,isk_bt05_hit,isk_tex,none,Dark Hall
+isk_bt06,isk_bt06_shape,isk_bt06_hit,isk_tex,none,Right Platform Room
+isk_bt07,isk_bt07_shape,isk_bt07_hit,isk_tex,none,Left Platform Room
+isk_bt08,isk_bt08_shape,isk_bt08_hit,isk_tex,none,Dark Sarcophagus Hall
+iwa_bt01,iwa_bt01_shape,iwa_bt01_hit,iwa_tex,iwa_bg,Generic Mt Rugged
+iwa_bt02,iwa_bt02_shape,iwa_bt02_hit,iwa_tex,iwa_bg,Buzzar Arena
+jan_bt00,jan_bt00_shape,jan_bt00_hit,jan_tex,yos_bg,Beach
+jan_bt01,jan_bt01_shape,jan_bt01_hit,jan_tex,yos_bg,Jungle Riverside
+jan_bt02,jan_bt02_shape,jan_bt02_hit,jan_tex,yos_bg,Jungle Cliffside
+jan_bt03,jan_bt03_shape,jan_bt03_hit,jan_tex,jan_bg,Jungle Trees
+jan_bt04,jan_bt04_shape,jan_bt04_hit,jan_tex,jan_bg,Deep Jungle
+kgr_bt01,kgr_bt01_shape,kgr_bt01_hit,kgr_tex,none,Inside the Whale
+kkj_bt01,kkj_bt01_shape,kkj_bt01_hit,kkj_tex,kpa_bg,Hallway Bowser Arena
+kkj_bt02,kkj_bt02_shape,kkj_bt02_hit,kkj_tex,kpa_bg,Final Bowser Arena
+kmr_bt03,kmr_bt03_shape,kmr_bt03_hit,kmr_tex,kmr_bg,Goomba Bros Arena
+kmr_bt04,kmr_bt04_shape,kmr_bt04_hit,kmr_tex,kmr_bg,Forest Path
+kmr_bt05,kmr_bt05_shape,kmr_bt05_hit,kmr_tex,kmr_bg,Rocky Forest
+kmr_bt06,kmr_bt06_shape,kmr_bt06_hit,kmr_tex,kmr_bg,Goomba King Arena
+kpa_bt01,kpa_bt01_shape,kpa_bt01_hit,kpa_tex,none,Blocks Hall
+kpa_bt02,kpa_bt02_shape,kpa_bt02_hit,kpa_tex,none,Lava Chamber
+kpa_bt03,kpa_bt03_shape,kpa_bt03_hit,kpa_tex,none,Cavern
+kpa_bt04,kpa_bt04_shape,kpa_bt04_hit,kpa_tex,none,Blue Fire Hall
+kpa_bt05,kpa_bt05_shape,kpa_bt05_hit,kpa_tex,none,Water Levels Chamber
+kpa_bt07,kpa_bt07_shape,kpa_bt07_hit,kpa_tex,none,Castle Roof
+kpa_bt08,kpa_bt08_shape,kpa_bt08_hit,kpa_tex,none,Spiral Chamber
+kpa_bt09,kpa_bt09_shape,kpa_bt09_hit,kpa_tex,none,Dark Bridge
+kpa_bt11,kpa_bt11_shape,kpa_bt11_hit,kpa_tex,none,Pillar Hall
+kpa_bt13,kpa_bt13_shape,kpa_bt13_hit,kpa_tex,none,Bowser Door Room
+kpa_bt14,kpa_bt14_shape,kpa_bt14_hit,kpa_tex,none,Jail Cell
+kzn_bt01,kzn_bt01_shape,kzn_bt01_hit,kzn_tex,none,Smoky Cave
+kzn_bt02,kzn_bt02_shape,kzn_bt02_hit,kzn_tex,none,Lava Chamber
+kzn_bt04,kzn_bt04_shape,kzn_bt04_hit,kzn_tex,none,Lava Hall
+kzn_bt05,kzn_bt05_shape,kzn_bt05_hit,kzn_tex,none,Lava Piranha Arena
+mac_bt01,mac_bt01_shape,mac_bt01_hit,mac_tex,nok_bg,Docks
+mac_bt02,mac_bt02_shape,mac_bt02_hit,mac_tex,none,Dojo
+mim_bt01,mim_bt01_shape,mim_bt01_hit,mim_tex,none,Haunted Forest
+nok_bt01,nok_bt01_shape,nok_bt01_hit,nok_tex,nok_bg,Forest Ledges
+nok_bt02,nok_bt02_shape,nok_bt02_hit,nok_tex,nok_bg,Forest Bushes
+nok_bt03,nok_bt03_shape,nok_bt03_hit,nok_tex,nok_bg,Bridge
+nok_bt04,nok_bt04_shape,nok_bt04_hit,nok_tex,nok_bg,Forest Path
+omo_bt01,omo_bt01_shape,omo_bt01_hit,omo_tex,omo_bg,Generic Toybox
+omo_bt02,omo_bt02_shape,omo_bt02_hit,omo_tex,omo_bg,Block Fortress
+omo_bt03,omo_bt03_shape,omo_bt03_hit,omo_tex,omo_bg,Dark Room
+omo_bt04,omo_bt04_shape,omo_bt04_hit,omo_tex,omo_bg,Slot Machine
+omo_bt05,omo_bt05_shape,omo_bt05_hit,omo_tex,omo_bg,Train Tracks
+omo_bt06,omo_bt06_shape,omo_bt06_hit,omo_tex,omo_bg,Block Towers
+omo_bt07,omo_bt07_shape,omo_bt07_hit,omo_tex,none,General Guy Arena
+pra_bt01,pra_bt01_shape,pra_bt01_hit,pra_tex,none,Generic Hall
+pra_bt02,pra_bt02_shape,pra_bt02_hit,pra_tex,none,Mirror Hall
+pra_bt03,pra_bt03_shape,pra_bt03_hit,pra_tex,none,Mirror Bridge
+pra_bt04,pra_bt04_shape,pra_bt04_hit,pra_tex,none,Mirror Room
+sam_bt01,sam_bt01_shape,sam_bt01_hit,sam_tex,yki_bg,Snowfield
+sam_bt02,sam_bt02_shape,sam_bt02_hit,sam_tex,yki_bg,Mountain Caves
+sam_bt03,sam_bt03_shape,sam_bt03_hit,sam_tex,sam_bg,Mountain Cliffs
+sam_bt04,sam_bt04_shape,sam_bt04_hit,sam_tex,sam_bg,Crystal King Arena
+sbk_bt02,sbk_bt02_shape,sbk_bt02_hit,sbk_tex,sbk_bg,Desert Dunes
+tik_bt01,tik_bt01_shape,tik_bt01_hit,tik_tex,none,Generic Tunnel
+tik_bt02,tik_bt02_shape,tik_bt02_hit,tik_tex,none,Ledges Tunnel
+tik_bt03,tik_bt03_shape,tik_bt03_hit,tik_tex,none,Pipe Bridge
+tik_bt04,tik_bt04_shape,tik_bt04_hit,tik_tex,none,Sewer Stream
+tik_bt05,tik_bt05_shape,tik_bt05_hit,tik_tex,none,Waterfalls
+trd_bt00,trd_bt00_shape,trd_bt00_hit,trd_tex,none,Koopa Bros Arena
+trd_bt01,trd_bt01_shape,trd_bt01_hit,trd_tex,none,Cell Block
+trd_bt02,trd_bt02_shape,trd_bt02_hit,trd_tex,none,Water Passage
+trd_bt03,trd_bt03_shape,trd_bt03_hit,trd_tex,nok_bg,Battlement
+trd_bt04,trd_bt04_shape,trd_bt04_hit,trd_tex,none,Spiral Stairwell
+trd_bt05,trd_bt05_shape,trd_bt05_hit,trd_tex,nok_bg,Basement

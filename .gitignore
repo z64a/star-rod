@@ -1,0 +1,21 @@
+# Compiled class files
+*.class
+
+# VM crash logs
+hs_err_pid*
+replay_pid*
+
+# eclipse builds
+/bin/
+
+# gradle files
+.gradle
+/build/
+
+# Local experiments
+src/main/java/analysis/**
+
+# Temporary Star Rod runtime files
+database/include/**
+logs/**
+

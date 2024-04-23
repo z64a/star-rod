@@ -1,0 +1,31 @@
+name: Release
+on:
+  push:
+    branch:
+     - 'main'
+    tags:
+      - '*'
+jobs:
+  build-gradle-project:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Make gradlew executable
+      run: chmod +x ./gradlew
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+    - name: Build
+      run: ./gradlew createReleaseZip
+    - name: Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: 'build/release/StarRod*.zip'
+        artifactErrorsFailBuild: true
+        makeLatest: true

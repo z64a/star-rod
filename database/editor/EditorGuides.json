@@ -1,0 +1,35 @@
+[
+    {
+        "name": "ANIM_Mario1_Still",
+        "height": 50,
+        "width": 10
+    },
+    {
+        "name": "ANIM_Mario1_BeforeJump",
+        "height": 40,
+        "width": 13,
+        "shape": "cylinder",
+        "radius": 65
+    },
+    {
+        "name": "ANIM_WorldKooper_EnterShell",
+        "height": 25,
+        "width": 13,
+        "shape": "cylinder",
+        "radius": 160
+    },
+    {
+        "name": "ANIM_WorldBombette_WalkLit",
+        "height": 35,
+        "width": 12,
+        "shape": "cylinder",
+        "radius": 45
+    },
+    {
+        "name": "ANIM_WorldParakarry_CarryLight",
+        "height": 40,
+        "width": 15,
+        "shape": "cylinder",
+        "radius": 100
+    }
+]

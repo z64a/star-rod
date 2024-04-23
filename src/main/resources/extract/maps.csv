@@ -1,0 +1,422 @@
+kmr_00,kmr_00_shape,kmr_00_hit,kmr_tex,kmr_bg,Forest Clearing
+kmr_02,kmr_02_shape,kmr_02_hit,kmr_tex,kmr_bg,Goomba Village
+kmr_03,kmr_03_shape,kmr_03_hit,kmr_tex,kmr_bg,Bottom of the Cliff
+kmr_04,kmr_04_shape,kmr_04_hit,kmr_tex,kmr_bg,Jr. Troopa's Playground
+kmr_05,kmr_05_shape,kmr_05_hit,kmr_tex,kmr_bg,Behind the Village
+kmr_06,kmr_06_shape,kmr_06_hit,kmr_tex,kmr_bg,Goomba Road 2
+kmr_07,kmr_07_shape,kmr_07_hit,kmr_tex,kmr_bg,Goomba Road 3
+kmr_09,kmr_09_shape,kmr_09_hit,kmr_tex,kmr_bg,Goomba Road 1
+kmr_10,kmr_10_shape,kmr_10_hit,kmr_tex,kmr_bg,Toad Town Entrance
+kmr_11,kmr_11_shape,kmr_11_hit,kmr_tex,kmr_bg,Goomba King's Castle
+kmr_12,kmr_12_shape,kmr_12_hit,kmr_tex,kmr_bg,Goomba Road 4
+kmr_20,kmr_20_shape,kmr_20_hit,kmr_tex,kmr_bg,Mario's House
+kmr_21,kmr_21_shape,kmr_21_hit,kmr_tex,none,Title Screen
+kmr_22,kmr_22_shape,kmr_22_hit,kmr_tex,none,Chapter Start
+kmr_23,kmr_23_shape,kmr_23_hit,kmr_tex,none,Chapter End
+kmr_24,kmr_24_shape,kmr_24_hit,kmr_tex,none,Save and Continue
+kmr_30,kmr_30_shape,kmr_30_hit,kmr_tex,none,Mario's House (Ending)
+machi,machi_shape,machi_hit,mac_tex,nok_bg,Debug Warp Zone
+mac_00,mac_00_shape,mac_00_hit,mac_tex,nok_bg,Gate District
+mac_01,mac_01_shape,mac_01_hit,mac_tex,nok_bg,Plaza District
+mac_02,mac_02_shape,mac_02_hit,mac_tex,nok_bg,Southern District
+mac_03,mac_03_shape,mac_03_hit,mac_tex,nok_bg,Station District
+mac_04,mac_04_shape,mac_04_hit,mac_tex,nok_bg,Residental District
+mac_05,mac_05_shape,mac_05_hit,mac_tex,nok_bg,Port District
+mac_06,mac_06_shape,mac_06_hit,mac_tex,nok_bg,Riding the Whale
+tik_01,tik_01_shape,tik_01_hit,tik_tex,none,Warp Zone 1 (B1)
+tik_02,tik_02_shape,tik_02_hit,tik_tex,none,Blooper Boss 1 (B1)
+tik_03,tik_03_shape,tik_03_hit,tik_tex,none,Short Elevator Room (B1)
+tik_04,tik_04_shape,tik_04_hit,tik_tex,none,Scales Room (B2)
+tik_05,tik_05_shape,tik_05_hit,tik_tex,none,Spring Room (B2)
+tik_06,tik_06_shape,tik_06_hit,tik_tex,none,Sewer Entrance (B1)
+tik_07,tik_07_shape,tik_07_hit,tik_tex,none,Elevator Attic Room (B2)
+tik_08,tik_08_shape,tik_08_hit,tik_tex,none,Second Level Entry (B2)
+tik_09,tik_09_shape,tik_09_hit,tik_tex,none,Warp Zone 2 (B2)
+tik_10,tik_10_shape,tik_10_hit,tik_tex,none,Block Puzzle Room (B2)
+tik_12,tik_12_shape,tik_12_hit,tik_tex,none,Metal Block Room (B3)
+tik_14,tik_14_shape,tik_14_hit,tik_tex,none,Rip Cheato Antechamber (B3)
+tik_15,tik_15_shape,tik_15_hit,tik_tex,none,Rip Cheato's Home (B3)
+tik_17,tik_17_shape,tik_17_hit,tik_tex,none,Frozen Room (B3)
+tik_18,tik_18_shape,tik_18_hit,tik_tex,none,Hall to Blooper 1 (B1)
+tik_19,tik_19_shape,tik_19_hit,tik_tex,none,Under the Toad Town Pond
+tik_20,tik_20_shape,tik_20_hit,tik_tex,none,Room with Spikes (B2)
+tik_21,tik_21_shape,tik_21_hit,tik_tex,none,Hidden Blocks Room (B2)
+tik_22,tik_22_shape,tik_22_hit,tik_tex,none,Path to Shiver City (B2)
+tik_23,tik_23_shape,tik_23_hit,tik_tex,none,Windy Path (B3)
+tik_24,tik_18_shape,tik_18_hit,tik_tex,none,Hall to Ultra Boots (B3)
+tik_25,tik_25_shape,tik_25_hit,tik_tex,none,Ultra Boots Room (B3)
+kgr_01,kgr_01_shape,kgr_01_hit,kgr_tex,none,Whale Mouth
+kgr_02,kgr_02_shape,kgr_02_hit,kgr_tex,none,Whale Stomach
+kkj_00,kkj_00_shape,kkj_00_hit,kkj_tex,nok_bg,Intro Entry Hall (1F)
+kkj_01,kkj_01_shape,kkj_01_hit,kkj_tex,nok_bg,Intro Upper Hall (2F)
+kkj_02,kkj_02_shape,kkj_02_hit,kkj_tex,nok_bg,Intro Stairs Hallway (3F)
+kkj_03,kkj_03_shape,kkj_03_hit,kkj_tex,nok_bg,Intro Window Hallway (4F)
+kkj_10,kkj_10_shape,kkj_10_hit,kkj_tex,none,Entry Hall (1F)
+kkj_11,kkj_11_shape,kkj_11_hit,kkj_tex,none,Upper Hall (2F)
+kkj_12,kkj_12_shape,kkj_12_hit,kkj_tex,none,Stairs Hallway (3F)
+kkj_13,kkj_13_shape,kkj_13_hit,kkj_tex,kpa_bg,Window Hallway (4F)
+kkj_14,kkj_14_shape,kkj_14_hit,kkj_tex,kpa_bg,Peach's Room (2F)
+kkj_15,kkj_15_shape,kkj_15_hit,kkj_tex,none,Passage Outlet (2F)
+kkj_16,kkj_16_shape,kkj_16_hit,kkj_tex,none,Library (2F)
+kkj_17,kkj_17_shape,kkj_17_hit,kkj_tex,none,Storeroom (2F)
+kkj_18,kkj_18_shape,kkj_18_hit,kkj_tex,kpa_bg,Dining Room (2F)
+kkj_19,kkj_19_shape,kkj_19_hit,kkj_tex,none,Kitchen (1F)
+kkj_20,kkj_20_shape,kkj_20_hit,kkj_tex,none,Guest Room (1F)
+kkj_21,kkj_21_shape,kkj_21_hit,kkj_tex,none,Inactive Quiz-Off (1F)
+kkj_22,kkj_22_shape,kkj_22_hit,kkj_tex,kpa_bg,Double Staircase (4F)
+kkj_23,kkj_23_shape,kkj_23_hit,kkj_tex,kpa_bg,Rooftop (5F)
+kkj_24,kkj_24_shape,kkj_24_hit,kkj_tex,kpa_bg,Tower Staircase (5F)
+kkj_25,kkj_25_shape,kkj_25_hit,kkj_tex,kpa_bg,Final Boss Arena (6F)
+kkj_26,kkj_26_shape,kkj_26_hit,kkj_tex,kpa_bg,Balcony (2F)
+kkj_27,kkj_27_shape,kkj_27_hit,kkj_tex,none,Secret Passage (2F)
+kkj_28,kkj_28_shape,kkj_28_hit,kkj_tex,none,Darkened Quiz-Off (1F)
+kkj_29,kkj_29_shape,kkj_29_hit,kkj_tex,none,Quiz-Off Room (1F)
+hos_00,hos_00_shape,hos_00_hit,hos_tex,nok_bg,Shooting Star Path
+hos_01,hos_01_shape,hos_01_hit,hos_tex,hos_bg,Shooting Star Summit
+hos_02,hos_02_shape,hos_02_hit,hos_tex,hos_bg,Star Way
+hos_03,hos_03_shape,hos_03_hit,hos_tex,hos_bg,Star Haven
+hos_04,hos_04_shape,hos_04_hit,hos_tex,hos_bg,Outside the Sanctuary
+hos_05,hos_05_shape,hos_05_hit,hos_tex,hos_bg,Star Sanctuary
+hos_06,hos_06_shape,hos_06_hit,hos_tex,hos_bg,Merluvlee's House
+hos_10,hos_10_shape,hos_10_hit,hos_tex,hos_bg,Ending Descent Scene
+hos_20,hos_20_shape,hos_20_hit,hos_tex,hos_bg,Riding Star Ship Scene
+nok_01,nok_01_shape,nok_01_hit,nok_tex,nok_bg,Koopa Village 1
+nok_02,nok_02_shape,nok_02_hit,nok_tex,nok_bg,Koopa Village 2
+nok_03,nok_03_shape,nok_03_hit,nok_tex,nok_bg,Behind Koopa Village
+nok_04,nok_04_shape,nok_04_hit,nok_tex,nok_bg,Fuzzy Forest
+nok_11,nok_11_shape,nok_11_hit,nok_tex,nok_bg,Pleasant Path Entry
+nok_12,nok_12_shape,nok_12_hit,nok_tex,nok_bg,Pleasant Path Bridge
+nok_13,nok_13_shape,nok_13_hit,nok_tex,nok_bg,Pleasant Crossroads
+nok_14,nok_14_shape,nok_14_hit,nok_tex,nok_bg,Path to Fortress 1
+nok_15,nok_15_shape,nok_15_hit,nok_tex,nok_bg,Path to Fortress 2
+trd_00,trd_00_shape,trd_00_hit,trd_tex,nok_bg,Fortress Exterior
+trd_01,trd_01_shape,trd_01_hit,trd_tex,none,Left Tower
+trd_02,trd_02_shape,trd_02_hit,trd_tex,none,Left Stairway
+trd_03,trd_03_shape,trd_03_hit,trd_tex,none,Central Hall
+trd_04,trd_04_shape,trd_04_hit,trd_tex,none,Right Stairway
+trd_05,trd_05_shape,trd_05_hit,trd_tex,none,Right Tower
+trd_06,trd_06_shape,trd_06_hit,trd_tex,none,Jail
+trd_07,trd_07_shape,trd_07_hit,trd_tex,none,Dungeon Trap
+trd_08,trd_08_shape,trd_08_hit,trd_tex,none,Dungeon Fire Room
+trd_09,trd_09_shape,trd_09_hit,trd_tex,nok_bg,Battlement
+trd_10,trd_10_shape,trd_10_hit,trd_tex,none,Boss Battle Room
+iwa_00,iwa_00_shape,iwa_00_hit,iwa_tex,iwa_bg,Mt Rugged 1
+iwa_01,iwa_01_shape,iwa_01_hit,iwa_tex,iwa_bg,Mt Rugged 2
+iwa_02,iwa_02_shape,iwa_02_hit,iwa_tex,iwa_bg,Mt Rugged 3
+iwa_03,iwa_03_shape,iwa_03_hit,iwa_tex,iwa_bg,Mt Rugged 4
+iwa_04,iwa_04_shape,iwa_04_hit,iwa_tex,iwa_bg,Suspension Bridge
+iwa_10,iwa_10_shape,iwa_10_hit,iwa_tex,iwa_bg,Train Station
+iwa_11,iwa_11_shape,iwa_11_hit,iwa_tex,iwa_bg,Train Ride Scene
+dro_01,dro_01_shape,dro_01_hit,dro_tex,sbk_bg,Outpost 1
+dro_02,dro_02_shape,dro_02_hit,dro_tex,sbk_bg,Outpost 2
+sbk_00,sbk_00_shape,sbk_00_hit,sbk_tex,sbk_bg,N3W3
+sbk_01,sbk_01_shape,sbk_01_hit,sbk_tex,sbk_bg,N3W2
+sbk_02,sbk_02_shape,sbk_02_hit,sbk_tex,sbk_bg,N3W1 Ruins Entrance
+sbk_03,sbk_03_shape,sbk_03_hit,sbk_tex,sbk_bg,N3
+sbk_04,sbk_04_shape,sbk_04_hit,sbk_tex,sbk_bg,N3E1
+sbk_05,sbk_05_shape,sbk_05_hit,sbk_tex,sbk_bg,N3E2 Pokey Army
+sbk_06,sbk_06_shape,sbk_06_hit,sbk_tex,sbk_bg,N3E3
+sbk_10,sbk_10_shape,sbk_10_hit,sbk_tex,sbk_bg,N2W3
+sbk_11,sbk_11_shape,sbk_11_hit,sbk_tex,sbk_bg,N2W2
+sbk_12,sbk_12_shape,sbk_12_hit,sbk_tex,sbk_bg,N2W1
+sbk_13,sbk_13_shape,sbk_13_hit,sbk_tex,sbk_bg,N2
+sbk_14,sbk_14_shape,sbk_14_hit,sbk_tex,sbk_bg,N2E1 (Tweester A)
+sbk_15,sbk_15_shape,sbk_15_hit,sbk_tex,sbk_bg,N2E2
+sbk_16,sbk_16_shape,sbk_16_hit,sbk_tex,sbk_bg,N2E3
+sbk_20,sbk_20_shape,sbk_20_hit,sbk_tex,sbk_bg,N1W3 Special Block
+sbk_21,sbk_21_shape,sbk_21_hit,sbk_tex,sbk_bg,N1W2
+sbk_22,sbk_22_shape,sbk_22_hit,sbk_tex,sbk_bg,N1W1
+sbk_23,sbk_23_shape,sbk_23_hit,sbk_tex,sbk_bg,N1 (Tweester B)
+sbk_24,sbk_24_shape,sbk_24_hit,sbk_tex,sbk_bg,N1E1 Palm Trio
+sbk_25,sbk_25_shape,sbk_25_hit,sbk_tex,sbk_bg,N1E2
+sbk_26,sbk_26_shape,sbk_26_hit,sbk_tex,sbk_bg,N1E3
+sbk_30,sbk_30_shape,sbk_30_hit,sbk_tex,sbk_bg,W3 Kolorado's Camp
+sbk_31,sbk_31_shape,sbk_31_hit,sbk_tex,sbk_bg,W2
+sbk_32,sbk_32_shape,sbk_32_hit,sbk_tex,sbk_bg,W1
+sbk_33,sbk_33_shape,sbk_33_hit,sbk_tex,sbk_bg,Center (Tweester C)
+sbk_34,sbk_34_shape,sbk_34_hit,sbk_tex,sbk_bg,E1 Nomadimouse
+sbk_35,sbk_35_shape,sbk_35_hit,sbk_tex,sbk_bg,E2
+sbk_36,sbk_36_shape,sbk_36_hit,sbk_tex,sbk_bg,E3 Outside Outpost
+sbk_40,sbk_40_shape,sbk_40_hit,sbk_tex,sbk_bg,S1W3
+sbk_41,sbk_41_shape,sbk_41_hit,sbk_tex,sbk_bg,S1W2 (Tweester D)
+sbk_42,sbk_42_shape,sbk_42_hit,sbk_tex,sbk_bg,S1W1
+sbk_43,sbk_43_shape,sbk_43_hit,sbk_tex,sbk_bg,S1
+sbk_44,sbk_44_shape,sbk_44_hit,sbk_tex,sbk_bg,S1E1
+sbk_45,sbk_45_shape,sbk_45_hit,sbk_tex,sbk_bg,S1E2 Small Bluffs
+sbk_46,sbk_46_shape,sbk_46_hit,sbk_tex,sbk_bg,S1E3 North of Oasis
+sbk_50,sbk_50_shape,sbk_50_hit,sbk_tex,sbk_bg,S2W3
+sbk_51,sbk_51_shape,sbk_51_hit,sbk_tex,sbk_bg,S2W2
+sbk_52,sbk_52_shape,sbk_52_hit,sbk_tex,sbk_bg,S2W1
+sbk_53,sbk_53_shape,sbk_53_hit,sbk_tex,sbk_bg,S2
+sbk_54,sbk_54_shape,sbk_54_hit,sbk_tex,sbk_bg,S2E1 Blue Cactus
+sbk_55,sbk_55_shape,sbk_55_hit,sbk_tex,sbk_bg,S2E2 West of Oasis
+sbk_56,sbk_56_shape,sbk_56_hit,sbk_tex,sbk_bg,S2E3 Oasis
+sbk_60,sbk_60_shape,sbk_60_hit,sbk_tex,sbk_bg,S3W3
+sbk_61,sbk_61_shape,sbk_61_hit,sbk_tex,sbk_bg,S3W2 Hidden AttackFX
+sbk_62,sbk_62_shape,sbk_62_hit,sbk_tex,sbk_bg,S3W1
+sbk_63,sbk_63_shape,sbk_63_hit,sbk_tex,sbk_bg,S3
+sbk_64,sbk_64_shape,sbk_64_hit,sbk_tex,sbk_bg,S3E1
+sbk_65,sbk_65_shape,sbk_65_hit,sbk_tex,sbk_bg,S3E2
+sbk_66,sbk_66_shape,sbk_66_hit,sbk_tex,sbk_bg,S3E3 South of Oasis
+sbk_99,sbk_99_shape,sbk_99_hit,sbk_tex,sbk_bg,Entrance
+isk_01,isk_01_shape,isk_01_hit,isk_tex,sbk3_bg,Entrance
+isk_02,isk_02_shape,isk_02_hit,isk_tex,sbk3_bg,Sarcophagus Hall 1
+isk_03,isk_03_shape,isk_03_hit,isk_tex,none,Sand Drainage Room 1
+isk_04,isk_04_shape,isk_04_hit,isk_tex,sbk3_bg,Descending Stairs 1
+isk_05,isk_05_shape,isk_05_hit,isk_tex,none,Pyramid Stone Room
+isk_06,isk_06_shape,isk_06_hit,isk_tex,none,Sand Drainage Room 2
+isk_07,isk_07_shape,isk_07_hit,isk_tex,none,Sarcophagus Hall 2
+isk_08,isk_08_shape,isk_08_hit,isk_tex,none,Descending Stairs 2
+isk_09,isk_09_shape,isk_09_hit,isk_tex,none,Super Hammer Room
+isk_10,isk_10_shape,isk_10_hit,isk_tex,none,Vertical Shaft
+isk_11,isk_11_shape,isk_11_hit,isk_tex,none,Stone Puzzle Room
+isk_12,isk_12_shape,isk_12_hit,isk_tex,none,Sand Drainage Room 3
+isk_13,isk_13_shape,isk_13_hit,isk_tex,none,Lunar Stone Room
+isk_14,isk_14_shape,isk_14_hit,isk_tex,none,Diamond Stone Room
+isk_16,isk_16_shape,isk_16_hit,isk_tex,none,Tutankoopa Room
+isk_18,isk_18_shape,isk_18_hit,isk_tex,none,Deep Tunnel
+isk_19,isk_19_shape,isk_19_hit,isk_tex,none,Boss Antechamber
+mim_01,mim_01_shape,mim_01_hit,mim_tex,obk_bg,Flower Sounds
+mim_02,mim_02_shape,mim_02_hit,mim_tex,obk_bg,Stump Eyes
+mim_03,mim_03_shape,mim_03_hit,mim_tex,obk_bg,Flowers (Oaklie)
+mim_04,mim_04_shape,mim_04_hit,mim_tex,obk_bg,Tree Face (Bub-ulb)
+mim_05,mim_05_shape,mim_05_hit,mim_tex,obk_bg,Mushrooms (Path Splits)
+mim_06,mim_06_shape,mim_06_hit,mim_tex,obk_bg,Flowers Vanish
+mim_07,mim_07_shape,mim_07_hit,mim_tex,obk_bg,Laughing Rock
+mim_08,mim_08_shape,mim_08_hit,mim_tex,obk_bg,Bee Hive (HP Plus)
+mim_09,mim_09_shape,mim_09_hit,mim_tex,obk_bg,Flowers Appear (FP Plus)
+mim_10,mim_10_shape,mim_10_hit,mim_tex,nok_bg,Exit to Toad Town
+mim_11,mim_11_shape,mim_11_hit,mim_tex,obk_bg,Outside Boo's Mansion
+mim_12,mim_12_shape,mim_12_hit,mim_tex,arn_bg,Exit to Gusty Gulch
+obk_01,obk_01_shape,obk_01_hit,obk_tex,none,Foyer
+obk_02,obk_02_shape,obk_02_hit,obk_tex,obk_bg,Basement Stairs
+obk_03,obk_03_shape,obk_03_hit,obk_tex,none,Basement
+obk_04,obk_04_shape,obk_04_hit,obk_tex,none,Super Boots Room
+obk_05,obk_05_shape,obk_05_hit,obk_tex,obk_bg,Pot Room
+obk_06,obk_06_shape,obk_06_hit,obk_tex,none,Library
+obk_07,obk_07_shape,obk_07_hit,obk_tex,obk_bg,Record Player Room
+obk_08,obk_08_shape,obk_08_hit,obk_tex,obk_bg,Record Room
+obk_09,obk_09_shape,obk_09_hit,obk_tex,none,Lady Bow's Room
+arn_02,arn_02_shape,arn_02_hit,arn_tex,arn_bg,Wasteland Ascent 1
+arn_03,arn_03_shape,arn_03_hit,arn_tex,arn_bg,Ghost Town 1
+arn_04,arn_04_shape,arn_04_hit,arn_tex,arn_bg,Wasteland Ascent 2
+arn_05,arn_05_shape,arn_05_hit,arn_tex,arn_bg,Ghost Town 2
+arn_07,arn_07_shape,arn_07_hit,arn_tex,arn_bg,Windmill Exterior
+arn_08,arn_08_shape,arn_08_hit,arn_tex,none,Windmill Interior
+arn_09,arn_09_shape,arn_09_hit,arn_tex,none,Windmill Tunnel Entry
+arn_10,arn_10_shape,arn_10_hit,arn_tex,none,Tunnel 1
+arn_11,arn_11_shape,arn_11_hit,arn_tex,none,Tubba's Heart Chamber
+arn_12,arn_12_shape,arn_12_hit,arn_tex,none,Tunnel 2
+arn_13,arn_13_shape,arn_13_hit,arn_tex,none,Tunnel 3
+arn_20,arn_20_shape,arn_20_hit,arn_tex,none,Tubba's Manor Exterior
+dgb_00,arn_20_shape,arn_20_hit,arn_tex,arn_bg,Escape Scene
+dgb_01,dgb_01_shape,dgb_01_hit,dgb_tex,none,Great Hall
+dgb_02,dgb_02_shape,dgb_02_hit,dgb_tex,none,West Hall (1F)
+dgb_03,dgb_03_shape,dgb_03_hit,dgb_tex,none,Table/Clock Room (1/2F)
+dgb_04,dgb_04_shape,dgb_04_hit,dgb_tex,none,Stairs to Basement
+dgb_05,dgb_05_shape,dgb_05_hit,dgb_tex,none,Stairs Above Basement
+dgb_06,dgb_06_shape,dgb_06_hit,dgb_tex,none,Basement
+dgb_07,dgb_07_shape,dgb_07_hit,dgb_tex,none,Study (1F)
+dgb_08,dgb_08_shape,dgb_08_hit,dgb_tex,none,East Hall (1/2F)
+dgb_09,dgb_09_shape,dgb_09_hit,dgb_tex,none,West Hall (2F)
+dgb_10,dgb_10_shape,dgb_10_hit,dgb_tex,none,Sealed Room (2F)
+dgb_11,dgb_11_shape,dgb_11_hit,dgb_tex,none,Covered Tables Room (1F)
+dgb_12,dgb_12_shape,dgb_12_hit,dgb_tex,none,Spike Trap Room (2F)
+dgb_13,dgb_13_shape,dgb_13_hit,dgb_tex,none,Hidden Bedroom (2F)
+dgb_14,dgb_14_shape,dgb_14_hit,dgb_tex,none,Stairs to Third Floor
+dgb_15,dgb_15_shape,dgb_15_hit,dgb_tex,none,West Hall (3F)
+dgb_16,dgb_16_shape,dgb_16_hit,dgb_tex,none,Sleeping Clubbas Room (3F)
+dgb_17,dgb_17_shape,dgb_17_hit,dgb_tex,none,Save Room (3F)
+dgb_18,dgb_18_shape,dgb_18_hit,dgb_tex,none,Master Bedroom (3F)
+omo_01,omo_01_shape,omo_01_hit,omo_tex,omo_bg,BLU Large Playroom
+omo_02,omo_02_shape,omo_02_hit,omo_tex,omo_bg,RED Boss Barricade
+omo_03,omo_03_shape,omo_03_hit,omo_tex,omo_bg,BLU Station
+omo_04,omo_04_shape,omo_04_hit,omo_tex,omo_bg,BLU Block City
+omo_05,omo_05_shape,omo_05_hit,omo_tex,omo_bg,PNK Gourmet Guy Crossing
+omo_06,omo_06_shape,omo_06_hit,omo_tex,omo_bg,PNK Station
+omo_07,omo_07_shape,omo_07_hit,omo_tex,omo_bg,PNK Playhouse
+omo_08,omo_08_shape,omo_08_hit,omo_tex,omo_bg,GRN Station
+omo_09,omo_09_shape,omo_09_hit,omo_tex,omo_bg,GRN Treadmills/Slot Machine
+omo_10,omo_10_shape,omo_10_hit,omo_tex,omo_bg,RED Station
+omo_11,omo_11_shape,omo_11_hit,omo_tex,omo_bg,RED Moving Platforms
+omo_12,omo_12_shape,omo_12_hit,omo_tex,none,RED Lantern Ghost
+omo_13,omo_13_shape,omo_13_hit,omo_tex,omo_bg,BLU Anti-Guy Hall
+omo_14,omo_14_shape,omo_14_hit,omo_tex,none,RED Boss Antechamber
+omo_15,omo_15_shape,omo_15_hit,omo_tex,omo_bg,RED General Guy Room
+omo_16,omo_16_shape,omo_16_hit,omo_tex,omo_bg,Riding the Train
+omo_17,omo_17_shape,omo_17_hit,omo_tex,omo_bg,PNK Tracks Hallway
+jan_00,jan_00_shape,jan_00_hit,jan_tex,yos_bg,Whale Cove
+jan_01,jan_01_shape,jan_01_hit,jan_tex,yos_bg,Beach
+jan_02,jan_02_shape,jan_02_hit,jan_tex,yos_bg,Village Cove
+jan_03,jan_03_shape,jan_03_hit,jan_tex,yos_bg,Village Buildings
+jan_04,jan_04_shape,jan_04_hit,jan_tex,yos_bg,Sushi Tree
+jan_05,jan_05_shape,jan_05_hit,jan_tex,yos_bg,SE Jungle (Quake Hammer)
+jan_06,jan_06_shape,jan_06_hit,jan_tex,jan_bg,NE Jungle (Raven Statue)
+jan_07,jan_07_shape,jan_07_hit,jan_tex,yos_bg,Small Jungle Ledge
+jan_08,jan_08_shape,jan_08_hit,jan_tex,yos_bg,SW Jungle (Super Block)
+jan_09,jan_09_shape,jan_09_hit,jan_tex,yos_bg,NW Jungle (Large Ledge)
+jan_10,jan_10_shape,jan_10_hit,jan_tex,yos_bg,Western Dead End
+jan_11,jan_11_shape,jan_11_hit,jan_tex,jan_bg,Root Cavern
+jan_12,jan_12_shape,jan_12_hit,jan_tex,jan_bg,Deep Jungle 1
+jan_13,jan_13_shape,jan_13_hit,jan_tex,jan_bg,Deep Jungle 2 (Block Puzzle)
+jan_14,jan_14_shape,jan_14_hit,jan_tex,jan_bg,Deep Jungle 3
+jan_15,jan_15_shape,jan_15_hit,jan_tex,jan_bg,Deep Jungle 4 (Ambush)
+jan_16,jan_16_shape,jan_16_hit,jan_tex,jan_bg,Base of Great Tree
+jan_17,jan_17_shape,jan_17_hit,jan_tex,jan_bg,Lower Great Tree Interior
+jan_18,jan_18_shape,jan_18_hit,jan_tex,yos_bg,Great Tree Vine Ascent
+jan_19,jan_19_shape,jan_19_hit,jan_tex,jan_bg,Upper Great Tree Interior
+jan_22,jan_22_shape,jan_22_hit,jan_tex,jan_bg,Path to the Volcano
+jan_23,jan_23_shape,jan_23_hit,jan_tex,yos_bg,Great Treetop Roost
+kzn_01,kzn_01_shape,kzn_01_hit,kzn_tex,none,Volcano Entrance
+kzn_02,kzn_02_shape,kzn_02_hit,kzn_tex,none,First Lava Lake
+kzn_03,kzn_03_shape,kzn_03_hit,kzn_tex,none,Central Cavern
+kzn_04,kzn_04_shape,kzn_04_hit,kzn_tex,none,Fire Bar Bridge
+kzn_05,kzn_05_shape,kzn_05_hit,kzn_tex,none,Descent Toward Ultra Hammer
+kzn_06,kzn_06_shape,kzn_06_hit,kzn_tex,none,Flowing Lava Puzzle
+kzn_07,kzn_07_shape,kzn_07_hit,kzn_tex,none,Ultra Hammer Room
+kzn_08,kzn_08_shape,kzn_08_hit,kzn_tex,none,Dizzy Stomp Room
+kzn_09,kzn_09_shape,kzn_09_hit,kzn_tex,none,Zipline Cavern
+kzn_10,kzn_10_shape,kzn_10_hit,kzn_tex,none,Descent Toward Boss
+kzn_11,kzn_11_shape,kzn_11_hit,kzn_tex,none,Second Lava Lake
+kzn_17,kzn_17_shape,kzn_17_hit,kzn_tex,none,Spike Roller Trap
+kzn_18,kzn_18_shape,kzn_18_hit,kzn_tex,none,Boss Antechamber
+kzn_19,kzn_19_shape,kzn_19_hit,kzn_tex,none,Boss Room
+kzn_20,kzn_20_shape,kzn_20_hit,kzn_tex,none,Rising Lava 1
+kzn_22,kzn_22_shape,kzn_22_hit,kzn_tex,none,Rising Lava 2
+kzn_23,kzn_23_shape,kzn_23_hit,kzn_tex,yos_bg,Volcano Escape
+flo_00,flo_00_shape,flo_00_hit,flo_tex,fla_bg,Center
+flo_03,flo_03_shape,flo_03_hit,flo_tex,fla_bg,(East) Petunia's Field
+flo_07,flo_07_shape,flo_07_hit,flo_tex,fla_bg,(SW) Posie and Crystal Tree
+flo_08,flo_08_shape,flo_08_hit,flo_tex,fla_bg,(SE) Briar Platforming
+flo_09,flo_09_shape,flo_09_hit,flo_tex,fla_bg,(East) Triple Tree Path
+flo_10,flo_10_shape,flo_10_hit,flo_tex,fla_bg,(SE) Lily's Fountain
+flo_11,flo_11_shape,flo_11_hit,flo_tex,fla_bg,(West) Maze
+flo_12,flo_12_shape,flo_12_hit,flo_tex,fla_bg,(West) Rosie's Trellis
+flo_13,flo_13_shape,flo_13_hit,flo_tex,fla_bg,(NW) Lakilester
+flo_14,flo_14_shape,flo_14_hit,flo_tex,fla_bg,(NW) Bubble Flower
+flo_15,flo_15_shape,flo_15_hit,flo_tex,fla_bg,(NW) Sun Tower
+flo_16,flo_16_shape,flo_16_hit,flo_tex,fla_bg,(NE) Elevators
+flo_17,flo_17_shape,flo_17_hit,flo_tex,fla_bg,(NE) Fallen Logs
+flo_18,flo_18_shape,flo_18_hit,flo_tex,fla_bg,(NE) Puff Puff Machine
+flo_19,flo_19_shape,flo_19_hit,flo_tex,sra_bg,Cloudy Climb
+flo_21,flo_21_shape,flo_21_hit,flo_tex,sra_bg,Huff N Puff Room
+flo_22,flo_22_shape,flo_22_hit,flo_tex,fla_bg,(East) Old Well
+flo_23,flo_23_shape,flo_23_hit,flo_tex,fla_bg,(West) Path to Maze
+flo_24,flo_24_shape,flo_24_hit,flo_tex,fla_bg,(SE) Water Level Room
+flo_25,flo_25_shape,flo_25_hit,flo_tex,fla_bg,(SW) Path to Crystal Tree
+sam_01,sam_01_shape,sam_01_hit,sam_tex,yki_bg,Shiver City Mayor Area
+sam_02,sam_02_shape,sam_02_hit,sam_tex,yki_bg,Shiver City Center
+sam_03,sam_03_shape,sam_03_hit,sam_tex,yki_bg,Road to Shiver Snowfield
+sam_04,sam_04_shape,sam_04_hit,sam_tex,yki_bg,Shiver Snowfield
+sam_05,sam_05_shape,sam_05_hit,sam_tex,sam_bg,Path to Starborn Valley
+sam_06,sam_06_shape,sam_06_hit,sam_tex,sam_bg,Starborn Valley
+sam_07,sam_07_shape,sam_07_hit,sam_tex,yki_bg,Shiver Mountain Passage
+sam_08,sam_08_shape,sam_08_hit,sam_tex,yki_bg,Shiver Mountain Hills
+sam_09,sam_09_shape,sam_09_hit,sam_tex,yki_bg,Shiver Mountain Tunnel
+sam_10,sam_10_shape,sam_10_hit,sam_tex,yki_bg,Shiver Mountain Peaks
+sam_11,sam_11_shape,sam_11_hit,sam_tex,yki_bg,Shiver City Pond Area
+sam_12,sam_12_shape,sam_12_hit,sam_tex,yki_bg,Merlar's Sanctuary
+pra_01,pra_01_shape,pra_01_hit,pra_tex,yki_bg,Entrance
+pra_02,pra_02_shape,pra_02_hit,pra_tex,none,Entry Hall
+pra_03,pra_03_shape,pra_03_hit,pra_tex,none,Save Room
+pra_04,pra_04_shape,pra_04_hit,pra_tex,none,Reflected Save Room
+pra_05,pra_05_shape,pra_05_hit,pra_tex,none,Blue Key Room
+pra_06,pra_05_shape,pra_05_hit,pra_tex,none,Shooting Star Room
+pra_09,pra_09_shape,pra_09_hit,pra_tex,none,Red Key Hall
+pra_10,pra_10_shape,pra_10_hit,pra_tex,none,P-Down D-Up Hall
+pra_11,pra_11_shape,pra_11_hit,pra_tex,none,Red Key Room
+pra_12,pra_05_shape,pra_05_hit,pra_tex,none,P-Down D-Up Room
+pra_13,pra_13_shape,pra_13_hit,pra_tex,none,Blue Mirror Hall 1
+pra_14,pra_14_shape,pra_14_hit,pra_tex,none,Blue Mirror Hall 2
+pra_15,pra_15_shape,pra_15_hit,pra_tex,yki_bg,Star Piece Cave
+pra_16,pra_16_shape,pra_16_hit,pra_tex,none,Red Mirror Hall
+pra_18,pra_18_shape,pra_18_hit,pra_tex,none,Bridge Mirror Hall
+pra_19,pra_19_shape,pra_19_hit,pra_tex,none,Reflection Mimic Room
+pra_20,pra_20_shape,pra_20_hit,pra_tex,none,Mirrored Door Room
+pra_21,pra_21_shape,pra_21_hit,pra_tex,none,Huge Statue Room
+pra_22,pra_22_shape,pra_22_hit,pra_tex,none,Small Statue Room
+pra_27,pra_05_shape,pra_05_hit,pra_tex,none,Palace Key Room
+pra_28,pra_05_shape,pra_05_hit,pra_tex,none,P-Up D-Down Room
+pra_29,pra_29_shape,pra_29_hit,pra_tex,none,Hidden Bridge Room
+pra_31,pra_31_shape,pra_31_hit,pra_tex,none,Dino Puzzle Room
+pra_32,pra_32_shape,pra_32_hit,pra_tex,sam_bg,Crystal Summit
+pra_33,pra_33_shape,pra_33_hit,pra_tex,none,Turnstyle Room
+pra_34,pra_34_shape,pra_34_hit,pra_tex,none,Mirror Hole Room
+pra_35,pra_35_shape,pra_35_hit,pra_tex,none,Triple Dip Room
+pra_36,pra_10_shape,pra_10_hit,pra_tex,none,Palace Key Hall
+pra_37,pra_10_shape,pra_10_hit,pra_tex,none,P-Up D-Down Hall
+pra_38,pra_10_shape,pra_10_hit,pra_tex,none,Blue Key Hall
+pra_39,pra_10_shape,pra_10_hit,pra_tex,none,Shooting Star Hall
+pra_40,pra_40_shape,pra_40_hit,pra_tex,none,Boss Antechamber
+kpa_01,kpa_01_shape,kpa_01_hit,kpa_tex,none,Dark Cave 1
+kpa_03,kpa_03_shape,kpa_03_hit,kpa_tex,none,Dark Cave 2
+kpa_04,kpa_04_shape,kpa_04_hit,kpa_tex,none,Cave Exit
+kpa_08,kpa_08_shape,kpa_08_hit,kpa_tex,none,Castle Key Timing Puzzle
+kpa_09,kpa_09_shape,kpa_09_hit,kpa_tex,none,Ultra Shroom Timing Puzzle
+kpa_10,kpa_10_shape,kpa_10_hit,kpa_tex,none,Outside Lower Jail (No Lava)
+kpa_11,kpa_11_shape,kpa_11_hit,kpa_tex,none,Outside Lower Jail (Lava)
+kpa_12,kpa_12_shape,kpa_12_hit,kpa_tex,none,Lava Channel 1
+kpa_13,kpa_13_shape,kpa_13_hit,kpa_tex,none,Lava Channel 2
+kpa_14,kpa_14_shape,kpa_14_hit,kpa_tex,none,Lava Channel 3
+kpa_15,kpa_15_shape,kpa_15_hit,kpa_tex,none,Lava Key Room
+kpa_16,kpa_16_shape,kpa_16_hit,kpa_tex,none,Lava Control Room
+kpa_17,kpa_17_shape,kpa_17_hit,kpa_tex,none,Lower Jail
+kpa_32,kpa_32_shape,kpa_32_hit,kpa_tex,kpa_bg,Lower Grand Hall
+kpa_33,kpa_33_shape,kpa_33_hit,kpa_tex,kpa_bg,Upper Grand Hall
+kpa_40,kpa_40_shape,kpa_40_hit,kpa_tex,none,Maze Guide Room
+kpa_41,kpa_41_shape,kpa_41_hit,kpa_tex,none,Maze Room
+kpa_50,kpa_50_shape,kpa_50_hit,kpa_tex,none,Hall to Guard Door 1
+kpa_51,kpa_50_shape,kpa_50_hit,kpa_tex,none,Hall to Water Puzzle
+kpa_52,kpa_52_shape,kpa_52_hit,kpa_tex,none,Split Level Hall
+kpa_53,kpa_50_shape,kpa_50_hit,kpa_tex,none,Fake Peach Hallway
+kpa_60,kpa_60_shape,kpa_60_hit,kpa_tex,kpa_bg,Ship Enter/Exit Scenes
+kpa_61,kpa_61_shape,kpa_61_hit,kpa_tex,kpa_bg,Battlement
+kpa_62,kpa_62_shape,kpa_62_hit,kpa_tex,kpa_bg,Front Door Exterior
+kpa_63,kpa_63_shape,kpa_63_hit,kpa_tex,none,Hanger
+kpa_70,kpa_70_shape,kpa_70_hit,kpa_tex,none,Entry Lava Hall
+kpa_81,kpa_80_shape,kpa_80_hit,kpa_tex,none,Guard Door 1
+kpa_82,kpa_80_shape,kpa_80_hit,kpa_tex,none,Guard Door 2
+kpa_83,kpa_80_shape,kpa_80_hit,kpa_tex,none,Guard Door 3
+kpa_90,kpa_90_shape,kpa_90_hit,kpa_tex,none,Stairs to East Upper Jail
+kpa_91,kpa_91_shape,kpa_91_hit,kpa_tex,none,East Upper Jail
+kpa_94,kpa_94_shape,kpa_94_hit,kpa_tex,none,Stairs to West Upper Jail
+kpa_95,kpa_95_shape,kpa_95_hit,kpa_tex,none,West Upper Jail
+kpa_96,kpa_96_shape,kpa_96_hit,kpa_tex,none,Item Shop
+kpa_100,kpa_117_shape,kpa_117_hit,kpa_tex,none,Castle Key Room
+kpa_101,kpa_119_shape,kpa_119_hit,kpa_tex,none,Ultra Shroom Room
+kpa_102,kpa_102_shape,kpa_102_hit,kpa_tex,none,Blue Fire Bridge
+kpa_111,kpa_111_shape,kpa_111_hit,kpa_tex,none,Room with Hidden Door 1
+kpa_112,kpa_112_shape,kpa_112_hit,kpa_tex,none,Hidden Passage 1
+kpa_113,kpa_113_shape,kpa_113_hit,kpa_tex,none,Room with Hidden Door 2
+kpa_114,kpa_112_shape,kpa_112_hit,kpa_tex,none,Hidden Passage 2
+kpa_115,kpa_115_shape,kpa_115_hit,kpa_tex,none,Room with Hidden Door 3
+kpa_116,kpa_116_shape,kpa_116_hit,kpa_tex,none,Dead End Passage
+kpa_117,kpa_117_shape,kpa_117_hit,kpa_tex,none,Dead End Room
+kpa_118,kpa_118_shape,kpa_118_hit,kpa_tex,none,Hidden Passage 3
+kpa_119,kpa_119_shape,kpa_119_hit,kpa_tex,none,Hidden Key Room
+kpa_121,kpa_121_shape,kpa_121_hit,kpa_tex,none,Exit to Peach's Castle
+kpa_130,kpa_130_shape,kpa_130_hit,kpa_tex,none,Bill Blaster Hall
+kpa_133,kpa_133_shape,kpa_133_hit,kpa_tex,none,Left Water Puzzle
+kpa_134,kpa_134_shape,kpa_134_hit,kpa_tex,none,Right Water Puzzle
+kpa_80,kpa_80_shape,kpa_80_hit,kpa_tex,none,Guard Door Geometry
+osr_00,osr_00_shape,osr_00_hit,osr_tex,nok_bg,Intro Castle Grounds
+osr_01,osr_01_shape,osr_01_hit,osr_tex,nok_bg,Ruined Castle Grounds
+osr_02,osr_02_shape,osr_02_hit,osr_tex,kpa_bg,Hijacked Castle Entrance
+osr_03,osr_03_shape,osr_03_hit,osr_tex,kpa_bg,Outside Hijacked Castle
+osr_04,osr_03_shape,osr_03_hit,osr_tex,nok_bg,Castle Hijacking Scene
+end_00,end_00_shape,end_00_hit,end_tex,none,Parade (Day)
+end_01,end_01_shape,end_01_hit,end_tex,none,Parade (Night)
+mgm_00,mgm_00_shape,mgm_00_hit,mgm_tex,none,Playroom Lobby
+mgm_01,mgm_01_shape,mgm_01_hit,mgm_tex,none,Jump Attack Minigame
+mgm_02,mgm_02_shape,mgm_02_hit,mgm_tex,none,Smash Attack Minigame
+mgm_03,mgm_03_shape,mgm_03_hit,mgm_tex,none,Large Debug Room
+gv_01,gv_01_shape,gv_01_hit,gv__tex,none,Game Over Screen
+tst_01,tst_01_shape,tst_01_hit,tst_tex,nok_bg,Jump Width Test
+tst_02,tst_02_shape,tst_02_hit,tst_tex,nok_bg,Jump Height Test
+tst_03,tst_03_shape,tst_03_hit,tst_tex,nok_bg,Entity Test
+tst_04,tst_04_shape,tst_04_hit,tst_tex,nok_bg,Moving Platforms Test
+tst_10,tst_10_shape,tst_10_hit,tst_tex,nok_bg,Entry and Camera Test
+tst_11,tst_11_shape,tst_11_hit,tst_tex,nok_bg,Reflection Test
+tst_12,tst_12_shape,tst_12_hit,tst_tex,nok_bg,Flower Fields Test
+tst_13,tst_13_shape,tst_13_hit,tst_tex,nok_bg,Partners and Shockwave
+tst_20,tst_20_shape,tst_20_hit,tst_tex,nok_bg,Pipes Gallery
