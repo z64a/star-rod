@@ -833,31 +833,37 @@ public class Map implements XmlSerializable
 		return name;
 	}
 
+	public void saveMapWithoutHeader(File file) throws Exception
+	{
+		this.editorData = null;
+		saveMapAs_impl(file, false);
+	}
+
 	public void saveMap() throws Exception
 	{
 		this.editorData = null;
-		saveMapAs_impl(AssetManager.getSaveMapFile(name));
+		saveMapAs_impl(AssetManager.getSaveMapFile(name), true);
 	}
 
 	public void saveMap(MapEditorMetadata editorData) throws Exception
 	{
 		this.editorData = editorData;
-		saveMapAs_impl(AssetManager.getSaveMapFile(name));
+		saveMapAs_impl(AssetManager.getSaveMapFile(name), true);
 	}
 
 	public void saveMapAs(File file) throws Exception
 	{
 		this.editorData = null;
-		saveMapAs_impl(file);
+		saveMapAs_impl(file, true);
 	}
 
 	public void saveMapAs(File file, MapEditorMetadata editorData) throws Exception
 	{
 		this.editorData = editorData;
-		saveMapAs_impl(file);
+		saveMapAs_impl(file, true);
 	}
 
-	private void saveMapAs_impl(File file) throws Exception
+	private void saveMapAs_impl(File file, boolean generateHeader) throws Exception
 	{
 		FileUtils.touch(file);
 		File tempFile = new File(file.getAbsolutePath() + ".temp");
@@ -885,8 +891,10 @@ public class Map implements XmlSerializable
 		lastModified = file.lastModified();
 		modified = false;
 
-		tryInjectHeader();
-		writeHeader();
+		if (generateHeader) {
+			tryInjectHeader();
+			writeHeader();
+		}
 	}
 
 	/**
@@ -1596,6 +1604,7 @@ public class Map implements XmlSerializable
 	private void writeHeader() throws IOException
 	{
 		File genHeader = new File(projDir, "generated.h");
+		FileUtils.touch(genHeader);
 
 		try (PrintWriter pw = IOUtils.getBufferedPrintWriter(genHeader)) {
 			pw.println("/* auto-generated, do not edit */");

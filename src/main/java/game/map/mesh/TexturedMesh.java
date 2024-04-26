@@ -15,8 +15,6 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import app.Environment;
-import app.config.Options;
 import game.map.editor.MapEditor.EditorMode;
 import game.map.editor.render.RenderingOptions;
 import game.map.editor.render.TextureManager;
@@ -61,12 +59,6 @@ public class TexturedMesh extends AbstractMesh implements XmlSerializable
 
 		xmr.hasAttribute(meshElem, ATTR_TEXTURE_NAME);
 		textureName = xmr.getAttribute(meshElem, ATTR_TEXTURE_NAME);
-
-		if (Environment.projectConfig.getBoolean(Options.FixupTextureNames)) {
-			if (textureName.matches("\\w{3}_\\w*tif")) {
-				textureName = textureName.substring(4, textureName.length() - 3);
-			}
-		}
 
 		Element displayListElement = xmr.getUniqueRequiredTag(meshElem, TAG_DISPLAY_LIST);
 		NodeList children = displayListElement.getChildNodes();

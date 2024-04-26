@@ -101,7 +101,7 @@ public class AssetExtractor
 				Logger.log("Generating map source: " + template.name);
 				Map map = generateMap(template);
 				try {
-					map.saveMapAs(new File(subdir, map.getName() + Directories.EXT_MAP));
+					map.saveMapWithoutHeader(new File(subdir, map.getName() + Directories.EXT_MAP));
 				}
 				catch (Exception e) {
 					StarRodMain.displayStackTrace(e);
@@ -124,7 +124,7 @@ public class AssetExtractor
 				}
 
 				try {
-					map.saveMapAs(new File(subdir, map.getName() + Directories.EXT_MAP));
+					map.saveMapWithoutHeader(new File(subdir, map.getName() + Directories.EXT_MAP));
 				}
 				catch (Exception e) {
 					StarRodMain.displayStackTrace(e);

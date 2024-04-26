@@ -15,8 +15,6 @@ import javax.swing.ListModel;
 import org.apache.commons.io.FileUtils;
 
 import app.Directories;
-import app.Environment;
-import app.config.Options;
 import app.input.IOUtils;
 import assets.AssetManager;
 import game.map.BoundingBox;
@@ -96,14 +94,7 @@ public class GeometryCompiler
 			if (!textureNameMap.containsKey(m.textureName) && !m.textureName.isEmpty()) {
 				textureNameMap.put(m.textureName, (int) raf.getFilePointer());
 
-				String textureName = m.textureName;
-				if (Environment.projectConfig.getBoolean(Options.WriteLegacyTexNames)) {
-					if (!textureName.endsWith("tif")) {
-						textureName = map.texName.substring(0, 4) + textureName + "tif";
-					}
-				}
-
-				raf.write(textureName.getBytes());
+				raf.write(m.textureName.getBytes());
 				raf.write((byte) 0);
 				raf.seek(((int) raf.getFilePointer() + 3) & 0xFFFFFFFC);
 			}

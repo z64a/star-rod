@@ -23,9 +23,8 @@ public enum Options
 	LogDetails			(true, Scope.Main, Type.Boolean, "LogDetails", "false"),
 	Theme				(true, Scope.Main, Type.String, "Theme", "FlatLight"),
 	ExitToMenu			(true, Scope.Main, Type.Boolean, "ExitToMenu", "true"),
+	CheckForUpdates		(true, Scope.Main, Type.Boolean, "CheckForUpdates", "true"),
 
-	FixupTextureNames	(true, Scope.Project, Type.Boolean, "FixupTextureNames", "true"),
-	WriteLegacyTexNames	(true, Scope.Project, Type.Boolean, "WriteLegacyTexNames", "true"),
 	ExtractedMapData	(true, Scope.Project, Type.Boolean, "ExtractedMapData", "false"),
 
 	// options for dumping assets

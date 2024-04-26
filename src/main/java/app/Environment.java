@@ -4,7 +4,11 @@ import java.awt.Image;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.security.CodeSource;
 import java.util.ArrayList;
@@ -24,6 +28,9 @@ import javax.swing.SwingUtilities;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.yaml.snakeyaml.Yaml;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import app.Resource.ResourceType;
 import app.config.Config;
@@ -203,7 +210,10 @@ public abstract class Environment
 				// UIManager.put("TabbedPane.tabSeparatorsFullHeight", true);
 			}
 
-			SplashScreen.show("Loading Project");
+			if (fromJar && mainConfig.getBoolean(Options.CheckForUpdates))
+				checkForUpdate();
+
+			LoadingBar.show("Loading Project", true);
 			boolean validProject = loadProject(projDir);
 			if (!validProject)
 				exit();
@@ -212,7 +222,7 @@ public abstract class Environment
 			StarRodMain.handleEarlyCrash(t);
 		}
 		finally {
-			SplashScreen.dismiss();
+			LoadingBar.dismiss();
 		}
 
 		initialized = true;
@@ -248,6 +258,40 @@ public abstract class Environment
 	public static File getProjectFile(String relativePath)
 	{
 		return new File(projectDirectory, relativePath);
+	}
+
+	public static void checkForUpdate()
+	{
+		try {
+			URL url = new URI("https://api.github.com/repos/z64a/star-rod/releases/latest").toURL();
+			HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+			connection.setRequestMethod("GET");
+			connection.setConnectTimeout(1000);
+			connection.setReadTimeout(1000);
+
+			int responseCode = connection.getResponseCode();
+			if (responseCode == HttpURLConnection.HTTP_OK) {
+				InputStreamReader inputStreamReader = new InputStreamReader(connection.getInputStream());
+				JsonObject jsonObject = JsonParser.parseReader(inputStreamReader).getAsJsonObject();
+				String latestVersion = jsonObject.get("tag_name").getAsString();
+
+				if (!latestVersion.equals("v" + versionString)) {
+					Logger.log("Detected newer remote version: " + latestVersion);
+					SwingUtils.showFramedMessageDialog(null,
+						"A newer version is available!\n" +
+							"Please visit the GitHub repo to download it.",
+						"Update Available",
+						JOptionPane.WARNING_MESSAGE);
+				}
+			}
+			else {
+				Logger.logError("Update check failed (response code: " + responseCode + ")");
+			}
+		}
+		catch (Exception e) {
+			Logger.logError("IOException while checking for updates: " + e.getMessage());
+			Logger.printStackTrace(e);
+		}
 	}
 
 	private static final void checkForDependencies() throws IOException
