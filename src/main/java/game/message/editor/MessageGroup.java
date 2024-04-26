@@ -5,6 +5,8 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.io.FileUtils;
+
 import app.input.IOUtils;
 import app.input.InputFileException;
 import app.input.Line;
@@ -133,15 +135,19 @@ public class MessageGroup
 		}
 
 		AssetHandle saveAsset = AssetManager.getTopLevel(asset);
-		try (PrintWriter pw = IOUtils.getBufferedPrintWriter(saveAsset)) {
-			for (String line : linesOut) {
-				pw.println(line);
-			}
+		try {
+			FileUtils.touch(saveAsset);
 
-			asset = saveAsset;
-			hasModified = false;
-			for (Message msg : messages) {
-				msg.modified = false;
+			try (PrintWriter pw = IOUtils.getBufferedPrintWriter(saveAsset)) {
+				for (String line : linesOut) {
+					pw.println(line);
+				}
+
+				asset = saveAsset;
+				hasModified = false;
+				for (Message msg : messages) {
+					msg.modified = false;
+				}
 			}
 		}
 		catch (IOException e) {
