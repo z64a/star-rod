@@ -26,9 +26,9 @@ import game.message.StringConstants.StringFont;
 import game.message.StringConstants.StringFunction;
 import game.message.StringConstants.StringStyle;
 import game.message.StringConstants.StringVoice;
-import game.message.editor.MessageGroup;
-import game.message.editor.StringTokenizer;
-import game.message.editor.StringTokenizer.Sequence;
+import game.message.editor.MessageAsset;
+import game.message.editor.MessageTokenizer;
+import game.message.editor.MessageTokenizer.Sequence;
 import util.CaseInsensitiveMap;
 import util.DualHashMap;
 import util.MathUtil;
@@ -108,7 +108,7 @@ public class StringEncoder
 			addArgU8(name, i);
 	}
 
-	public static List<Message> parseMessages(MessageGroup group) throws IOException
+	public static List<Message> parseMessages(MessageAsset group) throws IOException
 	{
 		List<Message> messages = new ArrayList<>();
 
@@ -130,30 +130,27 @@ public class StringEncoder
 			int index = 0xFFFF;
 			String name = "";
 
-			if (unit.declaration.numTokens() == 2) {
-				if (!declareLine.getString(1).matches("\\S+"))
-					throw new InputFileException(declareLine, "String name could not be parsed: %n%s", declareLine.trimmedInput());
+			if (unit.declaration.numTokens() == 3) {
+				if (!declareLine.getString(2).matches("\\(.+\\)"))
+					throw new InputFileException(declareLine, "String ID could not be parsed: %n%s", declareLine.trimmedInput());
 
-				name = declareLine.getString(1);
+				section = declareLine.getHex(1);
+				name = declareLine.getString(2);
+				name = name.substring(1, name.length() - 1);
 			}
 			// LEGACY SUPPORT: #message | #string : section : index : (name)
 			else if (unit.declaration.numTokens() == 4) {
 				if (!declareLine.getString(3).matches("\\(.+\\)"))
 					throw new InputFileException(declareLine, "String name could not be parsed: %n%s", declareLine.trimmedInput());
 
+				section = declareLine.getHex(1);
+				index = declareLine.getHex(2);
 				name = declareLine.getString(3);
 				name = name.substring(1, name.length() - 1);
 			}
-			// LEGACY SUPPORT: #message | #string : section : index | (name)
-			else if (unit.declaration.numTokens() == 3) {
-				if (!declareLine.getString(2).matches("\\(.+\\)"))
-					throw new InputFileException(declareLine, "String ID could not be parsed: %n%s", declareLine.trimmedInput());
-
-				name = declareLine.getString(2);
-				name = name.substring(1, name.length() - 1);
-			}
-			else
+			else {
 				throw new InputFileException(declareLine, "String declaration could not be parsed: %n%s", declareLine.trimmedInput());
+			}
 
 			// parse lines
 
@@ -204,7 +201,7 @@ public class StringEncoder
 	{
 		StringEncoder builder = new StringEncoder();
 		builder.vars = vars;
-		ArrayList<Sequence> sequences = StringTokenizer.tokenize(text);
+		ArrayList<Sequence> sequences = MessageTokenizer.tokenize(text);
 		encode(builder, sequences, false);
 		return sequences;
 	}
@@ -214,7 +211,7 @@ public class StringEncoder
 	{
 		StringEncoder builder = new StringEncoder();
 		builder.allowFontChange = false;
-		ArrayList<Sequence> sequences = StringTokenizer.tokenize(text);
+		ArrayList<Sequence> sequences = MessageTokenizer.tokenize(text);
 		encode(builder, sequences, throwsExceptions);
 		return getBuffer(sequences, false);
 	}
@@ -223,7 +220,7 @@ public class StringEncoder
 	public static ByteBuffer encode(String text)
 	{
 		StringEncoder builder = new StringEncoder();
-		ArrayList<Sequence> sequences = StringTokenizer.tokenize(text);
+		ArrayList<Sequence> sequences = MessageTokenizer.tokenize(text);
 		encode(builder, sequences, true);
 		return getBuffer(sequences, false);
 	}
@@ -232,7 +229,7 @@ public class StringEncoder
 	public static ByteBuffer encodeLines(List<Line> lines)
 	{
 		StringEncoder builder = new StringEncoder();
-		ArrayList<Sequence> sequences = StringTokenizer.tokenize(lines);
+		ArrayList<Sequence> sequences = MessageTokenizer.tokenize(lines);
 		encode(builder, sequences, true);
 		return getBuffer(sequences, true);
 	}

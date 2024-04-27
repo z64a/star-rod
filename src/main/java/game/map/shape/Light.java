@@ -107,7 +107,9 @@ public class Light
 	}
 
 	public LightPanel getPanel()
-	{ return panel; }
+	{
+		return panel;
+	}
 
 	public static class LightPanel extends JPanel
 	{
@@ -160,10 +162,10 @@ public class Light
 
 			JButton chooseColorButton = new JButton("Choose");
 			chooseColorButton.addActionListener((e) -> {
-				SwingGUI.instance().notify_OpenDialog();
+				SwingGUI.instance().getDialogCounter().increment();
 				Color c = new Color(light.color[0], light.color[1], light.color[2]);
 				c = JColorChooser.showDialog(null, "Choose Light Color", c);
-				SwingGUI.instance().notify_CloseDialog();
+				SwingGUI.instance().getDialogCounter().decrement();
 
 				if (c != null)
 					MapEditor.execute(new SetLightColor(light, c.getRed(), c.getGreen(), c.getBlue()));

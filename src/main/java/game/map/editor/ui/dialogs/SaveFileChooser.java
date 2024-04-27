@@ -28,7 +28,9 @@ public class SaveFileChooser
 	}
 
 	public void setCurrentDirectory(File dir)
-	{ currentDirectory = dir; }
+	{
+		currentDirectory = dir;
+	}
 
 	public ChooseDialogResult prompt(File dir)
 	{
@@ -66,16 +68,21 @@ public class SaveFileChooser
 	}
 
 	public File getSelectedFile()
-	{ return selected; }
+	{
+		return selected;
+	}
 
 	public boolean checkForOverwrite(File f)
 	{
 		if (!f.exists())
 			return true;
-		int result = SwingUtils.showFramedConfirmDialog(null,
-			"Overwrite existing file?", "File Already Exists",
-			JOptionPane.YES_NO_CANCEL_OPTION);
-		switch (result) {
+
+		int choice = SwingUtils.getConfirmDialog()
+			.setTitle("File Already Exists")
+			.setMessage("Overwrite existing file?")
+			.choose();
+
+		switch (choice) {
 			case JOptionPane.YES_OPTION:
 				return true;
 			case JOptionPane.CANCEL_OPTION:

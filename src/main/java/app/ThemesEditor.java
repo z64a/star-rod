@@ -75,18 +75,21 @@ public class ThemesEditor
 				exitToMainMenu = true;
 				String currentThemeName = Themes.getCurrentThemeName();
 				if (!initialThemeName.equals(currentThemeName)) {
-					int choice = SwingUtils.showFramedConfirmDialog(null,
-						String.format("Theme has been changed.%nDo you want to save changes?"),
-						"Save Changes", JOptionPane.YES_NO_CANCEL_OPTION);
+					int choice = SwingUtils.getConfirmDialog()
+						.setTitle("Save Changes")
+						.setMessage("Theme has been changed.", "Do you want to save changes?")
+						.choose();
 
 					switch (choice) {
 						case JOptionPane.YES_OPTION:
 							Environment.mainConfig.setString(Options.Theme, Themes.getCurrentThemeKey());
 							Environment.mainConfig.saveConfigFile();
 
-							SwingUtils.showFramedMessageDialog(null,
-								String.format("Theme has been changed. %nStar Rod must restart."),
-								"Theme Changed", JOptionPane.WARNING_MESSAGE);
+							SwingUtils.getWarningDialog()
+								.setTitle("Theme Changed")
+								.setMessage("Theme has been changed.", "Star Rod must restart.")
+								.show();
+
 							Environment.exit();
 							break;
 						case JOptionPane.NO_OPTION:

@@ -9,12 +9,12 @@ import app.input.InputFileException;
 import app.input.Line;
 import app.input.PatchFileParser.PatchUnit;
 import game.message.StringConstants.ControlCharacter;
-import game.message.editor.MessageGroup;
+import game.message.editor.MessageAsset;
 import util.ui.FilterListable;
 
 public class Message implements FilterListable
 {
-	public final MessageGroup source;
+	public final MessageAsset source;
 	public final PatchUnit unit;
 
 	public int startLineNum = -1;
@@ -38,7 +38,7 @@ public class Message implements FilterListable
 	public String name;
 
 	// loading from asset
-	public Message(MessageGroup res, PatchUnit unit, int section, int index, String name)
+	public Message(MessageAsset res, PatchUnit unit, int section, int index, String name)
 	{
 		this.source = res;
 		this.unit = unit;
@@ -54,16 +54,12 @@ public class Message implements FilterListable
 	}
 
 	// created in editor
-	public Message(MessageGroup res, int section, int index, String name)
+	public Message(MessageAsset res)
 	{
 		this.source = res;
 		this.unit = null;
 
-		this.section = section;
-		this.index = index;
-		this.name = name;
-
-		name = "NewString";
+		name = "NewMessage";
 		markup = "[END]";
 		previewText = "";
 	}

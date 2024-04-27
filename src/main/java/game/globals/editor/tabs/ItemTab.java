@@ -42,6 +42,7 @@ import game.globals.editor.renderers.IconListRenderer;
 import game.globals.editor.renderers.ItemListRenderer;
 import game.globals.editor.renderers.MessageCellRenderer;
 import game.globals.editor.renderers.PaddedCellRenderer;
+import game.map.editor.ui.SwingGUI;
 import game.message.Message;
 import net.miginfocom.swing.MigLayout;
 import util.Logger;
@@ -117,15 +118,21 @@ public class ItemTab extends SingleListTab<ItemRecord>
 
 	@Override
 	protected String getTabName()
-	{ return "Items"; }
+	{
+		return "Items";
+	}
 
 	@Override
 	protected ExpectedAsset getIcon()
-	{ return ExpectedAsset.ICON_FIRE_FLOWER; }
+	{
+		return ExpectedAsset.ICON_FIRE_FLOWER;
+	}
 
 	@Override
 	protected GlobalsCategory getDataType()
-	{ return GlobalsCategory.ITEM_TABLE; }
+	{
+		return GlobalsCategory.ITEM_TABLE;
+	}
 
 	@Override
 	protected void notifyDataChange(GlobalsCategory type)
@@ -412,8 +419,14 @@ public class ItemTab extends SingleListTab<ItemRecord>
 				ItemRecord item = getSelected();
 				FlagEditorPanel flagPanel = new FlagEditorPanel(item.typeFlags);
 
-				if (JOptionPane.YES_OPTION == SwingUtils.showFramedConfirmDialog(
-					null, flagPanel, "Set Type Flags", JOptionPane.OK_CANCEL_OPTION)) {
+				int choice = SwingUtils.getConfirmDialog()
+					.setParent(SwingGUI.instance())
+					.setTitle("Set Type Flags")
+					.setMessage(flagPanel)
+					.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+					.choose();
+
+				if (choice == JOptionPane.YES_OPTION) {
 					int newValue = flagPanel.getValue();
 					if (newValue != item.typeFlags.getBits()) {
 						item.typeFlags.setBits(newValue);
@@ -438,8 +451,14 @@ public class ItemTab extends SingleListTab<ItemRecord>
 				ItemRecord item = getSelected();
 				FlagEditorPanel flagPanel = new FlagEditorPanel(item.targetFlags);
 
-				if (JOptionPane.YES_OPTION == SwingUtils.showFramedConfirmDialog(
-					null, flagPanel, "Set Target Flags", JOptionPane.OK_CANCEL_OPTION)) {
+				int choice = SwingUtils.getConfirmDialog()
+					.setParent(SwingGUI.instance())
+					.setTitle("Set Target Flags")
+					.setMessage(flagPanel)
+					.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+					.choose();
+
+				if (choice == JOptionPane.YES_OPTION) {
 					int newValue = flagPanel.getValue();
 					if (newValue != item.targetFlags.getBits()) {
 						item.targetFlags.setBits(newValue);
@@ -757,5 +776,7 @@ public class ItemTab extends SingleListTab<ItemRecord>
 
 	@Override
 	protected ListCellRenderer<ItemRecord> getCellRenderer()
-	{ return new ItemListRenderer(editor.data); }
+	{
+		return new ItemListRenderer(editor.data);
+	}
 }

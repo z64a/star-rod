@@ -18,7 +18,6 @@ import javax.swing.Icon;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -75,141 +74,231 @@ public class SwingUtils
 		return dialogFrame;
 	}
 
-	public static final int showFramedOpenDialog(JFileChooser chooser, Component parentComponent)
+	public static class OpenDialogCounter
 	{
-		JFrame dialogFrame = createDialogFrame(parentComponent, chooser.getDialogTitle());
-		int choice = chooser.showOpenDialog(dialogFrame);
-		dialogFrame.dispose();
-		return choice;
+		private int count;
+
+		public OpenDialogCounter()
+		{
+			count = 0;
+		}
+
+		public void increment()
+		{
+			count++;
+		}
+
+		public void decrement()
+		{
+			count--;
+		}
+
+		public void reset()
+		{
+			count = 0;
+		}
+
+		public boolean isZero()
+		{
+			return count == 0;
+		}
 	}
 
-	public static final int showFramedSaveDialog(JFileChooser chooser, Component parentComponent)
+	private static enum DialogType
 	{
-		JFrame dialogFrame = createDialogFrame(parentComponent, chooser.getDialogTitle());
-		int choice = chooser.showSaveDialog(dialogFrame);
-		dialogFrame.dispose();
-		return choice;
+		MESSAGE,
+		CONFIRM,
+		INPUT,
+		OPTION,
+		WARNING,
+		ERROR
 	}
 
-	public static final void showFramedMessageDialog(
-		Component parentComponent,
-		Object message,
-		String title,
-		int messageType,
-		Icon icon)
+	public static final DialogBuilder getMessageDialog()
 	{
-		JFrame dialogFrame = createDialogFrame(parentComponent, title);
-		JOptionPane.showMessageDialog(dialogFrame, message, title, messageType, icon);
-		dialogFrame.dispose();
+		return new DialogBuilder(DialogType.MESSAGE);
 	}
 
-	public static final void showFramedMessageDialog(
-		Component parentComponent,
-		Object message,
-		String title,
-		int messageType)
+	public static final DialogBuilder getConfirmDialog()
 	{
-		JFrame dialogFrame = createDialogFrame(parentComponent, title);
-		JOptionPane.showMessageDialog(dialogFrame, message, title, messageType);
-		dialogFrame.dispose();
+		return new DialogBuilder(DialogType.CONFIRM);
 	}
 
-	public static final void showFramedErrorMessage(
-		Component parentComponent,
-		Object message,
-		String title)
+	public static final DialogBuilder getInputDialog()
 	{
-		showFramedMessageDialog(parentComponent, message,
-			title, JOptionPane.ERROR_MESSAGE, Environment.ICON_ERROR);
+		return new DialogBuilder(DialogType.INPUT);
 	}
 
-	/*
-	public static final void showFramedMessageDialog(
-			Component parentComponent,
-			Object message,
-			String title)
+	public static final DialogBuilder getOptionDialog()
 	{
-		JFrame dialogFrame = createDiaglogFrame(parentComponent, title);
-		JOptionPane.showMessageDialog(dialogFrame, message);
-		dialogFrame.dispose();
-	}
-	 */
-
-	public static final int showFramedOptionDialog(
-		Component parentComponent,
-		Object message,
-		String title,
-		int optionType,
-		int messageType,
-		Object[] options,
-		Object initialValue)
-	{
-		JFrame dialogFrame = createDialogFrame(parentComponent, title);
-		int choice = JOptionPane.showOptionDialog(
-			dialogFrame, message, title,
-			optionType, messageType, null,
-			options, initialValue);
-		dialogFrame.dispose();
-		return choice;
+		return new DialogBuilder(DialogType.OPTION);
 	}
 
-	public static final int showFramedOptionDialog(
-		Component parentComponent,
-		Object message,
-		String title,
-		int optionType,
-		int messageType,
-		Icon icon,
-		Object[] options,
-		Object initialValue)
+	public static final DialogBuilder getWarningDialog()
 	{
-		JFrame dialogFrame = createDialogFrame(parentComponent, title);
-		int choice = JOptionPane.showOptionDialog(
-			dialogFrame, message, title,
-			optionType, messageType, icon,
-			options, initialValue);
-		dialogFrame.dispose();
-		return choice;
+		return new DialogBuilder(DialogType.WARNING);
 	}
 
-	public static final int showFramedConfirmDialog(
-		Component parentComponent,
-		Object message,
-		String title,
-		int optionType,
-		int messageType)
+	public static final DialogBuilder getErrorDialog()
 	{
-		JFrame dialogFrame = createDialogFrame(parentComponent, title);
-		int choice = JOptionPane.showConfirmDialog(
-			dialogFrame, message, title,
-			optionType, messageType);
-		dialogFrame.dispose();
-		return choice;
+		return new DialogBuilder(DialogType.ERROR);
 	}
 
-	public static final int showFramedConfirmDialog(
-		Component parentComponent,
-		Object message,
-		String title,
-		int optionType)
+	public static class DialogBuilder
 	{
-		JFrame dialogFrame = createDialogFrame(parentComponent, title);
-		int choice = JOptionPane.showConfirmDialog(
-			dialogFrame, message, title, optionType);
-		dialogFrame.dispose();
-		return choice;
-	}
+		private final DialogType type;
+		private String title = "TITLE MISSING";
+		private Object message = "MESSAGE MISSING";
+		private int optionType;
+		private int messageType;
+		private Icon icon;
+		private Object[] options = null;
+		private Object initialValue = null;
+		private Component parentComponent = null;
+		private OpenDialogCounter counter = null;
 
-	public static final String showFramedInputDialog(
-		Component parentComponent,
-		Object message,
-		String title,
-		int messageType)
-	{
-		JFrame dialogFrame = createDialogFrame(parentComponent, title);
-		String reply = JOptionPane.showInputDialog(dialogFrame, message, title, messageType);
-		dialogFrame.dispose();
-		return reply;
+		private DialogBuilder(DialogType type)
+		{
+			this.type = type;
+
+			// set defaults
+			switch (type) {
+				case MESSAGE:
+					optionType = JOptionPane.DEFAULT_OPTION;
+					messageType = JOptionPane.INFORMATION_MESSAGE;
+					break;
+				case CONFIRM:
+					optionType = JOptionPane.YES_NO_CANCEL_OPTION;
+					messageType = JOptionPane.QUESTION_MESSAGE;
+					break;
+				case INPUT:
+					break;
+				case OPTION:
+					break;
+				case WARNING:
+					messageType = JOptionPane.WARNING_MESSAGE;
+					break;
+				case ERROR:
+					messageType = JOptionPane.ERROR_MESSAGE;
+					icon = Environment.ICON_ERROR;
+					break;
+			}
+		}
+
+		public DialogBuilder setTitle(String title)
+		{
+			this.title = title;
+			return this;
+		}
+
+		public DialogBuilder setMessage(Object message)
+		{
+			this.message = message;
+			return this;
+		}
+
+		public DialogBuilder setMessage(String ... lines)
+		{
+			this.message = String.join(System.lineSeparator(), lines);
+			return this;
+		}
+
+		public DialogBuilder setMessageType(int messageType)
+		{
+			this.messageType = messageType;
+			return this;
+		}
+
+		public DialogBuilder setOptionsType(int optionType)
+		{
+			this.optionType = optionType;
+			return this;
+		}
+
+		public DialogBuilder setIcon(Icon icon)
+		{
+			this.icon = icon;
+			return this;
+		}
+
+		public DialogBuilder setOptions(String ... options)
+		{
+			this.options = options;
+			return this;
+		}
+
+		public DialogBuilder setDefault(Object initialValue)
+		{
+			this.initialValue = initialValue;
+			return this;
+		}
+
+		public DialogBuilder setParent(Component parentComponent)
+		{
+			this.parentComponent = parentComponent;
+			return this;
+		}
+
+		public DialogBuilder setCounter(OpenDialogCounter counter)
+		{
+			this.counter = counter;
+			return this;
+		}
+
+		public void show()
+		{
+			choose();
+		}
+
+		public void showLater()
+		{
+			if (SwingUtilities.isEventDispatchThread()) {
+				choose();
+			}
+			else {
+				SwingUtilities.invokeLater(() -> {
+					choose();
+				});
+			}
+		}
+
+		public String prompt()
+		{
+			if (counter != null)
+				counter.increment();
+
+			JFrame dialogFrame = createDialogFrame(parentComponent, title);
+
+			Object result = JOptionPane.showInputDialog(parentComponent,
+				message, title, messageType,
+				icon, options, initialValue);
+
+			dialogFrame.dispose();
+
+			if (counter != null)
+				counter.decrement();
+
+			return (String) result;
+		}
+
+		public int choose()
+		{
+			if (counter != null)
+				counter.increment();
+
+			JFrame dialogFrame = createDialogFrame(parentComponent, title);
+
+			int result = JOptionPane.showOptionDialog(parentComponent,
+				message, title, optionType, messageType,
+				icon, options, initialValue);
+
+			dialogFrame.dispose();
+
+			if (counter != null)
+				counter.decrement();
+
+			return result;
+		}
 	}
 
 	public static final void showDialog(JDialog dialog, String title)
@@ -471,10 +560,14 @@ public class SwingUtils
 	}
 
 	public static Color getTextColor()
-	{ return UIManager.getColor("Label.foreground"); }
+	{
+		return UIManager.getColor("Label.foreground");
+	}
 
 	private static Color getBackgoundColor()
-	{ return UIManager.getColor("Label.background"); }
+	{
+		return UIManager.getColor("Label.background");
+	}
 
 	private static int getBackgroundLuminance()
 	{

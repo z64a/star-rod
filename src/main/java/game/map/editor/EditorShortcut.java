@@ -9,8 +9,6 @@ import javax.swing.JComponent;
 import javax.swing.JMenuItem;
 import javax.swing.KeyStroke;
 
-import game.sprite.editor.ShortcutListPanel;
-
 /**
  * Key combinations that execute some action when pressed in the editor window
  * (specifically, when the GL canvas has focus). Each can be linked to a checkbox
@@ -217,7 +215,9 @@ public enum EditorShortcut
 	}
 
 	public JCheckBoxMenuItem getCheckBox()
-	{ return checkbox; }
+	{
+		return checkbox;
+	}
 
 	private static final HashMap<Integer, EditorShortcut> inputKeyMap;
 	private static final HashMap<Integer, EditorShortcut> inputCtrlKeyMap;

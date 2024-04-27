@@ -8,9 +8,9 @@ import javax.swing.JTabbedPane;
 
 import net.miginfocom.swing.MigLayout;
 
-public class ShorcutListPanel extends JPanel
+public class MapShortcutsPanel extends JPanel
 {
-	public ShorcutListPanel()
+	public MapShortcutsPanel()
 	{
 		setLayout(new MigLayout("fill"));
 

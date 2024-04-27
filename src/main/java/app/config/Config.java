@@ -8,8 +8,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
-import javax.swing.JOptionPane;
-
 import app.SwingUtils;
 import app.config.Options.Scope;
 import app.config.Options.Type;
@@ -31,7 +29,9 @@ public class Config
 	}
 
 	public File getFile()
-	{ return file; }
+	{
+		return file;
+	}
 
 	public void readConfig() throws IOException
 	{
@@ -100,10 +100,10 @@ public class Config
 			pw.close();
 		}
 		catch (FileNotFoundException e) {
-			SwingUtils.showFramedMessageDialog(null,
-				"Could not update config: " + file.getAbsolutePath(),
-				"Config Write Exception",
-				JOptionPane.ERROR_MESSAGE);
+			SwingUtils.getErrorDialog()
+				.setTitle("Config Write Exception")
+				.setMessage("Could not update config:", file.getAbsolutePath())
+				.show();
 			System.exit(-1);
 		}
 

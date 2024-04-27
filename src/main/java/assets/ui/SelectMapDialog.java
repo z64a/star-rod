@@ -97,10 +97,12 @@ public class SelectMapDialog extends JDialog
 		Map newMap = Map.loadMap(selectedFile);
 
 		// prompt for a description
-		String newMapDesc = SwingUtils.showFramedInputDialog(null,
-			"Provide a map description",
-			"New Map Description",
-			JOptionPane.QUESTION_MESSAGE);
+		String newMapDesc = SwingUtils.getInputDialog()
+			.setTitle("New Map Description")
+			.setMessage("Provide a map description")
+			.setMessageType(JOptionPane.QUESTION_MESSAGE)
+			.prompt();
+
 		newMap.desc = (newMapDesc != null) ? newMapDesc : "";
 
 		// save the new map
@@ -128,10 +130,12 @@ public class SelectMapDialog extends JDialog
 		Map newMap = new Map(newMapName);
 
 		// prompt for a description
-		String newMapDesc = SwingUtils.showFramedInputDialog(null,
-			"Provide a map description",
-			"New Map Description",
-			JOptionPane.QUESTION_MESSAGE);
+		String newMapDesc = SwingUtils.getInputDialog()
+			.setTitle("New Map Description")
+			.setMessage("Provide a map description")
+			.setMessageType(JOptionPane.QUESTION_MESSAGE)
+			.prompt();
+
 		newMap.desc = (newMapDesc != null) ? newMapDesc : "";
 
 		// prompt for textures
@@ -160,10 +164,11 @@ public class SelectMapDialog extends JDialog
 
 	public static File requestNewMapFile()
 	{
-		String name = SwingUtils.showFramedInputDialog(null,
-			"Provide a new map name",
-			"New Map Name",
-			JOptionPane.QUESTION_MESSAGE);
+		String name = SwingUtils.getInputDialog()
+			.setTitle("New Map Name")
+			.setMessage("Provide a new map name")
+			.setMessageType(JOptionPane.QUESTION_MESSAGE)
+			.prompt();
 
 		if (name == null)
 			return null;
@@ -182,11 +187,13 @@ public class SelectMapDialog extends JDialog
 		if (!existing.exists())
 			return existing;
 
-		int response = SwingUtils.showFramedConfirmDialog(null,
-			name + " already exists. Overwrite it?",
-			"Map Already Exists", JOptionPane.YES_NO_CANCEL_OPTION);
+		int choice = SwingUtils.getConfirmDialog()
+			.setTitle("Map Already Exists")
+			.setMessage(name + " already exists. Overwrite it?")
+			.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
+			.choose();
 
-		return (response == JOptionPane.YES_OPTION) ? existing : null;
+		return (choice == JOptionPane.YES_OPTION) ? existing : null;
 	}
 
 	private final JList<MapAsset> list;

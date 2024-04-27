@@ -90,7 +90,7 @@ import game.message.StringConstants.StringFunction;
 import game.message.StringConstants.StringStyle;
 import game.message.StringConstants.StringVoice;
 import game.message.StringEncoder;
-import game.message.editor.StringTokenizer.Sequence;
+import game.message.editor.MessageTokenizer.Sequence;
 import game.texture.ImageConverter;
 import game.texture.Tile;
 import net.miginfocom.swing.MigLayout;
@@ -132,12 +132,12 @@ public class MessageEditor extends BaseEditor
 
 	// tool settings
 
-	private final StringPrinter printer = new StringPrinter(this);
-	private StringRenderer renderer;
+	private final MessagePrinter printer = new MessagePrinter(this);
+	private MessageRenderer renderer;
 	private JPanel editorPanel;
 
-	private AssetListTab resourcePanel;
-	private MessageListTab stringListPanel;
+	private AssetListTab assetListTab;
+	private MessageListTab messageListTab;
 	private JTextPane inputTextPane;
 	private JTabbedPane tabs;
 
@@ -182,7 +182,7 @@ public class MessageEditor extends BaseEditor
 	private volatile boolean ignoreDocumentFormatChanges = false;
 
 	// IO
-	public ArrayList<MessageGroup> resourcesToSave = new ArrayList<>();
+	public ArrayList<MessageAsset> resourcesToSave = new ArrayList<>();
 
 	public static enum PollResult
 	{
@@ -215,7 +215,7 @@ public class MessageEditor extends BaseEditor
 
 		readVarImage(MessageBoxes.Graphic.Letter_Peach.getFile());
 
-		resourcePanel.fullReload();
+		assetListTab.fullReload();
 		setString(null);
 
 		Logger.log("Loaded string editor.");
@@ -393,9 +393,9 @@ public class MessageEditor extends BaseEditor
 	private void handleSaving()
 	{
 		if (!resourcesToSave.isEmpty()) {
-			ArrayList<MessageGroup> saved = new ArrayList<>();
+			ArrayList<MessageAsset> saved = new ArrayList<>();
 
-			for (MessageGroup res : resourcesToSave) {
+			for (MessageAsset res : resourcesToSave) {
 				res.saveChanges();
 				saved.add(res);
 			}
@@ -936,8 +936,8 @@ public class MessageEditor extends BaseEditor
 							modified = true;
 							workingString.setModified();
 						}
-						resourcePanel.repaint();
-						stringListPanel.repaint();
+						assetListTab.repaint();
+						messageListTab.repaint();
 					}
 				}
 
@@ -976,12 +976,12 @@ public class MessageEditor extends BaseEditor
 		addEditorMenu(menuBar);
 		addOptionsMenu(menuBar);
 
-		stringListPanel = new MessageListTab(this);
-		resourcePanel = new AssetListTab(this, stringListPanel);
+		messageListTab = new MessageListTab(this);
+		assetListTab = new AssetListTab(this, messageListTab);
 
 		tabs = new JTabbedPane();
-		createTab(tabs, "Assets", resourcePanel);
-		createTab(tabs, "Messages", stringListPanel);
+		createTab(tabs, "Assets", assetListTab);
+		createTab(tabs, "Messages", messageListTab);
 		createTab(tabs, "Variables", makeVariablesTab());
 
 		// wrap input pane in a scroll pane to let us scroll
@@ -1032,6 +1032,11 @@ public class MessageEditor extends BaseEditor
 			Toolkit.getDefaultToolkit().beep();
 			Logger.log("Can't redo anything.");
 		}
+	}
+
+	public boolean hasMessage(String name)
+	{
+		return assetListTab.hasMessage(name);
 	}
 
 	private static void createTab(JTabbedPane tabs, String name, Container contents)
@@ -1126,18 +1131,17 @@ public class MessageEditor extends BaseEditor
 			textArea.append(String.format("%n"));
 
 			super.incrementDialogsOpen();
-			String[] options = { "Copy to Clipboard" };
-			int selection = SwingUtils.showFramedOptionDialog(null,
-				detailScrollPane,
-				"Patch for Loading Image",
-				JOptionPane.YES_NO_CANCEL_OPTION,
-				JOptionPane.PLAIN_MESSAGE,
-				Environment.ICON_DEFAULT,
-				options,
-				options[0]);
+			int choice = SwingUtils.getOptionDialog()
+				.setTitle("Code for Loading Image")
+				.setMessage(detailScrollPane)
+				.setMessageType(JOptionPane.PLAIN_MESSAGE)
+				.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
+				.setIcon(Environment.ICON_DEFAULT)
+				.setOptions("Copy to Clipboard")
+				.choose();
 			super.decrementDialogsOpen();
 
-			if (selection == 0) {
+			if (choice == 0) {
 				StringSelection stringSelection = new StringSelection(textArea.getText());
 				Clipboard cb = Toolkit.getDefaultToolkit().getSystemClipboard();
 				cb.setContents(stringSelection, null);
@@ -1238,7 +1242,7 @@ public class MessageEditor extends BaseEditor
 		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK);
 		item.setAccelerator(awtKeyStroke);
 		item.addActionListener((e) -> {
-			resourcePanel.saveChanges();
+			assetListTab.saveChanges();
 		});
 		menu.add(item);
 
@@ -1301,7 +1305,14 @@ public class MessageEditor extends BaseEditor
 		item = new JMenuItem("View Tips");
 		item.addActionListener((e) -> {
 			incrementDialogsOpen();
-			SwingUtils.showFramedMessageDialog(getFrame(), new ControlsPanel(), "Controls", JOptionPane.PLAIN_MESSAGE);
+
+			SwingUtils.getMessageDialog()
+				.setParent(getFrame())
+				.setTitle("Message Editor Pro Tips")
+				.setMessage(new MessageTipsPanel())
+				.setMessageType(JOptionPane.PLAIN_MESSAGE)
+				.show();
+
 			decrementDialogsOpen();
 		});
 		menu.add(item);
@@ -1329,7 +1340,7 @@ public class MessageEditor extends BaseEditor
 	@Override
 	protected void saveChanges()
 	{
-		resourcePanel.saveChanges();
+		assetListTab.saveChanges();
 		handleSaving();
 	}
 
@@ -1337,7 +1348,7 @@ public class MessageEditor extends BaseEditor
 	public void glInit()
 	{
 		try {
-			renderer = new StringRenderer(this);
+			renderer = new MessageRenderer(this);
 		}
 		catch (Throwable t) {
 			StarRodMain.displayStackTrace(t);
@@ -1361,18 +1372,18 @@ public class MessageEditor extends BaseEditor
 	}
 
 	public boolean isCullingEnabled()
-	{ return cbCulling.isSelected(); }
-
-	public static class ControlsPanel extends JPanel
 	{
-		public ControlsPanel()
+		return cbCulling.isSelected();
+	}
+
+	public static class MessageTipsPanel extends JPanel
+	{
+		public MessageTipsPanel()
 		{
 			JTextPane tx = new JTextPane();
 			tx.setContentType("text/html");
 			tx.setText("<html><body>"
-				+ "<h1>String Editor Tips</h1>"
-				+ "<p><b>RIGHT CLICK</b> on items in the resource tab to see available actions</p>"
-				+ "<p>You can insert newline tags in the text field with <b>SHIFT + ENTER</b></p>"
+				+ "<p>You can quickly insert newline tags with <b>SHIFT + ENTER</b></p>"
 				+ "</body></html>");
 			tx.setEditable(false);
 			add(tx);

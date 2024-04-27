@@ -247,9 +247,12 @@ public class StarRodMain extends JFrame
 				int choice = JOptionPane.OK_OPTION;
 
 				if (taskRunning)
-					choice = SwingUtils.showFramedConfirmDialog(null, String.format(
-						"A task is still running. %nAre you sure you want to exit?"),
-						"Task Still Running", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+					choice = SwingUtils.getConfirmDialog()
+						.setTitle("Task Still Running")
+						.setMessage("A task is still running.", "Are you sure you want to exit?")
+						.setMessageType(JOptionPane.WARNING_MESSAGE)
+						.setOptionsType(JOptionPane.YES_NO_OPTION)
+						.choose();
 
 				if (choice == JOptionPane.OK_OPTION) {
 					dispose();
@@ -387,32 +390,34 @@ public class StarRodMain extends JFrame
 	{
 		new EditorWorker(() -> {
 			if (!Environment.projectConfig.getBoolean(Options.ExtractedMapData)) {
-				int result = SwingUtils.showFramedConfirmDialog(null,
-					"This action will modify the source files of almost every map.\n"
-						+ "Consider creating a backup or committing any changes before proceeding.\n"
-						+ "Are you ready to begin extracting?",
-					"Extraction Warning",
-					JOptionPane.YES_NO_CANCEL_OPTION,
-					JOptionPane.WARNING_MESSAGE);
+				int choice = SwingUtils.getConfirmDialog()
+					.setTitle("Extraction Warning")
+					.setMessage("This action will modify the source files of almost every map.",
+						"Consider creating a backup or committing any changes before proceeding.",
+						"Are you ready to begin extracting?")
+					.setMessageType(JOptionPane.WARNING_MESSAGE)
+					.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
+					.choose();
 
-				if (result == JOptionPane.YES_OPTION) {
+				if (choice == JOptionPane.YES_OPTION) {
 					Logger.log("Extracting map data...", Priority.MILESTONE);
 					Extractor.extractAll();
 
-					SwingUtils.showFramedMessageDialog(null,
-						"Complete!",
-						"All Data Extracted",
-						JOptionPane.PLAIN_MESSAGE);
+					SwingUtils.getMessageDialog()
+						.setTitle("All Data Extracted")
+						.setMessage("Complete!")
+						.setMessageType(JOptionPane.PLAIN_MESSAGE)
+						.show();
 
 					Environment.projectConfig.setBoolean(Options.ExtractedMapData, true);
 					Environment.projectConfig.saveConfigFile();
 				}
 			}
 			else {
-				SwingUtils.showFramedMessageDialog(null,
-					"Map data has already been extracted for this project.",
-					"Data Already Extracted",
-					JOptionPane.WARNING_MESSAGE);
+				SwingUtils.getWarningDialog()
+					.setTitle("Data Already Extracted")
+					.setMessage("Map data has already been extracted for this project.")
+					.show();
 			}
 		});
 	}

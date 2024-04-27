@@ -2,9 +2,7 @@ package game.message.editor;
 
 import java.awt.Color;
 import java.awt.Component;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.awt.Toolkit;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -15,8 +13,6 @@ import javax.swing.JPanel;
 import javax.swing.ListCellRenderer;
 
 import app.SwingUtils;
-import assets.AssetHandle;
-import assets.AssetManager;
 import game.message.Message;
 import net.miginfocom.swing.MigLayout;
 import util.Logger;
@@ -24,10 +20,15 @@ import util.ui.FilteredListPanel;
 
 public class MessageListTab extends JPanel
 {
-	private FilteredListPanel<Message> filteredList;
+	private final MessageEditor editor;
+	private final FilteredListPanel<Message> filteredList;
+
+	private MessageAsset asset;
 
 	public MessageListTab(MessageEditor editor)
 	{
+		this.editor = editor;
+
 		filteredList = new FilteredListPanel<>(new MessageCellRenderer()) {
 			@Override
 			public String getFilterableText(Message msg)
@@ -44,68 +45,140 @@ public class MessageListTab extends JPanel
 			}
 		};
 
+		JButton createButton = new JButton("Create");
+		createButton.addActionListener((e) -> createMessage());
+
+		JButton deleteButton = new JButton("Delete");
+		deleteButton.addActionListener((e) -> deleteMessage());
+		deleteButton.setEnabled(false); //TODO
+
 		JButton renameButton = new JButton("Rename");
 		renameButton.addActionListener((e) -> renameMessage());
 
-		JButton createButton = new JButton("Create");
-		createButton.addActionListener((e) -> createMessage());
+		JButton sectionButton = new JButton("Set Section");
+		sectionButton.addActionListener((e) -> setMessageSection());
 
 		setLayout(new MigLayout("fill, ins 0"));
 		add(filteredList, "grow, pushy, span, wrap");
 		add(renameButton, "sg but, growx, pushx, h 32!, split 2");
-		add(createButton, "sg but, growx, pushx");
-	}
-
-	public void renameMessage()
-	{
-		Message msg = filteredList.getSelected();
-		if (msg == null)
-			return;
-
-		String newName = promptForUniqueName(msg.name);
-
-		if (newName != null) {
-			msg.name = newName;
-			filteredList.repaint();
-		}
+		add(sectionButton, "sg but, growx, pushx, wrap");
+		add(createButton, "sg but, growx, pushx, h 32!, split 2");
+		add(deleteButton, "sg but, growx, pushx");
 	}
 
 	public void createMessage()
 	{
+		if (asset != null) {
 
-		List<MessageGroup> resources = new ArrayList<>();
-
-		try {
 			int sectionID = 0;
-			for (AssetHandle ah : AssetManager.getMessages()) {
-				Logger.log("Reading strings from: " + ah.getName());
-				resources.add(new MessageGroup(ah, sectionID++));
+			if (asset.messages.size() > 0) {
+				sectionID = asset.messages.get(asset.messages.size() - 1).section;
+			}
+
+			Message msg = new Message(asset);
+			msg.section = sectionID;
+
+			msg.name = promptForUniqueName(null);
+			if (msg.name != null) {
+				asset.messages.add(msg);
+				filteredList.setContent(asset.messages);
+
+				filteredList.setSelected(msg);
 			}
 		}
-		catch (IOException e) {
-			Logger.logError(e.getMessage());
-		}
+	}
 
-		//TODO filteredList.setContent(resources);
+	public void deleteMessage()
+	{
+		Message selected = filteredList.getSelected();
+
+		if (asset != null && selected != null) {
+			Toolkit.getDefaultToolkit().beep();
+			//TODO	asset.messages.remove(selected);
+		}
+	}
+
+	public void renameMessage()
+	{
+		Message selected = filteredList.getSelected();
+		if (selected == null)
+			return;
+
+		String newName = promptForUniqueName(selected.name);
+
+		if (newName != null) {
+			selected.name = newName;
+			filteredList.repaint();
+		}
+	}
+
+	public void setMessageSection()
+	{
+		Message selected = filteredList.getSelected();
+		if (selected == null)
+			return;
+
+		String newSection = SwingUtils.getInputDialog()
+			.setTitle("Choose Message Section")
+			.setMessage("Enter the new message section (hex)")
+			.setMessageType(JOptionPane.QUESTION_MESSAGE)
+			.setDefault(String.format("%02X", selected.section))
+			.prompt();
+
+		if (newSection != null) {
+			try {
+				selected.section = Integer.parseInt(newSection, 16);
+				filteredList.repaint();
+			}
+			catch (NumberFormatException e) {
+				Toolkit.getDefaultToolkit().beep();
+				Logger.logError(newSection + " is not a valid section!");
+			}
+		}
 	}
 
 	public String promptForUniqueName(String originalName)
 	{
-		String name = SwingUtils.showFramedInputDialog(null,
-			"Provide a message name",
-			"Name New Message",
-			JOptionPane.QUESTION_MESSAGE);
+		while (true) {
+			String name = SwingUtils.getInputDialog()
+				.setTitle("Choose Message Name")
+				.setMessage("Choose a unique message name")
+				.setMessageType(JOptionPane.QUESTION_MESSAGE)
+				.setDefault(originalName)
+				.prompt();
 
-		if (name == null || name.isBlank()) {
+			if (name == null || name.isBlank()) {
+				// empty name provided
+				return null;
+			}
 
+			if (originalName != null && name.equals(originalName)) {
+				// name did not change
+				return originalName;
+			}
+
+			if (!editor.hasMessage(name)) {
+				// name is unique
+				return name;
+			}
+
+			SwingUtils.getWarningDialog()
+				.setTitle("Name Conflict")
+				.setMessage(name + " is already in use!")
+				.show();
 		}
-
-		return name; //TODO
 	}
 
-	public void setStrings(List<Message> messages)
+	public void setAsset(MessageAsset asset)
 	{
-		filteredList.setContent(messages);
+		this.asset = asset;
+
+		if (asset == null) {
+			filteredList.setContent(null);
+		}
+		else {
+			filteredList.setContent(asset.messages);
+		}
 	}
 
 	private static class MessageCellRenderer extends JPanel implements ListCellRenderer<Message>

@@ -44,6 +44,8 @@ import app.LoadingBar;
 import app.StarRodException;
 import app.StarRodMain;
 import app.SwingUtils;
+import app.SwingUtils.DialogBuilder;
+import app.SwingUtils.OpenDialogCounter;
 import app.config.Config;
 import app.config.Options;
 import app.config.Options.Scope;
@@ -94,7 +96,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	// editor state
 	protected volatile boolean modified = false;
 	private volatile boolean closeRequested = false;
-	private volatile int openDialogs = 0;
+	private volatile OpenDialogCounter openDialogs = new OpenDialogCounter();
 
 	protected boolean glWindowGrabsMouse;
 	protected boolean glWindowHaltsForDialogs;
@@ -209,7 +211,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 				time = t0 / 1e9;
 
 				// gl canvas acquires focus on mouseover
-				if (glWindowGrabsMouse && !glCanvas.hasFocus() && mouse.hasLocation() && openDialogs == 0) {
+				if (glWindowGrabsMouse && !glCanvas.hasFocus() && mouse.hasLocation() && openDialogs.isZero()) {
 					java.awt.EventQueue.invokeLater(() -> {
 						glCanvas.requestFocusInWindow();
 					});
@@ -350,10 +352,10 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			@Override
 			public void windowClosing(WindowEvent e)
 			{
-				openDialogs++;
+				openDialogs.increment();
 				closeRequested = !modified || promptForSave();
 				if (!closeRequested)
-					openDialogs--;
+					openDialogs.decrement();
 			}
 		});
 
@@ -418,19 +420,18 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			}
 
 			if (!success) {
-				openDialogs++;
-				String[] options = { "Copy to Clipboard" };
-				int selection = SwingUtils.showFramedOptionDialog(null,
-					logScrollPane,
-					"Editor Log",
-					JOptionPane.YES_NO_CANCEL_OPTION,
-					JOptionPane.PLAIN_MESSAGE,
-					Environment.ICON_DEFAULT,
-					options,
-					options[0]);
-				openDialogs--;
+				openDialogs.increment();
+				int choice = SwingUtils.getOptionDialog()
+					.setTitle("Editor Log")
+					.setMessage(logScrollPane)
+					.setMessageType(JOptionPane.PLAIN_MESSAGE)
+					.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
+					.setIcon(Environment.ICON_DEFAULT)
+					.setOptions("Copy to Clipboard")
+					.choose();
+				openDialogs.decrement();
 
-				if (selection == 0) {
+				if (choice == 0) {
 					StringSelection stringSelection = new StringSelection(logTextArea.getText());
 					Clipboard cb = Toolkit.getDefaultToolkit().getSystemClipboard();
 					cb.setContents(stringSelection, null);
@@ -444,10 +445,10 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		if (!configFile.exists()) {
 			Config cfg = makeNewConfig(scope, configFile);
 			if (cfg == null) {
-				SwingUtils.showFramedMessageDialog(null,
-					"Failed to create new config: \n" + configFile.getAbsolutePath(),
-					"Create Config Failed",
-					JOptionPane.ERROR_MESSAGE);
+				SwingUtils.getErrorDialog()
+					.setTitle("Create Config Failed")
+					.setMessage("Failed to create new config:", configFile.getAbsolutePath())
+					.show();
 				return null;
 			}
 
@@ -460,10 +461,10 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			cfg.readConfig();
 		}
 		catch (IOException e) {
-			SwingUtils.showFramedMessageDialog(null,
-				"IOException occured while reading config: \n" + configFile.getAbsolutePath(),
-				"Load Config Failed",
-				JOptionPane.ERROR_MESSAGE);
+			SwingUtils.getErrorDialog()
+				.setTitle("Load Config Failed")
+				.setMessage("IOException occured while reading config:", configFile.getAbsolutePath())
+				.show();
 			return null;
 		}
 		return cfg;
@@ -488,17 +489,23 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	}
 
 	protected Config getConfig()
-	{ return config; }
+	{
+		return config;
+	}
 
 	private final boolean promptForSave()
 	{
-		openDialogs++;
-		int response = SwingUtils.showFramedConfirmDialog(frame,
-			String.format("Unsaved changes will be lost! %nWould you like to save now?"),
-			"Warning", JOptionPane.YES_NO_CANCEL_OPTION);
-		openDialogs--;
+		openDialogs.increment();
 
-		switch (response) {
+		int choice = SwingUtils.getConfirmDialog()
+			.setTitle("Warning")
+			.setMessage("Unsaved changes will be lost!", "Would you like to save now?")
+			.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
+			.choose();
+
+		openDialogs.decrement();
+
+		switch (choice) {
 			case JOptionPane.YES_OPTION:
 				saveChanges();
 				break;
@@ -512,48 +519,33 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		return true;
 	}
 
-	protected final void showMessageDialog(Object message, String title)
+	protected final DialogBuilder getMessageDialog(String title, Object message)
 	{
-		openDialogs++;
-		SwingUtils.showFramedMessageDialog(frame,
-			message, title,
-			JOptionPane.PLAIN_MESSAGE);
-		openDialogs--;
+		return SwingUtils.getMessageDialog()
+			.setParent(frame)
+			.setTitle(title)
+			.setMessage(message)
+			.setCounter(openDialogs);
 	}
 
-	protected final int showConfirmDialog(Object message, String title)
+	protected final DialogBuilder getConfirmDialog(String title, Object message)
 	{
-		openDialogs++;
-		int userAction = SwingUtils.showFramedConfirmDialog(frame,
-			message, title,
-			JOptionPane.OK_CANCEL_OPTION,
-			JOptionPane.PLAIN_MESSAGE);
-		openDialogs--;
-		return userAction;
+		return SwingUtils.getConfirmDialog()
+			.setParent(frame)
+			.setTitle(title)
+			.setMessage(message)
+			.setCounter(openDialogs)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE);
 	}
 
-	protected final int showConfirmDialog(Object message, String title, int optionType)
+	protected final DialogBuilder getOptionDialog(String title, Object message)
 	{
-		openDialogs++;
-		int userAction = SwingUtils.showFramedConfirmDialog(frame,
-			message, title, optionType,
-			JOptionPane.PLAIN_MESSAGE);
-		openDialogs--;
-		return userAction;
-	}
-
-	protected final int showOptionDialog(Object message, String title, Object[] options)
-	{
-		openDialogs++;
-		int userAction = SwingUtils.showFramedOptionDialog(frame,
-			message, title,
-			JOptionPane.PLAIN_MESSAGE,
-			JOptionPane.PLAIN_MESSAGE,
-			null,
-			options,
-			options[0]);
-		openDialogs--;
-		return userAction;
+		return SwingUtils.getOptionDialog()
+			.setParent(frame)
+			.setTitle(title)
+			.setMessage(message)
+			.setCounter(openDialogs)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE);
 	}
 
 	/**
@@ -588,13 +580,19 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	 */
 
 	public final long getFrameCount()
-	{ return frameCounter; }
+	{
+		return frameCounter;
+	}
 
 	public final double getTime()
-	{ return time; }
+	{
+		return time;
+	}
 
 	public final double getDeltaTime()
-	{ return deltaTime; }
+	{
+		return deltaTime;
+	}
 
 	public final int glCanvasWidth()
 	{
@@ -613,37 +611,38 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 
 	protected final void showErrorDialog(String title, String msg)
 	{
-		SwingUtilities.invokeLater(() -> {
-			SwingUtils.showFramedMessageDialog(frame,
-				msg, title,
-				JOptionPane.ERROR_MESSAGE,
-				Environment.ICON_ERROR);
-		});
+		SwingUtils.getErrorDialog()
+			.setParent(frame)
+			.setTitle(title)
+			.setMessage(msg)
+			.showLater();
 	}
 
 	protected final void showStackTrace(Throwable t)
 	{
-		openDialogs++;
+		openDialogs.increment();
 		StarRodMain.displayStackTrace(t);
-		openDialogs--;
+		openDialogs.decrement();
 	}
 
 	protected final JFrame getFrame()
-	{ return frame; }
+	{
+		return frame;
+	}
 
 	public boolean areDialogsOpen()
 	{
-		return openDialogs > 0;
+		return !openDialogs.isZero();
 	}
 
 	public final void incrementDialogsOpen()
 	{
-		openDialogs++;
+		openDialogs.increment();
 	}
 
 	public final void decrementDialogsOpen()
 	{
-		openDialogs--;
+		openDialogs.decrement();
 	}
 
 	/**

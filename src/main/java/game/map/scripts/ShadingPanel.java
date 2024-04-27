@@ -103,13 +103,14 @@ public class ShadingPanel extends JPanel implements IShutdownListener
 
 			boolean shouldDelete = true;
 			if (selected.vanilla) {
-				SwingGUI.instance().notify_OpenDialog();
-				int response = SwingUtils.showFramedConfirmDialog(SwingGUI.instance(),
-					"Selected profile is vanilla.\r\nAre you sure you want to delete it?\r\n",
-					"Warning", JOptionPane.YES_NO_CANCEL_OPTION);
-				SwingGUI.instance().notify_CloseDialog();
+				int choice = SwingUtils.getConfirmDialog()
+					.setParent(SwingGUI.instance())
+					.setCounter(SwingGUI.instance().getDialogCounter())
+					.setTitle("Warning")
+					.setMessage("Selected profile is vanilla.", "Are you sure you want to delete it?")
+					.choose();
 
-				shouldDelete = (response == JOptionPane.YES_OPTION);
+				shouldDelete = (choice == JOptionPane.YES_OPTION);
 			}
 
 			if (shouldDelete) {

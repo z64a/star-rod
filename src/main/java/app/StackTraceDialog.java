@@ -146,21 +146,19 @@ public class StackTraceDialog extends JDialog implements PropertyChangeListener
 				JOptionPane.UNINITIALIZED_VALUE);
 
 			if (value.equals(OPT_DETAILS)) {
-				String[] options = { "OK", "Copy to Clipboard" };
-
 				JScrollPane detailScrollPane = new JScrollPane(textArea);
 				detailScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
-				int selection = SwingUtils.showFramedOptionDialog(null,
-					detailScrollPane,
-					"Exception Details",
-					JOptionPane.YES_NO_CANCEL_OPTION,
-					JOptionPane.ERROR_MESSAGE,
-					Environment.ICON_ERROR,
-					options,
-					options[0]);
+				int choice = SwingUtils.getOptionDialog()
+					.setTitle("Exception Details")
+					.setMessage(detailScrollPane)
+					.setMessageType(JOptionPane.ERROR_MESSAGE)
+					.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
+					.setIcon(Environment.ICON_ERROR)
+					.setOptions("OK", "Copy to Clipboard")
+					.choose();
 
-				if (selection == 1) {
+				if (choice == 1) {
 					StringSelection stringSelection = new StringSelection(textArea.getText());
 					Clipboard cb = Toolkit.getDefaultToolkit().getSystemClipboard();
 					cb.setContents(stringSelection, null);

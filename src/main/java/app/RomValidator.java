@@ -39,10 +39,12 @@ public class RomValidator
 	public static File validateROM(File f) throws IOException
 	{
 		if (f.length() != LENGTH) {
-			SwingUtils.showFramedMessageDialog(null,
-				"Selected file is not the correct size.",
-				"ROM Validation Error",
-				JOptionPane.ERROR_MESSAGE);
+			SwingUtils.getMessageDialog()
+				.setTitle("ROM Validation Error")
+				.setMessage("Selected file is not the correct size.")
+				.setMessageType(JOptionPane.ERROR_MESSAGE)
+				.show();
+
 			return null;
 		}
 
@@ -76,10 +78,11 @@ public class RomValidator
 
 			if (v64 || n64 || x64) {
 				// just need to byteswap
-				SwingUtils.showFramedMessageDialog(null,
-					"Selected ROM has incorrect byte order.\nA corrected copy will be made.",
-					"ROM Validation Warning",
-					JOptionPane.WARNING_MESSAGE);
+				SwingUtils.getMessageDialog()
+					.setTitle("ROM Validation Warning")
+					.setMessage("Selected ROM has incorrect byte order.", "A corrected copy will be made.")
+					.setMessageType(JOptionPane.WARNING_MESSAGE)
+					.show();
 
 				pleaseWait.setVisible(true);
 
@@ -114,10 +117,13 @@ public class RomValidator
 			}
 			else {
 				pleaseWait.setVisible(false);
-				SwingUtils.showFramedMessageDialog(null,
-					"Incorrect ROM or version, CRC does not match.",
-					"ROM Validation Failure",
-					JOptionPane.ERROR_MESSAGE);
+
+				SwingUtils.getMessageDialog()
+					.setTitle("ROM Validation Failure")
+					.setMessage("Incorrect ROM or version, CRC does not match.")
+					.setMessageType(JOptionPane.ERROR_MESSAGE)
+					.show();
+
 				raf.close();
 				return null;
 			}
@@ -129,19 +135,25 @@ public class RomValidator
 			// now compute the checksum
 			if (!verifyCRCs(raf)) {
 				pleaseWait.setVisible(false);
-				SwingUtils.showFramedMessageDialog(null,
-					"ROM data does not match CRC values!",
-					"ROM Validation Failure",
-					JOptionPane.ERROR_MESSAGE);
+
+				SwingUtils.getMessageDialog()
+					.setTitle("ROM Validation Failure")
+					.setMessage("ROM data does not match CRC values!")
+					.setMessageType(JOptionPane.ERROR_MESSAGE)
+					.show();
+
 				return null;
 			}
 		}
 		else {
 			pleaseWait.setVisible(false);
-			SwingUtils.showFramedMessageDialog(null,
-				"Incorrect ROM or version, CRC does not match.",
-				"ROM Validation Failure",
-				JOptionPane.ERROR_MESSAGE);
+
+			SwingUtils.getMessageDialog()
+				.setTitle("ROM Validation Failure")
+				.setMessage("Incorrect ROM or version, CRC does not match.")
+				.setMessageType(JOptionPane.ERROR_MESSAGE)
+				.show();
+
 			raf.close();
 			return null;
 		}
@@ -162,18 +174,22 @@ public class RomValidator
 			String fileMD5 = sb.toString();
 			if (!fileMD5.equals(MD5)) {
 				pleaseWait.setVisible(false);
-				SwingUtils.showFramedMessageDialog(null,
-					"MD5 hash does not match!",
-					"ROM Validation Failure",
-					JOptionPane.ERROR_MESSAGE);
+
+				SwingUtils.getMessageDialog()
+					.setTitle("ROM Validation Failure")
+					.setMessage("MD5 hash does not match!")
+					.setMessageType(JOptionPane.ERROR_MESSAGE)
+					.show();
+
 				return null;
 			}
 		}
 		catch (NoSuchAlgorithmException e) {
-			SwingUtils.showFramedMessageDialog(null,
-				"Missing MD5 hash algorithm, could not complete validation!",
-				"ROM Validation Warning",
-				JOptionPane.WARNING_MESSAGE);
+			SwingUtils.getMessageDialog()
+				.setTitle("ROM Validation Warning")
+				.setMessage("Missing MD5 hash algorithm, could not complete validation!")
+				.setMessageType(JOptionPane.WARNING_MESSAGE)
+				.show();
 		}
 
 		pleaseWait.setVisible(false);

@@ -3,7 +3,6 @@ package game.message.editor;
 import java.awt.Component;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -17,19 +16,23 @@ import org.apache.commons.io.FilenameUtils;
 import app.SwingUtils;
 import assets.AssetHandle;
 import assets.AssetManager;
+import game.message.Message;
 import net.miginfocom.swing.MigLayout;
 import util.Logger;
 import util.ui.FilteredListPanel;
 
 public class AssetListTab extends JPanel
 {
-	private FilteredListPanel<MessageGroup> filteredList;
+	private final FilteredListPanel<MessageAsset> filteredList;
+	private final ArrayList<MessageAsset> assets;
 
 	public AssetListTab(MessageEditor editor, MessageListTab listPanel)
 	{
+		assets = new ArrayList<>();
+
 		filteredList = new FilteredListPanel<>(new AssetCellRenderer()) {
 			@Override
-			public String getFilterableText(MessageGroup group)
+			public String getFilterableText(MessageAsset group)
 			{
 				if (group != null) {
 					return FilenameUtils.getBaseName(group.asset.getName());
@@ -40,9 +43,9 @@ public class AssetListTab extends JPanel
 			}
 
 			@Override
-			public void handleSelection(MessageGroup asset)
+			public void handleSelection(MessageAsset asset)
 			{
-				listPanel.setStrings((asset == null) ? null : asset.messages);
+				listPanel.setAsset(asset);
 			}
 		};
 
@@ -84,23 +87,37 @@ public class AssetListTab extends JPanel
 
 	public void fullReload()
 	{
-		List<MessageGroup> resources = new ArrayList<>();
+		assets.clear();
 
 		try {
-			int sectionID = 0;
 			for (AssetHandle ah : AssetManager.getMessages()) {
 				Logger.log("Reading messages from: " + ah.getName());
-				resources.add(new MessageGroup(ah, sectionID++));
+				assets.add(new MessageAsset(ah));
 			}
 		}
 		catch (IOException e) {
 			Logger.logError(e.getMessage());
 		}
 
-		filteredList.setContent(resources);
+		filteredList.setContent(assets);
 	}
 
-	public static class AssetCellRenderer extends JPanel implements ListCellRenderer<MessageGroup>
+	public boolean hasMessage(String name)
+	{
+		if (name == null)
+			return false;
+
+		for (MessageAsset asset : assets) {
+			for (Message msg : asset.messages) {
+				if (name.equals(msg.name))
+					return true;
+			}
+		}
+
+		return false;
+	}
+
+	public static class AssetCellRenderer extends JPanel implements ListCellRenderer<MessageAsset>
 	{
 		private final JLabel nameLabel;
 
@@ -117,8 +134,8 @@ public class AssetListTab extends JPanel
 
 		@Override
 		public Component getListCellRendererComponent(
-			JList<? extends MessageGroup> list,
-			MessageGroup group,
+			JList<? extends MessageAsset> list,
+			MessageAsset group,
 			int index,
 			boolean isSelected,
 			boolean cellHasFocus)

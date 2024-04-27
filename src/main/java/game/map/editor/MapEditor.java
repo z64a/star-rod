@@ -580,7 +580,9 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	}
 
 	public boolean isLoading()
-	{ return loading; }
+	{
+		return loading;
+	}
 
 	/**
 	 * Start running the editor, prompting the user to select a map
@@ -865,9 +867,12 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			if (crashMap == null)
 				return null;
 
-			int choice = SwingUtils.showFramedConfirmDialog(null,
-				"Found crash data for " + crashMap.getName() + ", would you like to load?", "Crash Recovery",
-				JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE);
+			int choice = SwingUtils.getConfirmDialog()
+				.setTitle("Crash Recovery")
+				.setMessage("Found crash data for " + crashMap.getName(), "Would you like to load it?")
+				.setMessageType(JOptionPane.PLAIN_MESSAGE)
+				.setOptionsType(JOptionPane.YES_NO_OPTION)
+				.choose();
 
 			if (choice == JOptionPane.YES_OPTION)
 				return crashMap;
@@ -894,11 +899,13 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				return baseMap;
 			}
 
-			gui.notify_OpenDialog();
-			int choice = SwingUtils.showFramedConfirmDialog(null,
-				"Found backup data for " + baseMap.getName() + ", would you like to load it instead?", "Backup Recovery",
-				JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE);
-			gui.notify_CloseDialog();
+			int choice = SwingUtils.getConfirmDialog()
+				.setCounter(gui.getDialogCounter())
+				.setTitle("Backup Recovery")
+				.setMessage("Found backup data for " + baseMap.getName(), "Would you like to load it instead?")
+				.setMessageType(JOptionPane.PLAIN_MESSAGE)
+				.setOptionsType(JOptionPane.YES_NO_OPTION)
+				.choose();
 
 			if (choice == JOptionPane.YES_OPTION)
 				return backupMap;
@@ -931,10 +938,14 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		Map selectedMap = null;
 
 		while (true) {
-			int choice = SwingUtils.showFramedOptionDialog(null,
-				"Which map would you like to open?", "Choose Map",
-				JOptionPane.YES_NO_OPTION, JOptionPane.PLAIN_MESSAGE,
-				null, options, "Browse Maps");
+			int choice = SwingUtils.getOptionDialog()
+				.setTitle("Choose Map")
+				.setMessage("Which map would you like to open?")
+				.setMessageType(JOptionPane.PLAIN_MESSAGE)
+				.setOptionsType(JOptionPane.YES_NO_OPTION)
+				.setOptions(options)
+				.setDefault("Browse Maps")
+				.choose();
 
 			if (choice == JOptionPane.CLOSED_OPTION) {
 				selectedMap = null;
@@ -1130,10 +1141,10 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		if (!configFile.exists()) {
 			Config cfg = makeNewConfig(configFile);
 			if (cfg == null) {
-				SwingUtils.showFramedMessageDialog(null,
-					"Failed to create new config: \n" + configFile.getAbsolutePath(),
-					"Create Config Failed",
-					JOptionPane.ERROR_MESSAGE);
+				SwingUtils.getErrorDialog()
+					.setTitle("Create Config Failed")
+					.setMessage("Failed to create new config:", configFile.getAbsolutePath())
+					.show();
 				return null;
 			}
 
@@ -1146,10 +1157,10 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			cfg.readConfig();
 		}
 		catch (IOException e) {
-			SwingUtils.showFramedMessageDialog(null,
-				"IOException occured while reading config: \n" + configFile.getAbsolutePath(),
-				"Load Config Failed",
-				JOptionPane.ERROR_MESSAGE);
+			SwingUtils.getErrorDialog()
+				.setTitle("Load Config Failed")
+				.setMessage("IOException occured while reading config:", configFile.getAbsolutePath())
+				.show();
 			return null;
 		}
 		return cfg;
@@ -1420,7 +1431,9 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	}
 
 	public EditorMode getEditorMode()
-	{ return editorMode; }
+	{
+		return editorMode;
+	}
 
 	public Selection<?> getSelectionForCurrentMode()
 	{
@@ -1441,7 +1454,9 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	}
 
 	public List<EditorObject> getEditorObjects()
-	{ return editorObjects; }
+	{
+		return editorObjects;
+	}
 
 	public void addEditorObject(EditorObject obj)
 	{
@@ -1454,13 +1469,19 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	}
 
 	public long getFrame()
-	{ return frameCounter; }
+	{
+		return frameCounter;
+	}
 
 	public double getDeltaTime()
-	{ return deltaTime; }
+	{
+		return deltaTime;
+	}
 
 	public double getTotalTime()
-	{ return time; }
+	{
+		return time;
+	}
 
 	/**
 	 * These methods allow the GUI to submit events to the editor.
@@ -1517,10 +1538,11 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 					Logger.log("Successfully compiled " + shapeMap.getName() + "_shape");
 				}
 				catch (BuildException be) {
-					SwingUtilities.invokeLater(() -> {
-						SwingUtils.showFramedMessageDialog(gui, be.getMessage(),
-							"Geometry Build Failed", JOptionPane.ERROR_MESSAGE, Environment.ICON_ERROR);
-					});
+					SwingUtils.getErrorDialog()
+						.setParent(gui)
+						.setTitle("Shape Build Failed")
+						.setMessage(be.getMessage())
+						.showLater();
 				}
 				catch (IOException ioe) {
 					Logger.log("Build failed: IOException. Check log for more information.", Priority.ERROR);
@@ -1535,10 +1557,11 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 					Logger.log("Successfully compiled " + hitMap.getName() + "_hit");
 				}
 				catch (BuildException be) {
-					SwingUtilities.invokeLater(() -> {
-						SwingUtils.showFramedMessageDialog(gui, be.getMessage(),
-							"Collision Build Failed", JOptionPane.ERROR_MESSAGE, Environment.ICON_ERROR);
-					});
+					SwingUtils.getErrorDialog()
+						.setParent(gui)
+						.setTitle("Collision Build Failed")
+						.setMessage(be.getMessage())
+						.showLater();
 				}
 				catch (IOException ioe) {
 					Logger.log("Build failed: IOException. Check log for more information.", Priority.ERROR);
@@ -1705,14 +1728,18 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 					List<Model> models = selectionManager.getSelectedObjects(Model.class);
 					if (models.size() > 0) {
 						SwingUtilities.invokeLater(() -> {
-
 							JComboBox<RenderMode> selectionBox = new JComboBox<>(RenderMode.getEditorModes());
 							selectionBox.setSelectedItem(models.get(models.size() - 1).renderMode.get());
-							gui.notify_OpenDialog();
-							int choice = SwingUtils.showFramedConfirmDialog(gui, selectionBox, "Set Render Mode",
-								JOptionPane.OK_CANCEL_OPTION,
-								JOptionPane.PLAIN_MESSAGE);
-							gui.notify_CloseDialog();
+
+							int choice = SwingUtils.getConfirmDialog()
+								.setParent(gui)
+								.setCounter(gui.getDialogCounter())
+								.setTitle("Set Render Mode")
+								.setMessage(selectionBox)
+								.setMessageType(JOptionPane.PLAIN_MESSAGE)
+								.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+								.choose();
+
 							RenderMode selectedMode = (RenderMode) selectionBox.getSelectedItem();
 
 							if (choice == JOptionPane.YES_OPTION && selectedMode != null) {
@@ -3243,10 +3270,14 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	}
 
 	public boolean isPlayInEditorMode()
-	{ return isPlayInEditorMode; }
+	{
+		return isPlayInEditorMode;
+	}
 
 	public PerspCameraMode getCameraMode()
-	{ return perspCameraMode; }
+	{
+		return perspCameraMode;
+	}
 
 	public CameraController getCameraController()
 	{
@@ -3667,10 +3698,12 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			loadedTextures = TextureManager.load(map.texName);
 
 		while (!loadedTextures) {
-			int choice = SwingUtils.showFramedConfirmDialog(gui,
-				"Could not open texture archive \"" + map.texName + "\", select a different one?",
-				"Missing Texture Archive",
-				JOptionPane.YES_NO_OPTION);
+			int choice = SwingUtils.getConfirmDialog()
+				.setParent(gui)
+				.setTitle("Missing Texture Archive")
+				.setMessage("Could not open texture archive \"" + map.texName + "\", select a different one?")
+				.setOptionsType(JOptionPane.YES_NO_OPTION)
+				.choose();
 
 			if (choice == JOptionPane.YES_OPTION) {
 				File texFile = SelectTexDialog.showPrompt();
@@ -3893,10 +3926,14 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	}
 
 	public Map getGeometryMap()
-	{ return shapeOverride == null ? map : shapeOverride; }
+	{
+		return shapeOverride == null ? map : shapeOverride;
+	}
 
 	public Map getCollisionMap()
-	{ return hitOverride == null ? map : hitOverride; }
+	{
+		return hitOverride == null ? map : hitOverride;
+	}
 
 	private void openMap(Map newMap, boolean thumbnailMode)
 	{
@@ -4092,7 +4129,9 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	}
 
 	public Vector3f getCursorPosition()
-	{ return cursor3D != null ? cursor3D.getPosition() : new Vector3f(); }
+	{
+		return cursor3D != null ? cursor3D.getPosition() : new Vector3f();
+	}
 
 	private void findObject()
 	{
@@ -4641,13 +4680,19 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	}
 
 	public float getDefaultUVScale()
-	{ return uvScale; }
+	{
+		return uvScale;
+	}
 
 	public float getNormalsLength()
-	{ return normalsLength; }
+	{
+		return normalsLength;
+	}
 
 	public double getRotationSnap()
-	{ return rotationSnapIncrement; }
+	{
+		return rotationSnapIncrement;
+	}
 
 	public boolean debugModeEnabled()
 	{
@@ -4662,11 +4707,12 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	public void displayStackTrace(Throwable t, String errorMessage)
 	{
 		SwingUtilities.invokeLater(() -> {
-			gui.notify_OpenDialog();
 			Toolkit.getDefaultToolkit().beep();
 			Logger.logError(errorMessage);
+
+			gui.getDialogCounter().increment();
 			StarRodMain.displayStackTrace(t);
-			gui.notify_CloseDialog();
+			gui.getDialogCounter().decrement();
 		});
 	}
 

@@ -611,7 +611,9 @@ public class SpriteEditor extends BaseEditor
 	}
 
 	public SpriteAnimation getAnimation()
-	{ return currentAnim; }
+	{
+		return currentAnim;
+	}
 
 	private void setComponent(int id, boolean fromTabChange)
 	{
@@ -649,7 +651,9 @@ public class SpriteEditor extends BaseEditor
 	}
 
 	public ImgAsset getSelectedImage()
-	{ return selectedImgAsset; }
+	{
+		return selectedImgAsset;
+	}
 
 	private void setPalette(SpritePalette pm)
 	{
@@ -702,7 +706,7 @@ public class SpriteEditor extends BaseEditor
 					if (sprite != null && currentAnim != null && currentComp != null && currentComp.selected) {
 						if (currentAnim.components.size() > 1) {
 							SwingUtilities.invokeLater(() -> {
-								if (JOptionPane.YES_OPTION == super.showConfirmDialog("Delete component?", "Confirm")) {
+								if (JOptionPane.YES_OPTION == super.getConfirmDialog("Confirm", "Delete component?").choose()) {
 									invokeLater(() -> {
 										currentAnim.components.removeElement(currentComp);
 										sprite.recalculateIndices();
@@ -968,12 +972,12 @@ public class SpriteEditor extends BaseEditor
 				try {
 					int id = SpriteLoader.getMaximumID(spriteSet) + 1;
 					SpriteLoader.create(spriteSet, id);
-
+		
 					if(spriteSet == SpriteSet.Npc)
 						useNpcFiles(id);
 					else
 						usePlayerFiles(id);
-
+		
 				} catch (Throwable t) {
 					Logger.logError("Failed to create new sprite.");
 					incrementDialogsOpen();
@@ -983,7 +987,7 @@ public class SpriteEditor extends BaseEditor
 			});
 		});
 		menu.add(item);
-
+		
 		menu.addSeparator();
 		 */
 
@@ -1439,7 +1443,7 @@ public class SpriteEditor extends BaseEditor
 			return;
 
 		ListEditPanel<SpriteAnimation> listPanel = new AnimationListEditPanel(sprite, sprite.animations, this);
-		showOptionDialog(listPanel, "Edit " + sprite + " Animations", new String[] { "Done" });
+		getOptionDialog("Edit " + sprite + " Animations", listPanel).setOptions("Done").choose();
 
 		invokeLater(() -> {
 			setSprite(spriteID, false);
@@ -1456,7 +1460,7 @@ public class SpriteEditor extends BaseEditor
 			return;
 
 		ListEditPanel<SpriteComponent> listPanel = new ComponentListEditPanel(currentAnim, currentAnim.components);
-		showOptionDialog(listPanel, "Edit " + currentAnim + " Components", new String[] { "Done" });
+		getOptionDialog("Edit " + currentAnim + " Components", listPanel).setOptions("Done").choose();
 
 		invokeLater(() -> {
 			sprite.recalculateIndices();
@@ -1474,7 +1478,14 @@ public class SpriteEditor extends BaseEditor
 	private void showControls()
 	{
 		incrementDialogsOpen();
-		SwingUtils.showFramedMessageDialog(getFrame(), new ShortcutListPanel(), "Controls and Shortcuts", JOptionPane.PLAIN_MESSAGE);
+
+		SwingUtils.getMessageDialog()
+			.setParent(getFrame())
+			.setTitle("Controls and Shortcuts")
+			.setMessage(new SpriteShortcutsPanel())
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.show();
+
 		decrementDialogsOpen();
 	}
 

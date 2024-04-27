@@ -38,7 +38,7 @@ import game.globals.editor.GlobalsData.GlobalsCategory;
 import game.globals.editor.tabs.ItemTab;
 import game.globals.editor.tabs.MoveTab;
 import game.message.Message;
-import game.message.editor.MessageGroup;
+import game.message.editor.MessageAsset;
 import net.miginfocom.swing.MigLayout;
 import util.DualHashMap;
 import util.IterableListModel;
@@ -207,10 +207,15 @@ public class GlobalsEditor
 			@Override
 			public void windowClosing(WindowEvent e)
 			{
-				int choice = !tabsHaveChanges() ? JOptionPane.NO_OPTION
-					: SwingUtils.showFramedConfirmDialog(null,
-						String.format("Unsaved changes will be lost!%nWould you like to save now?"),
-						"Warning", JOptionPane.YES_NO_CANCEL_OPTION);
+				int choice = JOptionPane.NO_OPTION;
+
+				if (tabsHaveChanges()) {
+					choice = SwingUtils.getConfirmDialog()
+						.setTitle("Warning")
+						.setMessage("Unsaved changes will be lost!", "Would you like to save now?")
+						.choose();
+				}
+
 				switch (choice) {
 					case JOptionPane.YES_OPTION:
 						saveAllChanges();
@@ -263,10 +268,16 @@ public class GlobalsEditor
 
 		item = new JMenuItem("Reload Data");
 		item.addActionListener((e) -> {
-			int choice = !currentTabHasChanges() ? JOptionPane.OK_OPTION
-				: SwingUtils.showFramedConfirmDialog(null,
-					String.format("Any changes will be lost.%nAre you sure you want to reload?"),
-					"Warning", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+			int choice = JOptionPane.OK_OPTION;
+			if (currentTabHasChanges()) {
+				choice = SwingUtils.getConfirmDialog()
+					.setTitle("Warning")
+					.setMessage("Any changes will be lost.", "Are you sure you want to reload?")
+					.setMessageType(JOptionPane.WARNING_MESSAGE)
+					.setOptionsType(JOptionPane.YES_NO_OPTION)
+					.choose();
+			}
+
 			if (choice == JOptionPane.OK_OPTION)
 				reloadCurrentTab();
 		});
@@ -276,10 +287,15 @@ public class GlobalsEditor
 
 		item = new JMenuItem("Save Changes");
 		item.addActionListener((e) -> {
-			int choice = !tabsHaveChanges() ? JOptionPane.OK_OPTION
-				: SwingUtils.showFramedConfirmDialog(null,
-					String.format("Are you sure you want to overwrite existing data?"),
-					"Warning", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+			int choice = JOptionPane.OK_OPTION;
+			if (tabsHaveChanges()) {
+				choice = SwingUtils.getConfirmDialog()
+					.setTitle("Warning")
+					.setMessage("Are you sure you want to overwrite existing data?")
+					.setMessageType(JOptionPane.WARNING_MESSAGE)
+					.setOptionsType(JOptionPane.YES_NO_OPTION)
+					.choose();
+			}
 			if (choice == JOptionPane.OK_OPTION)
 				saveAllChanges();
 		});
@@ -356,10 +372,9 @@ public class GlobalsEditor
 		messageNameMap.clear();
 
 		try {
-			int sectionID = 0;
 			for (AssetHandle ah : AssetManager.getMessages()) {
 				Logger.log("Reading messages from: " + ah.getName());
-				MessageGroup group = new MessageGroup(ah, sectionID++);
+				MessageAsset group = new MessageAsset(ah);
 				for (Message msg : group.messages) {
 					messageNameMap.put("MSG_" + msg.name, msg);
 					messageListModel.addElement(msg);

@@ -53,10 +53,10 @@ import game.texture.editor.dialogs.ConvertOptionsPanel;
 import game.texture.editor.dialogs.ConvertOptionsPanel.ConvertSettings;
 import game.texture.editor.dialogs.ConvertOptionsPanel.ConvertSettings.IntensityMethod;
 import game.texture.editor.dialogs.CreateOptionsPanel;
+import game.texture.editor.dialogs.ImageShortcutsPanel;
 import game.texture.editor.dialogs.ImportOptionsPanel;
 import game.texture.editor.dialogs.ResizeOptionsPanel;
 import game.texture.editor.dialogs.ResizeOptionsPanel.ResizeOptions;
-import game.texture.editor.dialogs.ShorcutListPanel;
 import net.miginfocom.swing.MigLayout;
 import renderer.buffers.LineRenderQueue;
 import renderer.shaders.RenderState;
@@ -302,11 +302,15 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 
 	private void showControls()
 	{
-		JPanel panel = new JPanel();
-		panel.add(new ShorcutListPanel());
-
 		incrementDialogsOpen();
-		SwingUtils.showFramedMessageDialog(getFrame(), new ShorcutListPanel(), "Controls and Shortcuts", JOptionPane.PLAIN_MESSAGE);
+
+		SwingUtils.getMessageDialog()
+			.setParent(getFrame())
+			.setTitle("Controls and Shortcuts")
+			.setMessage(new ImageShortcutsPanel())
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.show();
+
 		decrementDialogsOpen();
 	}
 
@@ -854,9 +858,9 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 
 	private File promptOverwrite(File file)
 	{
-		int choice = showOptionDialog(
-			"File already exists: \n" + file.getName(),
-			"Export Image", new String[] { "Overwrite", "Choose File", "Cancel" });
+		int choice = getOptionDialog("Export Image", "File already exists: \n" + file.getName())
+			.setOptions("Overwrite", "Choose File", "Cancel")
+			.choose();
 
 		if (choice == 0)
 			return file;
@@ -901,7 +905,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 		assert (SwingUtilities.isEventDispatchThread());
 
 		CreateOptionsPanel createOptions = new CreateOptionsPanel();
-		int choice = ImageEditor.super.showConfirmDialog(createOptions, "New Image Options");
+		int choice = ImageEditor.super.getConfirmDialog("New Image Options", createOptions).choose();
 		if (choice != JOptionPane.OK_OPTION)
 			return;
 
@@ -964,7 +968,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 		assert (SwingUtilities.isEventDispatchThread());
 
 		ImportOptionsPanel importOptions = new ImportOptionsPanel();
-		int choice = ImageEditor.super.showConfirmDialog(importOptions, "Import Options");
+		int choice = ImageEditor.super.getConfirmDialog("Import Options", importOptions).choose();
 		if (choice != JOptionPane.OK_OPTION)
 			return;
 
@@ -976,8 +980,8 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			}
 			catch (ImageFormatException e) {
 				if (importOptions.getFormat().type == TileFormat.TYPE_CI) {
-					choice = ImageEditor.super.showConfirmDialog(
-						"Image file is not color-indexed. \nWould you like to convert it?", "Incorrect Image Format");
+					choice = ImageEditor.super.getConfirmDialog(
+						"Incorrect Image Format", "Image file is not color-indexed. \nWould you like to convert it?").choose();
 					if (choice != JOptionPane.OK_OPTION)
 						return;
 
@@ -1012,7 +1016,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 		assert (SwingUtilities.isEventDispatchThread());
 
 		ImportOptionsPanel importOptions = new ImportOptionsPanel();
-		int choice = ImageEditor.super.showConfirmDialog(importOptions, "Import Options");
+		int choice = ImageEditor.super.getConfirmDialog("Import Options", importOptions).choose();
 		if (choice != JOptionPane.OK_OPTION)
 			return null;
 
@@ -1058,7 +1062,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			importFileChooser.setDirectoryContaining(image.source.getParentFile());
 		if (importFileChooser.prompt() == ChooseDialogResult.APPROVE) {
 			ImportOptionsPanel importOptions = new ImportOptionsPanel();
-			int choice = ImageEditor.super.showConfirmDialog(importOptions, "Import Options");
+			int choice = ImageEditor.super.getConfirmDialog("Import Options", importOptions).choose();
 			if (choice != JOptionPane.OK_OPTION)
 				return;
 
@@ -1084,7 +1088,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			return;
 
 		ResizeOptionsPanel resizeOptionsPanel = new ResizeOptionsPanel();
-		int choice = ImageEditor.super.showConfirmDialog(resizeOptionsPanel, "Resize Image Options");
+		int choice = ImageEditor.super.getConfirmDialog("Resize Image Options", resizeOptionsPanel).choose();
 		if (choice != JOptionPane.OK_OPTION)
 			return;
 
@@ -1103,7 +1107,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			return;
 
 		ConvertOptionsPanel convertOptionsPanel = new ConvertOptionsPanel();
-		int choice = ImageEditor.super.showConfirmDialog(convertOptionsPanel, "Convert Image Options");
+		int choice = ImageEditor.super.getConfirmDialog("Convert Image Options", convertOptionsPanel).choose();
 		if (choice != JOptionPane.OK_OPTION)
 			return;
 
@@ -1191,7 +1195,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			else
 				image.draw(mousePixelX, mousePixelY, pickedPixel);
 		}
-		
+
 		if(mouseManager.holdingRMB && mousePixelValid)
 			image.deselect(mousePixelX, mousePixelY);
 			*/

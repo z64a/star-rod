@@ -30,6 +30,7 @@ import game.globals.editor.GlobalsEditor;
 import game.globals.editor.renderers.MessageCellRenderer;
 import game.globals.editor.renderers.MoveListRenderer;
 import game.globals.editor.renderers.PaddedCellRenderer;
+import game.map.editor.ui.SwingGUI;
 import game.message.Message;
 import net.miginfocom.swing.MigLayout;
 import util.Logger;
@@ -87,15 +88,21 @@ public class MoveTab extends SingleListTab<MoveRecord>
 
 	@Override
 	protected String getTabName()
-	{ return "Moves"; }
+	{
+		return "Moves";
+	}
 
 	@Override
 	protected ExpectedAsset getIcon()
-	{ return ExpectedAsset.ICON_POWER_JUMP; }
+	{
+		return ExpectedAsset.ICON_POWER_JUMP;
+	}
 
 	@Override
 	protected GlobalsCategory getDataType()
-	{ return GlobalsCategory.MOVE_TABLE; }
+	{
+		return GlobalsCategory.MOVE_TABLE;
+	}
 
 	@Override
 	protected void notifyDataChange(GlobalsCategory type)
@@ -377,8 +384,14 @@ public class MoveTab extends SingleListTab<MoveRecord>
 				MoveRecord move = getSelected();
 				FlagEditorPanel flagPanel = new FlagEditorPanel(move.targetFlags);
 
-				if (JOptionPane.YES_OPTION == SwingUtils.showFramedConfirmDialog(
-					null, flagPanel, "Set Flags", JOptionPane.OK_CANCEL_OPTION)) {
+				int choice = SwingUtils.getConfirmDialog()
+					.setParent(SwingGUI.instance())
+					.setTitle("Set Flags")
+					.setMessage(flagPanel)
+					.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+					.choose();
+
+				if (choice == JOptionPane.YES_OPTION) {
 					int newValue = flagPanel.getValue();
 					if (newValue != move.targetFlags.getBits()) {
 						move.targetFlags.setBits(newValue);
@@ -521,5 +534,7 @@ public class MoveTab extends SingleListTab<MoveRecord>
 
 	@Override
 	protected ListCellRenderer<MoveRecord> getCellRenderer()
-	{ return new MoveListRenderer(); }
+	{
+		return new MoveListRenderer();
+	}
 }

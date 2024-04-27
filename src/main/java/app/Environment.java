@@ -94,10 +94,14 @@ public abstract class Environment
 	private static String gitBuildTag;
 
 	public static boolean isDeluxe()
-	{ return isDeluxe; }
+	{
+		return isDeluxe;
+	}
 
 	public static String getVersionString()
-	{ return versionString; }
+	{
+		return versionString;
+	}
 
 	public static String decorateTitle(String title)
 	{
@@ -239,7 +243,9 @@ public abstract class Environment
 	}
 
 	public static boolean isCommandLine()
-	{ return commandLine; }
+	{
+		return commandLine;
+	}
 
 	public static File getWorkingDirectory()
 	{
@@ -250,10 +256,14 @@ public abstract class Environment
 	}
 
 	public static File getProjectDirectory()
-	{ return projectDirectory; }
+	{
+		return projectDirectory;
+	}
 
 	public static File getSourceDirectory()
-	{ return new File(projectDirectory, "/src/"); }
+	{
+		return new File(projectDirectory, "/src/");
+	}
 
 	public static File getProjectFile(String relativePath)
 	{
@@ -277,11 +287,11 @@ public abstract class Environment
 
 				if (!latestVersion.equals("v" + versionString)) {
 					Logger.log("Detected newer remote version: " + latestVersion);
-					SwingUtils.showFramedMessageDialog(null,
-						"A newer version is available!\n" +
-							"Please visit the GitHub repo to download it.",
-						"Update Available",
-						JOptionPane.WARNING_MESSAGE);
+
+					SwingUtils.getWarningDialog()
+						.setTitle("Update Available")
+						.setMessage("A newer version is available!", "Please visit the GitHub repo to download it.")
+						.show();
 				}
 			}
 			else {
@@ -299,12 +309,13 @@ public abstract class Environment
 		File db = Directories.DATABASE.toFile();
 
 		if (!db.exists() || !db.isDirectory()) {
-			SwingUtils.showFramedMessageDialog(null,
-				"Could not find required directory: " + db.getName() + System.lineSeparator() +
-					"It should be in the same directory as StarRod.jar" + System.lineSeparator() +
-					"Did you extract ALL the files for Star Rod?",
-				"Missing Directory",
-				JOptionPane.ERROR_MESSAGE);
+			SwingUtils.getMessageDialog()
+				.setTitle("Missing Directory")
+				.setMessage("Could not find required directory: " + db.getName(),
+					"It should be in the same directory as the jar.")
+				.setMessageType(JOptionPane.ERROR_MESSAGE)
+				.show();
+
 			exit();
 		}
 	}
@@ -315,21 +326,23 @@ public abstract class Environment
 
 		// we may need to create a new config file here
 		if (!configFile.exists()) {
-			int choice = SwingUtils.showFramedConfirmDialog(null,
-				String.format("Could not find Star Rod config! %nCreate a new one?"),
-				"Missing Config",
-				JOptionPane.YES_NO_OPTION,
-				JOptionPane.QUESTION_MESSAGE);
+			int choice = SwingUtils.getConfirmDialog()
+				.setTitle("Missing Config")
+				.setMessage("Could not find Star Rod config!", "Create a new one?")
+				.setMessageType(JOptionPane.QUESTION_MESSAGE)
+				.setOptionsType(JOptionPane.YES_NO_OPTION)
+				.choose();
 
 			if (choice != JOptionPane.OK_OPTION)
 				exit();
 
 			mainConfig = makeConfig(configFile, Scope.Main);
 
-			SwingUtils.showFramedMessageDialog(null,
-				"Select your project directory.",
-				"Select Project Directory",
-				JOptionPane.PLAIN_MESSAGE);
+			SwingUtils.getMessageDialog()
+				.setTitle("Select Project Directory")
+				.setMessage("Select your project directory.")
+				.setMessageType(JOptionPane.PLAIN_MESSAGE)
+				.show();
 
 			return promptSelectProject();
 		}
@@ -353,10 +366,10 @@ public abstract class Environment
 			}
 
 			// project directory is missing, prompt to select new one
-			SwingUtils.showFramedMessageDialog(null,
-				String.format("Could not find project directory! %nPlease select a new one."),
-				"Missing Project Directory",
-				JOptionPane.ERROR_MESSAGE);
+			SwingUtils.getErrorDialog()
+				.setTitle("Missing Project Directory")
+				.setMessage("Could not find project directory!", "Please select a new one.")
+				.show();
 
 			return promptSelectProject();
 		}
@@ -384,7 +397,10 @@ public abstract class Environment
 		if (isCommandLine())
 			Logger.logError(message);
 		else
-			SwingUtils.showFramedMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
+			SwingUtils.getErrorDialog()
+				.setTitle(title)
+				.setMessage(message)
+				.show();
 	}
 
 	public static boolean loadProject(File projectDir) throws IOException
@@ -475,11 +491,13 @@ public abstract class Environment
 		File configFile = new File(projectDirectory, FN_PROJ_CONFIG);
 
 		if (!configFile.exists()) {
-			int choice = SwingUtils.showFramedConfirmDialog(null,
-				"Could not find project config!\nCreate a new one?",
-				"Missing Config",
-				JOptionPane.YES_NO_OPTION,
-				JOptionPane.QUESTION_MESSAGE);
+
+			int choice = SwingUtils.getConfirmDialog()
+				.setTitle("Missing Config")
+				.setMessage("Could not find project config!", "Create a new one?")
+				.setMessageType(JOptionPane.QUESTION_MESSAGE)
+				.setOptionsType(JOptionPane.YES_NO_OPTION)
+				.choose();
 
 			if (choice != JOptionPane.OK_OPTION)
 				exit();
@@ -545,13 +563,19 @@ public abstract class Environment
 	}
 
 	public static boolean isWindows()
-	{ return osFamily == OSFamily.Windows; }
+	{
+		return osFamily == OSFamily.Windows;
+	}
 
 	public static boolean isMacOS()
-	{ return osFamily == OSFamily.Mac; }
+	{
+		return osFamily == OSFamily.Mac;
+	}
 
 	public static boolean isLinux()
-	{ return osFamily == OSFamily.Linux; }
+	{
+		return osFamily == OSFamily.Linux;
+	}
 
 	public static void reloadIcons()
 	{
@@ -562,10 +586,14 @@ public abstract class Environment
 	}
 
 	public static final Image getDefaultIconImage()
-	{ return (ICON_DEFAULT == null) ? null : ICON_DEFAULT.getImage(); }
+	{
+		return (ICON_DEFAULT == null) ? null : ICON_DEFAULT.getImage();
+	}
 
 	public static final Image getErrorIconImage()
-	{ return (ICON_DEFAULT == null) ? null : ICON_DEFAULT.getImage(); }
+	{
+		return (ICON_DEFAULT == null) ? null : ICON_DEFAULT.getImage();
+	}
 
 	private static ImageIcon loadIconAsset(ExpectedAsset asset)
 	{

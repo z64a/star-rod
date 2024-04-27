@@ -50,6 +50,7 @@ import org.apache.commons.io.FilenameUtils;
 
 import app.Environment;
 import app.SwingUtils;
+import app.SwingUtils.OpenDialogCounter;
 import app.config.PreferencesPanel;
 import assets.AssetHandle;
 import assets.AssetManager;
@@ -120,7 +121,7 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 	// for different EditorStates: modify, texture, and vertex paint.
 
 	private volatile boolean closeRequested = false;
-	private volatile int openDialogCount = 0;
+	private volatile OpenDialogCounter openDialogCount = new OpenDialogCounter();
 	private volatile List<JPopupMenu> popups = new LinkedList<>();
 
 	private HashMap<String, GuiCommand> commandMap;
@@ -214,10 +215,11 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 			@Override
 			public void windowClosing(WindowEvent e)
 			{
-				openDialogCount++;
+				openDialogCount.increment();
 				closeRequested = (!editor.map.modified || promptForSave()) && (!ProjectDatabase.SpriteShading.modified || promptSaveShading());
 				if (!closeRequested)
-					openDialogCount--;
+					openDialogCount.decrement();
+				;
 			}
 		});
 
@@ -277,19 +279,18 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 			}
 
 			if (!success) {
-				editor.gui.notify_OpenDialog();
-				String[] options = { "Copy to Clipboard" };
-				int selection = SwingUtils.showFramedOptionDialog(null,
-					logScrollPane,
-					"Editor Log",
-					JOptionPane.YES_NO_CANCEL_OPTION,
-					JOptionPane.PLAIN_MESSAGE,
-					Environment.ICON_DEFAULT,
-					options,
-					options[0]);
-				editor.gui.notify_CloseDialog();
+				int choice = SwingUtils.getOptionDialog()
+					.setParent(this)
+					.setCounter(openDialogCount)
+					.setTitle("Editor Log")
+					.setMessage(logScrollPane)
+					.setMessageType(JOptionPane.PLAIN_MESSAGE)
+					.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
+					.setIcon(Environment.ICON_DEFAULT)
+					.setOptions("Copy to Clipboard")
+					.choose();
 
-				if (selection == 0) {
+				if (choice == 0) {
 					StringSelection stringSelection = new StringSelection(logTextArea.getText());
 					Clipboard cb = Toolkit.getDefaultToolkit().getSystemClipboard();
 					cb.setContents(stringSelection, null);
@@ -381,7 +382,14 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 	}
 
 	public boolean isModalDialogOpen()
-	{ return openDialogCount > 0; }
+	{
+		return !openDialogCount.isZero();
+	}
+
+	public OpenDialogCounter getDialogCounter()
+	{
+		return openDialogCount;
+	}
 
 	public void registerPopupMenu(JPopupMenu menu)
 	{
@@ -397,17 +405,21 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 	}
 
 	public boolean isCloseRequested()
-	{ return closeRequested; }
+	{
+		return closeRequested;
+	}
 
 	public boolean promptForSave()
 	{
-		openDialogCount++;
-		int response = SwingUtils.showFramedConfirmDialog(null,
-			"Unsaved changes will be lost!\r\nWould you like to save now?\r\n",
-			"Warning", JOptionPane.YES_NO_CANCEL_OPTION);
-		openDialogCount--;
+		int choice = SwingUtils.getConfirmDialog()
+			.setParent(this)
+			.setCounter(openDialogCount)
+			.setTitle("Warning")
+			.setMessage("Unsaved changes will be lost!", "Would you like to save now?")
+			.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
+			.choose();
 
-		switch (response) {
+		switch (choice) {
 			case JOptionPane.YES_OPTION:
 				editor.action_SaveMap();
 			case JOptionPane.NO_OPTION:
@@ -422,13 +434,15 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 
 	private boolean promptSaveShading()
 	{
-		openDialogCount++;
-		int response = SwingUtils.showFramedConfirmDialog(null,
-			"Sprite shading data was changed!\r\nWould you like to save now?\r\n",
-			"Warning", JOptionPane.YES_NO_CANCEL_OPTION);
-		openDialogCount--;
+		int choice = SwingUtils.getConfirmDialog()
+			.setParent(this)
+			.setCounter(openDialogCount)
+			.setTitle("Warning")
+			.setMessage("Sprite shading data was changed!", "Would you like to save now?")
+			.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
+			.choose();
 
-		switch (response) {
+		switch (choice) {
 			case JOptionPane.YES_OPTION:
 				editor.action_SaveShading();
 			case JOptionPane.NO_OPTION:
@@ -1282,9 +1296,9 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 	private void prompt_OpenMap()
 	{
 		if (!editor.map.modified || promptForSave()) {
-			openDialogCount++;
+			openDialogCount.increment();
 			File mapFile = SelectMapDialog.showPrompt();
-			openDialogCount--;
+			openDialogCount.decrement();
 
 			if (mapFile != null) {
 				editor.doNextFrame(() -> {
@@ -1308,9 +1322,9 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 
 	private void prompt_SaveMapAs()
 	{
-		openDialogCount++;
+		openDialogCount.increment();
 		File newMapFile = SelectMapDialog.requestNewMapFile();
-		openDialogCount--;
+		openDialogCount.decrement();
 
 		if (newMapFile != null) {
 			editor.doNextFrame(() -> {
@@ -1321,9 +1335,9 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 
 	private void prompt_LoadTextureArchive()
 	{
-		openDialogCount++;
+		openDialogCount.increment();
 		File texFile = SelectTexDialog.showPrompt();
-		openDialogCount--;
+		openDialogCount.decrement();
 
 		if (texFile != null) {
 			String texName = FilenameUtils.getBaseName(texFile.getName());
@@ -1336,9 +1350,9 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 
 	private void prompt_ChangeBackground()
 	{
-		openDialogCount++;
+		openDialogCount.increment();
 		File bgFile = SelectBackgroundDialog.showPrompt();
-		openDialogCount--;
+		openDialogCount.decrement();
 
 		if (bgFile != null) {
 			editor.doNextFrame(() -> {
@@ -1356,12 +1370,12 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 
 	public void prompt_ImportObjects(MapObjectNode<? extends MapObject> node)
 	{
-		openDialogCount++;
+		openDialogCount.increment();
 		if (importFileChooser.prompt() == ChooseDialogResult.APPROVE) {
 			File f = importFileChooser.getSelectedFile();
 			editor.map.importFromFile(f, node);
 		}
-		openDialogCount--;
+		openDialogCount.decrement();
 	}
 
 	private void prompt_ExportObjects()
@@ -1371,12 +1385,12 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 		if (selection.isEmpty())
 			return;
 
-		openDialogCount++;
+		openDialogCount.increment();
 		if (exportFileChooser.prompt() == ChooseDialogResult.APPROVE) {
 			File f = exportFileChooser.getSelectedFile();
 			editor.map.exportToFile(f);
 		}
-		openDialogCount--;
+		openDialogCount.decrement();
 	}
 
 	public void prompt_EditTexPanner(TexturePanner panner)
@@ -1417,11 +1431,16 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 
 		transformSelectionPanel.setSelection(selection);
 
-		openDialogCount++;
-		int userAction = SwingUtils.showFramedConfirmDialog(this, transformSelectionPanel, "Transform Selection", JOptionPane.PLAIN_MESSAGE);
-		openDialogCount--;
+		int choice = SwingUtils.getConfirmDialog()
+			.setParent(this)
+			.setCounter(openDialogCount)
+			.setTitle("Transform Selection")
+			.setMessage(transformSelectionPanel)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose();
 
-		if (userAction == JOptionPane.YES_OPTION) {
+		if (choice == JOptionPane.YES_OPTION) {
 			final TransformMatrix m = transformSelectionPanel.createTransformMatrix();
 			if (m != null) {
 				editor.doNextFrame(() -> {
@@ -1435,11 +1454,16 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 	{
 		SetPositionPanel panel = new SetPositionPanel(x, y, z);
 
-		openDialogCount++;
-		int userAction = SwingUtils.showFramedConfirmDialog(this, panel, "Set Position", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-		openDialogCount--;
+		int choice = SwingUtils.getConfirmDialog()
+			.setParent(this)
+			.setCounter(openDialogCount)
+			.setTitle("Set Position")
+			.setMessage(panel)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose();
 
-		if (userAction == JOptionPane.YES_OPTION) {
+		if (choice == JOptionPane.YES_OPTION) {
 			return panel.getVector();
 		}
 		else {
@@ -1564,12 +1588,16 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 
 	public void prompt_CreateMarker(MapObjectNode<Marker> parent)
 	{
-		openDialogCount++;
-		int userAction = SwingUtils.showFramedConfirmDialog(this, MarkerOptionsPanel.getInstance(), "Create Marker",
-			JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-		openDialogCount--;
+		int choice = SwingUtils.getConfirmDialog()
+			.setParent(this)
+			.setCounter(openDialogCount)
+			.setTitle("Create Marker")
+			.setMessage(MarkerOptionsPanel.getInstance())
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose();
 
-		if (userAction == JOptionPane.OK_OPTION) {
+		if (choice == JOptionPane.OK_OPTION) {
 			editor.doNextFrame(() -> {
 				editor.action_CreateMarker(
 					MarkerOptionsPanel.getMarkerName(),
@@ -1581,12 +1609,16 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 
 	private void prompt_GenerateUV()
 	{
-		openDialogCount++;
-		int userAction = SwingUtils.showFramedConfirmDialog(this, uvOptionsPanel, "UV Projection Options",
-			JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-		openDialogCount--;
+		int choice = SwingUtils.getConfirmDialog()
+			.setParent(this)
+			.setCounter(openDialogCount)
+			.setTitle("UV Projection Options")
+			.setMessage(uvOptionsPanel)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose();
 
-		if (userAction == JOptionPane.OK_OPTION) {
+		if (choice == JOptionPane.OK_OPTION) {
 			final UVGenerator gen = uvOptionsPanel.getUVGenerator();
 			editor.doNextFrame(() -> {
 				editor.action_GenerateUVs(gen);
@@ -1596,21 +1628,26 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 
 	public void prompt_ConfirmDialog(Object message, String title, Runnable action)
 	{
-		openDialogCount++;
-		int userAction = SwingUtils.showFramedConfirmDialog(this, message, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-		openDialogCount--;
+		int choice = SwingUtils.getConfirmDialog()
+			.setParent(this)
+			.setCounter(openDialogCount)
+			.setTitle(title)
+			.setMessage(message)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose();
 
-		if (userAction == JOptionPane.OK_OPTION) {
+		if (choice == JOptionPane.OK_OPTION) {
 			action.run();
 		}
 	}
 
 	private void prompt_ChooseColor()
 	{
-		openDialogCount++;
+		openDialogCount.increment();
 		Color c = null;
 		c = JColorChooser.showDialog(this, "Choose Color", c);
-		openDialogCount--;
+		openDialogCount.decrement();
 
 		if (c != null) {
 			PaintManager.setSelectedColor(c);
@@ -1618,21 +1655,15 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 		}
 	}
 
-	public void notify_OpenDialog()
-	{
-		openDialogCount++;
-	}
-
-	public void notify_CloseDialog()
-	{
-		openDialogCount--;
-	}
-
 	private void showControls()
 	{
-		openDialogCount++;
-		SwingUtils.showFramedMessageDialog(this, new ShorcutListPanel(), "Controls and Shortcuts", JOptionPane.PLAIN_MESSAGE);
-		openDialogCount--;
+		SwingUtils.getMessageDialog()
+			.setParent(this)
+			.setCounter(openDialogCount)
+			.setTitle("Controls and Shortcuts")
+			.setMessage(new MapShortcutsPanel())
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.show();
 	}
 
 	private void showPreferences()
@@ -1643,10 +1674,14 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 		PreferencesPanel preferences = new PreferencesPanel();
 		preferences.setValues(editor.editorConfig);
 
-		openDialogCount++;
-		int choice = SwingUtils.showFramedConfirmDialog(this, preferences, "Editor Preferences", JOptionPane.OK_CANCEL_OPTION,
-			JOptionPane.PLAIN_MESSAGE);
-		openDialogCount--;
+		int choice = SwingUtils.getConfirmDialog()
+			.setParent(this)
+			.setCounter(openDialogCount)
+			.setTitle("Editor Preferences")
+			.setMessage(preferences)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose();
 
 		if (choice == JOptionPane.OK_OPTION) {
 			preferences.getValues(editor.editorConfig);

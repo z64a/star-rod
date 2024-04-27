@@ -8,12 +8,12 @@ import java.util.List;
 import app.input.Line;
 import game.message.MessageAnim;
 
-public class StringTokenizer
+public class MessageTokenizer
 {
 	public static void main(String[] args)
 	{
 		String text = "%This [is] [[a] [] TE\\\\\\ST[b";
-		(new StringTokenizer(text)).print();
+		(new MessageTokenizer(text)).print();
 	}
 
 	private void print()
@@ -28,20 +28,20 @@ public class StringTokenizer
 
 	public static ArrayList<Sequence> tokenize(String text)
 	{
-		return new StringTokenizer(text).sequences;
+		return new MessageTokenizer(text).sequences;
 	}
 
 	public static ArrayList<Sequence> tokenize(List<Line> lines)
 	{
-		return new StringTokenizer(lines).sequences;
+		return new MessageTokenizer(lines).sequences;
 	}
 
-	private StringTokenizer(String text)
+	private MessageTokenizer(String text)
 	{
 		add(text, null);
 	}
 
-	private StringTokenizer(List<Line> lines)
+	private MessageTokenizer(List<Line> lines)
 	{
 		for (Line line : lines)
 			add(line.str, line);

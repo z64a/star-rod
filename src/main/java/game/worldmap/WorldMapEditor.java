@@ -667,8 +667,14 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 	private void showControls()
 	{
 		incrementDialogsOpen();
-		SwingUtils.showFramedMessageDialog(getFrame(), new ShorcutListPanel(),
-			"Controls and Shortcuts", JOptionPane.PLAIN_MESSAGE);
+
+		SwingUtils.getMessageDialog()
+			.setParent(getFrame())
+			.setTitle("Controls and Shortcuts")
+			.setMessage(new WorldShortcutsPanel())
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.show();
+
 		decrementDialogsOpen();
 	}
 

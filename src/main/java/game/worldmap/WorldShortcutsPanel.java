@@ -7,9 +7,9 @@ import javax.swing.JPanel;
 
 import net.miginfocom.swing.MigLayout;
 
-public class ShorcutListPanel extends JPanel
+public class WorldShortcutsPanel extends JPanel
 {
-	public ShorcutListPanel()
+	public WorldShortcutsPanel()
 	{
 		setLayout(new MigLayout("fill", "[45%]32[45%]"));
 

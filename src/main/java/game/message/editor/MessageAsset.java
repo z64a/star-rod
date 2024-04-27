@@ -16,19 +16,17 @@ import game.message.Message;
 import game.message.StringEncoder;
 import util.Logger;
 
-public class MessageGroup
+public class MessageAsset
 {
 	public AssetHandle asset;
 	public List<Message> messages = null;
-	public final int index;
 
 	public boolean hasModified;
 	public boolean hasError;
 
-	public MessageGroup(AssetHandle asset, int index)
+	public MessageAsset(AssetHandle asset)
 	{
 		this.asset = asset;
-		this.index = index;
 		reload();
 	}
 
@@ -43,41 +41,9 @@ public class MessageGroup
 
 		int msgIndex = 0;
 		for (Message msg : messages) {
-			msg.section = this.index;
 			msg.index = msgIndex++;
 		}
 	}
-
-	/*
-	public void saveChanges()
-	{
-		AssetHandle saveAsset = AssetManager.getTopLevel(asset);
-
-		try (PrintWriter pw = IOUtils.getBufferedPrintWriter(saveAsset)) {
-			for (Message msg : strings) {
-				pw.println("#message:" + msg.name);
-				pw.println("{");
-				msg.sanitize();
-				String[] lines = msg.getMarkup().split("\r?\n");
-				for (String line : lines) {
-					pw.println(msg.leadingTabs + line);
-				}
-				pw.println("}");
-				pw.println("");
-			}
-
-			asset = saveAsset;
-			hasModified = false;
-			for (Message msg : strings) {
-				msg.modified = false;
-			}
-		}
-		catch (IOException e) {
-			Logger.logError("Failed to save " + asset.getName());
-			Logger.printStackTrace(e);
-		}
-	}
-	*/
 
 	public void saveChanges()
 	{
@@ -101,7 +67,6 @@ public class MessageGroup
 		linesOut = new ArrayList<>((int) (linesIn.size() * 1.2));
 		int currentLine = 0;
 
-		//TODO ensure strings are sorted
 		for (Message msg : messages) {
 			if (msg.startLineNum <= 0) {
 				continue;
@@ -158,7 +123,7 @@ public class MessageGroup
 
 	private void writeString(Message msg, List<String> linesOut)
 	{
-		linesOut.add("#message:" + msg.name);
+		linesOut.add(String.format("#message:%02X:(%s)", msg.section, msg.name));
 		linesOut.add("{");
 
 		msg.sanitize();

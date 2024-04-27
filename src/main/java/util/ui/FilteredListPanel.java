@@ -52,14 +52,14 @@ public abstract class FilteredListPanel<T> extends JPanel
 		    	if (evt.getButton() != MouseEvent.BUTTON1) {
 		    		return;
 		    	}
-
+		
 		    	if (evt.getClickCount() == 1) {
 		    		Rectangle rect = list.getCellBounds(0, list.getLastVisibleIndex());
 		        	if (rect != null && !rect.contains(evt.getPoint())) {
 		        		list.clearSelection();
 		        	}
 		    	}
-
+		
 		        if (evt.getClickCount() == 2) {
 		        	Rectangle rect = list.getCellBounds(0, list.getLastVisibleIndex());
 		        	if (rect != null && rect.contains(evt.getPoint())) {
@@ -156,4 +156,9 @@ public abstract class FilteredListPanel<T> extends JPanel
 
 	public T getSelected()
 	{ return list.getSelectedValue(); }
+
+	public void setSelected(T value)
+	{
+		list.setSelectedValue(value, true);
+	}
 }

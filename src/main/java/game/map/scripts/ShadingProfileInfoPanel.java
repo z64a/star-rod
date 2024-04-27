@@ -90,10 +90,10 @@ public class ShadingProfileInfoPanel extends MapInfoPanel<ShadingProfile>
 			if (getData() == null)
 				return;
 
-			SwingGUI.instance().notify_OpenDialog();
+			SwingGUI.instance().getDialogCounter().increment();
 			Color c = new Color(getData().color.get());
 			c = JColorChooser.showDialog(null, "Choose Ambient Color", c);
-			SwingGUI.instance().notify_CloseDialog();
+			SwingGUI.instance().getDialogCounter().decrement();
 
 			if (c != null)
 				MapEditor.execute(new SetAmbientColor(getData(), c.getRGB()));
@@ -119,11 +119,11 @@ public class ShadingProfileInfoPanel extends MapInfoPanel<ShadingProfile>
 		sourceList.addListSelectionListener((e) -> {
 			if(getData() == null)
 				return;
-		
+
 			MapEditor.instance().selectionManager.deselectLightsFromGUI(getData().sources);
 			if(sourceList.getSelectedValue() != null)
 				MapEditor.instance().selectionManager.selectLightsFromGUI(sourceList.getSelectedValue());
-		
+
 		});
 		*/
 

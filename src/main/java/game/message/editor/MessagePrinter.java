@@ -15,10 +15,10 @@ import game.message.StringConstants.StringFunction;
 import game.message.StringConstants.StringStyle;
 import game.message.StringEncoder;
 import game.message.editor.MessageUtil.StringProperties;
-import game.message.editor.StringTokenizer.Sequence;
+import game.message.editor.MessageTokenizer.Sequence;
 import util.MathUtil;
 
-public class StringPrinter
+public class MessagePrinter
 {
 	private MessageEditor editor;
 
@@ -387,7 +387,7 @@ public class StringPrinter
 		}
 	}
 
-	public StringPrinter(MessageEditor editor)
+	public MessagePrinter(MessageEditor editor)
 	{
 		this.editor = editor;
 		setStyle(StringStyle.RIGHT, null); // initialize parameters for default window style

@@ -60,10 +60,10 @@ public class ShadingSourceInfoPanel extends MapInfoPanel<ShadingLightSource>
 			if (getData() == null)
 				return;
 
-			SwingGUI.instance().notify_OpenDialog();
+			SwingGUI.instance().getDialogCounter().increment();
 			Color c = new Color(getData().color.get());
 			c = JColorChooser.showDialog(null, "Choose Ambient Color", c);
-			SwingGUI.instance().notify_CloseDialog();
+			SwingGUI.instance().getDialogCounter().decrement();
 
 			if (c != null)
 				MapEditor.execute(new SetLightColor(getData(), c.getRGB()));

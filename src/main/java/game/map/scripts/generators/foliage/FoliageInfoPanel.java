@@ -440,12 +440,16 @@ public class FoliageInfoPanel extends JPanel implements IShutdownListener
 		SwingGUI gui = MapEditor.instance().gui;
 		FoliageModelEditor editorPanel = new FoliageModelEditor(MapEditor.instance().map, folMdl);
 
-		gui.notify_OpenDialog();
-		int userAction = SwingUtils.showFramedConfirmDialog(gui, editorPanel, "Edit Foliage Model",
-			JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-		gui.notify_CloseDialog();
+		int choice = SwingUtils.getConfirmDialog()
+			.setParent(gui)
+			.setCounter(gui.getDialogCounter())
+			.setTitle("Edit Foliage Model")
+			.setMessage(editorPanel)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose();
 
-		if (userAction == JOptionPane.OK_OPTION)
+		if (choice == JOptionPane.OK_OPTION)
 			MapEditor.execute(folMdl.modelName.mutator(editorPanel.getValue()));
 	}
 
@@ -454,12 +458,16 @@ public class FoliageInfoPanel extends JPanel implements IShutdownListener
 		SwingGUI gui = MapEditor.instance().gui;
 		FoliageVectorEditor editorPanel = new FoliageVectorEditor(MapEditor.instance().map, folVec);
 
-		gui.notify_OpenDialog();
-		int userAction = SwingUtils.showFramedConfirmDialog(gui, editorPanel, "Edit Foliage Model",
-			JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-		gui.notify_CloseDialog();
+		int choice = SwingUtils.getConfirmDialog()
+			.setParent(gui)
+			.setCounter(gui.getDialogCounter())
+			.setTitle("Edit Foliage Model")
+			.setMessage(editorPanel)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose();
 
-		if (userAction == JOptionPane.OK_OPTION)
+		if (choice == JOptionPane.OK_OPTION)
 			MapEditor.execute(folVec.modelName.mutator(editorPanel.getValue()));
 	}
 
@@ -468,12 +476,16 @@ public class FoliageInfoPanel extends JPanel implements IShutdownListener
 		SwingGUI gui = MapEditor.instance().gui;
 		FoliageDropEditor editorPanel = new FoliageDropEditor(MapEditor.instance().map, folDrop);
 
-		gui.notify_OpenDialog();
-		int userAction = SwingUtils.showFramedConfirmDialog(gui, editorPanel, "Edit Foliage Drop",
-			JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-		gui.notify_CloseDialog();
+		int choice = SwingUtils.getConfirmDialog()
+			.setParent(gui)
+			.setCounter(gui.getDialogCounter())
+			.setTitle("Edit Foliage Model")
+			.setMessage(editorPanel)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose();
 
-		if (userAction == JOptionPane.OK_OPTION)
+		if (choice == JOptionPane.OK_OPTION)
 			MapEditor.execute(new EditFoliageDrop(folDrop, editorPanel.getEditedDrop()));
 	}
 }
