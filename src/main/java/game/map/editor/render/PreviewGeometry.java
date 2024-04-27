@@ -37,7 +37,9 @@ public class PreviewGeometry
 	}
 
 	public final void setUpdate(Runnable runnable)
-	{ updateFunc = runnable; }
+	{
+		updateFunc = runnable;
+	}
 
 	public final void update()
 	{

@@ -214,7 +214,9 @@ public class MouseInput implements MouseListener, MouseWheelListener
 	}
 
 	public boolean isGrabbed()
-	{ return grabbed; }
+	{
+		return grabbed;
+	}
 
 	public void update(MouseManagerListener listener, boolean hasFocus)
 	{
@@ -450,13 +452,19 @@ public class MouseInput implements MouseListener, MouseWheelListener
 	}
 
 	public boolean isHoldingLMB()
-	{ return holding[MouseButton.LEFT.id]; }
+	{
+		return holding[MouseButton.LEFT.id];
+	}
 
 	public boolean isHoldingRMB()
-	{ return holding[MouseButton.RIGHT.id]; }
+	{
+		return holding[MouseButton.RIGHT.id];
+	}
 
 	public boolean isHoldingMMB()
-	{ return holding[MouseButton.MIDDLE.id]; }
+	{
+		return holding[MouseButton.MIDDLE.id];
+	}
 
 	public boolean hasLocation()
 	{
@@ -464,17 +472,27 @@ public class MouseInput implements MouseListener, MouseWheelListener
 	}
 
 	public int getPosX()
-	{ return lastPosX; }
+	{
+		return lastPosX;
+	}
 
 	public int getPosY()
-	{ return height - lastPosY; }
+	{
+		return height - lastPosY;
+	}
 
 	public int getFrameDX()
-	{ return frameDX; }
+	{
+		return frameDX;
+	}
 
 	public int getFrameDY()
-	{ return frameDY; }
+	{
+		return frameDY;
+	}
 
 	public int getFrameDW()
-	{ return frameDW; }
+	{
+		return frameDW;
+	}
 }

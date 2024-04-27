@@ -140,10 +140,14 @@ public class ColorSlider extends JComponent
 	}
 
 	public int getMaxValue()
-	{ return max; }
+	{
+		return max;
+	}
 
 	public int getValue()
-	{ return slider.getValue(); }
+	{
+		return slider.getValue();
+	}
 
 	public void setValue(int value)
 	{

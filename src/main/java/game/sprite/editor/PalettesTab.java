@@ -382,7 +382,9 @@ public class PalettesTab extends JPanel
 	}
 
 	public SpritePalette getOverridePalette()
-	{ return paletteList.list.getSelectedValue(); }
+	{
+		return paletteList.list.getSelectedValue();
+	}
 
 	private void setSelectedColor(Color c)
 	{

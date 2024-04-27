@@ -130,7 +130,9 @@ public class Extractor
 	}
 
 	public String getFileText()
-	{ return fileText; }
+	{
+		return fileText;
+	}
 
 	public void setFileText(String newText)
 	{

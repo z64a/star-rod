@@ -145,5 +145,7 @@ public class InputFileException extends RuntimeException
 	}
 
 	public File getSourceFile()
-	{ return source; }
+	{
+		return source;
+	}
 }

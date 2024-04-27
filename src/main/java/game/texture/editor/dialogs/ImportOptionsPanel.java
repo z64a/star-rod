@@ -26,5 +26,7 @@ public class ImportOptionsPanel extends JPanel
 	}
 
 	public TileFormat getFormat()
-	{ return (TileFormat) fmtComboBox.getSelectedItem(); }
+	{
+		return (TileFormat) fmtComboBox.getSelectedItem();
+	}
 }

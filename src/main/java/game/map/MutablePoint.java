@@ -74,7 +74,9 @@ public class MutablePoint
 	}
 
 	public boolean isTransforming()
-	{ return transforming; }
+	{
+		return transforming;
+	}
 
 	public void roundTemp(int dg)
 	{
@@ -129,31 +131,49 @@ public class MutablePoint
 	}
 
 	public int getX()
-	{ return transforming ? tempx : x; }
+	{
+		return transforming ? tempx : x;
+	}
 
 	public int getY()
-	{ return transforming ? tempy : y; }
+	{
+		return transforming ? tempy : y;
+	}
 
 	public int getZ()
-	{ return transforming ? tempz : z; }
+	{
+		return transforming ? tempz : z;
+	}
 
 	public int getBaseX()
-	{ return x; }
+	{
+		return x;
+	}
 
 	public int getBaseY()
-	{ return y; }
+	{
+		return y;
+	}
 
 	public int getBaseZ()
-	{ return z; }
+	{
+		return z;
+	}
 
 	public int getTempX()
-	{ return tempx; }
+	{
+		return tempx;
+	}
 
 	public int getTempY()
-	{ return tempy; }
+	{
+		return tempy;
+	}
 
 	public int getTempZ()
-	{ return tempz; }
+	{
+		return tempz;
+	}
 
 	public void set(int axis, int val)
 	{
@@ -173,22 +193,34 @@ public class MutablePoint
 	}
 
 	public void setX(int val)
-	{ x = val; }
+	{
+		x = val;
+	}
 
 	public void setY(int val)
-	{ y = val; }
+	{
+		y = val;
+	}
 
 	public void setZ(int val)
-	{ z = val; }
+	{
+		z = val;
+	}
 
 	public void setTempX(int val)
-	{ tempx = val; }
+	{
+		tempx = val;
+	}
 
 	public void setTempY(int val)
-	{ tempy = val; }
+	{
+		tempy = val;
+	}
 
 	public void setTempZ(int val)
-	{ tempz = val; }
+	{
+		tempz = val;
+	}
 
 	public Vector3f getVector()
 	{
@@ -204,7 +236,9 @@ public class MutablePoint
 	}
 
 	public PointBackup getBackup()
-	{ return new PointBackup(this); }
+	{
+		return new PointBackup(this);
+	}
 
 	public static class PointBackup
 	{

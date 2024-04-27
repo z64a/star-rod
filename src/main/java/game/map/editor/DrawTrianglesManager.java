@@ -59,7 +59,9 @@ public class DrawTrianglesManager
 	}
 
 	public boolean isActive()
-	{ return drawMode != DrawMode.Inactive; }
+	{
+		return drawMode != DrawMode.Inactive;
+	}
 
 	private void reset()
 	{

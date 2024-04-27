@@ -69,5 +69,7 @@ public class SetKeyGB extends BaseF3DEX2
 
 	@Override
 	public String getString()
-	{ return String.format("%-16s (%f, %f, %d`, %d`, %d`, %d`)", getName(), W, X, C, S, D, T); }
+	{
+		return String.format("%-16s (%f, %f, %d`, %d`, %d`, %d`)", getName(), W, X, C, S, D, T);
+	}
 }

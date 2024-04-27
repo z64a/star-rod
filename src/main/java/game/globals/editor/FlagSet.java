@@ -56,13 +56,19 @@ public class FlagSet
 	}
 
 	public List<String> getSelectedReal()
-	{ return getNamesImpl("", false, false); }
+	{
+		return getNamesImpl("", false, false);
+	}
 
 	public List<String> getSelectedDisp()
-	{ return getNamesImpl(prefix, changeCasing, false); }
+	{
+		return getNamesImpl(prefix, changeCasing, false);
+	}
 
 	public List<String> getAllReal()
-	{ return getNamesImpl("", false, true); }
+	{
+		return getNamesImpl("", false, true);
+	}
 
 	public String getYamlOut()
 	{
@@ -77,7 +83,9 @@ public class FlagSet
 	}
 
 	public List<String> getAllDisp()
-	{ return getNamesImpl(prefix, changeCasing, true); }
+	{
+		return getNamesImpl(prefix, changeCasing, true);
+	}
 
 	private List<String> getNamesImpl(String prefix, boolean shouldLower, boolean all)
 	{
@@ -123,8 +131,12 @@ public class FlagSet
 	}
 
 	public int getBits()
-	{ return flagBits; }
+	{
+		return flagBits;
+	}
 
 	public void setBits(int bits)
-	{ flagBits = bits; }
+	{
+		flagBits = bits;
+	}
 }

@@ -40,16 +40,24 @@ public class CameraController
 	float Cz = 0;
 
 	public Vector3f getPosition()
-	{ return currentPos; }
+	{
+		return currentPos;
+	}
 
 	public Vector3f getRotation()
-	{ return new Vector3f(currentPitch, currentYaw, 0); }
+	{
+		return new Vector3f(currentPitch, currentYaw, 0);
+	}
 
 	public Vector3f getSamplePosition()
-	{ return new Vector3f(samplePosition); }
+	{
+		return new Vector3f(samplePosition);
+	}
 
 	public Vector3f getTargetPosition()
-	{ return new Vector3f(targetPos); }
+	{
+		return new Vector3f(targetPos);
+	}
 
 	public void update(CameraZoneData data, Vector3f position, boolean allowVertical, double deltaTime)
 	{

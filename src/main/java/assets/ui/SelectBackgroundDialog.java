@@ -172,8 +172,12 @@ public class SelectBackgroundDialog extends JDialog
 	}
 
 	private void setValue(BackgroundAsset object)
-	{ selectedObject = object; }
+	{
+		selectedObject = object;
+	}
 
 	private File getSelectedFile()
-	{ return selectedObject; }
+	{
+		return selectedObject;
+	}
 }

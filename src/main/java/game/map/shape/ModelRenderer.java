@@ -157,11 +157,15 @@ public abstract class ModelRenderer
 
 		@Override
 		public RenderMode getRenderMode()
-		{ return mdl.renderMode.get(); }
+		{
+			return mdl.renderMode.get();
+		}
 
 		@Override
 		public Vector3f getCenterPoint()
-		{ return mdl.AABB.getCenter(); }
+		{
+			return mdl.AABB.getCenter();
+		}
 
 		@Override
 		public void render(RenderingOptions opts, BaseCamera camera)
@@ -171,10 +175,14 @@ public abstract class ModelRenderer
 
 		@Override
 		public void setDepth(int normalizedDepth)
-		{ depth = normalizedDepth; }
+		{
+			depth = normalizedDepth;
+		}
 
 		@Override
 		public int getDepth()
-		{ return depth; }
+		{
+			return depth;
+		}
 	}
 }

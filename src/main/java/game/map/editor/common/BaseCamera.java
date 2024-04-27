@@ -47,10 +47,14 @@ public abstract class BaseCamera
 	}
 
 	public float getPitch()
-	{ return pitch; }
+	{
+		return pitch;
+	}
 
 	public float getYaw()
-	{ return yaw; }
+	{
+		return yaw;
+	}
 
 	public int glViewMinX = 0;
 	public int glViewMinY = 0;

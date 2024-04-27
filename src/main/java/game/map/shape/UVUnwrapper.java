@@ -83,12 +83,12 @@ public class UVUnwrapper
 		uvList.endDirectTransformation();
 
 		/*
-
+		
 		ArrayList<Vertex> vertexList = getUniqueVertices(triangleList);
 		ArrayList<float[]> forceList = new ArrayList<>(vertexList.size());
 		for(int i = 0; i < vertexList.size(); i++)
 			forceList.add(new float[] {0, 0});
-
+		
 		//
 		Selection<UV> uvList = new Selection<>();
 		BoundingBox aabb = new BoundingBox();
@@ -99,31 +99,31 @@ public class UVUnwrapper
 		}
 		Vector3f center = aabb.getCenter();
 		uvList.startDirectTransformation();
-
+		
 		// initial state from spherical projection
 		int[] coords = new int[3];
-
+		
 		for(Vertex v : vertexList)
 		{
 			coords[0] = v.getPosition().getX() - (int)center.x;
 			coords[1] = v.getPosition().getY() - (int)center.y;
 			coords[2] = v.getPosition().getZ() - (int)center.z;
-
+		
 			int radius = (int)Math.sqrt(coords[0]*coords[0] + coords[1]*coords[1]);
 			int azimuth = 180 + (int)Math.toDegrees(Math.atan2(coords[1], coords[0]));
 			int polar = 180 + (int)Math.toDegrees(Math.atan2(radius, coords[2]));
-
+		
 			v.uv.setPosition(8 * azimuth, 8 * polar);
 		}
-
+		
 		float kE = 1.0f;
 		float kA = 1.0f;
-
+		
 		int maxIterations = 100;
-
+		
 		float maxForce = 0.0f;
 		float forceTolerance = 0.0f;
-
+		
 		for(int i = 0; i < maxIterations; i++)
 		{
 			for(UV uv : uvList.list)
@@ -131,22 +131,22 @@ public class UVUnwrapper
 				uv.force[0] = 0;
 				uv.force[1] = 0;
 			}
-
+		
 			for(UnwrapEdge e : edgeList)
 				e.addForces(kE);
-
+		
 			for(UnwrapFace f : faceList)
 				f.addForces(kA);
-
+		
 			for(UV uv : uvList.list)
 			{
 				uv.setPosition(uv.getU() + uv.force[0], uv.getV() + uv.force[1]);
 			}
-
+		
 			if(maxForce < forceTolerance)
 				break;
 		}
-
+		
 		uvList.endDirectTransformation();
 		*/
 	}

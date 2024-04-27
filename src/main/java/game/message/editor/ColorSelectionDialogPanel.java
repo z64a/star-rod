@@ -19,7 +19,9 @@ public class ColorSelectionDialogPanel extends JDialog
 	private static ImageIcon[] previews;
 
 	public static void setButtonIcons(ImageIcon[] images)
-	{ previews = images; }
+	{
+		previews = images;
+	}
 
 	private ColorSelectionDialogPanel(JFrame parent)
 	{

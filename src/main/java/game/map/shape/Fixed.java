@@ -48,10 +48,14 @@ public final class Fixed implements Comparable<Fixed>
 	}
 
 	public short getWholePart()
-	{ return (short) (v >> 16); }
+	{
+		return (short) (v >> 16);
+	}
 
 	public short getFracPart()
-	{ return (short) v; }
+	{
+		return (short) v;
+	}
 
 	@Override
 	public String toString()

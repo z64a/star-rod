@@ -55,5 +55,7 @@ public abstract class BasicEditorCommand
 	}
 
 	public STATE getState()
-	{ return state; }
+	{
+		return state;
+	}
 }

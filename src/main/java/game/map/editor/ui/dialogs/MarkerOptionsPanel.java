@@ -77,5 +77,7 @@ public class MarkerOptionsPanel extends JPanel implements ActionListener
 	}
 
 	public static MarkerType getMarkerType()
-	{ return instance.markerType; }
+	{
+		return instance.markerType;
+	}
 }

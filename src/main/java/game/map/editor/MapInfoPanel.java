@@ -15,7 +15,9 @@ public abstract class MapInfoPanel<T extends UpdateProvider> extends JPanel impl
 	}
 
 	public final T getData()
-	{ return data; }
+	{
+		return data;
+	}
 
 	public final void setData(T newData)
 	{

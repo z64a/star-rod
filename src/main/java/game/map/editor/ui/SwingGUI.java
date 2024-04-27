@@ -1253,29 +1253,29 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 			// following commands are forwarded directly to the editor
 			/*
 			case SAVE_MAP:
-
+			
 			case COMPILE_SHAPE:
 			case COMPILE_COLLISION:
-
+			
 			case SHOW_MODELS:
 			case SHOW_COLLIDERS:
 			case SHOW_ZONES:
 			case SHOW_MARKERS:
-
+			
 			case RESET_CAMERAS:
 			case RESET_LAYOUT:
-
+			
 			case SEPARATE_VERTS:
 			case FUSE_VERTS:
 			case JOIN_MODELS:
 			case SPLIT_MODEL:
-
+			
 			case CONVERT_COLLIDER_TO_ZONE:
 			case CONVERT_ZONE_TO_COLLIDER:
-
+			
 			case CREATE_COLLIDER_GROUP:
 			case CREATE_ZONE_GROUP:
-
+			
 			case DEBUG_RECOMPUTE_BOUNDING_BOXES:
 			 */
 			default:

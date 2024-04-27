@@ -23,7 +23,9 @@ public class MapObjectNode<T extends MapObject>
 	}
 
 	public MapObjectType getObjectType()
-	{ return getUserObject().getObjectType(); }
+	{
+		return getUserObject().getObjectType();
+	}
 
 	@Override
 	public void add(MutableTreeNode child)
@@ -43,7 +45,9 @@ public class MapObjectNode<T extends MapObject>
 	@SuppressWarnings("unchecked")
 	@Override
 	public MapObjectNode<T> getParent()
-	{ return (MapObjectNode<T>) super.getParent(); }
+	{
+		return (MapObjectNode<T>) super.getParent();
+	}
 
 	// cuts down on the amount of casting required
 	@SuppressWarnings("unchecked")
@@ -61,7 +65,9 @@ public class MapObjectNode<T extends MapObject>
 	@SuppressWarnings("unchecked")
 	@Override
 	public T getUserObject()
-	{ return (T) super.getUserObject(); }
+	{
+		return (T) super.getUserObject();
+	}
 
 	/**
 	 * It is assumed that any node which allows children is a group and
@@ -69,7 +75,9 @@ public class MapObjectNode<T extends MapObject>
 	 */
 	@Override
 	public boolean getAllowsChildren()
-	{ return getUserObject().allowsChildren(); }
+	{
+		return getUserObject().allowsChildren();
+	}
 
 	public int reassignIndexDepthFirstPost(int current)
 	{
@@ -98,7 +106,9 @@ public class MapObjectNode<T extends MapObject>
 	}
 
 	public int getTreeIndex()
-	{ return treeIndex; }
+	{
+		return treeIndex;
+	}
 
 	@Override
 	public int compareTo(MapObjectNode<T> other)

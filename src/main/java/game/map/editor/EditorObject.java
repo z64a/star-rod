@@ -39,7 +39,9 @@ public abstract class EditorObject extends MapObject
 
 	@Override
 	public MapObjectType getObjectType()
-	{ return MapObjectType.EDITOR; }
+	{
+		return MapObjectType.EDITOR;
+	}
 
 	// ==================================================
 	// picking
@@ -73,7 +75,9 @@ public abstract class EditorObject extends MapObject
 
 	@Override
 	public AbstractMesh getMesh()
-	{ return null; }
+	{
+		return null;
+	}
 
 	@Override
 	public void updateMeshHierarchy()

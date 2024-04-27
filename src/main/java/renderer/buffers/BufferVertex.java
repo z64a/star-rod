@@ -26,10 +26,14 @@ public final class BufferVertex
 	}
 
 	public int getIndex()
-	{ return index; }
+	{
+		return index;
+	}
 
 	protected void setIndex(int newIndex)
-	{ index = newIndex; }
+	{
+		index = newIndex;
+	}
 
 	public BufferVertex setPosition(float x, float y, float z)
 	{

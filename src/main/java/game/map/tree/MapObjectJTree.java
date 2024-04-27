@@ -74,7 +74,7 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 	{
 		/*
 		private static final Dimension DEFAULT_SIZE = new Dimension(300,20);
-
+		
 		@Override
 		public Dimension getPreferredSize()
 		{
@@ -489,7 +489,9 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 
 			@Override
 			public DataFlavor[] getTransferDataFlavors()
-			{ return flavors; }
+			{
+				return flavors;
+			}
 
 			@Override
 			public boolean isDataFlavorSupported(DataFlavor flavor)

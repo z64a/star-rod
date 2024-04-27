@@ -46,7 +46,7 @@ public class TexturesAsset extends AssetHandle
 				sizeMap.put(getImageSize(imgFile), imgFile);
 			}
 			images = sizeMap.values();
-
+			
 			List<File> list = new ArrayList<>(images);
 			Collections.reverse(list);
 			*/

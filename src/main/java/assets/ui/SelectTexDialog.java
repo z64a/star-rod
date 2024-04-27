@@ -188,8 +188,12 @@ public class SelectTexDialog extends JDialog
 	}
 
 	private void setValue(TexturesAsset object)
-	{ selectedObject = object; }
+	{
+		selectedObject = object;
+	}
 
 	private File getSelectedFile()
-	{ return selectedObject; }
+	{
+		return selectedObject;
+	}
 }

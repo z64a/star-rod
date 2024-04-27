@@ -125,5 +125,7 @@ public class FoliageDropEditor extends JPanel
 	}
 
 	public FoliageDrop getEditedDrop()
-	{ return drop; }
+	{
+		return drop;
+	}
 }

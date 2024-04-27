@@ -128,7 +128,9 @@ public class SelectionManager
 	}
 
 	public SelectionMode getSelectionMode()
-	{ return selectionMode; }
+	{
+		return selectionMode;
+	}
 
 	public void setSelectionMode(SelectionMode newSelectionMode)
 	{
@@ -285,16 +287,22 @@ public class SelectionManager
 	}
 
 	public void setObjectType(MapObjectType type)
-	{ currentType = type; }
+	{
+		currentType = type;
+	}
 
 	public MapObjectType getObjectType()
-	{ return currentType; }
+	{
+		return currentType;
+	}
 
 	/**
 	 * @return Unfiltered list of all selected MapObjects.
 	 */
 	public List<MapObject> getSelectedObjects()
-	{ return new ArrayList<>(objectSelection.selectableList); }
+	{
+		return new ArrayList<>(objectSelection.selectableList);
+	}
 
 	/**
 	 * @param filterClass
@@ -316,7 +324,9 @@ public class SelectionManager
 	 * @return Unfiltered list of all selected triangles.
 	 */
 	public List<Triangle> getTrianglesFromSelection()
-	{ return getTrianglesFromSelection(MapObject.class); }
+	{
+		return getTrianglesFromSelection(MapObject.class);
+	}
 
 	/**
 	 * @param filterClass
@@ -351,7 +361,9 @@ public class SelectionManager
 	 * @return Unfiltered list of all selected vertices.
 	 */
 	public List<Vertex> getVerticesFromSelection()
-	{ return getVerticesFromSelection(MapObject.class); }
+	{
+		return getVerticesFromSelection(MapObject.class);
+	}
 
 	/**
 	 * @param filterClass
@@ -395,7 +407,9 @@ public class SelectionManager
 	}
 
 	public List<Vertex> getVertices()
-	{ return vertexWorkingSet; }
+	{
+		return vertexWorkingSet;
+	}
 
 	public void generateUVListFromSelectedModel()
 	{
@@ -1879,8 +1893,10 @@ public class SelectionManager
 	*/
 
 	private AbstractCommand getClearVertices()
-	{ return new ModifySelection<>("Clear Vertex Selection",
-		vertexSelection, null, vertexSelection.selectableList); }
+	{
+		return new ModifySelection<>("Clear Vertex Selection",
+			vertexSelection, null, vertexSelection.selectableList);
+	}
 
 	private AbstractCommand getModifyUVs(Iterable<UV> addList, Iterable<UV> removeList)
 	{
@@ -1889,8 +1905,10 @@ public class SelectionManager
 	}
 
 	public AbstractCommand getClearUVs()
-	{ return new ModifySelection<>("Clear UV Selection",
-		uvSelection, null, uvSelection.selectableList); }
+	{
+		return new ModifySelection<>("Clear UV Selection",
+			uvSelection, null, uvSelection.selectableList);
+	}
 
 	public AbstractCommand getModifyPoints(Iterable<SelectablePoint> addList, Iterable<SelectablePoint> removeList)
 	{
@@ -1899,6 +1917,8 @@ public class SelectionManager
 	}
 
 	public AbstractCommand getClearPoints()
-	{ return new ModifySelection<>("Clear Point Selection",
-		pointSelection, null, pointSelection.selectableList); }
+	{
+		return new ModifySelection<>("Clear Point Selection",
+			pointSelection, null, pointSelection.selectableList);
+	}
 }

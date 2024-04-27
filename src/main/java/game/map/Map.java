@@ -327,10 +327,14 @@ public class Map implements XmlSerializable
 	}
 
 	public String getName()
-	{ return name; }
+	{
+		return name;
+	}
 
 	public File getProjDir()
-	{ return projDir; }
+	{
+		return projDir;
+	}
 
 	public void add(MapObject obj)
 	{
@@ -1063,7 +1067,9 @@ public class Map implements XmlSerializable
 		}
 
 		public int getNumObjects()
-		{ return topLevelObjects.size(); }
+		{
+			return topLevelObjects.size();
+		}
 	}
 
 	private <T extends MapObject> void importTree(List<MapObject> topLevelObjects, MapObjectTreeModel<T> prefabTree)

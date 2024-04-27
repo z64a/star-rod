@@ -46,7 +46,9 @@ public class EditableField<T>
 	private static boolean enableCallbacks = false;
 
 	public static void setCallbacksEnabled(boolean enabled)
-	{ enableCallbacks = enabled; }
+	{
+		enableCallbacks = enabled;
+	}
 
 	private EditableField(T initialValue)
 	{
@@ -179,10 +181,14 @@ public class EditableField<T>
 	}
 
 	public boolean isEnabled()
-	{ return enabled; }
+	{
+		return enabled;
+	}
 
 	public void setEnabled(boolean enabled)
-	{ this.enabled = enabled; }
+	{
+		this.enabled = enabled;
+	}
 
 	public AbstractCommand enabler(boolean enabled)
 	{

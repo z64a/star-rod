@@ -43,10 +43,14 @@ public abstract class Themes
 	}
 
 	public static String getCurrentThemeKey()
-	{ return currentTheme.key; }
+	{
+		return currentTheme.key;
+	}
 
 	public static String getCurrentThemeName()
-	{ return currentTheme.name; }
+	{
+		return currentTheme.name;
+	}
 
 	public static List<String> getThemeNames()
 	{

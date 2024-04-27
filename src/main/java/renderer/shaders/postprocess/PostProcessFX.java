@@ -41,7 +41,9 @@ public enum PostProcessFX
 	}
 
 	public int getNumPasses()
-	{ return numPasses; }
+	{
+		return numPasses;
+	}
 
 	// do not include this in constructor! we want to keep shaders lazy-loaded
 	// postprocess shaders can either use different shaders in each pass or switch on the u_pass uniform

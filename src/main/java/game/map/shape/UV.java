@@ -30,10 +30,14 @@ public class UV implements Selectable
 	}
 
 	public short getU()
-	{ return (short) texCoordinate.getX(); }
+	{
+		return (short) texCoordinate.getX();
+	}
 
 	public short getV()
-	{ return (short) texCoordinate.getY(); }
+	{
+		return (short) texCoordinate.getY();
+	}
 
 	public Vector3f toVector()
 	{
@@ -69,7 +73,9 @@ public class UV implements Selectable
 
 	@Override
 	public boolean isTransforming()
-	{ return texCoordinate.isTransforming(); }
+	{
+		return texCoordinate.isTransforming();
+	}
 
 	@Override
 	public void startTransformation()
@@ -101,11 +107,15 @@ public class UV implements Selectable
 
 	@Override
 	public void setSelected(boolean val)
-	{ selected = val; }
+	{
+		selected = val;
+	}
 
 	@Override
 	public boolean isSelected()
-	{ return selected; }
+	{
+		return selected;
+	}
 
 	public UV deepCopy()
 	{

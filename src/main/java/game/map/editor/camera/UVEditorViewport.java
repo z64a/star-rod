@@ -44,7 +44,9 @@ public class UVEditorViewport extends MapEditViewport
 	}
 
 	public void setModel(Model mdl)
-	{ this.mdl = mdl; }
+	{
+		this.mdl = mdl;
+	}
 
 	public boolean setTriangles(List<Triangle> newTriangles)
 	{

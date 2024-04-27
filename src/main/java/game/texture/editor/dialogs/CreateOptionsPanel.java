@@ -50,11 +50,17 @@ public class CreateOptionsPanel extends JPanel
 	}
 
 	public TileFormat getFormat()
-	{ return (TileFormat) fmtComboBox.getSelectedItem(); }
+	{
+		return (TileFormat) fmtComboBox.getSelectedItem();
+	}
 
 	public int getImageWidth()
-	{ return widthModel.getNumber().intValue(); }
+	{
+		return widthModel.getNumber().intValue();
+	}
 
 	public int getImageHeight()
-	{ return heightModel.getNumber().intValue(); }
+	{
+		return heightModel.getNumber().intValue();
+	}
 }

@@ -120,7 +120,9 @@ public class StageExtractor
 	}
 
 	public String getFileText()
-	{ return fileText; }
+	{
+		return fileText;
+	}
 
 	public void setFileText(String newText)
 	{

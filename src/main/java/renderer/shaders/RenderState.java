@@ -202,7 +202,9 @@ public abstract class RenderState
 	}
 
 	public static final float getLineWidth()
-	{ return rec.glLineWidth; }
+	{
+		return rec.glLineWidth;
+	}
 
 	// --------------------------------------------------------------------------
 	// cache point size
@@ -223,7 +225,9 @@ public abstract class RenderState
 	}
 
 	public static final float getPointSize()
-	{ return rec.glPointSize; }
+	{
+		return rec.glPointSize;
+	}
 
 	// --------------------------------------------------------------------------
 	// cache shader program
@@ -289,7 +293,9 @@ public abstract class RenderState
 	}
 
 	public static int getGlobalsUBO()
-	{ return matrixUBO; }
+	{
+		return matrixUBO;
+	}
 
 	// --------------------------------------------------------------------------
 	// global matrix state
@@ -390,10 +396,14 @@ public abstract class RenderState
 	}
 
 	public static int getViewportSizeX()
-	{ return rec.glViewSizeX; }
+	{
+		return rec.glViewSizeX;
+	}
 
 	public static int getViewportSizeY()
-	{ return rec.glViewSizeY; }
+	{
+		return rec.glViewSizeY;
+	}
 
 	// --------------------------------------------------------------------------
 	// global time

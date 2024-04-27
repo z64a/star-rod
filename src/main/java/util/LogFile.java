@@ -26,7 +26,9 @@ public class LogFile implements Logger.Listener, AutoCloseable
 	}
 
 	public File getFile()
-	{ return logFile; }
+	{
+		return logFile;
+	}
 
 	@Override
 	public void post(Message msg)

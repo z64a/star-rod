@@ -9,16 +9,24 @@ public abstract class GlobalsRecord implements GlobalsListable
 
 	@Override
 	public final int getIndex()
-	{ return listIndex; }
+	{
+		return listIndex;
+	}
 
 	public final void setIndex(int index)
-	{ listIndex = index; }
+	{
+		listIndex = index;
+	}
 
 	public final boolean getModified()
-	{ return modified; }
+	{
+		return modified;
+	}
 
 	public final void setModified(boolean value)
-	{ modified = value; }
+	{
+		modified = value;
+	}
 
 	public abstract String getIdentifier(); // assumed to be unqiue
 

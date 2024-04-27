@@ -48,5 +48,7 @@ public class FoliageVectorEditor extends JPanel
 	}
 
 	public String getValue()
-	{ return name; }
+	{
+		return name;
+	}
 }

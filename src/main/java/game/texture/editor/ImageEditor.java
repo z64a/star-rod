@@ -1195,7 +1195,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			else
 				image.draw(mousePixelX, mousePixelY, pickedPixel);
 		}
-
+		
 		if(mouseManager.holdingRMB && mousePixelValid)
 			image.deselect(mousePixelX, mousePixelY);
 			*/

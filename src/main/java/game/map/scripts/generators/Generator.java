@@ -50,7 +50,9 @@ public abstract class Generator implements XmlSerializable, DeepCopyable
 		}
 
 		public String getName()
-		{ return nodeName; }
+		{
+			return nodeName;
+		}
 	}
 
 	public static enum ValidationState

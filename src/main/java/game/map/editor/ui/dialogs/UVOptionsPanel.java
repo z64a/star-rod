@@ -25,16 +25,24 @@ public class UVOptionsPanel extends JPanel
 	private final LabeledDoubleSpinner scaleSpinner;
 
 	public UVGenerator getUVGenerator()
-	{ return new UVGenerator(projectionType, projectionAxis, (float) scaleSpinner.getValue()); }
+	{
+		return new UVGenerator(projectionType, projectionAxis, (float) scaleSpinner.getValue());
+	}
 
 	public Projection getProjectionType()
-	{ return projectionType; }
+	{
+		return projectionType;
+	}
 
 	public ProjectionAxis getProjectionAxis()
-	{ return projectionAxis; }
+	{
+		return projectionAxis;
+	}
 
 	public double getScale()
-	{ return scaleSpinner.getValue(); }
+	{
+		return scaleSpinner.getValue();
+	}
 
 	public UVOptionsPanel()
 	{

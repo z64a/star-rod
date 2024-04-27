@@ -66,5 +66,7 @@ public class SetConvert extends BaseF3DEX2
 
 	@Override
 	public String getString()
-	{ return String.format("%-16s (%d`, %d`, %d`, %d`, %d`, %d`)", getName(), A, B, C, D, E, F); }
+	{
+		return String.format("%-16s (%d`, %d`, %d`, %d`, %d`, %d`)", getName(), A, B, C, D, E, F);
+	}
 }

@@ -19,9 +19,13 @@ public class AnonymousSource extends AbstractSource
 
 	@Override
 	public File getFile()
-	{ return null; }
+	{
+		return null;
+	}
 
 	@Override
 	public String getName()
-	{ return "Anonymous"; }
+	{
+		return "Anonymous";
+	}
 }

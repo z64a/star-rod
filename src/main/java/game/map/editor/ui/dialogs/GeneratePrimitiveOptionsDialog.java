@@ -297,7 +297,9 @@ public class GeneratePrimitiveOptionsDialog extends JDialog
 	}
 
 	public String getTypeName()
-	{ return primitiveType.name; }
+	{
+		return primitiveType.name;
+	}
 
 	/**
 	 * ComboBox renderer with separators, adapted from code by:

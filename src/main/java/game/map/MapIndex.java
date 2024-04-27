@@ -89,10 +89,14 @@ public class MapIndex
 	}
 
 	public String getMapName()
-	{ return mapName; }
+	{
+		return mapName;
+	}
 
 	public String getBackgroundName()
-	{ return bgName; }
+	{
+		return bgName;
+	}
 
 	private IndexedModel getModel(String name)
 	{
@@ -177,10 +181,14 @@ public class MapIndex
 	}
 
 	public int getEntryCount()
-	{ return entryList.size(); }
+	{
+		return entryList.size();
+	}
 
 	public List<Marker> getEntryList()
-	{ return entryList; }
+	{
+		return entryList;
+	}
 
 	public static class IndexedModel
 	{

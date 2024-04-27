@@ -207,7 +207,9 @@ public class GenerateFromTrianglesDialog extends JDialog
 		private boolean supressEvents = false;
 
 		public int getValue()
-		{ return slider.getValue(); }
+		{
+			return slider.getValue();
+		}
 
 		public SliderSpinner(String name, int minValue, int maxValue, int initialValue)
 		{

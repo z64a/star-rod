@@ -75,5 +75,7 @@ public class Quad extends BaseF3DEX2
 
 	@Override
 	public String getString()
-	{ return String.format("%-16s (%2d`, %2d`, %2d`, %2d`)", getName(), v1, v2, v3, v4); }
+	{
+		return String.format("%-16s (%2d`, %2d`, %2d`, %2d`)", getName(), v1, v2, v3, v4);
+	}
 }

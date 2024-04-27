@@ -49,11 +49,15 @@ public class SpriteLoader
 
 		@Override
 		public String getObject()
-		{ return name; }
+		{
+			return name;
+		}
 
 		@Override
 		public int getIndex()
-		{ return id; }
+		{
+			return id;
+		}
 
 		public long lastModified()
 		{

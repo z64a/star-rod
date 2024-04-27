@@ -140,14 +140,22 @@ public final class ListSelectorDialog<T extends GlobalsListable> extends JDialog
 	}
 
 	public void setValue(T object)
-	{ selectedObject = object; }
+	{
+		selectedObject = object;
+	}
 
 	public T getValue()
-	{ return selectedObject; }
+	{
+		return selectedObject;
+	}
 
 	public DialogResult getResult()
-	{ return result; }
+	{
+		return result;
+	}
 
 	public boolean isResultAccepted()
-	{ return result == DialogResult.ACCEPT; }
+	{
+		return result == DialogResult.ACCEPT;
+	}
 }

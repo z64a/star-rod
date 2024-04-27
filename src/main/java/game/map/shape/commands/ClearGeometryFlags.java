@@ -35,7 +35,9 @@ public class ClearGeometryFlags extends ChangeGeometryFlags
 
 	@Override
 	public CmdType getType()
-	{ return CmdType.SetGeometryFlags; }
+	{
+		return CmdType.SetGeometryFlags;
+	}
 
 	@Override
 	public int[] getF3DEX2Command()

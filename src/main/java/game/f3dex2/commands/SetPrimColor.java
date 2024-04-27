@@ -83,5 +83,7 @@ public class SetPrimColor extends BaseF3DEX2
 
 	@Override
 	public String getString()
-	{ return String.format("%-16s (%f, %f, %d`, %d`, %d`, %d`)", getName(), minLOD, fracLOD, R, G, B, A); }
+	{
+		return String.format("%-16s (%f, %f, %d`, %d`, %d`, %d`)", getName(), minLOD, fracLOD, R, G, B, A);
+	}
 }

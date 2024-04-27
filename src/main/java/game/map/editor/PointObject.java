@@ -22,7 +22,9 @@ public abstract class PointObject extends EditorObject
 	}
 
 	public Vector3f getPosition()
-	{ return position.getVector(); }
+	{
+		return position.getVector();
+	}
 
 	public abstract float getRadius();
 
@@ -77,7 +79,9 @@ public abstract class PointObject extends EditorObject
 
 	@Override
 	public boolean isTransforming()
-	{ return position.isTransforming(); }
+	{
+		return position.isTransforming();
+	}
 
 	@Override
 	public void startTransformation()

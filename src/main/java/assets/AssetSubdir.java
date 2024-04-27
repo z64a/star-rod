@@ -54,10 +54,14 @@ public enum AssetSubdir
 	}
 
 	public File getBaseDir()
-	{ return get(AssetManager.getBaseAssetDir()); }
+	{
+		return get(AssetManager.getBaseAssetDir());
+	}
 
 	public File getModDir()
-	{ return get(AssetManager.getTopLevelAssetDir()); }
+	{
+		return get(AssetManager.getTopLevelAssetDir());
+	}
 
 	@Override
 	public String toString()

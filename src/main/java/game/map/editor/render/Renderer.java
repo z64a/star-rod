@@ -133,13 +133,19 @@ public class Renderer implements IShutdownListener
 	private static float fastPulse = 0.0f;
 
 	public static float getPulse()
-	{ return pulse; }
+	{
+		return pulse;
+	}
 
 	public static float getSlowPulse()
-	{ return slowPulse; }
+	{
+		return slowPulse;
+	}
 
 	public static float getFastPulse()
-	{ return fastPulse; }
+	{
+		return fastPulse;
+	}
 
 	public static float interpColor(float min, float max)
 	{

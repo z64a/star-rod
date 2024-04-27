@@ -36,7 +36,9 @@ public final class SpritePalette implements Indexable<SpritePalette>
 	}
 
 	public Sprite getSprite()
-	{ return spr; }
+	{
+		return spr;
+	}
 
 	@Override
 	public String toString()
@@ -46,11 +48,15 @@ public final class SpritePalette implements Indexable<SpritePalette>
 
 	@Override
 	public SpritePalette getObject()
-	{ return this; }
+	{
+		return this;
+	}
 
 	@Override
 	public int getIndex()
-	{ return listIndex; }
+	{
+		return listIndex;
+	}
 
 	public boolean hasPal()
 	{
@@ -58,7 +64,9 @@ public final class SpritePalette implements Indexable<SpritePalette>
 	}
 
 	public Palette getPal()
-	{ return (asset == null) ? null : asset.pal; }
+	{
+		return (asset == null) ? null : asset.pal;
+	}
 
 	public void saveAs(File out)
 	{

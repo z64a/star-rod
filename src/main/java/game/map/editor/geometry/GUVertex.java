@@ -43,7 +43,9 @@ public class GUVertex
 	}
 
 	public Vertex getVertex()
-	{ return new Vertex(x, y, z); }
+	{
+		return new Vertex(x, y, z);
+	}
 
 	@Override
 	public String toString()

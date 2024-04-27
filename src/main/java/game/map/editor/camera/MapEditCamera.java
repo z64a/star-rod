@@ -50,7 +50,9 @@ public abstract class MapEditCamera extends BaseCamera
 	}
 
 	public Vector3f getPosition()
-	{ return new Vector3f(pos); }
+	{
+		return new Vector3f(pos);
+	}
 
 	public void release()
 	{}

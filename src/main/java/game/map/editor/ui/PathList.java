@@ -162,7 +162,9 @@ public class PathList extends JList<PathPoint>
 	}
 
 	private IterableListModel<PathPoint> getIterableModel()
-	{ return (IterableListModel<PathPoint>) getModel(); }
+	{
+		return (IterableListModel<PathPoint>) getModel();
+	}
 
 	@Override
 	public int locationToIndex(Point location)
@@ -259,7 +261,9 @@ public class PathList extends JList<PathPoint>
 
 			@Override
 			public DataFlavor[] getTransferDataFlavors()
-			{ return flavors; }
+			{
+				return flavors;
+			}
 
 			@Override
 			public boolean isDataFlavorSupported(DataFlavor flavor)

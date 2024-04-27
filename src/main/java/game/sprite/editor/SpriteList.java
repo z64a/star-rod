@@ -110,7 +110,9 @@ public class SpriteList extends JPanel
 	}
 
 	public SpriteMetadata getSelected()
-	{ return list.getSelectedValue(); }
+	{
+		return list.getSelectedValue();
+	}
 
 	public int getInitialSelection(String name)
 	{

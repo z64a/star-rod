@@ -95,7 +95,9 @@ public class ComplexEditableJTree extends JTree
 		}
 
 		public DefaultMutableTreeNode getNode()
-		{ return source; }
+		{
+			return source;
+		}
 
 		public void show(PopupMenu menu)
 		{
@@ -251,7 +253,9 @@ public class ComplexEditableJTree extends JTree
 
 			@Override
 			public DataFlavor[] getTransferDataFlavors()
-			{ return flavors; }
+			{
+				return flavors;
+			}
 
 			@Override
 			public boolean isDataFlavorSupported(DataFlavor flavor)

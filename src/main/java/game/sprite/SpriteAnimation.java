@@ -33,7 +33,9 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 	}
 
 	public int getComponentCount()
-	{ return components.size(); }
+	{
+		return components.size();
+	}
 
 	@Override
 	public String toString()
@@ -43,11 +45,15 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 
 	@Override
 	public SpriteAnimation getObject()
-	{ return this; }
+	{
+		return this;
+	}
 
 	@Override
 	public int getIndex()
-	{ return listIndex; }
+	{
+		return listIndex;
+	}
 
 	public void step()
 	{

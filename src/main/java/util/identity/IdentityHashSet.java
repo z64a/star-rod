@@ -44,7 +44,9 @@ public class IdentityHashSet<E> implements Iterable<E>
 	}
 
 	public boolean isEmpty()
-	{ return map.isEmpty(); }
+	{
+		return map.isEmpty();
+	}
 
 	@Override
 	public Iterator<E> iterator()

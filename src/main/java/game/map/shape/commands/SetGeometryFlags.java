@@ -35,11 +35,15 @@ public class SetGeometryFlags extends ChangeGeometryFlags
 
 	@Override
 	public CmdType getType()
-	{ return CmdType.SetGeometryFlags; }
+	{
+		return CmdType.SetGeometryFlags;
+	}
 
 	@Override
 	public int[] getF3DEX2Command()
-	{ return new int[] { 0xD9FFFFFF, getFlags() }; }
+	{
+		return new int[] { 0xD9FFFFFF, getFlags() };
+	}
 
 	@Override
 	public DisplayCommand deepCopy()

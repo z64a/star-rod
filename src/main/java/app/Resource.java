@@ -42,7 +42,9 @@ public abstract class Resource
 		}
 
 		private String getPath()
-		{ return path; }
+		{
+			return path;
+		}
 	}
 
 	private static InputStream resolveResourceToStream(ResourceType type, String resourceName)

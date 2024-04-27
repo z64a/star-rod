@@ -36,7 +36,9 @@ public abstract class HitObject extends MapObject implements XmlSerializable
 	}
 
 	public HitType getType()
-	{ return hitType; }
+	{
+		return hitType;
+	}
 
 	public abstract Color4f[] getColors(boolean useColoring);
 
@@ -119,7 +121,9 @@ public abstract class HitObject extends MapObject implements XmlSerializable
 
 	@Override
 	public AbstractMesh getMesh()
-	{ return mesh; }
+	{
+		return mesh;
+	}
 
 	@Override
 	public void updateMeshHierarchy()

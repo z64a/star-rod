@@ -80,7 +80,9 @@ public abstract class Logger
 	}
 
 	public static void setProgressListener(Listener listener)
-	{ progressListener = listener; }
+	{
+		progressListener = listener;
+	}
 
 	public static void removeProgressListener()
 	{
@@ -176,7 +178,9 @@ public abstract class Logger
 	}
 
 	public static void setDefaultOuputPriority(Priority p)
-	{ defaultPriority = p; }
+	{
+		defaultPriority = p;
+	}
 
 	public static void disable()
 	{

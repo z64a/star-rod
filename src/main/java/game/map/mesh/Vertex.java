@@ -158,7 +158,9 @@ public class Vertex implements XmlSerializable, Selectable
 	 * world/local models.
 	 */
 	public MutablePoint getPosition()
-	{ return useLocal ? localPos : worldPos; }
+	{
+		return useLocal ? localPos : worldPos;
+	}
 
 	public void setPositon(Vector3f pos)
 	{
@@ -169,7 +171,9 @@ public class Vertex implements XmlSerializable, Selectable
 	}
 
 	public MutablePoint getLocalPosition()
-	{ return localPos; }
+	{
+		return localPos;
+	}
 
 	/**
 	 * @return
@@ -190,7 +194,9 @@ public class Vertex implements XmlSerializable, Selectable
 	 * transformations (previews) and distiction between world/local models.
 	 */
 	public int getCurrentX()
-	{ return useLocal ? localPos.getX() : worldPos.getX(); }
+	{
+		return useLocal ? localPos.getX() : worldPos.getX();
+	}
 
 	/**
 	 * @return
@@ -198,7 +204,9 @@ public class Vertex implements XmlSerializable, Selectable
 	 * transformations (previews) and distiction between world/local models.
 	 */
 	public int getCurrentY()
-	{ return useLocal ? localPos.getY() : worldPos.getY(); }
+	{
+		return useLocal ? localPos.getY() : worldPos.getY();
+	}
 
 	/**
 	 * @return
@@ -206,7 +214,9 @@ public class Vertex implements XmlSerializable, Selectable
 	 * transformations (previews) and distiction between world/local models.
 	 */
 	public int getCurrentZ()
-	{ return useLocal ? localPos.getZ() : worldPos.getZ(); }
+	{
+		return useLocal ? localPos.getZ() : worldPos.getZ();
+	}
 
 	/**
 	 * Applies a transformation matrix to generate a world coordinate for this vertex.
@@ -282,7 +292,9 @@ public class Vertex implements XmlSerializable, Selectable
 
 	@Override
 	public boolean isTransforming()
-	{ return getPosition().isTransforming(); }
+	{
+		return getPosition().isTransforming();
+	}
 
 	@Override
 	public void startTransformation()
@@ -319,11 +331,15 @@ public class Vertex implements XmlSerializable, Selectable
 
 	@Override
 	public void setSelected(boolean val)
-	{ selected = val; }
+	{
+		selected = val;
+	}
 
 	@Override
 	public boolean isSelected()
-	{ return selected; }
+	{
+		return selected;
+	}
 
 	@Override
 	public ReversibleTransform createTransformer(TransformMatrix m)

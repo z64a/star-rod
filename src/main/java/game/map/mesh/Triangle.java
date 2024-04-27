@@ -99,7 +99,9 @@ public class Triangle implements XmlSerializable, Selectable
 	}
 
 	public void setParent(TriangleBatch b)
-	{ parentBatch = b; }
+	{
+		parentBatch = b;
+	}
 
 	/**
 	 * @return Deep copy of this Triangle. No hierarchical relationships are copied.
@@ -205,7 +207,9 @@ public class Triangle implements XmlSerializable, Selectable
 
 	@Override
 	public boolean isTransforming()
-	{ return vert[0].getPosition().isTransforming(); }
+	{
+		return vert[0].getPosition().isTransforming();
+	}
 
 	@Override
 	public void startTransformation()
@@ -245,11 +249,15 @@ public class Triangle implements XmlSerializable, Selectable
 
 	@Override
 	public void setSelected(boolean val)
-	{ selected = val; }
+	{
+		selected = val;
+	}
 
 	@Override
 	public boolean isSelected()
-	{ return selected; }
+	{
+		return selected;
+	}
 
 	@Override
 	public int hashCode()

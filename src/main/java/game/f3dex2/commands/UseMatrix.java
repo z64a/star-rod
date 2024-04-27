@@ -83,6 +83,8 @@ public class UseMatrix extends BaseF3DEX2
 
 	@Override
 	public String getString()
-	{ return String.format("%-16s (%08X, %s, %s, %s)", getName(), addr,
-		optPush[push ? 1 : 0], optLoad[load ? 1 : 0], optProj[proj ? 1 : 0]); }
+	{
+		return String.format("%-16s (%08X, %s, %s, %s)", getName(), addr,
+			optPush[push ? 1 : 0], optLoad[load ? 1 : 0], optProj[proj ? 1 : 0]);
+	}
 }

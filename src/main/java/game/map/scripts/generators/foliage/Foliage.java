@@ -40,7 +40,9 @@ public class Foliage extends Generator
 		}
 
 		public String getName()
-		{ return name; }
+		{
+			return name;
+		}
 	}
 
 	public final EditableField<String> overrideName;

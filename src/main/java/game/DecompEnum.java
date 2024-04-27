@@ -157,7 +157,9 @@ public class DecompEnum
 	}
 
 	public List<String> getValueList()
-	{ return new ArrayList<>(decodeMap.values()); }
+	{
+		return new ArrayList<>(decodeMap.values());
+	}
 
 	public String getName(int id)
 	{
@@ -170,7 +172,9 @@ public class DecompEnum
 	}
 
 	public Collection<Entry<String, Integer>> getEntries()
-	{ return encodeMap.entrySet(); }
+	{
+		return encodeMap.entrySet();
+	}
 
 	public static void printNode(IASTNode node) throws ExpansionOverlapsBoundaryException
 	{

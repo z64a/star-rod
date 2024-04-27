@@ -57,8 +57,12 @@ public final class BadgeReorderDialog extends JDialog
 	}
 
 	public DialogResult getResult()
-	{ return result; }
+	{
+		return result;
+	}
 
 	public boolean isResultAccepted()
-	{ return result == DialogResult.ACCEPT; }
+	{
+		return result == DialogResult.ACCEPT;
+	}
 }

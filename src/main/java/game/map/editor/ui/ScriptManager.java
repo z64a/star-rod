@@ -131,7 +131,7 @@ public class ScriptManager implements IShutdownListener, UpdateListener
 	{
 		generalTab.updateFields(data);
 	}
-
+	
 	public void updateCameraFields(ScriptData data)
 	{
 		cameraTab.updateFields(data);

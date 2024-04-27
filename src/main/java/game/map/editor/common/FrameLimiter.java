@@ -138,7 +138,9 @@ public class FrameLimiter
 	* @return will return the current time in nano's
 	*/
 	private long getTime()
-	{ return System.nanoTime(); }
+	{
+		return System.nanoTime();
+	}
 
 	private static class RunningAvg
 	{

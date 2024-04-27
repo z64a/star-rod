@@ -36,5 +36,7 @@ public class SetFillColor extends BaseF3DEX2
 
 	@Override
 	public String getString()
-	{ return String.format("%-16s (%08X)", getName(), value); }
+	{
+		return String.format("%-16s (%08X)", getName(), value);
+	}
 }

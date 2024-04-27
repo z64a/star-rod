@@ -51,10 +51,14 @@ public class FontManager
 	private static boolean readyForGL = false;
 
 	public static boolean isLoaded()
-	{ return loaded; }
+	{
+		return loaded;
+	}
 
 	public static boolean isReadyForGL()
-	{ return readyForGL; }
+	{
+		return readyForGL;
+	}
 
 	public static void loadData() throws IOException
 	{

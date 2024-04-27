@@ -795,8 +795,12 @@ public class MessagePrinter
 	}
 
 	public int getAnimSprite()
-	{ return anim.sprites.get(0); }
+	{
+		return anim.sprites.get(0);
+	}
 
 	public int getAnimRaster()
-	{ return anim.currentRaster; }
+	{
+		return anim.currentRaster;
+	}
 }

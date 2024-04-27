@@ -17,11 +17,15 @@ public class EncodeCopy implements Encode
 
 	@Override
 	public int getEncodeLength()
-	{ return 1; }
+	{
+		return 1;
+	}
 
 	@Override
 	public int getBudgetCost()
-	{ return 1; }
+	{
+		return 1;
+	}
 
 	@Override
 	public String toString()

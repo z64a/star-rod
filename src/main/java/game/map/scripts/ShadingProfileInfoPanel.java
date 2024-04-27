@@ -119,11 +119,11 @@ public class ShadingProfileInfoPanel extends MapInfoPanel<ShadingProfile>
 		sourceList.addListSelectionListener((e) -> {
 			if(getData() == null)
 				return;
-
+		
 			MapEditor.instance().selectionManager.deselectLightsFromGUI(getData().sources);
 			if(sourceList.getSelectedValue() != null)
 				MapEditor.instance().selectionManager.selectLightsFromGUI(sourceList.getSelectedValue());
-
+		
 		});
 		*/
 

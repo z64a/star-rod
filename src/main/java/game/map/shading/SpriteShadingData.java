@@ -136,7 +136,9 @@ public class SpriteShadingData
 		}
 
 		public ShadingProfile getProfile()
-		{ return profile; }
+		{
+			return profile;
+		}
 
 		@Override
 		public boolean modifiesMap()

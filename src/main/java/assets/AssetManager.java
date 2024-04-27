@@ -15,7 +15,9 @@ import app.input.IOUtils;
 public class AssetManager
 {
 	public static File getTopLevelAssetDir()
-	{ return Environment.assetDirectories.get(0); }
+	{
+		return Environment.assetDirectories.get(0);
+	}
 
 	public static File getBaseAssetDir()
 	{
@@ -50,7 +52,9 @@ public class AssetManager
 	}
 
 	public static File getTexBuildDir()
-	{ return AssetSubdir.MAP_TEX.getModDir(); }
+	{
+		return AssetSubdir.MAP_TEX.getModDir();
+	}
 
 	public static AssetHandle getMap(String mapName)
 	{
@@ -63,7 +67,9 @@ public class AssetManager
 	}
 
 	public static File getMapBuildDir()
-	{ return AssetSubdir.MAP_GEOM.getModDir(); }
+	{
+		return AssetSubdir.MAP_GEOM.getModDir();
+	}
 
 	public static AssetHandle getBackground(String bgName)
 	{
@@ -71,7 +77,9 @@ public class AssetManager
 	}
 
 	public static File getBackgroundBuildDir()
-	{ return AssetSubdir.MAP_BG.getModDir(); }
+	{
+		return AssetSubdir.MAP_BG.getModDir();
+	}
 
 	public static AssetHandle getNpcSprite(String spriteName)
 	{

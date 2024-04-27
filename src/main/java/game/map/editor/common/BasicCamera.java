@@ -167,16 +167,24 @@ public final class BasicCamera extends BaseCamera
 	}
 
 	public float getZoom()
-	{ return zoom; }
+	{
+		return zoom;
+	}
 
 	public float getDist()
-	{ return 400.0f * zoom; }
+	{
+		return 400.0f * zoom;
+	}
 
 	public float getPosX()
-	{ return pos.x; }
+	{
+		return pos.x;
+	}
 
 	public float getPosY()
-	{ return pos.y; }
+	{
+		return pos.y;
+	}
 
 	/**
 	 * Returns a pick ray based on current mouse position.

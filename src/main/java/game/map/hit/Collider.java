@@ -106,7 +106,9 @@ public class Collider extends HitObject implements XmlSerializable
 
 	@Override
 	public MapObjectType getObjectType()
-	{ return MapObjectType.COLLIDER; }
+	{
+		return MapObjectType.COLLIDER;
+	}
 
 	public Collider(HitType type)
 	{
@@ -144,7 +146,9 @@ public class Collider extends HitObject implements XmlSerializable
 
 	@Override
 	public MapObjectNode<Collider> getNode()
-	{ return node; }
+	{
+		return node;
+	}
 
 	private static final Color4f[] COLORS = {
 			new Color4f(0.0f, 1.0f, 0.0f, 0.50f), // selected

@@ -34,7 +34,9 @@ public class CommandBatch extends AbstractCommand
 	}
 
 	public void setModifiesMap(boolean value)
-	{ modifiesMap = value; }
+	{
+		modifiesMap = value;
+	}
 
 	@Override
 	public boolean modifiesMap()

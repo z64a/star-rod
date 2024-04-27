@@ -30,10 +30,14 @@ public abstract class MapObjectTreeModel<T extends MapObject> extends DefaultTre
 	}
 
 	public void setTree(MapObjectJTree<T> tree)
-	{ this.tree = tree; }
+	{
+		this.tree = tree;
+	}
 
 	public MapObjectJTree<T> getTree()
-	{ return tree; }
+	{
+		return tree;
+	}
 
 	public static <T extends MapObject> MapObjectNode<T> load(XmlReader xmr, Element objTreeElement, HashMap<Integer, T> objMap)
 	{
@@ -102,7 +106,9 @@ public abstract class MapObjectTreeModel<T extends MapObject> extends DefaultTre
 	@Override
 	@SuppressWarnings("unchecked")
 	public MapObjectNode<T> getRoot()
-	{ return (MapObjectNode<T>) super.getRoot(); }
+	{
+		return (MapObjectNode<T>) super.getRoot();
+	}
 
 	/*
 	 * Returns a list of MapObjects corresponding to a depth-first

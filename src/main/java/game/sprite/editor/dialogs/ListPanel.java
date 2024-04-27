@@ -75,7 +75,9 @@ public abstract class ListPanel<T> extends JPanel
 	}
 
 	public DefaultListModel<T> getListModel()
-	{ return (DefaultListModel<T>) list.getModel(); }
+	{
+		return (DefaultListModel<T>) list.getModel();
+	}
 
 	protected boolean canDelete(T item)
 	{

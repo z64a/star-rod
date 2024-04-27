@@ -71,13 +71,19 @@ public class ModelTexture
 	}
 
 	public String getName()
-	{ return tx.name; }
+	{
+		return tx.name;
+	}
 
 	public int getHeight()
-	{ return tx.main.height; }
+	{
+		return tx.main.height;
+	}
 
 	public int getWidth()
-	{ return tx.main.width; }
+	{
+		return tx.main.width;
+	}
 
 	public boolean hasAux()
 	{
@@ -85,13 +91,19 @@ public class ModelTexture
 	}
 
 	public int getAuxHeight()
-	{ return tx.aux.height; }
+	{
+		return tx.aux.height;
+	}
 
 	public int getAuxWidth()
-	{ return tx.aux.width; }
+	{
+		return tx.aux.width;
+	}
 
 	public int getAuxCombine()
-	{ return tx.auxCombine; }
+	{
+		return tx.auxCombine;
+	}
 
 	public static float getScaleU(ModelTexture texture)
 	{

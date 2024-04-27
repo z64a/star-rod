@@ -6,23 +6,23 @@ public abstract class DisplayCommand
 {
 	/*
 	These are the only display commands that are used:
-
+	
 	 * DrawTriangleBatch
 	01	F3DEX2_LOAD_VTX
 	05	F3DEX2_DRAW_TRI
 	06	F3DEX2_DRAW_TRIS
-
+	
 	 * RDP Pipe Sync
 	E7	RDP_PIPE_SYNC
-
+	
 	 * Set Geometry Flags
 	 * Clear Geometry Flags
 	D9	F3DEX2_GEOMETRYMODE
-
+	
 	 * Matrix Commands (handled by model tree)
 	D8	F3DEX2_POP_MATRIX
 	DA	F3DEX2_LOAD_MATRIX
-
+	
 	 * No Associated Command
 	DE	F3DEX2_START_DL
 	DF	F3DEX2_END_DL

@@ -62,5 +62,7 @@ public class NewDL extends BaseF3DEX2
 
 	@Override
 	public String getString()
-	{ return String.format("%-16s (%s, %08X)", getName(), opt[jump ? 1 : 0], addr); }
+	{
+		return String.format("%-16s (%s, %08X)", getName(), opt[jump ? 1 : 0], addr);
+	}
 }

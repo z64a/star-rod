@@ -223,7 +223,9 @@ public class CameraZoneData extends UpdateProvider implements XmlSerializable
 	}
 
 	public List<SelectablePoint> getPoints()
-	{ return points; }
+	{
+		return points;
+	}
 
 	public void drawHelpers(Renderer renderer, CameraController controller, boolean editPointsMode)
 	{
@@ -594,7 +596,9 @@ public class CameraZoneData extends UpdateProvider implements XmlSerializable
 	}
 
 	public ControlType getType()
-	{ return type; }
+	{
+		return type;
+	}
 
 	private void setType(ControlType value)
 	{
@@ -612,7 +616,9 @@ public class CameraZoneData extends UpdateProvider implements XmlSerializable
 	}
 
 	public boolean getFlag()
-	{ return flag; }
+	{
+		return flag;
+	}
 
 	private void setFlag(boolean value)
 	{

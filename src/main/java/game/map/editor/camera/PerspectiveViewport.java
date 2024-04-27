@@ -55,7 +55,9 @@ public class PerspectiveViewport extends MapEditViewport
 	}
 
 	public void setCamera(PerspBaseCamera cam)
-	{ camera = cam; }
+	{
+		camera = cam;
+	}
 
 	@Override
 	public float getScaleFactor(float x, float y, float z)

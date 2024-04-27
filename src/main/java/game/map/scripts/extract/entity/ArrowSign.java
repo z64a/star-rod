@@ -54,7 +54,9 @@ public class ArrowSign extends ExtractedEntity
 
 	@Override
 	public List<String> getLines()
-	{ return super.getLines(); }
+	{
+		return super.getLines();
+	}
 
 	@Override
 	public void addHeaderDefines(HeaderEntry h)

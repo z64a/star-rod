@@ -63,5 +63,7 @@ public class HexSpinner extends JSpinner
 
 	@Override
 	public Integer getValue()
-	{ return (Integer) super.getValue(); }
+	{
+		return (Integer) super.getValue();
+	}
 }

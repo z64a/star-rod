@@ -25,7 +25,9 @@ public class MutableAngle
 	}
 
 	public void setAngle(double a)
-	{ angle = a; }
+	{
+		angle = a;
+	}
 
 	public void setAngle(int a)
 	{
@@ -33,7 +35,9 @@ public class MutableAngle
 	}
 
 	public void setTempAngle(double a)
-	{ temp = a; }
+	{
+		temp = a;
+	}
 
 	public void startTransform()
 	{
@@ -47,16 +51,24 @@ public class MutableAngle
 	}
 
 	public boolean isTransforming()
-	{ return transforming; }
+	{
+		return transforming;
+	}
 
 	public double getAngle()
-	{ return transforming ? temp : angle; }
+	{
+		return transforming ? temp : angle;
+	}
 
 	public double getBaseAngle()
-	{ return angle; }
+	{
+		return angle;
+	}
 
 	public double getTempAngle()
-	{ return temp; }
+	{
+		return temp;
+	}
 
 	public MutableAngle deepCopy()
 	{
@@ -64,7 +76,9 @@ public class MutableAngle
 	}
 
 	public AngleBackup getBackup()
-	{ return new AngleBackup(this); }
+	{
+		return new AngleBackup(this);
+	}
 
 	public static class AngleBackup
 	{

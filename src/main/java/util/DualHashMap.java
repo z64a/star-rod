@@ -22,13 +22,19 @@ public class DualHashMap<K extends Object, V extends Object>
 	}
 
 	public boolean isEmpty()
-	{ return forward.isEmpty(); }
+	{
+		return forward.isEmpty();
+	}
 
 	public Set<K> getKeySet()
-	{ return forward.keySet(); }
+	{
+		return forward.keySet();
+	}
 
 	public Set<V> getValues()
-	{ return backward.keySet(); }
+	{
+		return backward.keySet();
+	}
 
 	public boolean contains(K key)
 	{

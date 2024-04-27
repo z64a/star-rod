@@ -251,5 +251,7 @@ public class Yay0EncodeHelper
 	}
 
 	public byte[] getFile()
-	{ return encoder.getFile(); }
+	{
+		return encoder.getFile();
+	}
 }

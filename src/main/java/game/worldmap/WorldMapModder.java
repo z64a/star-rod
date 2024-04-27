@@ -45,10 +45,14 @@ public class WorldMapModder
 		}
 
 		public int getX()
-		{ return x + Math.round(dragX); }
+		{
+			return x + Math.round(dragX);
+		}
 
 		public int getY()
-		{ return y + Math.round(dragY); }
+		{
+			return y + Math.round(dragY);
+		}
 	}
 
 	public static final class WorldLocation extends WorldMarker

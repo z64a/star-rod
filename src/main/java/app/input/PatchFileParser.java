@@ -67,7 +67,9 @@ public class PatchFileParser
 	int parenDepth = 0;
 
 	private List<PatchUnit> getResults()
-	{ return units; }
+	{
+		return units;
+	}
 
 	private PatchFileParser(List<Line> lines)
 	{

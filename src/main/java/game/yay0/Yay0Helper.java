@@ -10,13 +10,13 @@ public final class Yay0Helper
 	{
 		File source = new File("./yay0/decoded/0210ACFC.bin");
 		encode(FileUtils.readFileToByteArray(source));
-
+	
 		/*
 		File sourceFile = new File("./test/dro_01_shape.yay0");
 		byte[] source = FileUtils.readFileToByteArray(sourceFile);
-
+	
 		byte[] decoded = decode(source);
-
+	
 		File out = new File("./test/dro_01_shape.bin");
 		FileUtils.writeByteArrayToFile(out, decoded);
 		 */
@@ -27,10 +27,10 @@ public final class Yay0Helper
 	 */
 
 	/*
-
+	
 	File sourceFile = new File("./yay0/ver/decomp/024F64DC.bin");
 	byte[] yay0 = encode(FileUtils.readFileToByteArray(sourceFile));
-
+	
 	for(int i = 0; i < yay0.length;)
 	{
 		System.out.print(String.format("%02X", yay0[i]));

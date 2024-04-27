@@ -132,7 +132,9 @@ public class DragReorderList<T> extends JList<T>
 
 			@Override
 			public DataFlavor[] getTransferDataFlavors()
-			{ return supportedFlavors; }
+			{
+				return supportedFlavors;
+			}
 
 			@Override
 			public boolean isDataFlavorSupported(DataFlavor flavor)

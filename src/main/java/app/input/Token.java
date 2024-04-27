@@ -48,7 +48,9 @@ public final class Token
 	}
 
 	public int getIntValue() throws InvalidInputException
-	{ return DataUtils.parseIntString(str); }
+	{
+		return DataUtils.parseIntString(str);
+	}
 
 	public int getHexValue() throws InvalidInputException
 	{

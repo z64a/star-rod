@@ -165,7 +165,9 @@ public class LightSet implements Iterable<Light>, XmlSerializable
 	}
 
 	public int getLightCount()
-	{ return lightList.size(); }
+	{
+		return lightList.size();
+	}
 
 	public static LightSet createEmptySet()
 	{

@@ -94,7 +94,9 @@ public class BoundObjectPanel extends JPanel
 	}
 
 	public String getText()
-	{ return field.getText(); }
+	{
+		return field.getText();
+	}
 
 	private void buildPopupMenu(JPopupMenu menu)
 	{

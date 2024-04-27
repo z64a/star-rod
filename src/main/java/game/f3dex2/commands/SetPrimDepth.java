@@ -47,5 +47,7 @@ public class SetPrimDepth extends BaseF3DEX2
 
 	@Override
 	public String getString()
-	{ return String.format("%-16s (%d`, %d`)", getName(), Z, deltaZ); }
+	{
+		return String.format("%-16s (%d`, %d`)", getName(), Z, deltaZ);
+	}
 }

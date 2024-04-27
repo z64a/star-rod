@@ -13,9 +13,9 @@ public class Yay0FileHelper
 	0x08	offset to link table
 	0x0C	offset to non-linked chunks and count modifiers table
 	0x10	packed data
-
+	
 	The packed data is a bitstream (padded to a multiple of 32bits), with each bit having the following meaning:
-
+	
 	0	linked chunk, copy block from the link table (offset 0x0008)
 	1	non linked chunk, copy next byte from non-linked chunks and count modifiers table (offset at 0x000c)
 	 **/

@@ -626,11 +626,15 @@ public class NpcComponent extends BaseMarkerComponent
 
 		@Override
 		public RenderMode getRenderMode()
-		{ return RenderMode.ALPHA_TEST_AA_ZB_2SIDE; }
+		{
+			return RenderMode.ALPHA_TEST_AA_ZB_2SIDE;
+		}
 
 		@Override
 		public Vector3f getCenterPoint()
-		{ return comp.parentMarker.position.getVector(); }
+		{
+			return comp.parentMarker.position.getVector();
+		}
 
 		@Override
 		public void render(RenderingOptions opts, BaseCamera camera)
@@ -640,11 +644,15 @@ public class NpcComponent extends BaseMarkerComponent
 
 		@Override
 		public void setDepth(int normalizedDepth)
-		{ depth = normalizedDepth; }
+		{
+			depth = normalizedDepth;
+		}
 
 		@Override
 		public int getDepth()
-		{ return depth; }
+		{
+			return depth;
+		}
 	}
 
 	private void reloadSprite()

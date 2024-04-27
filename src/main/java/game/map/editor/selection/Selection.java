@@ -113,13 +113,19 @@ public final class Selection<T extends Selectable>
 	}
 
 	public TransformState getTransformState()
-	{ return transformState; }
+	{
+		return transformState;
+	}
 
 	public Axis getRotatationAxis()
-	{ return (transformState == TransformState.ROTATE) ? rotation.axis : null; }
+	{
+		return (transformState == TransformState.ROTATE) ? rotation.axis : null;
+	}
 
 	public float getRotatationAngle()
-	{ return (transformState == TransformState.ROTATE) ? (float) rotation.angle : 0.0f; }
+	{
+		return (transformState == TransformState.ROTATE) ? (float) rotation.angle : 0.0f;
+	}
 
 	public boolean transforming()
 	{
@@ -1017,7 +1023,9 @@ public final class Selection<T extends Selectable>
 	 * @return Whether the list is empty or not.
 	 */
 	public boolean isEmpty()
-	{ return selectableList.isEmpty(); }
+	{
+		return selectableList.isEmpty();
+	}
 
 	/**
 	 * @return Most recently added item to the selection.

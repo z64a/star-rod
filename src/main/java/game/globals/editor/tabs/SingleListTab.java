@@ -305,7 +305,9 @@ public abstract class SingleListTab<T extends GlobalsRecord> extends GlobalEdito
 	}
 
 	protected final T getSelected()
-	{ return selectedObject; }
+	{
+		return selectedObject;
+	}
 
 	protected final boolean shouldIgnoreChanges()
 	{
@@ -326,5 +328,7 @@ public abstract class SingleListTab<T extends GlobalsRecord> extends GlobalEdito
 	protected abstract void updateInfoPanel(T object, boolean fromSet);
 
 	protected ListCellRenderer<T> getCellRenderer()
-	{ return null; }
+	{
+		return null;
+	}
 }

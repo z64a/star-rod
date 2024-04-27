@@ -195,7 +195,9 @@ public final class EntityGenerator
 	}
 
 	public List<String> getLines()
-	{ return body; }
+	{
+		return body;
+	}
 
 	// shared data for entity types
 	private void addSupport(List<Marker> entityList)

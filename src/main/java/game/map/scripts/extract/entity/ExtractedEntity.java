@@ -57,7 +57,9 @@ public abstract class ExtractedEntity
 	}
 
 	public String getIndent()
-	{ return indent; }
+	{
+		return indent;
+	}
 
 	public List<String> getLines()
 	{

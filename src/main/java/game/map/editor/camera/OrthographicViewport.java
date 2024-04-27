@@ -38,7 +38,9 @@ public class OrthographicViewport extends MapEditViewport
 	}
 
 	public float getViewWorldSizeX()
-	{ return ((OrthographicCamera) camera).getZoomLevel() * sizeX; }
+	{
+		return ((OrthographicCamera) camera).getZoomLevel() * sizeX;
+	}
 
 	public BoundingBox getViewingVolume()
 	{

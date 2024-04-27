@@ -110,10 +110,14 @@ public class BufferedMesh
 	}
 
 	public int getVertexCount()
-	{ return verts.size(); }
+	{
+		return verts.size();
+	}
 
 	public int getTriangleCount()
-	{ return tris.size(); }
+	{
+		return tris.size();
+	}
 
 	public void loadBuffers()
 	{

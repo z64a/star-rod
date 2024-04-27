@@ -329,7 +329,9 @@ public class Marker extends MapObject implements Tickable, XmlSerializable
 
 	@Override
 	public MapObjectType getObjectType()
-	{ return MapObjectType.MARKER; }
+	{
+		return MapObjectType.MARKER;
+	}
 
 	@Override
 	public void addTo(BoundingBox aabb)
@@ -340,7 +342,9 @@ public class Marker extends MapObject implements Tickable, XmlSerializable
 
 	@Override
 	public boolean isTransforming()
-	{ return position.isTransforming(); }
+	{
+		return position.isTransforming();
+	}
 
 	@Override
 	public void startTransformation()
@@ -539,7 +543,9 @@ public class Marker extends MapObject implements Tickable, XmlSerializable
 
 	@Override
 	public AbstractMesh getMesh()
-	{ return null; }
+	{
+		return null;
+	}
 
 	@Override
 	public void updateMeshHierarchy()
@@ -696,14 +702,20 @@ public class Marker extends MapObject implements Tickable, XmlSerializable
 	}
 
 	public String getDescription()
-	{ return description; }
+	{
+		return description;
+	}
 
 	@Override
 	public MapObjectNode<Marker> getNode()
-	{ return node; }
+	{
+		return node;
+	}
 
 	public MarkerType getType()
-	{ return type; }
+	{
+		return type;
+	}
 
 	public void setType(MarkerType value)
 	{

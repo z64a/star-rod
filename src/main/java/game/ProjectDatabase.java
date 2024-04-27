@@ -77,10 +77,14 @@ public class ProjectDatabase
 	}
 
 	public static List<String> getSavedFlagNames()
-	{ return savedFlags; }
+	{
+		return savedFlags;
+	}
 
 	public static List<String> getSavedByteNames()
-	{ return savedBytes; }
+	{
+		return savedBytes;
+	}
 
 	private static final Matcher SavedVarMatcher = Pattern.compile("\\s*(\\w+)\\s*=.+").matcher("");
 
@@ -98,7 +102,9 @@ public class ProjectDatabase
 	}
 
 	public static List<SimpleItem> getItemList()
-	{ return new ArrayList<>(items); }
+	{
+		return new ArrayList<>(items);
+	}
 
 	public static Integer getItemID(String name)
 	{

@@ -19,11 +19,15 @@ public class EncodeLink implements Encode
 
 	@Override
 	public int getEncodeLength()
-	{ return length; }
+	{
+		return length;
+	}
 
 	@Override
 	public int getBudgetCost()
-	{ return (length > 17) ? 3 : 2; }
+	{
+		return (length > 17) ? 3 : 2;
+	}
 
 	@Override
 	public String toString()

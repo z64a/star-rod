@@ -26,7 +26,9 @@ public abstract class StringConstants
 	//protected static final String CONTINUE_LINE_TAG = "...";
 
 	public static int getMaxStringVars()
-	{ return 3; }
+	{
+		return 3;
+	}
 
 	public static enum ControlCharacter
 	{

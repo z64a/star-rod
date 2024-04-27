@@ -56,5 +56,7 @@ public class Tri1 extends BaseF3DEX2
 
 	@Override
 	public String getString()
-	{ return String.format("%-16s (%2d`, %2d`, %2d`)", getName(), v1, v2, v3); }
+	{
+		return String.format("%-16s (%2d`, %2d`, %2d`)", getName(), v1, v2, v3);
+	}
 }

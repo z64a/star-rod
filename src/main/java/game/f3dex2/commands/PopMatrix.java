@@ -37,5 +37,7 @@ public class PopMatrix extends BaseF3DEX2
 
 	@Override
 	public String getString()
-	{ return String.format("%-16s (%d`)", getName(), num); }
+	{
+		return String.format("%-16s (%d`)", getName(), num);
+	}
 }

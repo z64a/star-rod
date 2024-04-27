@@ -18,7 +18,9 @@ public class DirChooser
 	}
 
 	public void setCurrentDirectory(File dir)
-	{ currentDirectory = dir; }
+	{
+		currentDirectory = dir;
+	}
 
 	public ChooseDialogResult prompt(File dir)
 	{
@@ -38,5 +40,7 @@ public class DirChooser
 	}
 
 	public File getSelectedFile()
-	{ return selected; }
+	{
+		return selected;
+	}
 }

@@ -13,9 +13,13 @@ public class StreamSource extends AbstractSource
 
 	@Override
 	public String getName()
-	{ return name; }
+	{
+		return name;
+	}
 
 	@Override
 	public File getFile()
-	{ return null; }
+	{
+		return null;
+	}
 }

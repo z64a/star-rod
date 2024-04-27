@@ -58,7 +58,9 @@ public class XmlWrapper
 		}
 
 		public File getSourceFile()
-		{ return xmlFile; }
+		{
+			return xmlFile;
+		}
 
 		public void complain(String message)
 		{
@@ -66,7 +68,9 @@ public class XmlWrapper
 		}
 
 		public Element getRootElement()
-		{ return rootElement; }
+		{
+			return rootElement;
+		}
 
 		public NodeList getRootElements(XmlKey key) throws IOException
 		{

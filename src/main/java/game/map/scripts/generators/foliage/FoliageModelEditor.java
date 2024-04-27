@@ -47,5 +47,7 @@ public class FoliageModelEditor extends JPanel
 	}
 
 	public String getValue()
-	{ return name; }
+	{
+		return name;
+	}
 }

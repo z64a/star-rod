@@ -60,7 +60,9 @@ public class Pixel
 	}
 
 	public int getARGB()
-	{ return (a << 24) | (r << 16) | (g << 8) | b; }
+	{
+		return (a << 24) | (r << 16) | (g << 8) | b;
+	}
 
 	public boolean equals(Pixel other)
 	{

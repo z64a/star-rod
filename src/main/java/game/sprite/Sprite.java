@@ -130,10 +130,14 @@ public class Sprite implements XmlSerializable
 	}
 
 	public String getDirectoryName()
-	{ return source.getParentFile() + "/"; }
+	{
+		return source.getParentFile() + "/";
+	}
 
 	public boolean isPlayerSprite()
-	{ return isPlayerSprite; }
+	{
+		return isPlayerSprite;
+	}
 
 	public static Sprite readNpc(File xmlFile, String name)
 	{
@@ -578,7 +582,9 @@ public class Sprite implements XmlSerializable
 	}
 
 	public int getPaletteCount()
-	{ return palettes.size(); }
+	{
+		return palettes.size();
+	}
 
 	public int lastValidPaletteID()
 	{

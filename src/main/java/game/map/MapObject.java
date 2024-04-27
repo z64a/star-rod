@@ -83,7 +83,9 @@ public abstract class MapObject extends UpdateProvider implements Selectable, Xm
 	private String originalName = null;
 
 	public String getName()
-	{ return name; }
+	{
+		return name;
+	}
 
 	public void setName(String name)
 	{
@@ -92,7 +94,9 @@ public abstract class MapObject extends UpdateProvider implements Selectable, Xm
 	}
 
 	public String getOriginalName()
-	{ return originalName; }
+	{
+		return originalName;
+	}
 
 	public void captureOriginalName()
 	{
@@ -251,7 +255,9 @@ public abstract class MapObject extends UpdateProvider implements Selectable, Xm
 	}
 
 	public CameraZoneData getCameraControlData()
-	{ return null; }
+	{
+		return null;
+	}
 
 	@Override
 	public void addTo(BoundingBox aabb)
@@ -267,7 +273,9 @@ public abstract class MapObject extends UpdateProvider implements Selectable, Xm
 
 	@Override
 	public boolean isTransforming()
-	{ return transforming; }
+	{
+		return transforming;
+	}
 
 	@Override
 	public void startTransformation()
@@ -351,11 +359,15 @@ public abstract class MapObject extends UpdateProvider implements Selectable, Xm
 
 	@Override
 	public void setSelected(boolean val)
-	{ selected = val; }
+	{
+		selected = val;
+	}
 
 	@Override
 	public boolean isSelected()
-	{ return selected; }
+	{
+		return selected;
+	}
 
 	/* required for tree operations */
 

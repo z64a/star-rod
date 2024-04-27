@@ -49,7 +49,9 @@ public class ImgAsset
 	}
 
 	public String getName()
-	{ return FilenameUtils.removeExtension(source.getName()); }
+	{
+		return FilenameUtils.removeExtension(source.getName());
+	}
 
 	@Override
 	public String toString()

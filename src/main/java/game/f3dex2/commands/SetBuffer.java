@@ -36,5 +36,7 @@ public class SetBuffer extends BaseF3DEX2
 
 	@Override
 	public String getString()
-	{ return String.format("%-16s (%08X)", getName(), addr); }
+	{
+		return String.format("%-16s (%08X)", getName(), addr);
+	}
 }

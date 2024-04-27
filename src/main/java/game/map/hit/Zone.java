@@ -117,7 +117,9 @@ public class Zone extends HitObject implements XmlSerializable
 
 	@Override
 	public MapObjectType getObjectType()
-	{ return MapObjectType.ZONE; }
+	{
+		return MapObjectType.ZONE;
+	}
 
 	public Zone(HitType type)
 	{
@@ -157,7 +159,9 @@ public class Zone extends HitObject implements XmlSerializable
 
 	@Override
 	public MapObjectNode<Zone> getNode()
-	{ return node; }
+	{
+		return node;
+	}
 
 	private static final Color4f[] COLORS = {
 			new Color4f(1.0f, 1.0f, 0.0f, 0.50f), // selected
@@ -192,7 +196,9 @@ public class Zone extends HitObject implements XmlSerializable
 
 	@Override
 	public CameraZoneData getCameraControlData()
-	{ return camData; }
+	{
+		return camData;
+	}
 
 	@Override
 	public void addPoints(IdentityHashSet<MutablePoint> positionSet)

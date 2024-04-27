@@ -17,7 +17,9 @@ public class LabeledDoubleSpinner extends JComponent
 	private JSpinner spinner;
 
 	public double getValue()
-	{ return (Double) spinner.getValue(); }
+	{
+		return (Double) spinner.getValue();
+	}
 
 	public void setValue(double val)
 	{

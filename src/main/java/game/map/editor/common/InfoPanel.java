@@ -18,7 +18,9 @@ public abstract class InfoPanel<T extends UpdateProvider> extends JPanel impleme
 	}
 
 	public final T getData()
-	{ return data; }
+	{
+		return data;
+	}
 
 	public final void setData(T newData)
 	{

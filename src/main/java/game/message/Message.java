@@ -95,7 +95,9 @@ public class Message implements FilterListable
 	}
 
 	public String getMarkup()
-	{ return markup; }
+	{
+		return markup;
+	}
 
 	public void sanitize()
 	{
@@ -125,10 +127,14 @@ public class Message implements FilterListable
 	}
 
 	public int getID()
-	{ return ((section & 0xFFFF) << 16) | (index & 0xFFFF); }
+	{
+		return ((section & 0xFFFF) << 16) | (index & 0xFFFF);
+	}
 
 	public String getIDName()
-	{ return String.format("%02X-%03X", section, index); }
+	{
+		return String.format("%02X-%03X", section, index);
+	}
 
 	@Override
 	public String toString()
@@ -137,7 +143,9 @@ public class Message implements FilterListable
 	}
 
 	public String getIdentifier()
-	{ return name; }
+	{
+		return name;
+	}
 
 	public void setModified()
 	{
@@ -147,7 +155,9 @@ public class Message implements FilterListable
 	}
 
 	public boolean isModified()
-	{ return modified; }
+	{
+		return modified;
+	}
 
 	public void setErrorMessage(String string)
 	{
@@ -162,7 +172,9 @@ public class Message implements FilterListable
 	}
 
 	public String getErrorMessage()
-	{ return errorMessage; }
+	{
+		return errorMessage;
+	}
 
 	public boolean hasError()
 	{
@@ -171,5 +183,7 @@ public class Message implements FilterListable
 
 	@Override
 	public String getFilterableString()
-	{ return name.replaceAll("_", " ") + " " + toString(); }
+	{
+		return name.replaceAll("_", " ") + " " + toString();
+	}
 }

@@ -44,10 +44,14 @@ public class BaseF3DEX2
 	}
 
 	public String getName()
-	{ return type.opName; }
+	{
+		return type.opName;
+	}
 
 	public void setSegment(int segment)
-	{ this.segment = segment; }
+	{
+		this.segment = segment;
+	}
 
 	// return the final version with opcodes
 	public int[] assemble()

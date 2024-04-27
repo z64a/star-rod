@@ -25,5 +25,7 @@ public abstract class DebugPrinter
 	}
 
 	public static void setEnabled(boolean value)
-	{ enabled = value; }
+	{
+		enabled = value;
+	}
 }

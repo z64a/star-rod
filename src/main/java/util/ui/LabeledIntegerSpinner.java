@@ -16,7 +16,9 @@ public class LabeledIntegerSpinner extends JComponent
 	private JSpinner spinner;
 
 	public int getValue()
-	{ return (Integer) spinner.getValue(); }
+	{
+		return (Integer) spinner.getValue();
+	}
 
 	public void setValue(int val)
 	{

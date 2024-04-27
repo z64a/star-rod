@@ -43,7 +43,9 @@ public class RawAnimation extends ArrayList<Short>
 	}
 
 	public List<Entry<Integer, String>> getAllLabels()
-	{ return new ArrayList<>(labels.entrySet()); }
+	{
+		return new ArrayList<>(labels.entrySet());
+	}
 
 	public RawAnimation deepCopy()
 	{

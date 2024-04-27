@@ -29,7 +29,9 @@ public class OpenFileChooser
 	}
 
 	public void setDirectoryContaining(File dir)
-	{ currentDirectory = dir; }
+	{
+		currentDirectory = dir;
+	}
 
 	public ChooseDialogResult prompt(File dir)
 	{
@@ -64,5 +66,7 @@ public class OpenFileChooser
 	}
 
 	public File getSelectedFile()
-	{ return selected; }
+	{
+		return selected;
+	}
 }

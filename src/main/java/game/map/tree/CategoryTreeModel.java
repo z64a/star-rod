@@ -179,7 +179,9 @@ public class CategoryTreeModel<K extends Enum<?>, T extends DeepCopyable> extend
 
 		@Override
 		public Dimension getPreferredSize()
-		{ return size; }
+		{
+			return size;
+		}
 
 		/*
 		@Override
@@ -245,7 +247,9 @@ public class CategoryTreeModel<K extends Enum<?>, T extends DeepCopyable> extend
 		}
 
 		public K getCategory()
-		{ return category; }
+		{
+			return category;
+		}
 
 		@SuppressWarnings("unchecked")
 		public T getObject()
@@ -257,9 +261,13 @@ public class CategoryTreeModel<K extends Enum<?>, T extends DeepCopyable> extend
 		}
 
 		public boolean isCategory()
-		{ return isCategory; }
+		{
+			return isCategory;
+		}
 
 		public boolean isObject()
-		{ return isObject; }
+		{
+			return isObject;
+		}
 	}
 }

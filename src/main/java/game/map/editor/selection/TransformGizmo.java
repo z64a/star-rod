@@ -575,11 +575,15 @@ public class TransformGizmo implements Selectable
 
 	@Override
 	public void setSelected(boolean val)
-	{ selected = val; }
+	{
+		selected = val;
+	}
 
 	@Override
 	public boolean isSelected()
-	{ return selected; }
+	{
+		return selected;
+	}
 
 	@Override
 	public boolean transforms()
@@ -589,7 +593,9 @@ public class TransformGizmo implements Selectable
 
 	@Override
 	public boolean isTransforming()
-	{ return origin.isTransforming(); }
+	{
+		return origin.isTransforming();
+	}
 
 	@Override
 	public void startTransformation()

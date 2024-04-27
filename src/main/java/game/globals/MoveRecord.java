@@ -147,7 +147,9 @@ public class MoveRecord extends GlobalsRecord
 
 	@Override
 	public String getFilterableString()
-	{ return name + " " + enumName; }
+	{
+		return name + " " + enumName;
+	}
 
 	@Override
 	public boolean canDeleteFromList()
@@ -157,7 +159,9 @@ public class MoveRecord extends GlobalsRecord
 
 	@Override
 	public String getIdentifier()
-	{ return name; }
+	{
+		return name;
+	}
 
 	@Override
 	public String toString()

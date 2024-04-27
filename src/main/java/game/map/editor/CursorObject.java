@@ -377,7 +377,7 @@ public class CursorObject extends EditorObject
 		double dot = nx*dir.x + nz*dir.z;
 		// okay way:
 		double dot = Vector3f.dot(dir, normalDir);
-
+		
 		pos.x += length * (dir.x - normalDir.x * dot);
 		pos.z += length * (dir.z - normalDir.z * dot);
 		 */
@@ -909,7 +909,9 @@ public class CursorObject extends EditorObject
 
 		@Override
 		public RenderMode getRenderMode()
-		{ return RenderMode.ALPHA_TEST_AA_ZB_2SIDE; }
+		{
+			return RenderMode.ALPHA_TEST_AA_ZB_2SIDE;
+		}
 
 		@Override
 		public Vector3f getCenterPoint()
@@ -928,11 +930,15 @@ public class CursorObject extends EditorObject
 
 		@Override
 		public void setDepth(int normalizedDepth)
-		{ depth = normalizedDepth; }
+		{
+			depth = normalizedDepth;
+		}
 
 		@Override
 		public int getDepth()
-		{ return depth; }
+		{
+			return depth;
+		}
 	}
 
 	private void renderCollision()
@@ -1045,7 +1051,9 @@ public class CursorObject extends EditorObject
 
 	@Override
 	public boolean isTransforming()
-	{ return position.isTransforming(); }
+	{
+		return position.isTransforming();
+	}
 
 	@Override
 	public void startTransformation()

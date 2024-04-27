@@ -73,13 +73,19 @@ public class KeyboardInput implements KeyListener
 	}
 
 	public boolean isCtrlDown()
-	{ return isKeyDown.contains(KeyEvent.VK_CONTROL); }
+	{
+		return isKeyDown.contains(KeyEvent.VK_CONTROL);
+	}
 
 	public boolean isShiftDown()
-	{ return isKeyDown.contains(KeyEvent.VK_SHIFT); }
+	{
+		return isKeyDown.contains(KeyEvent.VK_SHIFT);
+	}
 
 	public boolean isAltDown()
-	{ return isKeyDown.contains(KeyEvent.VK_ALT); }
+	{
+		return isKeyDown.contains(KeyEvent.VK_ALT);
+	}
 
 	public boolean isKeyDown(int keycode)
 	{

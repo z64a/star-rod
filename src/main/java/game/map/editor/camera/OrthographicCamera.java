@@ -55,7 +55,9 @@ public class OrthographicCamera extends MapEditCamera
 	}
 
 	public float getZoomLevel()
-	{ return zoomLevel; }
+	{
+		return zoomLevel;
+	}
 
 	@Override
 	public void resize()

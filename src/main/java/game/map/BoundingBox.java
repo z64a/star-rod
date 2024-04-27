@@ -95,25 +95,35 @@ public class BoundingBox implements XmlSerializable
 	}
 
 	public boolean isEmpty()
-	{ return empty; }
+	{
+		return empty;
+	}
 
 	public Vector3f getMin()
-	{ return new Vector3f(min.getX(), min.getY(), min.getZ()); }
+	{
+		return new Vector3f(min.getX(), min.getY(), min.getZ());
+	}
 
 	public Vector3f getMax()
-	{ return new Vector3f(max.getX(), max.getY(), max.getZ()); }
+	{
+		return new Vector3f(max.getX(), max.getY(), max.getZ());
+	}
 
 	public Vector3f getCenter()
-	{ return new Vector3f(
-		(max.getX() + min.getX()) / 2,
-		(max.getY() + min.getY()) / 2,
-		(max.getZ() + min.getZ()) / 2); }
+	{
+		return new Vector3f(
+			(max.getX() + min.getX()) / 2,
+			(max.getY() + min.getY()) / 2,
+			(max.getZ() + min.getZ()) / 2);
+	}
 
 	public Vector3f getSize()
-	{ return new Vector3f(
-		(max.getX() - min.getX()),
-		(max.getY() - min.getY()),
-		(max.getZ() - min.getZ())); }
+	{
+		return new Vector3f(
+			(max.getX() - min.getX()),
+			(max.getY() - min.getY()),
+			(max.getZ() - min.getZ()));
+	}
 
 	public boolean contains(int x, int y, int z)
 	{

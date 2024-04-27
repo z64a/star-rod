@@ -41,21 +41,21 @@ public class MapPropertiesExtractor
 		}
 
 		/*
-
+		
 		ShadingMatcher.reset(workingText);
 		if (ShadingMatcher.find()) {
 			modified = true;
 			if (out == null)
 				out = new StringBuilder(extractor.getFileText().length());
-
+		
 			String profileName = ShadingMatcher.group(1);
 			map.scripts.hasSpriteShading.set(!"SHADING_NONE".equals(profileName));
-
+		
 			map.scripts.shadingProfile.set(null);
 			//TODO
-
+		
 			ShadingMatcher.appendReplacement(out, "Call(SetSpriteShading, MAP_SPRITE_SHADING)");
-
+		
 			if (modifiedLine) {
 				modified = true;
 			}

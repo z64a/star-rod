@@ -262,7 +262,9 @@ public class PaintManager
 	}
 
 	public static Color getSelectedColor()
-	{ return paintVertexTab.getSelectedColor(); }
+	{
+		return paintVertexTab.getSelectedColor();
+	}
 
 	public static void setSelectedColor(Color c)
 	{
@@ -300,13 +302,19 @@ public class PaintManager
 	}
 
 	private static BrushFallOffType getFallOffType()
-	{ return (BrushFallOffType) paintVertexTab.fallOffComboBox.getSelectedItem(); }
+	{
+		return (BrushFallOffType) paintVertexTab.fallOffComboBox.getSelectedItem();
+	}
 
 	public static int getInnerBrushRadius()
-	{ return paintVertexTab.innerRadiusSlider.getValue(); }
+	{
+		return paintVertexTab.innerRadiusSlider.getValue();
+	}
 
 	public static int getOuterBrushRadius()
-	{ return paintVertexTab.outerRadiusSlider.getValue(); }
+	{
+		return paintVertexTab.outerRadiusSlider.getValue();
+	}
 
 	public static boolean shouldDrawInnerRadius()
 	{
@@ -540,7 +548,9 @@ public class PaintManager
 		}
 
 		private Color getSelectedColor()
-		{ return selectedColor; }
+		{
+			return selectedColor;
+		}
 
 		private void setSelectedColor(Color c)
 		{
@@ -739,7 +749,9 @@ public class PaintManager
 		}
 
 		public int getMaxValue()
-		{ return max; }
+		{
+			return max;
+		}
 
 		public void setMaximum(int value)
 		{
@@ -748,7 +760,9 @@ public class PaintManager
 		}
 
 		public int getValue()
-		{ return slider.getValue(); }
+		{
+			return slider.getValue();
+		}
 
 		public void setValue(int value)
 		{
@@ -781,7 +795,9 @@ public class PaintManager
 		}
 
 		public boolean isPaintEnabled()
-		{ return hasCheckbox && checkbox.isSelected(); }
+		{
+			return hasCheckbox && checkbox.isSelected();
+		}
 	}
 
 	public static int getNewComponent(PaintSlider slider, int val, int increment)

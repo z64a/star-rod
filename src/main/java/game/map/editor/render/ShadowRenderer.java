@@ -229,7 +229,9 @@ public class ShadowRenderer
 
 		@Override
 		public Vector3f getCenterPoint()
-		{ return pos; }
+		{
+			return pos;
+		}
 
 		@Override
 		public void render(RenderingOptions opts, BaseCamera camera)
@@ -239,10 +241,14 @@ public class ShadowRenderer
 
 		@Override
 		public void setDepth(int normalizedDepth)
-		{ depth = normalizedDepth; }
+		{
+			depth = normalizedDepth;
+		}
 
 		@Override
 		public int getDepth()
-		{ return depth; }
+		{
+			return depth;
+		}
 	}
 }

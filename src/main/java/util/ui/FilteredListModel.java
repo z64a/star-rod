@@ -55,7 +55,9 @@ public class FilteredListModel<T> extends DefaultListModel<T>
 	}
 
 	public void setIgnoreChanges(boolean value)
-	{ ignoreChanges = value; }
+	{
+		ignoreChanges = value;
+	}
 
 	public void setFilter(ListFilter f)
 	{
@@ -80,11 +82,15 @@ public class FilteredListModel<T> extends DefaultListModel<T>
 	}
 
 	public DefaultListModel<T> getSource()
-	{ return source; }
+	{
+		return source;
+	}
 
 	@Override
 	public int getSize()
-	{ return (filter != null) ? indices.size() : source.getSize(); }
+	{
+		return (filter != null) ? indices.size() : source.getSize();
+	}
 
 	public int getIndexFor(int index)
 	{

@@ -35,7 +35,9 @@ public class SelectablePoint implements Selectable
 	}
 
 	public Vector3f getPosition()
-	{ return new Vector3f(point.getX(), point.getY(), point.getZ()); }
+	{
+		return new Vector3f(point.getX(), point.getY(), point.getZ());
+	}
 
 	public void set(int axis, int val)
 	{
@@ -63,13 +65,19 @@ public class SelectablePoint implements Selectable
 	}
 
 	public int getX()
-	{ return point.getX(); }
+	{
+		return point.getX();
+	}
 
 	public int getY()
-	{ return point.getY(); }
+	{
+		return point.getY();
+	}
 
 	public int getZ()
-	{ return point.getZ(); }
+	{
+		return point.getZ();
+	}
 
 	public void round(int spacing)
 	{
@@ -90,7 +98,9 @@ public class SelectablePoint implements Selectable
 
 	@Override
 	public boolean isTransforming()
-	{ return point.isTransforming(); }
+	{
+		return point.isTransforming();
+	}
 
 	@Override
 	public void startTransformation()
@@ -130,11 +140,15 @@ public class SelectablePoint implements Selectable
 
 	@Override
 	public void setSelected(boolean val)
-	{ selected = val; }
+	{
+		selected = val;
+	}
 
 	@Override
 	public boolean isSelected()
-	{ return selected; }
+	{
+		return selected;
+	}
 
 	@Override
 	public int hashCode()

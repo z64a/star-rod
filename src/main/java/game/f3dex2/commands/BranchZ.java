@@ -64,5 +64,7 @@ public class BranchZ extends BaseF3DEX2
 
 	@Override
 	public String getString()
-	{ return String.format("%-16s (%08X, %d`, %08X)", getName(), addr, vidx, zval); }
+	{
+		return String.format("%-16s (%08X, %d`, %08X)", getName(), addr, vidx, zval);
+	}
 }

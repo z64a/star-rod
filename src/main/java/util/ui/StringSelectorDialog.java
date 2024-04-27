@@ -133,14 +133,22 @@ public final class StringSelectorDialog extends JDialog
 	}
 
 	public void setValue(String s)
-	{ selectedObject = s; }
+	{
+		selectedObject = s;
+	}
 
 	public String getValue()
-	{ return selectedObject; }
+	{
+		return selectedObject;
+	}
 
 	public DialogResult getResult()
-	{ return result; }
+	{
+		return result;
+	}
 
 	public boolean isResultAccepted()
-	{ return result == DialogResult.ACCEPT; }
+	{
+		return result == DialogResult.ACCEPT;
+	}
 }

@@ -190,14 +190,14 @@ public final class Entrance extends Generator implements XmlSerializable
 	{
 		this(type);
 		ScriptLine gotoMap = null;
-
+	
 		switch(type)
 		{
 		case Walk:
 			markerID = script.get(1).args[2];
 			gotoMap = script.get(3);
 			break;
-
+	
 		case SingleDoor:
 			doorSound = DataConstants.DoorSoundsType.getName(script.get(2).args[1]);
 			markerID = script.get(3).args[1];
@@ -205,7 +205,7 @@ public final class Entrance extends Generator implements XmlSerializable
 			doorSwing = DataConstants.DoorSwingsType.getName(script.get(6).args[1]);
 			gotoMap = script.get(9);
 			break;
-
+	
 		case DoubleDoor:
 			doorSound = DataConstants.DoorSoundsType.getName(script.get(2).args[1]);
 			markerID = script.get(3).args[1];

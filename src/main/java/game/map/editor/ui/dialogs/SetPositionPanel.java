@@ -29,9 +29,11 @@ public class SetPositionPanel extends JPanel
 	}
 
 	public int[] getVector()
-	{ return new int[] {
-			Integer.decode(fieldX.getText()),
-			Integer.decode(fieldY.getText()),
-			Integer.decode(fieldZ.getText())
-	}; }
+	{
+		return new int[] {
+				Integer.decode(fieldX.getText()),
+				Integer.decode(fieldY.getText()),
+				Integer.decode(fieldZ.getText())
+		};
+	}
 }

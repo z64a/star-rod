@@ -56,5 +56,7 @@ public class SetKeyR extends BaseF3DEX2
 
 	@Override
 	public String getString()
-	{ return String.format("%-16s (%f, %d`, %d`)", getName(), W, C, S); }
+	{
+		return String.format("%-16s (%f, %d`, %d`)", getName(), W, C, S);
+	}
 }

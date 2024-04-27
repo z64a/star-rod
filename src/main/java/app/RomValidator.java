@@ -91,7 +91,7 @@ public class RomValidator
 				/*
 				String extension = path.substring(path.lastIndexOf("."));
 				path = path.substring(0, path.lastIndexOf("."));
-
+				
 				if(extension.equals("n64"))
 					swapped = new File(path + ".z64");
 				else

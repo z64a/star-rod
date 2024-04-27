@@ -13,9 +13,13 @@ public class FileSource extends AbstractSource
 
 	@Override
 	public String getName()
-	{ return (file == null) ? "null" : file.getName(); }
+	{
+		return (file == null) ? "null" : file.getName();
+	}
 
 	@Override
 	public File getFile()
-	{ return file; }
+	{
+		return file;
+	}
 }

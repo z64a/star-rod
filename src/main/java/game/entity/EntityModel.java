@@ -244,7 +244,9 @@ public class EntityModel
 		}
 
 		public Vector3f getVector()
-		{ return new Vector3f(fx, fy, fz); }
+		{
+			return new Vector3f(fx, fy, fz);
+		}
 
 		/*
 		public Vector3f getWorldVector(float yaw, float dx, float dy, float dz)
@@ -252,7 +254,7 @@ public class EntityModel
 			double yawRad = Math.toRadians(yaw);
 			float sinYaw = (float)Math.sin(yawRad);
 			float cosYaw = (float)Math.cos(yawRad);
-
+		
 			return new Vector3f(
 					dx + cosYaw * fx + sinYaw * fz,
 					dy + fy,
@@ -618,11 +620,15 @@ public class EntityModel
 
 		@Override
 		public RenderMode getRenderMode()
-		{ return part.renderMode; }
+		{
+			return part.renderMode;
+		}
 
 		@Override
 		public Vector3f getCenterPoint()
-		{ return new Vector3f(x, y, z); }
+		{
+			return new Vector3f(x, y, z);
+		}
 
 		@Override
 		public void render(RenderingOptions opts, BaseCamera camera)
@@ -650,10 +656,14 @@ public class EntityModel
 
 		@Override
 		public void setDepth(int normalizedDepth)
-		{ depth = normalizedDepth; }
+		{
+			depth = normalizedDepth;
+		}
 
 		@Override
 		public int getDepth()
-		{ return depth; }
+		{
+			return depth;
+		}
 	}
 }

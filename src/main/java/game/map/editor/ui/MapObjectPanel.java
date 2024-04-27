@@ -102,16 +102,24 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 	}
 
 	public MapObjectNode<Model> getPopupModel()
-	{ return modelJTree.popupSource; }
+	{
+		return modelJTree.popupSource;
+	}
 
 	public MapObjectNode<Collider> getPopupCollider()
-	{ return colliderJTree.popupSource; }
+	{
+		return colliderJTree.popupSource;
+	}
 
 	public MapObjectNode<Zone> getPopupZone()
-	{ return zoneJTree.popupSource; }
+	{
+		return zoneJTree.popupSource;
+	}
 
 	public MapObjectNode<Marker> getPopupMarker()
-	{ return markerJTree.popupSource; }
+	{
+		return markerJTree.popupSource;
+	}
 
 	private JPanel getModelSubpanel(SwingGUI gui)
 	{

@@ -64,13 +64,19 @@ public class Grid
 	}
 
 	public int getPower()
-	{ return power; }
+	{
+		return power;
+	}
 
 	private int getMaxPower()
-	{ return binary ? MAX_BIN_PWR : MAX_DEC_PWR; }
+	{
+		return binary ? MAX_BIN_PWR : MAX_DEC_PWR;
+	}
 
 	public int getSpacing()
-	{ return getGridSpacing(power); }
+	{
+		return getGridSpacing(power);
+	}
 
 	public int getSpacing(int width)
 	{

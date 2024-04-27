@@ -522,7 +522,9 @@ public class Model extends MapObject
 
 	@Override
 	public MapObjectType getObjectType()
-	{ return MapObjectType.MODEL; }
+	{
+		return MapObjectType.MODEL;
+	}
 
 	/**
 	 * Camera Controller
@@ -536,7 +538,9 @@ public class Model extends MapObject
 
 	@Override
 	public CameraZoneData getCameraControlData()
-	{ return camData; }
+	{
+		return camData;
+	}
 
 	@Override
 	public void addPoints(IdentityHashSet<MutablePoint> positionSet)
@@ -567,7 +571,9 @@ public class Model extends MapObject
 
 	@Override
 	public TexturedMesh getMesh()
-	{ return mesh; }
+	{
+		return mesh;
+	}
 
 	public void setMesh(TexturedMesh newMesh)
 	{
@@ -635,7 +641,9 @@ public class Model extends MapObject
 	}
 
 	public Color getTreeTextColor()
-	{ return (hasTransformMatrix.get() && !localTransformMatrix.baked) ? SwingUtils.getBlueTextColor() : null; }
+	{
+		return (hasTransformMatrix.get() && !localTransformMatrix.baked) ? SwingUtils.getBlueTextColor() : null;
+	}
 
 	public void calculateLocalAABB()
 	{
@@ -759,7 +767,9 @@ public class Model extends MapObject
 
 	@Override
 	public MapObjectNode<Model> getNode()
-	{ return node; }
+	{
+		return node;
+	}
 
 	public static final class SetMatrixElement extends AbstractCommand
 	{

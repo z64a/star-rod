@@ -13,9 +13,13 @@ public class DummySource extends AbstractSource
 
 	@Override
 	public File getFile()
-	{ return null; }
+	{
+		return null;
+	}
 
 	@Override
 	public String getName()
-	{ return name; }
+	{
+		return name;
+	}
 }

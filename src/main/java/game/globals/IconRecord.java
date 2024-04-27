@@ -85,11 +85,15 @@ public class IconRecord extends GlobalsRecord
 
 	@Override
 	public String getIdentifier()
-	{ return name; }
+	{
+		return name;
+	}
 
 	@Override
 	public String getFilterableString()
-	{ return name; }
+	{
+		return name;
+	}
 
 	@Override
 	public boolean canDeleteFromList()

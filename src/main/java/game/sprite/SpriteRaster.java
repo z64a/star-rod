@@ -41,13 +41,19 @@ public class SpriteRaster
 	}
 
 	public Sprite getSprite()
-	{ return spr; }
+	{
+		return spr;
+	}
 
 	public ImgAsset getFront()
-	{ return front.asset; }
+	{
+		return front.asset;
+	}
 
 	public ImgAsset getBack()
-	{ return back.asset; }
+	{
+		return back.asset;
+	}
 
 	public void bindRasters(LinkedHashMap<String, ImgAsset> imgAssets)
 	{
@@ -71,7 +77,9 @@ public class SpriteRaster
 	}
 
 	public int getIndex()
-	{ return listIndex; }
+	{
+		return listIndex;
+	}
 
 	public boolean hasMissing()
 	{

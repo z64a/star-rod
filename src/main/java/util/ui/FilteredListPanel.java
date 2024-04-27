@@ -155,7 +155,9 @@ public abstract class FilteredListPanel<T> extends JPanel
 	}
 
 	public T getSelected()
-	{ return list.getSelectedValue(); }
+	{
+		return list.getSelectedValue();
+	}
 
 	public void setSelected(T value)
 	{

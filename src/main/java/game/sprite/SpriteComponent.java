@@ -141,13 +141,19 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	}
 
 	public int getX()
-	{ return posx + dx; }
+	{
+		return posx + dx;
+	}
 
 	public int getY()
-	{ return posy + dy; }
+	{
+		return posy + dy;
+	}
 
 	public int getZ()
-	{ return posz + dz; }
+	{
+		return posz + dz;
+	}
 
 	public void addCorners(BoundingBox aabb)
 	{
@@ -454,11 +460,15 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 
 	@Override
 	public SpriteComponent getObject()
-	{ return this; }
+	{
+		return this;
+	}
 
 	@Override
 	public int getIndex()
-	{ return listIndex; }
+	{
+		return listIndex;
+	}
 
 	/*
 	 * When composing transformations, the order is:

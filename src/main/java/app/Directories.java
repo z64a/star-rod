@@ -159,7 +159,9 @@ public enum Directories
 	}
 
 	public static String getDumpPath()
-	{ return dumpPath; }
+	{
+		return dumpPath;
+	}
 
 	public static void setProjectDirectory(String path)
 	{

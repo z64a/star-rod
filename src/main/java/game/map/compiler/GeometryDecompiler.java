@@ -309,7 +309,7 @@ public class GeometryDecompiler
 
 		/*
 		int[][] propCheck = mdl.getProperties();
-
+		
 		assert(propCheck.length == properties.length);
 		for(int i = 0; i < properties.length; i++)
 		{

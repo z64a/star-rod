@@ -23,7 +23,9 @@ public class ListAdapterComboboxModel<T> implements ComboBoxModel<T>
 
 	@Override
 	public int getSize()
-	{ return dataModel.getSize(); }
+	{
+		return dataModel.getSize();
+	}
 
 	@Override
 	public T getElementAt(int index)
@@ -56,7 +58,9 @@ public class ListAdapterComboboxModel<T> implements ComboBoxModel<T>
 
 	@Override
 	public Object getSelectedItem()
-	{ return selectedObject; }
+	{
+		return selectedObject;
+	}
 
 	private class DataModelListDataListenerAdapter implements ListDataListener
 	{

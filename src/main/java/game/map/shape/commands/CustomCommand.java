@@ -32,11 +32,15 @@ public class CustomCommand extends DisplayCommand
 
 	@Override
 	public CmdType getType()
-	{ return CmdType.Custom; }
+	{
+		return CmdType.Custom;
+	}
 
 	@Override
 	public int[] getF3DEX2Command()
-	{ return new int[] { r, s }; }
+	{
+		return new int[] { r, s };
+	}
 
 	@Override
 	public DisplayCommand deepCopy()

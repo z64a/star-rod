@@ -68,7 +68,9 @@ public class DrawableString
 	}
 
 	public void setVisible(boolean value)
-	{ fadeAlphaGoal = value ? 1.0f : 0.0f; }
+	{
+		fadeAlphaGoal = value ? 1.0f : 0.0f;
+	}
 
 	private void build()
 	{

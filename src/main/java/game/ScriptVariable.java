@@ -81,13 +81,19 @@ public enum ScriptVariable
 	}
 
 	public String getTypeName()
-	{ return name; }
+	{
+		return name;
+	}
 
 	public int getMaxIndex()
-	{ return max; }
+	{
+		return max;
+	}
 
 	public int getOffset()
-	{ return offset; }
+	{
+		return offset;
+	}
 
 	private static final Pattern VarOffsetPattern = Pattern.compile("\\*(\\w+)\\[([\\-\\+]?[\\.0-9A-Fa-f]+['`]?)\\]");
 	private static final Matcher VarOffsetMatcher = VarOffsetPattern.matcher("");

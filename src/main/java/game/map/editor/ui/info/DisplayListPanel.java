@@ -472,7 +472,9 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 
 			@Override
 			public DataFlavor[] getTransferDataFlavors()
-			{ return flavors; }
+			{
+				return flavors;
+			}
 
 			@Override
 			public boolean isDataFlavorSupported(DataFlavor flavor)

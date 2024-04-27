@@ -121,7 +121,9 @@ public class TriangleBatch extends DisplayCommand implements XmlSerializable
 
 	@Override
 	public CmdType getType()
-	{ return CmdType.DrawTriangleBatch; }
+	{
+		return CmdType.DrawTriangleBatch;
+	}
 
 	@Override
 	public int[] getF3DEX2Command()

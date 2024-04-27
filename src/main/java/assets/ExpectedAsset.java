@@ -46,5 +46,7 @@ public enum ExpectedAsset
 	}
 
 	public String getPath()
-	{ return subdir.toString() + path; }
+	{
+		return subdir.toString() + path;
+	}
 }

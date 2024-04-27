@@ -11,7 +11,9 @@ public class BlankArrowUI extends BasicComboBoxUI
 		return new JButton() {
 			@Override
 			public int getWidth()
-			{ return 0; }
+			{
+				return 0;
+			}
 		};
 	}
 }

@@ -81,13 +81,19 @@ public final class FrameBuffer
 	}
 
 	public int getFrameBuffer()
-	{ return frameBuffer; }
+	{
+		return frameBuffer;
+	}
 
 	public int getColorTexture()
-	{ return colorTexture; }
+	{
+		return colorTexture;
+	}
 
 	public int getDepthTexture()
-	{ return depthTexture; }
+	{
+		return depthTexture;
+	}
 
 	public void setViewport(int minX, int minY, int sizeX, int sizeY)
 	{

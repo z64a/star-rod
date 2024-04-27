@@ -17,5 +17,7 @@ public class NoArg extends BaseF3DEX2
 
 	@Override
 	public String getString()
-	{ return getName(); }
+	{
+		return getName();
+	}
 }

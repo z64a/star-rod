@@ -49,10 +49,14 @@ public class LineBatch implements Comparable<LineBatch>
 	}
 
 	public int getVertexCount()
-	{ return verts.size(); }
+	{
+		return verts.size();
+	}
 
 	public int getLineCount()
-	{ return lines.size(); }
+	{
+		return lines.size();
+	}
 
 	@Override
 	public int compareTo(LineBatch o)

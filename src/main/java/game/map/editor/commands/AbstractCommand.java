@@ -65,5 +65,7 @@ public abstract class AbstractCommand
 	}
 
 	public STATE getState()
-	{ return state; }
+	{
+		return state;
+	}
 }

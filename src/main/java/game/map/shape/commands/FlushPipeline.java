@@ -17,11 +17,15 @@ public class FlushPipeline extends DisplayCommand
 
 	@Override
 	public CmdType getType()
-	{ return CmdType.PipeSync; }
+	{
+		return CmdType.PipeSync;
+	}
 
 	@Override
 	public int[] getF3DEX2Command()
-	{ return new int[] { 0xE7000000, 0x00000000 }; }
+	{
+		return new int[] { 0xE7000000, 0x00000000 };
+	}
 
 	@Override
 	public DisplayCommand deepCopy()
