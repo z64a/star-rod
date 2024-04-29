@@ -106,7 +106,6 @@ public class MessageEditor extends BaseEditor
 
 	private static final BaseEditorSettings EDITOR_SETTINGS = BaseEditorSettings.create()
 		.setTitle(Environment.decorateTitle("Message Editor"))
-		.setIcon(Environment.getDefaultIconImage())
 		.setConfig(Scope.StringEditor, FN_STRING_EDITOR_CONFIG)
 		.setLog("msg_editor.log")
 		.setFullscreen(false)
@@ -552,9 +551,9 @@ public class MessageEditor extends BaseEditor
 
 		String selected = inputTextPane.getSelectedText();
 		if (selected != null && !selected.isEmpty())
-			inputTextPane.replaceSelection(String.format("[SaveColor][Color:%02X]%s[RestoreColor]", result, inputTextPane.getSelectedText()));
+			inputTextPane.replaceSelection(String.format("[SaveColor][Color 0x%X]%s[RestoreColor]", result, inputTextPane.getSelectedText()));
 		else
-			inputTextPane.replaceSelection(String.format("[Color:%02X]", result));
+			inputTextPane.replaceSelection(String.format("[Color 0x%X]", result));
 	}
 
 	private JMenu addMenuCategory(JPopupMenu menu, String name)

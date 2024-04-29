@@ -3,13 +3,12 @@ package app;
 import java.awt.Dimension;
 
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JProgressBar;
 
 import net.miginfocom.swing.MigLayout;
 
-public class DetailedProgressDialog extends JFrame
+public class DetailedProgressDialog extends StarRodFrame
 {
 	public static void main(String args[])
 	{

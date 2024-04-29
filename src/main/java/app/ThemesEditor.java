@@ -9,7 +9,6 @@ import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -35,7 +34,7 @@ public class ThemesEditor
 	public static final int WINDOW_SIZE_X = 640;
 	public static final int WINDOW_SIZE_Y = 600;
 
-	private JFrame frame;
+	private StarRodFrame frame;
 	public boolean exitToMainMenu;
 
 	public String initialThemeName;
@@ -59,10 +58,9 @@ public class ThemesEditor
 	{
 		initialThemeName = Themes.getCurrentThemeName();
 
-		frame = new JFrame();
+		frame = new StarRodFrame();
 
 		frame.setTitle(Environment.decorateTitle("Choose Theme"));
-		frame.setIconImage(Environment.getDefaultIconImage());
 
 		frame.setBounds(0, 0, WINDOW_SIZE_X, WINDOW_SIZE_Y);
 		frame.setLocationRelativeTo(null);

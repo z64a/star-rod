@@ -5,9 +5,9 @@ import java.awt.Component;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 
 import app.Environment;
+import app.StarRodFrame;
 import app.SwingUtils;
 import net.miginfocom.swing.MigLayout;
 
@@ -23,7 +23,7 @@ public class ColorSelectionDialogPanel extends JDialog
 		previews = images;
 	}
 
-	private ColorSelectionDialogPanel(JFrame parent)
+	private ColorSelectionDialogPanel(StarRodFrame parent)
 	{
 		super(parent, true);
 
@@ -60,7 +60,7 @@ public class ColorSelectionDialogPanel extends JDialog
 
 	public static int showFramedDialog(Component parentComponent)
 	{
-		JFrame dialogFrame = createDialogFrame(parentComponent, TITLE);
+		StarRodFrame dialogFrame = createDialogFrame(parentComponent, TITLE);
 		ColorSelectionDialogPanel panel = new ColorSelectionDialogPanel(dialogFrame);
 		dialogFrame.setResizable(false);
 		dialogFrame.pack();
@@ -78,13 +78,12 @@ public class ColorSelectionDialogPanel extends JDialog
 		return panel.result;
 	}
 
-	private static final JFrame createDialogFrame(Component parentComponent, String title)
+	private static final StarRodFrame createDialogFrame(Component parentComponent, String title)
 	{
-		JFrame dialogFrame = new JFrame(title);
+		StarRodFrame dialogFrame = new StarRodFrame(title);
 		dialogFrame.setUndecorated(true);
 		dialogFrame.setVisible(true);
 		dialogFrame.setLocationRelativeTo(parentComponent);
-		dialogFrame.setIconImage(Environment.getDefaultIconImage());
 		return dialogFrame;
 	}
 }

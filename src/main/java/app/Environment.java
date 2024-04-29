@@ -1,5 +1,6 @@
 package app;
 
+import java.awt.Frame;
 import java.awt.Image;
 import java.io.File;
 import java.io.FileInputStream;
@@ -464,9 +465,9 @@ public abstract class Environment
 		mainConfig.saveConfigFile();
 
 		readProjectConfig();
+		reloadIcons();
 
 		ProjectDatabase.initialize();
-		reloadIcons();
 
 		// set dump dir
 		File dumpDir = new File(usBaseRom.getParentFile(), "/dump/");
@@ -583,6 +584,12 @@ public abstract class Environment
 		if (ICON_DEFAULT == null)
 			ICON_DEFAULT = loadIconResource(ResourceType.Icon, "icon.png");
 		ICON_ERROR = loadIconAsset(ExpectedAsset.CRASH_GUY);
+
+		for (Frame frame : Frame.getFrames()) {
+			if (frame instanceof StarRodFrame srf) {
+				srf.reloadIcon();
+			}
+		}
 	}
 
 	public static final Image getDefaultIconImage()

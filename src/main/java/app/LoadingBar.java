@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.imageio.ImageIO;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JProgressBar;
 
@@ -64,7 +63,7 @@ public class LoadingBar
 
 	private static LoadingBarWindow instance;
 
-	private static class LoadingBarWindow extends JFrame implements Listener
+	private static class LoadingBarWindow extends StarRodFrame implements Listener
 	{
 		private final JProgressBar progressBar;
 		private final JLabel titleLabel;
@@ -75,7 +74,6 @@ public class LoadingBar
 			super();
 
 			setTitle("Initializing");
-			setIconImage(Environment.getDefaultIconImage());
 
 			setMinimumSize(new Dimension(320, 64));
 			setLocationRelativeTo(null);

@@ -8,7 +8,6 @@ import java.beans.PropertyChangeListener;
 import java.io.File;
 
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
@@ -37,16 +36,15 @@ public class StackTraceDialog extends JDialog implements PropertyChangeListener
 
 	public static void display(Throwable t, File log)
 	{
-		JFrame dialogFrame = new JFrame("Exception");
+		StarRodFrame dialogFrame = new StarRodFrame("Exception");
 		dialogFrame.setUndecorated(true);
 		dialogFrame.setVisible(true);
-		dialogFrame.setIconImage(Environment.getDefaultIconImage());
 
 		new StackTraceDialog(dialogFrame, t, log);
 		dialogFrame.dispose();
 	}
 
-	private StackTraceDialog(JFrame frame, Throwable e, File log)
+	private StackTraceDialog(StarRodFrame frame, Throwable e, File log)
 	{
 		super(frame, true);
 		logFile = log;
@@ -69,7 +67,6 @@ public class StackTraceDialog extends JDialog implements PropertyChangeListener
 		frame.setTitle(title);
 
 		setTitle(title);
-		setIconImage(Environment.getDefaultIconImage());
 
 		textArea.append(e.getClass() + System.lineSeparator());
 		for (StackTraceElement ele : stackTrace) {

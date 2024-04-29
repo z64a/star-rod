@@ -66,7 +66,6 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 
 	private static final BaseEditorSettings EDITOR_SETTINGS = BaseEditorSettings.create()
 		.setTitle(Environment.decorateTitle("World Map Editor"))
-		.setIcon(Environment.getDefaultIconImage())
 		.setLog("world_map_editor.log")
 		.setFullscreen(true)
 		.setResizeable(true)

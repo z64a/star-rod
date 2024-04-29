@@ -1,7 +1,5 @@
 package game.map.editor.common;
 
-import java.awt.Image;
-
 import app.config.Options.Scope;
 
 public class BaseEditorSettings
@@ -17,7 +15,6 @@ public class BaseEditorSettings
 	public int targetFPS = 60;
 
 	public String title = null;
-	public Image iconImage;
 
 	public boolean hasLog = false;
 	public String logName;
@@ -72,12 +69,6 @@ public class BaseEditorSettings
 		hasConfig = true;
 		configFileName = name;
 		configScope = scope;
-		return this;
-	}
-
-	public BaseEditorSettings setIcon(Image icon)
-	{
-		iconImage = icon;
 		return this;
 	}
 

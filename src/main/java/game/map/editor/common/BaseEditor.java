@@ -23,7 +23,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 
 import javax.swing.JButton;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenuBar;
 import javax.swing.JOptionPane;
@@ -42,6 +41,7 @@ import app.Directories;
 import app.Environment;
 import app.LoadingBar;
 import app.StarRodException;
+import app.StarRodFrame;
 import app.StarRodMain;
 import app.SwingUtils;
 import app.SwingUtils.DialogBuilder;
@@ -83,7 +83,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	private List<Tickable> tickers = new ArrayList<>();
 
 	// swing components
-	private JFrame frame;
+	private StarRodFrame frame;
 	private FadingLabel infoLabel;
 	private JMenuBar menuBar;
 
@@ -304,7 +304,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 
 	private final void createFrame(BaseEditorSettings windowSettings)
 	{
-		frame = new JFrame();
+		frame = new StarRodFrame();
 
 		if (windowSettings.fullscreen)
 			frame.setExtendedState(Frame.MAXIMIZED_BOTH);
@@ -316,8 +316,6 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 
 		frame.setLocationRelativeTo(null);
 		frame.setTitle(windowSettings.title);
-
-		frame.setIconImage(windowSettings.iconImage);
 
 		keyboard = new KeyboardInput(glCanvas);
 		mouse = new MouseInput(glCanvas);
@@ -625,7 +623,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		openDialogs.decrement();
 	}
 
-	protected final JFrame getFrame()
+	protected final StarRodFrame getFrame()
 	{
 		return frame;
 	}

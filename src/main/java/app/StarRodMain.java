@@ -20,7 +20,6 @@ import javax.imageio.ImageIO;
 import javax.swing.AbstractButton;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
@@ -62,7 +61,7 @@ import util.Logger;
 import util.Logger.Listener;
 import util.Priority;
 
-public class StarRodMain extends JFrame
+public class StarRodMain extends StarRodFrame
 {
 	public static void main(String[] args) throws InterruptedException
 	{
@@ -95,7 +94,6 @@ public class StarRodMain extends JFrame
 	{
 		setTitle(Environment.decorateTitle("Star Rod"));
 		setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-		setIconImage(Environment.getDefaultIconImage());
 
 		setMinimumSize(new Dimension(480, 32));
 		setLocationRelativeTo(null);

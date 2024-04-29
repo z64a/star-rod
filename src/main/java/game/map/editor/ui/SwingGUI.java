@@ -26,7 +26,6 @@ import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JColorChooser;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -49,6 +48,7 @@ import javax.swing.WindowConstants;
 import org.apache.commons.io.FilenameUtils;
 
 import app.Environment;
+import app.StarRodFrame;
 import app.SwingUtils;
 import app.SwingUtils.OpenDialogCounter;
 import app.config.PreferencesPanel;
@@ -106,7 +106,7 @@ import util.Logger.Listener;
 import util.Logger.Message;
 import util.ui.DialogResult;
 
-public final class SwingGUI extends JFrame implements ActionListener, Logger.Listener, IShutdownListener
+public final class SwingGUI extends StarRodFrame implements ActionListener, Logger.Listener, IShutdownListener
 {
 	public static final int SIDE_PANEL_WIDTH = 400;
 
@@ -205,9 +205,6 @@ public final class SwingGUI extends JFrame implements ActionListener, Logger.Lis
 		desktopY = (int) displaySize.getHeight();
 		setMinimumSize(new Dimension(800, 600));
 		setPreferredSize(new Dimension(desktopX * 4 / 5, desktopY * 4 / 5));
-
-		// set icon
-		setIconImage(Environment.getDefaultIconImage());
 
 		// handle window closing
 		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);

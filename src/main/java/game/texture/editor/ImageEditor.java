@@ -79,7 +79,6 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 
 	private static final BaseEditorSettings EDITOR_SETTINGS = BaseEditorSettings.create()
 		.setTitle(Environment.decorateTitle("Image Editor"))
-		.setIcon(Environment.getDefaultIconImage())
 		.setLog("image_editor.log")
 		.setFullscreen(true)
 		.setResizeable(true)
@@ -1195,7 +1194,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			else
 				image.draw(mousePixelX, mousePixelY, pickedPixel);
 		}
-		
+
 		if(mouseManager.holdingRMB && mousePixelValid)
 			image.deselect(mousePixelX, mousePixelY);
 			*/

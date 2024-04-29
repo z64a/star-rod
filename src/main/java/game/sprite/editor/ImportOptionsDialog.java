@@ -4,10 +4,9 @@ import java.awt.Dimension;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.SwingConstants;
 
-import app.Environment;
+import app.StarRodFrame;
 import app.SwingUtils;
 import net.miginfocom.swing.MigLayout;
 
@@ -17,21 +16,20 @@ public class ImportOptionsDialog extends JDialog
 	public static final int RASTER = 1;
 	public static final int PALETTE = 2;
 
-	private JFrame dialogFrame;
+	private StarRodFrame dialogFrame;
 	private int selected = CANCEL;
 
-	public static int display(JFrame parent)
+	public static int display(StarRodFrame parent)
 	{
-		JFrame dialogFrame = new JFrame("Import Options");
+		StarRodFrame dialogFrame = new StarRodFrame("Import Options");
 		dialogFrame.setUndecorated(true);
 		dialogFrame.setVisible(true);
-		dialogFrame.setIconImage(Environment.getDefaultIconImage());
 
 		ImportOptionsDialog dialog = new ImportOptionsDialog(dialogFrame);
 		return dialog.selected;
 	}
 
-	private ImportOptionsDialog(JFrame dialogFrame)
+	private ImportOptionsDialog(StarRodFrame dialogFrame)
 	{
 		super(dialogFrame, "Import Options", true);
 		this.dialogFrame = dialogFrame;

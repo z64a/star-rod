@@ -18,7 +18,6 @@ import javax.swing.Icon;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JSpinner;
@@ -63,14 +62,13 @@ public class SwingUtils
 		}
 	}
 
-	private static final JFrame createDialogFrame(Component parentComponent, String title)
+	private static final StarRodFrame createDialogFrame(Component parentComponent, String title)
 	{
-		JFrame dialogFrame = new JFrame(title);
+		StarRodFrame dialogFrame = new StarRodFrame(title);
 		dialogFrame.setUndecorated(true);
 		dialogFrame.setVisible(true);
 		dialogFrame.pack();
 		dialogFrame.setLocationRelativeTo(parentComponent);
-		dialogFrame.setIconImage(Environment.getDefaultIconImage());
 		return dialogFrame;
 	}
 
@@ -267,7 +265,7 @@ public class SwingUtils
 			if (counter != null)
 				counter.increment();
 
-			JFrame dialogFrame = createDialogFrame(parentComponent, title);
+			StarRodFrame dialogFrame = createDialogFrame(parentComponent, title);
 
 			Object result = JOptionPane.showInputDialog(parentComponent,
 				message, title, messageType,
@@ -286,7 +284,7 @@ public class SwingUtils
 			if (counter != null)
 				counter.increment();
 
-			JFrame dialogFrame = createDialogFrame(parentComponent, title);
+			StarRodFrame dialogFrame = createDialogFrame(parentComponent, title);
 
 			int result = JOptionPane.showOptionDialog(parentComponent,
 				message, title, optionType, messageType,

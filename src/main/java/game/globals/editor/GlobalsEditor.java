@@ -14,7 +14,6 @@ import java.util.concurrent.CountDownLatch;
 import javax.imageio.ImageIO;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.ImageIcon;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -27,6 +26,7 @@ import javax.swing.WindowConstants;
 
 import app.Environment;
 import app.LoadingBar;
+import app.StarRodFrame;
 import app.SwingUtils;
 import app.config.Options;
 import assets.AssetHandle;
@@ -50,7 +50,7 @@ public class GlobalsEditor
 	public static final int WINDOW_SIZE_X = 800;
 	public static final int WINDOW_SIZE_Y = 800;
 
-	private JFrame frame;
+	private StarRodFrame frame;
 	public boolean exitToMainMenu;
 
 	private JTabbedPane tabbedPane;
@@ -194,11 +194,9 @@ public class GlobalsEditor
 
 	private void createGUI(CountDownLatch guiClosedSignal)
 	{
-		frame = new JFrame();
+		frame = new StarRodFrame();
 
 		frame.setTitle(Environment.decorateTitle("Globals Editor"));
-		frame.setIconImage(Environment.getDefaultIconImage());
-
 		frame.setBounds(0, 0, WINDOW_SIZE_X, WINDOW_SIZE_Y);
 		frame.setLocationRelativeTo(null);
 
