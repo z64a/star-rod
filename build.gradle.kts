@@ -72,6 +72,8 @@ dependencies {
     
     implementation(files("lib/org.eclipse.cdt.core-5.11.0.jar"))
     implementation(files("lib/org.eclipse.equinox.common-3.6.0.jar"))
+    
+    implementation("org.ahocorasick:ahocorasick:0.6.3")
 }
 
 tasks {

@@ -46,7 +46,7 @@ public class IOUtils
 		return getFilesWithExtension(dir, new String[] { ext }, recursive);
 	}
 
-	private static Collection<File> getFilesWithExtension(File dir, String[] ext, boolean recursive) throws IOException
+	public static Collection<File> getFilesWithExtension(File dir, String[] ext, boolean recursive) throws IOException
 	{
 		if (!dir.exists())
 			throw new IOException("Directory " + dir + " does not exist!");

@@ -176,6 +176,59 @@ public abstract class MapObjectTreeModel<T extends MapObject> extends DefaultTre
 		}
 	}
 
+	public static interface MapObjectVisitor<T>
+	{
+		public void visit(T obj);
+	}
+
+	public void depthFirstTraversal(MapObjectVisitor<T> visitor)
+	{
+		Stack<MapObjectNode<T>> stack = new Stack<>();
+		stack.push(getRoot());
+
+		while (!stack.isEmpty()) {
+			MapObjectNode<T> node = stack.pop();
+			for (int i = 0; i < node.getChildCount(); i++)
+				stack.push(node.getChildAt(i));
+
+			visitor.visit(node.getUserObject());
+		}
+	}
+
+	public void breadthFirstTraversal(MapObjectVisitor<T> visitor)
+	{
+		Queue<MapObjectNode<T>> queue = new LinkedList<>();
+		queue.add(getRoot());
+
+		while (!queue.isEmpty()) {
+			MapObjectNode<T> node = queue.poll();
+			for (int i = 0; i < node.getChildCount(); i++)
+				queue.add(node.getChildAt(i));
+
+			visitor.visit(node.getUserObject());
+		}
+	}
+
+	private void nextIndexTraversal(MapObjectVisitor<T> visitor, MapObjectNode<T> cur)
+	{
+		for (int i = 0; i < cur.getChildCount(); i++) {
+			MapObjectNode<T> child = cur.getChildAt(i);
+			nextIndexTraversal(visitor, child);
+		}
+
+		visitor.visit(cur.getUserObject());
+	}
+
+	/**
+	 * Visit the nodes of this tree in the order of the original game's node indices:<BR>
+	 * post-order depth-first (i.e., children first, parent afterward; root last)
+	 * @param visitor
+	 */
+	public void indexTraversal(MapObjectVisitor<T> visitor)
+	{
+		nextIndexTraversal(visitor, getRoot());
+	}
+
 	public T getObject(String name)
 	{
 		Stack<MapObjectNode<T>> nodes = new Stack<>();

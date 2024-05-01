@@ -61,6 +61,7 @@ import game.map.MapObject;
 import game.map.MapObject.HitType;
 import game.map.MapObject.MapObjectType;
 import game.map.MapObject.ShapeType;
+import game.map.MapSourceRenamer;
 import game.map.compiler.BuildException;
 import game.map.compiler.CollisionCompiler;
 import game.map.compiler.GeometryCompiler;
@@ -3827,6 +3828,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	{
 		try {
 			map.saveMap(new MapEditorMetadata(this));
+			if (!map.isStage)
+				new MapSourceRenamer(map);
 		}
 		catch (Exception e) {
 			displayStackTrace(e);
@@ -3841,6 +3844,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	{
 		try {
 			map.saveMapAs(f, new MapEditorMetadata(this));
+			if (!map.isStage)
+				new MapSourceRenamer(map);
 		}
 		catch (Exception e) {
 			displayStackTrace(e);

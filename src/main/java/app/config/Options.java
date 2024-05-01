@@ -44,6 +44,7 @@ public enum Options
 			"Set how sensitive scroll panels are to mouse wheel scrolling", 1.0, 1024.0, 1.0),
 	NormalsLength		(true, Scope.MapEditor, Type.Float,  "NormalsLength", "16.0", "Normals Draw Length",
 					"The length of normal visualizations draw in the editor.", 1.0, 1024.0, 1.0),
+	RenameOnSave		(true, Scope.MapEditor, Type.String, "RenameOnSave", "prompt"),
 	RecentMap0			(true, Scope.MapEditor, Type.String, "RecentMap0", ""),
 	RecentMap1			(true, Scope.MapEditor, Type.String, "RecentMap1", ""),
 	RecentMap2			(true, Scope.MapEditor, Type.String, "RecentMap2", ""),
