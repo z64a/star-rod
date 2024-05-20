@@ -19,3 +19,4 @@ src/main/java/analysis/**
 database/include/**
 logs/**
 
+.settings
