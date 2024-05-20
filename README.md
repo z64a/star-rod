@@ -21,7 +21,7 @@ To get started with modding Paper Mario, see [docs.starhaven.dev](https://docs.s
 
 ## Development
 
-Star Rod is written in [Java](https://dev.java/) and uses the build tool [Gradle](https://gradle.org/). We recommend [Visual Studio Code](https://code.visualstudio.com/)
+Star Rod is written in [Java](https://dev.java/) and uses the build tool [Gradle](https://gradle.org/). We recommend [Visual Studio Code](https://code.visualstudio.com/) as your editor.
 
 To set up Star Rod for local development, follow these instructions:
 
