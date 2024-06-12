@@ -35,24 +35,39 @@ dependencies {
     implementation("org.lwjgl", "lwjgl-assimp")
             
     runtimeOnly("org.lwjgl:lwjgl::natives-windows")
+    runtimeOnly("org.lwjgl:lwjgl::natives-windows-arm64")
     runtimeOnly("org.lwjgl:lwjgl::natives-macos")
+    runtimeOnly("org.lwjgl:lwjgl::natives-macos-arm64")
     runtimeOnly("org.lwjgl:lwjgl::natives-linux")
+    runtimeOnly("org.lwjgl:lwjgl::natives-linux-arm64")
     
     runtimeOnly("org.lwjgl:lwjgl-opengl::natives-windows")
+    runtimeOnly("org.lwjgl:lwjgl-opengl::natives-windows-arm64")
     runtimeOnly("org.lwjgl:lwjgl-opengl::natives-macos")
+    runtimeOnly("org.lwjgl:lwjgl-opengl::natives-macos-arm64")
     runtimeOnly("org.lwjgl:lwjgl-opengl::natives-linux")
+    runtimeOnly("org.lwjgl:lwjgl-opengl::natives-linux-arm64")
     
     runtimeOnly("org.lwjgl:lwjgl-glfw::natives-windows")
+    runtimeOnly("org.lwjgl:lwjgl-glfw::natives-windows-arm64")
     runtimeOnly("org.lwjgl:lwjgl-glfw::natives-macos")
+    runtimeOnly("org.lwjgl:lwjgl-glfw::natives-macos-arm64")
     runtimeOnly("org.lwjgl:lwjgl-glfw::natives-linux")
+    runtimeOnly("org.lwjgl:lwjgl-glfw::natives-linux-arm64")
 
     runtimeOnly("org.lwjgl:lwjgl-tinyfd::natives-windows")
+    runtimeOnly("org.lwjgl:lwjgl-tinyfd::natives-windows-arm64")
     runtimeOnly("org.lwjgl:lwjgl-tinyfd::natives-macos")
+    runtimeOnly("org.lwjgl:lwjgl-tinyfd::natives-macos-arm64")
     runtimeOnly("org.lwjgl:lwjgl-tinyfd::natives-linux")
+    runtimeOnly("org.lwjgl:lwjgl-tinyfd::natives-linux-arm64")
     
     runtimeOnly("org.lwjgl:lwjgl-assimp::natives-windows")
+    runtimeOnly("org.lwjgl:lwjgl-assimp::natives-windows-arm64")
     runtimeOnly("org.lwjgl:lwjgl-assimp::natives-macos")
+    runtimeOnly("org.lwjgl:lwjgl-assimp::natives-macos-arm64")
     runtimeOnly("org.lwjgl:lwjgl-assimp::natives-linux")
+    runtimeOnly("org.lwjgl:lwjgl-assimp::natives-linux-arm64")
     
     implementation("org.lwjglx:lwjgl3-awt:0.1.8")
     
