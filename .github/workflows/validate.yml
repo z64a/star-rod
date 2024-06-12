@@ -1,6 +1,7 @@
 name: Validate
 on:
   push:
+  pull_request:
 jobs:
   build-gradle-project:
     runs-on: ubuntu-latest
