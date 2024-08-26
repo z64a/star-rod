@@ -137,14 +137,14 @@ public class WorldMapModder
 				xmw.addAttribute(locTag, ATTR_PARENT, addPrefix(loc.parentName, PREFIX_LOC));
 				xmw.addAttribute(locTag, ATTR_REQUIRES, addPrefix(loc.descUpdate, PREFIX_STORY));
 				xmw.addInt(locTag, ATTR_START_X, loc.x);
-				xmw.addInt(locTag, ATTR_START_Y, loc.y);
+				xmw.addInt(locTag, ATTR_START_Y, MAP_SIZE - loc.y);
 
 				int lastX = loc.x;
-				int lastY = loc.y;
+				int lastY = MAP_SIZE - loc.y;
 				StringBuilder sb = new StringBuilder();
 				for (int j = 0; j < loc.path.size(); j++) {
 					WorldPathElement marker = loc.path.get(j);
-					sb.append(String.format("%d,%d", marker.x - lastX, marker.y - lastY));
+					sb.append(String.format("%d,%d", marker.x - lastX, -(marker.y - lastY)));
 					lastX = marker.x;
 					lastY = marker.y;
 
