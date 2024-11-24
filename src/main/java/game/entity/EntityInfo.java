@@ -12,12 +12,11 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.HashMap;
 
-import game.map.editor.geometry.Vector3f;
-
 import app.Environment;
 import app.Resource;
 import app.Resource.ResourceType;
 import app.input.InvalidInputException;
+import common.Vector3f;
 import game.DataUtils;
 import game.entity.EntityModel.RenderablePart;
 import game.map.Axis;

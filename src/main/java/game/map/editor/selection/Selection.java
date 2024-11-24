@@ -3,6 +3,7 @@ package game.map.editor.selection;
 import java.util.ArrayList;
 import java.util.LinkedList;
 
+import common.Vector3f;
 import game.map.Axis;
 import game.map.BoundingBox;
 import game.map.MutableAngle;
@@ -15,7 +16,6 @@ import game.map.editor.camera.ViewType;
 import game.map.editor.commands.AbstractCommand;
 import game.map.editor.commands.CommandBatch;
 import game.map.editor.commands.TransformSelection;
-import game.map.editor.geometry.Vector3f;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.Renderer;
 import game.map.editor.selection.PickRay.PickHit;

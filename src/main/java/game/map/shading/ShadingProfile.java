@@ -12,10 +12,11 @@ import javax.swing.DefaultListCellRenderer;
 import javax.swing.JLabel;
 import javax.swing.JList;
 
-import game.map.editor.geometry.Vector3f;
 import org.w3c.dom.Element;
 
 import app.SwingUtils;
+import common.BaseCamera;
+import common.Vector3f;
 import game.ProjectDatabase;
 import game.map.Axis;
 import game.map.editor.MapEditor;
@@ -24,7 +25,6 @@ import game.map.editor.camera.MapEditViewport;
 import game.map.editor.commands.AbstractCommand;
 import game.map.editor.commands.fields.EditableField;
 import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
-import game.map.editor.common.BaseCamera;
 import game.map.editor.render.RenderingOptions;
 import game.map.shading.ShadingLightSource.FalloffType;
 import game.map.shading.SpriteShadingEditor.JsonShadingLight;

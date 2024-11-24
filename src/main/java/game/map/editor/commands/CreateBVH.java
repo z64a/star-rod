@@ -5,8 +5,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 
-import game.map.editor.geometry.Vector3f;
-
+import common.Vector3f;
 import game.map.BoundingBox;
 import game.map.MapObject;
 import game.map.MapObject.HitType;

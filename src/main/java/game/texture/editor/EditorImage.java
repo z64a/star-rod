@@ -10,7 +10,7 @@ import java.awt.image.IndexColorModel;
 import java.io.File;
 import java.nio.ByteBuffer;
 
-import game.map.editor.common.BasicEditorCommand;
+import common.BasicEditorCommand;
 import game.texture.ImageConverter;
 import game.texture.Palette;
 import game.texture.Tile;

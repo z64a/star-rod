@@ -310,7 +310,7 @@ public class CommandAnimator implements ComponentAnimator
 
 		for (int i = 0; i < commandListModel.size(); i++) {
 			AnimCommand cmd = commandListModel.get(i);
-			if (cmd instanceof Label lbl)
+			if (cmd instanceof Label)
 				continue;
 			cmd.addTo(rawAnim);
 		}

@@ -91,6 +91,8 @@ import game.map.editor.ui.dialogs.UVOptionsPanel;
 import game.map.editor.ui.info.DisplayListPanel.AddTriangles;
 import game.map.hit.Collider;
 import game.map.hit.Zone;
+import game.map.impex.ExportDialog;
+import game.map.impex.ImportDialog;
 import game.map.marker.Marker;
 import game.map.shape.Model;
 import game.map.shape.TexturePanner;
@@ -173,6 +175,8 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 	private GenerateFromTrianglesDialog generateFromTrianglesDialog;
 	private GenerateFromPathsDialog generateFromPathsDialog;
 	private EditPannerDialog editTexPannerDialog;
+	private ExportDialog exportDialog;
+	private ImportDialog importDialog;
 
 	private TransformSelectionPanel transformSelectionPanel;
 
@@ -216,7 +220,6 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 				closeRequested = (!editor.map.modified || promptForSave()) && (!ProjectDatabase.SpriteShading.modified || promptSaveShading());
 				if (!closeRequested)
 					openDialogCount.decrement();
-				;
 			}
 		});
 
@@ -224,7 +227,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		File mapDir = Environment.getProjectDirectory();
 
 		importFileChooser = new OpenFileChooser(mapDir, "Import Geometry", "Importables", "obj", "fbx", "prefab");
-		exportFileChooser = new SaveFileChooser(mapDir, "Export Geometry", "Exportables", "obj", "fbx", "prefab");
+		exportFileChooser = new SaveFileChooser(mapDir, "Export Geometry", null, "obj", "fbx");
 
 		commandMap = new HashMap<>();
 		for (GuiCommand cmd : GuiCommand.values())
@@ -515,14 +518,13 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 		menu.addSeparator();
 
-		JMenu importMenu = new JMenu("Import");
-		importMenu.getPopupMenu().setLightWeightPopupEnabled(false);
-		menu.add(importMenu);
+		item = new JMenuItem("Export");
+		addButtonCommand(item, GuiCommand.PROMPT_EXPORT);
+		menu.add(item);
 
-		item = new JMenuItem("Prefab");
-		addButtonCommand(item, GuiCommand.LOAD_OBJECTS);
-		importMenu.add(item);
-		item.setPreferredSize(menuItemDimension);
+		item = new JMenuItem("Import");
+		addButtonCommand(item, GuiCommand.PROMPT_IMPORT);
+		menu.add(item);
 
 		menu.addSeparator();
 
@@ -533,6 +535,8 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		item = new JMenuItem("Exit");
 		EditorShortcut.QUIT.bindMenuItem(editor, item);
 		menu.add(item);
+
+		item.setPreferredSize(menuItemDimension);
 	}
 
 	private void addEditorMenu(JMenuBar menuBar)
@@ -622,37 +626,6 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		menu.add(item);
 	}
 
-	private JMenu getTransformMenu()
-	{
-		JMenuItem item;
-
-		JMenu transformMenu = new JMenu("Transform");
-		transformMenu.getPopupMenu().setLightWeightPopupEnabled(false);
-
-		item = new JMenuItem("Translate");
-		addButtonCommand(item, GuiCommand.SHOW_TRANSLATE_SELECTION_DIALOG);
-		transformMenu.add(item);
-		item.setPreferredSize(menuItemDimension);
-
-		item = new JMenuItem("Rotate");
-		addButtonCommand(item, GuiCommand.SHOW_ROTATE_SELECTION_DIALOG);
-		transformMenu.add(item);
-
-		item = new JMenuItem("Scale");
-		addButtonCommand(item, GuiCommand.SHOW_SCALE_SELECTION_DIALOG);
-		transformMenu.add(item);
-
-		item = new JMenuItem("Resize");
-		addButtonCommand(item, GuiCommand.SHOW_RESIZE_SELECTION_DIALOG);
-		transformMenu.add(item);
-
-		item = new JMenuItem("Flip");
-		addButtonCommand(item, GuiCommand.SHOW_FLIP_SELECTION_DIALOG);
-		transformMenu.add(item);
-
-		return transformMenu;
-	}
-
 	private void addMapMenu(JMenuBar menuBar)
 	{
 		JMenu menu = new JMenu(MENU_BAR_SPACING + "Map" + MENU_BAR_SPACING);
@@ -719,12 +692,30 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		menuBar.add(menu);
 		JMenuItem item;
 
-		menu.add(getTransformMenu());
+		item = new JMenuItem("Translate");
+		addButtonCommand(item, GuiCommand.SHOW_TRANSLATE_SELECTION_DIALOG);
+		menu.add(item);
+
+		item = new JMenuItem("Rotate");
+		addButtonCommand(item, GuiCommand.SHOW_ROTATE_SELECTION_DIALOG);
+		menu.add(item);
+
+		item = new JMenuItem("Scale");
+		addButtonCommand(item, GuiCommand.SHOW_SCALE_SELECTION_DIALOG);
+		menu.add(item);
+
+		item = new JMenuItem("Resize");
+		addButtonCommand(item, GuiCommand.SHOW_RESIZE_SELECTION_DIALOG);
+		menu.add(item);
+
+		item = new JMenuItem("Flip");
+		addButtonCommand(item, GuiCommand.SHOW_FLIP_SELECTION_DIALOG);
+		menu.add(item);
 
 		menu.addSeparator();
 
-		item = new JMenuItem("Export");
-		addButtonCommand(item, GuiCommand.SAVE_OBJECTS);
+		item = new JMenuItem("Save as Prefab");
+		addButtonCommand(item, GuiCommand.SAVE_PREFAB);
 		menu.add(item);
 
 		menu.addSeparator();
@@ -1163,11 +1154,14 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 				prompt_SaveMapAs();
 				break;
 
-			case LOAD_OBJECTS:
-				prompt_ImportObjects(null);
+			case PROMPT_EXPORT:
+				prompt_Import();
 				break;
-			case SAVE_OBJECTS:
-				prompt_ExportObjects();
+			case PROMPT_IMPORT:
+				prompt_Export();
+				break;
+			case SAVE_PREFAB:
+				prompt_Prefab();
 				break;
 
 			case SHOW_TRANSLATE_SELECTION_DIALOG:
@@ -1250,29 +1244,29 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			// following commands are forwarded directly to the editor
 			/*
 			case SAVE_MAP:
-			
+
 			case COMPILE_SHAPE:
 			case COMPILE_COLLISION:
-			
+
 			case SHOW_MODELS:
 			case SHOW_COLLIDERS:
 			case SHOW_ZONES:
 			case SHOW_MARKERS:
-			
+
 			case RESET_CAMERAS:
 			case RESET_LAYOUT:
-			
+
 			case SEPARATE_VERTS:
 			case FUSE_VERTS:
 			case JOIN_MODELS:
 			case SPLIT_MODEL:
-			
+
 			case CONVERT_COLLIDER_TO_ZONE:
 			case CONVERT_ZONE_TO_COLLIDER:
-			
+
 			case CREATE_COLLIDER_GROUP:
 			case CREATE_ZONE_GROUP:
-			
+
 			case DEBUG_RECOMPUTE_BOUNDING_BOXES:
 			 */
 			default:
@@ -1365,6 +1359,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		}
 	}
 
+	//XXX
 	public void prompt_ImportObjects(MapObjectNode<? extends MapObject> node)
 	{
 		openDialogCount.increment();
@@ -1375,12 +1370,47 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		openDialogCount.decrement();
 	}
 
-	private void prompt_ExportObjects()
+	public void prompt_Import()
+	{
+		//TODO if needed
+		/*
+		if (importDialog == null)
+			importDialog = new ImportDialog(this);
+
+		importDialog.pack();
+		importDialog.setVisible(true);
+		*/
+	}
+
+	public void prompt_Export()
+	{
+		exportFileChooser.setFilters(null, "obj", "fbx");
+
+		openDialogCount.increment();
+		if (exportFileChooser.prompt() == ChooseDialogResult.APPROVE) {
+			File f = exportFileChooser.getSelectedFile();
+			editor.map.exportToFile(f);
+		}
+		openDialogCount.decrement();
+
+		//TODO if needed
+		/*
+		if (exportDialog == null)
+			exportDialog = new ExportDialog(this);
+
+		exportDialog.pack();
+		exportDialog.setVisible(true);
+		*/
+	}
+
+	public void prompt_Prefab()
 	{
 		Selection<?> selection = editor.selectionManager.currentSelection;
 
 		if (selection.isEmpty())
 			return;
+
+		exportFileChooser.setFilters("Prefabs", "prefab");
 
 		openDialogCount.increment();
 		if (exportFileChooser.prompt() == ChooseDialogResult.APPROVE) {

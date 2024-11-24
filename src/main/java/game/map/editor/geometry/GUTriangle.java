@@ -1,6 +1,6 @@
 package game.map.editor.geometry;
 
-import game.map.editor.geometry.Vector3f;
+import common.Vector3f;
 
 public class GUTriangle
 {

@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 
 import app.input.IOUtils;
-import game.map.editor.geometry.Vector3f;
+import common.Vector3f;
 import game.map.hit.Collider;
 import game.map.hit.Zone;
 import game.map.mesh.BasicMesh;

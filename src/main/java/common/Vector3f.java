@@ -1,4 +1,4 @@
-package game.map.editor.geometry;
+package common;
 
 public class Vector3f
 {

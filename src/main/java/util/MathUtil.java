@@ -1,6 +1,6 @@
 package util;
 
-import game.map.editor.geometry.Vector3f;
+import common.Vector3f;
 
 public abstract class MathUtil
 {

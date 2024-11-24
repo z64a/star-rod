@@ -1,8 +1,6 @@
 package game.texture.editor;
 
 import static org.lwjgl.opengl.GL11.*;
-import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
-import static org.lwjgl.opengl.GL13.glActiveTexture;
 
 import java.awt.Canvas;
 import java.awt.Color;
@@ -27,14 +25,14 @@ import javax.swing.SwingUtilities;
 
 import app.Environment;
 import app.SwingUtils;
-import game.map.editor.common.BaseEditor;
-import game.map.editor.common.BaseEditorSettings;
-import game.map.editor.common.BasicCamera;
-import game.map.editor.common.BasicCommandManager;
-import game.map.editor.common.BasicEditorCommand;
-import game.map.editor.common.KeyboardInput.KeyInputEvent;
-import game.map.editor.common.MouseInput.MouseManagerListener;
-import game.map.editor.common.MousePixelRead;
+import common.BaseEditor;
+import common.BaseEditorSettings;
+import common.BasicCamera;
+import common.BasicCommandManager;
+import common.BasicEditorCommand;
+import common.KeyboardInput.KeyInputEvent;
+import common.MouseInput.MouseManagerListener;
+import common.MousePixelRead;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
 import game.map.editor.ui.SwatchPanel;
@@ -210,14 +208,6 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 
 		glClearStencil(0);
 		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-		glActiveTexture(GL_TEXTURE0);
-		glEnable(GL_TEXTURE_2D);
-
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		TextRenderer.init();
 
@@ -904,7 +894,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 		assert (SwingUtilities.isEventDispatchThread());
 
 		CreateOptionsPanel createOptions = new CreateOptionsPanel();
-		int choice = ImageEditor.super.getConfirmDialog("New Image Options", createOptions).choose();
+		int choice = getConfirmDialog("New Image Options", createOptions).choose();
 		if (choice != JOptionPane.OK_OPTION)
 			return;
 
@@ -967,7 +957,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 		assert (SwingUtilities.isEventDispatchThread());
 
 		ImportOptionsPanel importOptions = new ImportOptionsPanel();
-		int choice = ImageEditor.super.getConfirmDialog("Import Options", importOptions).choose();
+		int choice = getConfirmDialog("Import Options", importOptions).choose();
 		if (choice != JOptionPane.OK_OPTION)
 			return;
 
@@ -979,8 +969,8 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			}
 			catch (ImageFormatException e) {
 				if (importOptions.getFormat().type == TileFormat.TYPE_CI) {
-					choice = ImageEditor.super.getConfirmDialog(
-						"Incorrect Image Format", "Image file is not color-indexed. \nWould you like to convert it?").choose();
+					choice = getConfirmDialog("Incorrect Image Format",
+						"Image file is not color-indexed. \nWould you like to convert it?").choose();
 					if (choice != JOptionPane.OK_OPTION)
 						return;
 
@@ -1015,7 +1005,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 		assert (SwingUtilities.isEventDispatchThread());
 
 		ImportOptionsPanel importOptions = new ImportOptionsPanel();
-		int choice = ImageEditor.super.getConfirmDialog("Import Options", importOptions).choose();
+		int choice = getConfirmDialog("Import Options", importOptions).choose();
 		if (choice != JOptionPane.OK_OPTION)
 			return null;
 
@@ -1030,8 +1020,9 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 				}
 				catch (ImageFormatException e) {
 					if (importOptions.getFormat().type == TileFormat.TYPE_CI) {
-						ImageEditor.super.showErrorDialog("Incorrect Image Format",
-							"Image file is not color-indexed. \nCannot be used for palette.");
+						showErrorDialog("Incorrect Image Format",
+							"Image file is not color-indexed.",
+							"Cannot be used for palette.");
 					}
 					else
 						throw e;
@@ -1061,7 +1052,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			importFileChooser.setDirectoryContaining(image.source.getParentFile());
 		if (importFileChooser.prompt() == ChooseDialogResult.APPROVE) {
 			ImportOptionsPanel importOptions = new ImportOptionsPanel();
-			int choice = ImageEditor.super.getConfirmDialog("Import Options", importOptions).choose();
+			int choice = getConfirmDialog("Import Options", importOptions).choose();
 			if (choice != JOptionPane.OK_OPTION)
 				return;
 
@@ -1087,7 +1078,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			return;
 
 		ResizeOptionsPanel resizeOptionsPanel = new ResizeOptionsPanel();
-		int choice = ImageEditor.super.getConfirmDialog("Resize Image Options", resizeOptionsPanel).choose();
+		int choice = getConfirmDialog("Resize Image Options", resizeOptionsPanel).choose();
 		if (choice != JOptionPane.OK_OPTION)
 			return;
 
@@ -1106,7 +1097,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			return;
 
 		ConvertOptionsPanel convertOptionsPanel = new ConvertOptionsPanel();
-		int choice = ImageEditor.super.getConfirmDialog("Convert Image Options", convertOptionsPanel).choose();
+		int choice = getConfirmDialog("Convert Image Options", convertOptionsPanel).choose();
 		if (choice != JOptionPane.OK_OPTION)
 			return;
 

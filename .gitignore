@@ -19,3 +19,13 @@ src/main/java/analysis/**
 database/include/**
 logs/**
 
+# Eclipse settings
+.settings/*
+!.settings/org.eclipse.buildship.core.prefs
+!.settings/org.eclipse.core.resources.prefs
+!.settings/org.eclipse.jdt.core.prefs
+!.settings/org.eclipse.jdt.ui.prefs
+
+# Vscode settings
+.vscode/*
+!.vscode/settings.json

@@ -16,10 +16,10 @@ import java.util.Random;
 import org.lwjgl.BufferUtils;
 
 import assets.ExpectedAsset;
+import common.MouseInput;
+import common.Vector3f;
 import game.SimpleItem;
 import game.map.Axis;
-import game.map.editor.common.MouseInput;
-import game.map.editor.geometry.Vector3f;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
 import game.map.shape.TransformMatrix;

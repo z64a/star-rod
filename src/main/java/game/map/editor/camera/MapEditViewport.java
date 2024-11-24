@@ -1,7 +1,6 @@
 package game.map.editor.camera;
 
-import game.map.editor.geometry.Vector3f;
-
+import common.Vector3f;
 import game.map.BoundingBox;
 import game.map.editor.MapEditor;
 import game.map.editor.render.PresetColor;

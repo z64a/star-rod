@@ -4,11 +4,10 @@ import static java.lang.Math.*;
 
 import java.awt.event.KeyEvent;
 
-import game.map.editor.geometry.Vector3f;
-
+import common.KeyboardInput;
+import common.MouseInput;
+import common.Vector3f;
 import game.map.BoundingBox;
-import game.map.editor.common.KeyboardInput;
-import game.map.editor.common.MouseInput;
 
 public class PerspFreeCamera extends PerspBaseCamera
 {

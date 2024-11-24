@@ -13,8 +13,8 @@ import app.SwingUtils;
 public class SaveFileChooser
 {
 	private final String title;
-	private final String filterName;
-	private final String[] filterExts;
+	private String filterName;
+	private String[] filterExts;
 
 	private File currentDirectory = null;
 	private File selected = null;
@@ -36,6 +36,12 @@ public class SaveFileChooser
 	{
 		currentDirectory = dir;
 		return prompt();
+	}
+
+	public void setFilters(String filterName, String ... filterExts)
+	{
+		this.filterName = filterName;
+		this.filterExts = filterExts;
 	}
 
 	public ChooseDialogResult prompt()

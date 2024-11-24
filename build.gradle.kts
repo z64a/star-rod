@@ -15,7 +15,7 @@ repositories {
 plugins {
     id("java")
     id("com.github.johnrengelman.shadow") version "8.1.1"
-    id("net.nemerosa.versioning") version "2.8.2"
+    id("net.nemerosa.versioning") version "3.1.0"
     id("com.jaredsburrows.license") version "0.9.7"
 }
 

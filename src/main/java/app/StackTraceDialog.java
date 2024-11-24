@@ -79,8 +79,7 @@ public class StackTraceDialog extends JDialog implements PropertyChangeListener
 
 		StringBuilder msgBuilder = new StringBuilder();
 
-		if (e instanceof InputFileException) {
-			InputFileException ifx = (InputFileException) e;
+		if (e instanceof InputFileException ifx) {
 			msgBuilder.append(ifx.getOrigin());
 			msgBuilder.append(System.lineSeparator());
 			inputFile = ifx.getSourceFile();
@@ -146,12 +145,10 @@ public class StackTraceDialog extends JDialog implements PropertyChangeListener
 				JScrollPane detailScrollPane = new JScrollPane(textArea);
 				detailScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
-				int choice = SwingUtils.getOptionDialog()
+				int choice = SwingUtils.getErrorDialog()
 					.setTitle("Exception Details")
 					.setMessage(detailScrollPane)
-					.setMessageType(JOptionPane.ERROR_MESSAGE)
 					.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
-					.setIcon(Environment.ICON_ERROR)
 					.setOptions("OK", "Copy to Clipboard")
 					.choose();
 

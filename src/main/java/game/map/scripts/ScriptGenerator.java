@@ -7,9 +7,8 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 
-import game.map.editor.geometry.Vector3f;
-
 import app.input.InvalidInputException;
+import common.Vector3f;
 import game.DataUtils;
 import game.ScriptVariable;
 import game.entity.EntityInfo.EntityType;

@@ -1,6 +1,8 @@
 package renderer.shaders;
 
 import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
+import static org.lwjgl.opengl.GL13.glActiveTexture;
 import static org.lwjgl.opengl.GL15.*;
 import static org.lwjgl.opengl.GL20.glUseProgram;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
@@ -26,6 +28,18 @@ public abstract class RenderState
 	{
 		rec = new StateRecord();
 		stack = new Stack<>();
+
+		glEnable(GL_POINT_SMOOTH);
+		glHint(GL_POINT_SMOOTH, GL_NICEST);
+
+		glEnable(GL_LINE_SMOOTH);
+		glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+
+		//	glEnable(GL_POLYGON_SMOOTH);
+		//	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+
+		glActiveTexture(GL_TEXTURE0);
+		glEnable(GL_TEXTURE_2D);
 
 		initProgram();
 		initVAO();

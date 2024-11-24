@@ -1,7 +1,6 @@
 package renderer.text;
 
-import game.map.editor.geometry.Vector3f;
-
+import common.Vector3f;
 import game.map.editor.render.PresetColor;
 import renderer.shaders.scene.BasicSolidShader;
 import renderer.shaders.scene.TextShader;

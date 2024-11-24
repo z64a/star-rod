@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import common.Vector3f;
 import game.map.Axis;
 import game.map.MapObject;
 import game.map.MapObject.MapObjectType;
@@ -13,7 +14,6 @@ import game.map.editor.camera.MapEditViewport;
 import game.map.editor.camera.OrthographicViewport;
 import game.map.editor.commands.CreateObject;
 import game.map.editor.geometry.GeometryUtils;
-import game.map.editor.geometry.Vector3f;
 import game.map.editor.render.PreviewDrawMode;
 import game.map.editor.render.PreviewGeometry;
 import game.map.hit.Collider;

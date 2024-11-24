@@ -3,8 +3,7 @@ package game.map.marker;
 import java.util.LinkedList;
 import java.util.List;
 
-import game.map.editor.geometry.Vector3f;
-
+import common.Vector3f;
 import game.map.editor.MapEditor;
 import game.map.editor.commands.AbstractCommand;
 import game.map.editor.geometry.GeometryUtils;

@@ -12,10 +12,10 @@ import java.util.Map.Entry;
 import java.util.Queue;
 
 import org.apache.commons.io.FilenameUtils;
-import game.map.editor.geometry.Vector3f;
 import org.w3c.dom.Element;
 
 import app.input.InputFileException;
+import common.Vector3f;
 import game.map.BoundingBox;
 import game.map.shading.ShadingProfile;
 import game.sprite.SpriteLoader.SpriteSet;

@@ -10,13 +10,13 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import common.BaseCamera;
+import common.Vector3f;
 import game.entity.EntityInfo;
 import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.IShutdownListener;
 import game.map.editor.PaintManager;
 import game.map.editor.camera.MapEditViewport;
-import game.map.editor.common.BaseCamera;
-import game.map.editor.geometry.Vector3f;
 import game.map.editor.selection.PickRay.PickHit;
 import game.map.hit.Collider;
 import game.map.hit.Zone;
@@ -80,16 +80,6 @@ public class Renderer implements IShutdownListener
 			throw new IllegalStateException("There can be only one Renderer");
 		instance = this;
 		editor.registerOnShutdown(this);
-
-		glEnable(GL_POINT_SMOOTH);
-		glHint(GL_POINT_SMOOTH, GL_NICEST);
-
-		glEnable(GL_LINE_SMOOTH);
-		glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-
-		glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
-
-		glEnable(GL_TEXTURE_2D);
 
 		glCullFace(GL_BACK);
 
@@ -606,11 +596,14 @@ public class Renderer implements IShutdownListener
 
 				for (Triangle t : preview.batch.triangles) {
 					TriangleRenderQueue.addTriangle(
-						TriangleRenderQueue.addVertex().setPosition(t.vert[0].getCurrentX(), t.vert[0].getCurrentY(), t.vert[0].getCurrentZ())
+						TriangleRenderQueue.addVertex()
+							.setPosition(t.vert[0].getCurrentX(), t.vert[0].getCurrentY(), t.vert[0].getCurrentZ())
 							.getIndex(),
-						TriangleRenderQueue.addVertex().setPosition(t.vert[1].getCurrentX(), t.vert[1].getCurrentY(), t.vert[1].getCurrentZ())
+						TriangleRenderQueue.addVertex()
+							.setPosition(t.vert[1].getCurrentX(), t.vert[1].getCurrentY(), t.vert[1].getCurrentZ())
 							.getIndex(),
-						TriangleRenderQueue.addVertex().setPosition(t.vert[2].getCurrentX(), t.vert[2].getCurrentY(), t.vert[2].getCurrentZ())
+						TriangleRenderQueue.addVertex()
+							.setPosition(t.vert[2].getCurrentX(), t.vert[2].getCurrentY(), t.vert[2].getCurrentZ())
 							.getIndex());
 				}
 

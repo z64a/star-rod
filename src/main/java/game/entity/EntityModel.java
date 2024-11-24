@@ -17,15 +17,15 @@ import java.util.List;
 import java.util.Objects;
 
 import org.apache.commons.io.FileUtils;
-import game.map.editor.geometry.Vector3f;
 
 import app.StarRodException;
 import app.StarRodMain;
 import app.input.IOUtils;
+import common.BaseCamera;
+import common.Vector3f;
 import game.entity.EntityInfo.EntityType;
 import game.map.Axis;
 import game.map.BoundingBox;
-import game.map.editor.common.BaseCamera;
 import game.map.editor.render.RenderMode;
 import game.map.editor.render.RenderingOptions;
 import game.map.editor.render.SortedRenderable;

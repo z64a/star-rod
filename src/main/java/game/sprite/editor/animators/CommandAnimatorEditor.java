@@ -205,10 +205,6 @@ public class CommandAnimatorEditor
 		palItem.addActionListener((e) -> create(animator.new SetPalette()));
 		createMenu.add(palItem);
 
-		JMenuItem parentItem = new JMenuItem("Set Parent");
-		parentItem.addActionListener((e) -> create(animator.new SetParent()));
-		createMenu.add(parentItem);
-
 		createMenu.addSeparator();
 
 		JMenuItem labelItem = new JMenuItem("Label");
@@ -236,6 +232,16 @@ public class CommandAnimatorEditor
 		JMenuItem scaleItem = new JMenuItem("Set Scale");
 		scaleItem.addActionListener((e) -> create(animator.new SetScale()));
 		createMenu.add(scaleItem);
+
+		createMenu.addSeparator();
+
+		JMenuItem parentItem = new JMenuItem("Set Parent");
+		parentItem.addActionListener((e) -> create(animator.new SetParent()));
+		createMenu.add(parentItem);
+
+		JMenuItem notifyItem = new JMenuItem("Set Notify");
+		notifyItem.addActionListener((e) -> create(animator.new SetNotify()));
+		createMenu.add(notifyItem);
 
 		JScrollPane listScrollPane = new JScrollPane(commandList);
 		listScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);

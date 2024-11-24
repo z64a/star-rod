@@ -46,9 +46,9 @@ import app.SwingUtils;
 import app.config.Config;
 import app.config.Options;
 import app.config.Options.Scope;
-import game.map.editor.common.BaseEditor;
-import game.map.editor.common.BaseEditorSettings;
-import game.map.editor.common.KeyboardInput.KeyInputEvent;
+import common.BaseEditor;
+import common.BaseEditorSettings;
+import common.KeyboardInput.KeyInputEvent;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
 import game.map.shape.TransformMatrix;
@@ -971,12 +971,12 @@ public class SpriteEditor extends BaseEditor
 				try {
 					int id = SpriteLoader.getMaximumID(spriteSet) + 1;
 					SpriteLoader.create(spriteSet, id);
-
+		
 					if(spriteSet == SpriteSet.Npc)
 						useNpcFiles(id);
 					else
 						usePlayerFiles(id);
-
+		
 				} catch (Throwable t) {
 					Logger.logError("Failed to create new sprite.");
 					incrementDialogsOpen();
@@ -986,7 +986,7 @@ public class SpriteEditor extends BaseEditor
 			});
 		});
 		menu.add(item);
-
+		
 		menu.addSeparator();
 		 */
 
@@ -1568,7 +1568,8 @@ public class SpriteEditor extends BaseEditor
 		if (!xmlFile.exists()) {
 			super.showErrorDialog(
 				"Missing XML File",
-				String.format("Could not find XML file: %n%s", xmlFile.getAbsolutePath()));
+				"Could not find XML file:",
+				xmlFile.getAbsolutePath());
 			return;
 		}
 

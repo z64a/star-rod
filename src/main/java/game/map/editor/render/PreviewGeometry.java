@@ -3,8 +3,7 @@ package game.map.editor.render;
 import java.util.ArrayList;
 import java.util.List;
 
-import game.map.editor.geometry.Vector3f;
-
+import common.Vector3f;
 import game.map.shape.TriangleBatch;
 
 public class PreviewGeometry

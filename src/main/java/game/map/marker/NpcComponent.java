@@ -10,6 +10,8 @@ import java.util.function.Consumer;
 import org.w3c.dom.Element;
 
 import app.StarRodException;
+import common.BaseCamera;
+import common.Vector3f;
 import game.map.Axis;
 import game.map.MutablePoint;
 import game.map.MutablePoint.PointBackup;
@@ -18,8 +20,6 @@ import game.map.editor.camera.ViewType;
 import game.map.editor.commands.fields.EditableField;
 import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
 import game.map.editor.commands.fields.EditableField.StandardBoolName;
-import game.map.editor.common.BaseCamera;
-import game.map.editor.geometry.Vector3f;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.RenderMode;
 import game.map.editor.render.Renderer;

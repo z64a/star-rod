@@ -1,6 +1,6 @@
 package game.map.editor.camera;
 
-import game.map.editor.geometry.Vector3f;
+import common.Vector3f;
 import game.map.hit.CameraZoneData;
 import game.map.hit.ControlType;
 import util.MathUtil;

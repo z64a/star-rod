@@ -8,11 +8,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Objects;
 
-import game.map.editor.geometry.Vector3f;
-
 import app.Directories;
 import app.input.IOUtils;
 import assets.AssetManager;
+import common.Vector3f;
 import game.map.BoundingBox;
 import game.map.Map;
 import game.map.hit.Collider;

@@ -1,7 +1,8 @@
 package game.map.editor;
 
 import static org.lwjgl.opengl.GL.createCapabilities;
-import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL11.GL_VERSION;
+import static org.lwjgl.opengl.GL11.glGetString;
 
 import org.lwjgl.Version;
 import org.lwjgl.opengl.awt.AWTGLCanvas;
@@ -44,12 +45,6 @@ public class EditorCanvas extends AWTGLCanvas
 		createCapabilities();
 
 		Logger.logf("Using driver: %s", glGetString(GL_VERSION));
-
-		glEnable(GL_POINT_SMOOTH);
-		glHint(GL_POINT_SMOOTH, GL_NICEST);
-
-		glEnable(GL_LINE_SMOOTH);
-		glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
 		RenderState.init();
 		editor.glInit();

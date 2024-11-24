@@ -310,11 +310,10 @@ public abstract class Environment
 		File db = Directories.DATABASE.toFile();
 
 		if (!db.exists() || !db.isDirectory()) {
-			SwingUtils.getMessageDialog()
+			SwingUtils.getErrorDialog()
 				.setTitle("Missing Directory")
 				.setMessage("Could not find required directory: " + db.getName(),
 					"It should be in the same directory as the jar.")
-				.setMessageType(JOptionPane.ERROR_MESSAGE)
 				.show();
 
 			exit();

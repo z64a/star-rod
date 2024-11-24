@@ -7,9 +7,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import common.Vector3f;
 import game.map.MapObject;
 import game.map.MapObject.HitType;
-import game.map.editor.geometry.Vector3f;
 import game.map.hit.Collider;
 import game.map.hit.Zone;
 import game.map.mesh.Triangle;

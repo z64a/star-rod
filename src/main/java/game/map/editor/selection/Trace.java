@@ -1,7 +1,6 @@
 package game.map.editor.selection;
 
-import game.map.editor.geometry.Vector3f;
-
+import common.Vector3f;
 import game.map.editor.render.PresetColor;
 import game.map.editor.selection.PickRay.PickHit;
 import renderer.buffers.LineRenderQueue;

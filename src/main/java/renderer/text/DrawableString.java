@@ -2,8 +2,7 @@ package renderer.text;
 
 import static renderer.buffers.BufferedMesh.*;
 
-import game.map.editor.geometry.Vector3f;
-
+import common.Vector3f;
 import game.map.shape.TransformMatrix;
 import renderer.buffers.BufferedMesh;
 import renderer.shaders.ShaderManager;

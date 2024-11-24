@@ -1,6 +1,4 @@
-package game.map.editor.common;
-
-import game.map.editor.geometry.Vector3f;
+package common;
 
 public class MousePixelRead
 {

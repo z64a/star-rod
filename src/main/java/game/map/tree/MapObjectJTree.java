@@ -1,7 +1,5 @@
 package game.map.tree;
 
-import java.awt.Component;
-import java.awt.Font;
 import java.awt.Rectangle;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
@@ -26,10 +24,7 @@ import javax.swing.JTree;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeSelectionModel;
-import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
@@ -39,6 +34,7 @@ import game.map.editor.MapEditor;
 import game.map.editor.commands.AbstractCommand;
 import game.map.editor.ui.GuiCommand;
 import game.map.editor.ui.MapObjectPanel;
+import game.map.editor.ui.MapObjectTreeCellRenderer;
 import game.map.editor.ui.SwingGUI;
 import util.BasicNode;
 import util.Logger;
@@ -69,46 +65,6 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 
 	public MapObjectNode<T> dropDestination = null;
 	public int dropChildIndex = 0;
-
-	private static class MapObjectTreeCellRenderer extends DefaultTreeCellRenderer implements TreeCellRenderer
-	{
-		/*
-		private static final Dimension DEFAULT_SIZE = new Dimension(300,20);
-		
-		@Override
-		public Dimension getPreferredSize()
-		{
-			return DEFAULT_SIZE;
-		}
-		*/
-
-		@Override
-		public Component getTreeCellRendererComponent(JTree tree, Object obj,
-			boolean selected, boolean expanded, boolean leaf, int row, boolean hasFocus)
-		{
-			super.getTreeCellRendererComponent(tree, obj, selected, expanded, leaf, row, hasFocus);
-			DefaultMutableTreeNode node = (DefaultMutableTreeNode) obj;
-			if (node.getAllowsChildren())
-				if (expanded)
-					setIcon(openIcon);
-				else
-					setIcon(closedIcon);
-			else
-				setIcon(leafIcon);
-
-			if (node.getUserObject() instanceof MapObject mobj) {
-				if (mobj.hidden)
-					setFont(getFont().deriveFont(Font.ITALIC));
-				else
-					setFont(getFont().deriveFont(Font.PLAIN));
-				setText(mobj.toString());
-
-				setForeground(null);
-			}
-
-			return this;
-		}
-	}
 
 	/**
 	 * The JTree implementation does not include a mechanism for TreeSelectionListeners

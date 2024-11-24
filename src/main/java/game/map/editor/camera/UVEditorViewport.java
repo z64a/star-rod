@@ -5,8 +5,7 @@ import static org.lwjgl.opengl.GL11.*;
 import java.util.LinkedList;
 import java.util.List;
 
-import game.map.editor.geometry.Vector3f;
-
+import common.Vector3f;
 import game.map.BoundingBox;
 import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.EditorMode;

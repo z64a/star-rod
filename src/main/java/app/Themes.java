@@ -1,5 +1,6 @@
 package app;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -18,7 +19,7 @@ import util.Priority;
 public abstract class Themes
 {
 	private static final List<Theme> THEMES = new ArrayList<>();
-	private static Theme SYSTEM_THEME;
+	private static Theme DEFAULT_THEME;
 	private static Theme currentTheme = null;
 
 	public static class Theme
@@ -63,13 +64,13 @@ public abstract class Themes
 	private static void setTheme(Theme theme)
 	{
 		if (theme == null)
-			theme = SYSTEM_THEME;
+			theme = DEFAULT_THEME;
 		else if (theme == currentTheme)
 			return;
 
 		if (theme.custom) {
 			try {
-				IntelliJTheme.setup(new FileInputStream(new File(theme.className)));
+				IntelliJTheme.setup(new BufferedInputStream(new FileInputStream(new File(theme.className))));
 				currentTheme = theme;
 				return;
 			}
@@ -77,7 +78,7 @@ public abstract class Themes
 				Logger.logError("Could not find file for theme: " + theme.name);
 			}
 			// if error, reset to system
-			theme = SYSTEM_THEME;
+			theme = DEFAULT_THEME;
 		}
 
 		try {
@@ -93,7 +94,7 @@ public abstract class Themes
 	public static void setThemeByKey(String themeKey)
 	{
 		if (themeKey == null || themeKey.isEmpty())
-			themeKey = SYSTEM_THEME.key;
+			themeKey = DEFAULT_THEME.key;
 
 		if (currentTheme != null && themeKey.equalsIgnoreCase(currentTheme.key))
 			return;
@@ -112,7 +113,7 @@ public abstract class Themes
 	public static void setThemeByName(String themeName)
 	{
 		if (themeName == null || themeName.isEmpty())
-			themeName = SYSTEM_THEME.name;
+			themeName = DEFAULT_THEME.name;
 
 		if (currentTheme != null && themeName.equalsIgnoreCase(currentTheme.name))
 			return;
@@ -130,8 +131,7 @@ public abstract class Themes
 
 	static {
 		if (!Environment.isCommandLine()) {
-			SYSTEM_THEME = new Theme("System", UIManager.getSystemLookAndFeelClassName());
-			THEMES.add(SYSTEM_THEME);
+			// SYSTEM_THEME = new Theme("System", UIManager.getSystemLookAndFeelClassName());
 
 			try {
 				for (File f : IOUtils.getFilesWithExtension(Directories.DATABASE_THEMES.toFile(), "theme.json", true)) {
@@ -144,8 +144,10 @@ public abstract class Themes
 			}
 
 			// @formatter:off
-            THEMES.add(new Theme("Flat Light",              	   "com.formdev.flatlaf.FlatLightLaf"));
-            THEMES.add(new Theme("Flat Dark",               	   "com.formdev.flatlaf.FlatDarkLaf"));
+			DEFAULT_THEME = new Theme("Flat Light",			"com.formdev.flatlaf.FlatLightLaf");
+			THEMES.add(DEFAULT_THEME);
+
+			THEMES.add(new Theme("Flat Dark",               	   "com.formdev.flatlaf.FlatDarkLaf"));
 			THEMES.add(new Theme("Arc Light",                      "com.formdev.flatlaf.intellijthemes.FlatArcIJTheme"));
 			THEMES.add(new Theme("Arc Light Orange",               "com.formdev.flatlaf.intellijthemes.FlatArcOrangeIJTheme"));
 			THEMES.add(new Theme("Arc Dark",                       "com.formdev.flatlaf.intellijthemes.FlatArcDarkIJTheme"));

@@ -18,8 +18,8 @@ import javax.swing.ListCellRenderer;
 import javax.swing.WindowConstants;
 
 import app.SwingUtils;
+import common.Vector3f;
 import game.map.editor.MapEditor;
-import game.map.editor.geometry.Vector3f;
 import game.map.editor.geometry.primitive.BeveledCubeGenerator;
 import game.map.editor.geometry.primitive.ConeGenerator;
 import game.map.editor.geometry.primitive.CubeGenerator;

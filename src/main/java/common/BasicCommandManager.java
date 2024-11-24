@@ -1,4 +1,4 @@
-package game.map.editor.common;
+package common;
 
 import java.util.Stack;
 

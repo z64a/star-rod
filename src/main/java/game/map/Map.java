@@ -25,6 +25,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.w3c.dom.Element;
 
 import app.Directories;
+import app.SwingUtils;
 import app.input.IOUtils;
 import assets.AssetManager;
 import assets.AssetSubdir;
@@ -1281,24 +1282,26 @@ public class Map implements XmlSerializable
 	{
 		String ext = FilenameUtils.getExtension(f.getName());
 
-		if (ext.equalsIgnoreCase("prefab")) {
-			try {
+		try {
+			if (ext.equalsIgnoreCase("prefab")) {
 				exportPrefab(f, false);
 			}
-			catch (IOException e) {
-				Logger.log("IOException when saving objects to " + f.getName(), Priority.WARNING);
-				return;
-			}
-		}
-
-		if (ext.equalsIgnoreCase("obj")) {
-			try {
+			else if (ext.equalsIgnoreCase("obj")) {
 				exportOBJ(f);
 			}
-			catch (IOException e) {
-				Logger.log("IOException when saving objects to " + f.getName(), Priority.WARNING);
-				return;
+			else if (ext.equalsIgnoreCase("fbx")) {
+				//TODO exportFBX(f);
 			}
+			else {
+				SwingUtils.getWarningDialog()
+					.setTitle("Export Failed")
+					.setMessage("Unsupported export format: " + ext)
+					.show();
+			}
+		}
+		catch (IOException e) {
+			Logger.log("IOException when saving objects to " + f.getName(), Priority.WARNING);
+			return;
 		}
 	}
 

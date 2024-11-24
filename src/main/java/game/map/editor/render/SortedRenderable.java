@@ -1,8 +1,7 @@
 package game.map.editor.render;
 
-import game.map.editor.geometry.Vector3f;
-
-import game.map.editor.common.BaseCamera;
+import common.BaseCamera;
+import common.Vector3f;
 
 public interface SortedRenderable
 {

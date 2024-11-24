@@ -1,4 +1,4 @@
-package game.map.editor.common;
+package common;
 
 import static app.Directories.PROJ_CFG;
 
@@ -49,12 +49,12 @@ import app.SwingUtils.OpenDialogCounter;
 import app.config.Config;
 import app.config.Options;
 import app.config.Options.Scope;
+import common.KeyboardInput.KeyboardInputListener;
+import common.MouseInput.MouseManagerListener;
 import game.map.editor.CommandManager;
 import game.map.editor.GLEditor;
 import game.map.editor.Tickable;
 import game.map.editor.commands.AbstractCommand;
-import game.map.editor.common.KeyboardInput.KeyboardInputListener;
-import game.map.editor.common.MouseInput.MouseManagerListener;
 import net.miginfocom.swing.MigLayout;
 import util.LogFile;
 import util.Logger;
@@ -494,13 +494,11 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	private final boolean promptForSave()
 	{
 		openDialogs.increment();
-
 		int choice = SwingUtils.getConfirmDialog()
 			.setTitle("Warning")
 			.setMessage("Unsaved changes will be lost!", "Would you like to save now?")
 			.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
 			.choose();
-
 		openDialogs.decrement();
 
 		switch (choice) {
@@ -607,7 +605,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		frame.revalidate();
 	}
 
-	protected final void showErrorDialog(String title, String msg)
+	protected final void showErrorDialog(String title, String ... msg)
 	{
 		SwingUtils.getErrorDialog()
 			.setParent(frame)

@@ -76,8 +76,8 @@ import app.config.Options.Scope;
 import assets.AssetHandle;
 import assets.AssetManager;
 import assets.AssetSubdir;
-import game.map.editor.common.BaseEditor;
-import game.map.editor.common.BaseEditorSettings;
+import common.BaseEditor;
+import common.BaseEditorSettings;
 import game.map.editor.ui.dialogs.ChooseDialogResult;
 import game.map.editor.ui.dialogs.OpenFileChooser;
 import game.message.Message;
@@ -1135,7 +1135,6 @@ public class MessageEditor extends BaseEditor
 				.setMessage(detailScrollPane)
 				.setMessageType(JOptionPane.PLAIN_MESSAGE)
 				.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
-				.setIcon(Environment.ICON_DEFAULT)
 				.setOptions("Copy to Clipboard")
 				.choose();
 			super.decrementDialogsOpen();

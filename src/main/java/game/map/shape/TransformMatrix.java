@@ -11,10 +11,10 @@ import java.util.Arrays;
 import org.lwjgl.BufferUtils;
 import org.w3c.dom.Element;
 
+import common.Vector3f;
 import game.map.Axis;
 import game.map.MutableAngle;
 import game.map.MutablePoint;
-import game.map.editor.geometry.Vector3f;
 import util.Logger;
 import util.MathUtil;
 import util.xml.XmlWrapper.XmlReader;

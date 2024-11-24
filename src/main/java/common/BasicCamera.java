@@ -1,4 +1,4 @@
-package game.map.editor.common;
+package common;
 
 import static org.lwjgl.opengl.GL11.*;
 
@@ -8,7 +8,6 @@ import java.nio.IntBuffer;
 
 import org.lwjgl.BufferUtils;
 
-import game.map.editor.geometry.Vector3f;
 import game.map.shape.TransformMatrix;
 import renderer.GLUtils;
 import renderer.shaders.RenderState;

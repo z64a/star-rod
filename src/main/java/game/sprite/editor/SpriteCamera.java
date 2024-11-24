@@ -2,11 +2,11 @@ package game.sprite.editor;
 
 import java.awt.event.KeyEvent;
 
-import game.map.editor.common.BaseCamera;
-import game.map.editor.common.KeyboardInput;
-import game.map.editor.common.MouseInput;
-import game.map.editor.common.MousePixelRead;
-import game.map.editor.geometry.Vector3f;
+import common.BaseCamera;
+import common.KeyboardInput;
+import common.MouseInput;
+import common.MousePixelRead;
+import common.Vector3f;
 import game.map.editor.render.TextureManager;
 import renderer.shaders.RenderState;
 import renderer.shaders.ShaderManager;

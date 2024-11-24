@@ -9,7 +9,7 @@ import java.util.List;
 
 import javax.swing.TransferHandler;
 
-import game.map.editor.common.BaseEditor;
+import common.BaseEditor;
 
 public class FileTransferHandler extends TransferHandler
 {

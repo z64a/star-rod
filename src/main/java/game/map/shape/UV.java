@@ -2,8 +2,7 @@ package game.map.shape;
 
 import java.util.Objects;
 
-import game.map.editor.geometry.Vector3f;
-
+import common.Vector3f;
 import game.map.Axis;
 import game.map.BoundingBox;
 import game.map.MutablePoint;

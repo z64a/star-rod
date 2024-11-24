@@ -12,9 +12,9 @@ import java.util.Map.Entry;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
+import common.Vector3f;
 import game.map.Axis;
 import game.map.BoundingBox;
-import game.map.editor.geometry.Vector3f;
 import game.map.editor.render.PresetColor;
 import game.map.shading.ShadingProfile;
 import game.map.shape.TransformMatrix;

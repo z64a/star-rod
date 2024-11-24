@@ -14,9 +14,9 @@ import javax.swing.JPanel;
 import net.miginfocom.swing.MigLayout;
 import renderer.shaders.RenderState;
 
-//@formatter:off
 public enum RenderMode
 {
+	//@formatter:off
 	NONE					( 0, 0, "None"),
 
 	//	SURF_SOLID_AA_ZB_L0		( 0x00, -100000, "Surf_Solid_AA_ZB_Layer0"),
@@ -43,6 +43,7 @@ public enum RenderMode
 	SURF_CLOUD 				( 0x2F,  700000, "Cloud_No_ZB"),
 
 	SHADOW					( true, 0x20, 6500000, "Shadow");
+	//@formatter:on
 
 	public final boolean hidden;
 	public final boolean translucent;
@@ -80,8 +81,7 @@ public enum RenderMode
 
 	private static boolean isTranslucent(int id)
 	{
-		switch(id)
-		{
+		switch (id) {
 			case 0x11:
 			case 0x16:
 			case 0x22:
@@ -98,12 +98,10 @@ public enum RenderMode
 
 	private static final RenderMode[] EDITOR_MODE_LIST;
 
-	static
-	{
+	static {
 		List<RenderMode> visibleList = new ArrayList<>();
-		for(RenderMode mode : RenderMode.values())
-		{
-			if(!mode.hidden)
+		for (RenderMode mode : RenderMode.values()) {
+			if (!mode.hidden)
 				visibleList.add(mode);
 		}
 		EDITOR_MODE_LIST = new RenderMode[visibleList.size()];
@@ -125,7 +123,7 @@ public enum RenderMode
 			JLabel idLabel = new JLabel();
 
 			if (value != null) {
-				if(value instanceof RenderMode renderMode) {
+				if (value instanceof RenderMode renderMode) {
 					nameLabel.setText(renderMode.name);
 
 					if (value != NONE)
@@ -141,7 +139,8 @@ public enum RenderMode
 			if (isSelected) {
 				panel.setBackground(list.getSelectionBackground());
 				panel.setForeground(list.getSelectionForeground());
-			} else {
+			}
+			else {
 				panel.setBackground(list.getBackground());
 				panel.setForeground(list.getForeground());
 			}
@@ -152,8 +151,8 @@ public enum RenderMode
 
 	public static RenderMode getModeForID(int id)
 	{
-		for(RenderMode mode : RenderMode.values()) {
-			if(id == mode.id)
+		for (RenderMode mode : RenderMode.values()) {
+			if (id == mode.id)
 				return mode;
 		}
 		return null;
@@ -161,90 +160,150 @@ public enum RenderMode
 
 	public static int getRenderIndex(int category, int mode)
 	{
-		switch(category)
-		{
+		switch (category) {
 			default:
 			case 1: // missing texure
-				switch(mode) {
-					default:	return 0;
-					case 3: 	return 1;
-					case 4: 	return 0x2E;
-					case 5: 	return 2;
-					case 7: 	return 3;
-					case 9: 	return 4;
-					case 0x0D: 	return 6;
-					case 0x0F: 	return 7;
-					case 0x10: 	return 0x2F;
+				switch (mode) {
+					default:
+						return 0;
+					case 3:
+						return 1;
+					case 4:
+						return 0x2E;
+					case 5:
+						return 2;
+					case 7:
+						return 3;
+					case 9:
+						return 4;
+					case 0x0D:
+						return 6;
+					case 0x0F:
+						return 7;
+					case 0x10:
+						return 0x2F;
 					case 0x11:
 					case 0x16:
-					case 0x22:	return 8;
-					case 0x13: 	return 0x0A;
-					case 0x14: 	return 0x30;
-					case 0x15: 	return 0x0B;
-					case 0x1A:	return 0x0C;
-					case 0x1C: 	return 0x0D;
-					case 0x26:	return 0x0E;
-					case 0x29:	return 9;
-					case 0x2E: 	return 0x37;
-					case 0x2F:	return 0x38;
+					case 0x22:
+						return 8;
+					case 0x13:
+						return 0x0A;
+					case 0x14:
+						return 0x30;
+					case 0x15:
+						return 0x0B;
+					case 0x1A:
+						return 0x0C;
+					case 0x1C:
+						return 0x0D;
+					case 0x26:
+						return 0x0E;
+					case 0x29:
+						return 9;
+					case 0x2E:
+						return 0x37;
+					case 0x2F:
+						return 0x38;
 				}
 
 			case 2: // standard
-				switch(mode) {
-					default:   return 0x10;
-					case 3:    return 0x11;
-					case 4:    return 0x31;
-					case 5:    return 0x12;
-					case 7:    return 0x13;
-					case 9:    return 0x14;
-					case 0x0D: return 0x16;
-					case 0x0F: return 0x17;
-					case 0x10: return 0x32;
+				switch (mode) {
+					default:
+						return 0x10;
+					case 3:
+						return 0x11;
+					case 4:
+						return 0x31;
+					case 5:
+						return 0x12;
+					case 7:
+						return 0x13;
+					case 9:
+						return 0x14;
+					case 0x0D:
+						return 0x16;
+					case 0x0F:
+						return 0x17;
+					case 0x10:
+						return 0x32;
 					case 0x11:
 					case 0x16:
-					case 0x22: return 0x18;
-					case 0x13: return 0x1A;
-					case 0x14: return 0x33;
-					case 0x1A: return 0x1B;
-					case 0x1C: return 0x1C;
-					case 0x26: return 0x1D;
-					case 0x29: return 0x19;
-					case 0x2E: return 0x39;
-					case 0x2F: return 0x3A;
+					case 0x22:
+						return 0x18;
+					case 0x13:
+						return 0x1A;
+					case 0x14:
+						return 0x33;
+					case 0x1A:
+						return 0x1B;
+					case 0x1C:
+						return 0x1C;
+					case 0x26:
+						return 0x1D;
+					case 0x29:
+						return 0x19;
+					case 0x2E:
+						return 0x39;
+					case 0x2F:
+						return 0x3A;
 				}
 			case 3: // fog enabled
 			case 6: // identical to category 3, except has fog color multiplier
-				switch(mode) {
-					default:   return 0x1F;
-					case 3:    return 0x20;
-					case 4:    return 0x34;
-					case 5:    return 0x21;
-					case 7:    return 0x22;
-					case 9:    return 0x23;
-					case 0x0D: return 0x25;
-					case 0x0F: return 0x26;
-					case 0x10: return 0x35;
+				switch (mode) {
+					default:
+						return 0x1F;
+					case 3:
+						return 0x20;
+					case 4:
+						return 0x34;
+					case 5:
+						return 0x21;
+					case 7:
+						return 0x22;
+					case 9:
+						return 0x23;
+					case 0x0D:
+						return 0x25;
+					case 0x0F:
+						return 0x26;
+					case 0x10:
+						return 0x35;
 					case 0x11:
 					case 0x16:
-					case 0x22: return 0x27;
-					case 0x13: return 0x29;
-					case 0x14: return 0x36;
-					case 0x1A: return 0x2A;
-					case 0x1C: return 0x2B;
-					case 0x26: return 0x2C;
-					case 0x29: return 0x28;
-					case 0x2E: return 0x3B;
-					case 0x2F: return 0x3C;
+					case 0x22:
+						return 0x27;
+					case 0x13:
+						return 0x29;
+					case 0x14:
+						return 0x36;
+					case 0x1A:
+						return 0x2A;
+					case 0x1C:
+						return 0x2B;
+					case 0x26:
+						return 0x2C;
+					case 0x29:
+						return 0x28;
+					case 0x2E:
+						return 0x3B;
+					case 0x2F:
+						return 0x3C;
 				}
 			case 10:
 			case 11: // subset of category 3
-				switch(mode) {
-					default:   return 0x1F;
-					case 0x5:  return 0x21;
-					case 0x9:  return 0x23;
-					case 0xD:  return 0x25;
-					case 0x2E: return 0x3B;
-					case 0x2F: return 0x3C;
+				switch (mode) {
+					default:
+						return 0x1F;
+					case 0x5:
+						return 0x21;
+					case 0x9:
+						return 0x23;
+					case 0xD:
+						return 0x25;
+					case 0x2E:
+						return 0x3B;
+					case 0x2F:
+						return 0x3C;
 				}
 		}
 	}
@@ -266,7 +325,7 @@ public enum RenderMode
 		displayListTable[0x0C] = new RenderModeDisplayList(0x0C, 0x000A09BB, 0x003F0604, 0x00220005);
 		displayListTable[0x0D] = new RenderModeDisplayList(0x0D, 0x000A09EA, 0x003F0604, 0x00220005);
 		displayListTable[0x0E] = new RenderModeDisplayList(0x0E, 0x000A08BB, 0x003F0604, 0x00220005);
-		displayListTable[0x0F] = new RenderModeDisplayList(0x0F,       null, 0x003F0604, 0x00220005);
+		displayListTable[0x0F] = new RenderModeDisplayList(0x0F, null, 0x003F0604, 0x00220005);
 		displayListTable[0x10] = new RenderModeDisplayList(0x10, 0x0183240F, 0x003F0604, 0x00220405);
 		displayListTable[0x11] = new RenderModeDisplayList(0x11, 0x01832446, 0x003F0604, 0x00220405);
 		displayListTable[0x12] = new RenderModeDisplayList(0x12, 0x018325AB, 0x003F0604, 0x00220405);
@@ -274,14 +333,14 @@ public enum RenderMode
 		displayListTable[0x14] = new RenderModeDisplayList(0x14, 0x0183248F, 0x003F0604, 0x00220405);
 		displayListTable[0x15] = new RenderModeDisplayList(0x15, 0x0183248F, 0x003F0604, 0x00220405);
 		displayListTable[0x16] = new RenderModeDisplayList(0x16, 0x0183260F, 0x003F0604, 0x00220005);
-		displayListTable[0x17] = new RenderModeDisplayList(0x17, 0x0183260F, 0x003F0604,       null);
+		displayListTable[0x17] = new RenderModeDisplayList(0x17, 0x0183260F, 0x003F0604, null);
 		displayListTable[0x18] = new RenderModeDisplayList(0x18, 0x0183093B, 0x003F0604, 0x00220005);
 		displayListTable[0x19] = new RenderModeDisplayList(0x19, 0x0183093B, 0x003F0604, 0x00220005);
 		displayListTable[0x1A] = new RenderModeDisplayList(0x1A, 0x0183094A, 0x003F0604, 0x00220005);
 		displayListTable[0x1B] = new RenderModeDisplayList(0x1B, 0x018309BB, 0x003F0604, 0x00220005);
 		displayListTable[0x1C] = new RenderModeDisplayList(0x1C, 0x018309CA, 0x003F0604, 0x00220005);
 		displayListTable[0x1D] = new RenderModeDisplayList(0x1D, 0x018308BB, 0x003F0604, 0x00220005);
-		displayListTable[0x1E] = new RenderModeDisplayList(0x1E,       null, 0x003F0604, 0x00220005);
+		displayListTable[0x1E] = new RenderModeDisplayList(0x1E, null, 0x003F0604, 0x00220005);
 		displayListTable[0x1F] = new RenderModeDisplayList(0x1F, 0xF902240F, 0x003F0604, 0x00230405);
 		displayListTable[0x20] = new RenderModeDisplayList(0x20, 0xF9022446, 0x003F0604, 0x00230405);
 		displayListTable[0x21] = new RenderModeDisplayList(0x21, 0xF90225AB, 0x003F0604, 0x00230405);
@@ -289,14 +348,14 @@ public enum RenderMode
 		displayListTable[0x23] = new RenderModeDisplayList(0x23, 0xF902248F, 0x003F0604, 0x00230405);
 		displayListTable[0x24] = new RenderModeDisplayList(0x24, 0xF902248F, 0x003F0604, 0x00230405);
 		displayListTable[0x25] = new RenderModeDisplayList(0x25, 0xF902260F, 0x003F0604, 0x00230005);
-		displayListTable[0x26] = new RenderModeDisplayList(0x26, 0xF902260F, 0x003F0604,       null);
+		displayListTable[0x26] = new RenderModeDisplayList(0x26, 0xF902260F, 0x003F0604, null);
 		displayListTable[0x27] = new RenderModeDisplayList(0x27, 0xF902093B, 0x003F0604, 0x00230005);
 		displayListTable[0x28] = new RenderModeDisplayList(0x28, 0xF902093B, 0x003F0604, 0x00230005);
 		displayListTable[0x29] = new RenderModeDisplayList(0x29, 0xF902094A, 0x003F0604, 0x00230005);
 		displayListTable[0x2A] = new RenderModeDisplayList(0x2A, 0xF90209BB, 0x003F0604, 0x00230005);
 		displayListTable[0x2B] = new RenderModeDisplayList(0x2B, 0xF90209CA, 0x003F0604, 0x00230005);
 		displayListTable[0x2C] = new RenderModeDisplayList(0x2C, 0xF90208BB, 0x003F0604, 0x00230005);
-		displayListTable[0x2D] = new RenderModeDisplayList(0x2D,       null, 0x003F0604, 0x00230005);
+		displayListTable[0x2D] = new RenderModeDisplayList(0x2D, null, 0x003F0604, 0x00230005);
 		displayListTable[0x2E] = new RenderModeDisplayList(0x2E, 0x000AA409, 0x003F0605, 0x00220404);
 		displayListTable[0x2F] = new RenderModeDisplayList(0x2F, 0x000AA609, 0x003F0605, 0x00220004);
 		displayListTable[0x30] = new RenderModeDisplayList(0x30, 0x000A0839, 0x003F0605, 0x00220004);
@@ -365,8 +424,7 @@ public enum RenderMode
 		{
 			this.index = index;
 
-			if(setOtherModeL != null)
-			{
+			if (setOtherModeL != null) {
 				int cycInd = setOtherModeL & 0x1FFF;
 				int cycDep = (setOtherModeL >> 13) & 0xFFFF;
 
@@ -377,10 +435,10 @@ public enum RenderMode
 
 				CVG_DST = (cycInd >> 5) & 3;
 
-				CLR_ON_CVG    = ((cycInd & 0x10) != 0);
-				CVG_X_ALPHA   = ((cycInd & 0x200) != 0);
+				CLR_ON_CVG = ((cycInd & 0x10) != 0);
+				CVG_X_ALPHA = ((cycInd & 0x200) != 0);
 				ALPHA_CVG_SEL = ((cycInd & 0x400) != 0);
-				FORCE_BL      = ((cycInd & 0x800) != 0);
+				FORCE_BL = ((cycInd & 0x800) != 0);
 
 				ZMODE = (cycInd >> 7) & 3;
 
@@ -400,13 +458,12 @@ public enum RenderMode
 
 		public void load()
 		{
-			switch(index)
-			{
+			switch (index) {
 				/*
-			case 0x8:
-			case 0x18:
-			case 0x30:
-			case 0x33:
+				case 0x8:
+				case 0x18:
+				case 0x30:
+				case 0x33:
 				 */
 				// may also want 26, 2E, 2F for all XLU and CLD modes
 				case 0x08: // modes 11,16,22
@@ -427,16 +484,15 @@ public enum RenderMode
 
 			//	RenderState.setDepthWrite(Z_UPD);
 
-			if(Z_CMP)
-			{
+			if (Z_CMP) {
 				if (ZMODE == ZMODE_DEC)
 					RenderState.setDepthFunc(GL_LEQUAL);
 				else
 					RenderState.setDepthFunc(GL_LESS);
 			}
 
-			if(ZMODE == ZMODE_DEC) {
-				glPolygonOffset(-1,-1);
+			if (ZMODE == ZMODE_DEC) {
+				glPolygonOffset(-1, -1);
 				glEnable(GL_POLYGON_OFFSET_FILL);
 			}
 			else {
@@ -449,7 +505,7 @@ public enum RenderMode
 			// fog: G_BL_CLR_FOG, G_BL_A_SHADE, G_BL_CLR_IN, G_BL_1MA
 			// hmm...
 
-			if(FORCE_BL && BL_M[1] == G_BL_CLR_MEM) {
+			if (FORCE_BL && BL_M[1] == G_BL_CLR_MEM) {
 				if (BL_A[1] == G_BL_0)
 					blendSrcFactor = GL_ZERO;
 				else if (ALPHA_CVG_SEL && !CVG_X_ALPHA)
@@ -457,7 +513,7 @@ public enum RenderMode
 				else
 					blendSrcFactor = GL_SRC_ALPHA;
 
-				switch(BL_B[1]) {
+				switch (BL_B[1]) {
 					case G_BL_1MA:
 						if (blendSrcFactor == GL_SRC_ALPHA)
 							blendDestFactor = GL_ONE_MINUS_SRC_ALPHA;
@@ -498,8 +554,7 @@ public enum RenderMode
 
 	public static int getFromOtherModelL(int value)
 	{
-		switch(value)
-		{
+		switch (value) {
 			case 0x000AA40F:
 			case 0x0183240F:
 			case 0xF902240F:
@@ -569,4 +624,3 @@ public enum RenderMode
 		}
 	}
 }
-//@formatter:on

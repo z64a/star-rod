@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import common.Vector3f;
 import game.map.MapObject;
 import game.map.editor.commands.AbstractCommand;
 import game.map.editor.commands.CommandBatch;
 import game.map.editor.commands.CreateObject;
 import game.map.editor.geometry.GeometryUtils;
-import game.map.editor.geometry.Vector3f;
 import game.map.hit.Collider;
 import game.map.hit.Zone;
 import game.map.mesh.AbstractMesh;

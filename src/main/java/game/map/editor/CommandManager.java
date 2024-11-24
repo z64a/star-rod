@@ -36,8 +36,9 @@ public class CommandManager
 	}
 
 	/**
-	 * Certain actions only use commands for undo/redo maintainence, and not for the initial execution. Those commands are
-	 * sent here. However, this practice should be avoided wherever possible because it may lead to subtle errors involving
+	 * Certain actions only use commands for undo/redo maintainence, and not for the
+	 * initial execution. Those commands are sent here. However, this practice should
+	 * be avoided wherever possible because it may lead to subtle errors involving
 	 * undo/redo state integrity.
 	 */
 	public void pushCommand(AbstractCommand cmd)

@@ -2,10 +2,10 @@ package game.map.editor.camera;
 
 import java.awt.event.KeyEvent;
 
+import common.KeyboardInput;
+import common.MouseInput;
 import game.map.BoundingBox;
 import game.map.editor.MapEditor;
-import game.map.editor.common.KeyboardInput;
-import game.map.editor.common.MouseInput;
 import game.map.marker.Marker;
 
 public class PerspTargetCamera extends PerspBaseCamera

@@ -3,8 +3,8 @@ package game.map.shape;
 import static org.lwjgl.opengl.GL11.*;
 import static renderer.shaders.scene.ModelShader.*;
 
-import game.map.editor.common.BaseCamera;
-import game.map.editor.geometry.Vector3f;
+import common.BaseCamera;
+import common.Vector3f;
 import game.map.editor.render.RenderMode;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;

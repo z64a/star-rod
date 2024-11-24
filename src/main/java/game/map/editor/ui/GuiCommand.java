@@ -11,8 +11,10 @@ public enum GuiCommand
 	SAVE_AS,
 
 	// import/export
-	SAVE_OBJECTS,
-	LOAD_OBJECTS,
+	PROMPT_EXPORT,
+	PROMPT_IMPORT,
+
+	SAVE_PREFAB,
 
 	// 'Compile' menu items
 	COMPILE_SHAPE,

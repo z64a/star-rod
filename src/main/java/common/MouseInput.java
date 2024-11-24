@@ -1,4 +1,4 @@
-package game.map.editor.common;
+package common;
 
 import java.awt.AWTException;
 import java.awt.Component;

@@ -5,8 +5,7 @@ import static org.lwjgl.opengl.GL30.*;
 
 import java.util.List;
 
-import game.map.editor.geometry.Vector3f;
-
+import common.Vector3f;
 import game.map.BoundingBox;
 import game.map.Map;
 import game.map.MapObject;
@@ -66,7 +65,7 @@ public class PerspectiveViewport extends MapEditViewport
 		float dy = camera.pos.y - y;
 		float dz = camera.pos.z - z;
 
-		//	double fov = ((PerspectiveCamera)camera).getvfov();
+		//	double fov = ((PerspBaseCamera)camera).getvfov();
 		//	double fovScale = Math.tan(Math.toRadians(fov / 2));
 		double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
 

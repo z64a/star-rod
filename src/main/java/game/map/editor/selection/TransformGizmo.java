@@ -6,13 +6,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import common.Vector3f;
 import game.map.Axis;
 import game.map.BoundingBox;
 import game.map.MutablePoint;
 import game.map.PointListBackup;
 import game.map.editor.MapEditor;
 import game.map.editor.camera.MapEditViewport;
-import game.map.editor.geometry.Vector3f;
 import game.map.editor.render.UtilityModel;
 import game.map.editor.render.UtilityModel.UtilityTriangle;
 import game.map.editor.selection.PickRay.PickHit;

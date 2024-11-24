@@ -2,13 +2,12 @@ package game.map.editor.camera;
 
 import java.awt.event.KeyEvent;
 
-import game.map.editor.geometry.Vector3f;
-
+import common.KeyboardInput;
+import common.MouseInput;
+import common.MousePixelRead;
+import common.Vector3f;
 import game.map.Axis;
 import game.map.BoundingBox;
-import game.map.editor.common.KeyboardInput;
-import game.map.editor.common.MouseInput;
-import game.map.editor.common.MousePixelRead;
 import game.map.editor.render.PresetColor;
 import game.map.editor.selection.PickRay;
 import game.map.editor.selection.PickRay.Channel;

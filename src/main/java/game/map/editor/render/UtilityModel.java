@@ -10,7 +10,7 @@ import java.util.ArrayList;
 
 import app.Resource;
 import app.Resource.ResourceType;
-import game.map.editor.geometry.Vector3f;
+import common.Vector3f;
 import renderer.buffers.TriangleRenderQueue;
 import util.Logger;
 import util.Priority;

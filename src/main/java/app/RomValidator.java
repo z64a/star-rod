@@ -39,10 +39,9 @@ public class RomValidator
 	public static File validateROM(File f) throws IOException
 	{
 		if (f.length() != LENGTH) {
-			SwingUtils.getMessageDialog()
+			SwingUtils.getErrorDialog()
 				.setTitle("ROM Validation Error")
 				.setMessage("Selected file is not the correct size.")
-				.setMessageType(JOptionPane.ERROR_MESSAGE)
 				.show();
 
 			return null;
@@ -118,10 +117,9 @@ public class RomValidator
 			else {
 				pleaseWait.setVisible(false);
 
-				SwingUtils.getMessageDialog()
+				SwingUtils.getErrorDialog()
 					.setTitle("ROM Validation Failure")
 					.setMessage("Incorrect ROM or version, CRC does not match.")
-					.setMessageType(JOptionPane.ERROR_MESSAGE)
 					.show();
 
 				raf.close();
@@ -136,10 +134,9 @@ public class RomValidator
 			if (!verifyCRCs(raf)) {
 				pleaseWait.setVisible(false);
 
-				SwingUtils.getMessageDialog()
+				SwingUtils.getErrorDialog()
 					.setTitle("ROM Validation Failure")
 					.setMessage("ROM data does not match CRC values!")
-					.setMessageType(JOptionPane.ERROR_MESSAGE)
 					.show();
 
 				return null;
@@ -148,10 +145,9 @@ public class RomValidator
 		else {
 			pleaseWait.setVisible(false);
 
-			SwingUtils.getMessageDialog()
+			SwingUtils.getErrorDialog()
 				.setTitle("ROM Validation Failure")
 				.setMessage("Incorrect ROM or version, CRC does not match.")
-				.setMessageType(JOptionPane.ERROR_MESSAGE)
 				.show();
 
 			raf.close();
@@ -175,10 +171,9 @@ public class RomValidator
 			if (!fileMD5.equals(MD5)) {
 				pleaseWait.setVisible(false);
 
-				SwingUtils.getMessageDialog()
+				SwingUtils.getErrorDialog()
 					.setTitle("ROM Validation Failure")
 					.setMessage("MD5 hash does not match!")
-					.setMessageType(JOptionPane.ERROR_MESSAGE)
 					.show();
 
 				return null;

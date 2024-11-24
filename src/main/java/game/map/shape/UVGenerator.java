@@ -2,10 +2,10 @@ package game.map.shape;
 
 import java.util.Collection;
 
+import common.Vector3f;
 import game.map.Axis;
 import game.map.BoundingBox;
 import game.map.editor.MapEditor;
-import game.map.editor.geometry.Vector3f;
 import game.map.editor.selection.Selection;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;

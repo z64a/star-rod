@@ -1,7 +1,6 @@
 package game.map.editor.geometry.primitive;
 
-import game.map.editor.geometry.Vector3f;
-
+import common.Vector3f;
 import game.map.editor.ui.dialogs.GeneratePrimitiveOptionsDialog;
 import game.map.shape.TriangleBatch;
 

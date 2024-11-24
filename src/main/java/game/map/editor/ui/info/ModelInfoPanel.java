@@ -223,7 +223,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 
 			hasMeshCheckbox.setSelected(mdl.hasMesh());
 
-			// leaf properies
+			// leaf properties
 
 			previewScrollUnitBox.setSelectedIndex(mdl.pannerID.get() + 1);
 

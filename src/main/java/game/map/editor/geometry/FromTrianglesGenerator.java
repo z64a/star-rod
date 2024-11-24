@@ -2,6 +2,7 @@ package game.map.editor.geometry;
 
 import java.util.List;
 
+import common.Vector3f;
 import game.map.Axis;
 import game.map.mesh.Triangle;
 import game.map.shape.TriangleBatch;

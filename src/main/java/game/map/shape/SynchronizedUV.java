@@ -1,7 +1,7 @@
 package game.map.shape;
 
+import common.Vector3f;
 import game.map.editor.geometry.GeometryUtils;
-import game.map.editor.geometry.Vector3f;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
 import util.MathUtil;

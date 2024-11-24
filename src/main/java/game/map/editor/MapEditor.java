@@ -52,6 +52,13 @@ import assets.AssetHandle;
 import assets.AssetManager;
 import assets.ui.SelectMapDialog;
 import assets.ui.SelectTexDialog;
+import common.FrameLimiter;
+import common.KeyboardInput;
+import common.KeyboardInput.KeyInputEvent;
+import common.KeyboardInput.KeyboardInputListener;
+import common.MouseInput;
+import common.MouseInput.MouseManagerListener;
+import common.Vector3f;
 import game.ProjectDatabase;
 import game.map.Axis;
 import game.map.BoundingBox;
@@ -101,13 +108,6 @@ import game.map.editor.commands.SplitHitObject.SplitZone;
 import game.map.editor.commands.SplitModel;
 import game.map.editor.commands.ToggleDoubleSided;
 import game.map.editor.commands.fields.EditableField;
-import game.map.editor.common.FrameLimiter;
-import game.map.editor.common.KeyboardInput;
-import game.map.editor.common.KeyboardInput.KeyInputEvent;
-import game.map.editor.common.KeyboardInput.KeyboardInputListener;
-import game.map.editor.common.MouseInput;
-import game.map.editor.common.MouseInput.MouseManagerListener;
-import game.map.editor.geometry.Vector3f;
 import game.map.editor.render.Color4d;
 import game.map.editor.render.PreviewGeneratorFromPaths;
 import game.map.editor.render.PreviewGeneratorFromTriangles;
@@ -216,11 +216,11 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	public static enum EditorMode
 	{
-		Modify("Modify"),
-		Texture("Apply Textures"),
-		EditUVs("Edit UVs"),
-		VertexPaint("Paint Vertices"),
-		Scripts("Edit Scripts");
+		Modify ("Modify"),
+		Texture ("Apply Textures"),
+		EditUVs ("Edit UVs"),
+		VertexPaint ("Paint Vertices"),
+		Scripts ("Edit Scripts");
 
 		private final String name;
 
@@ -783,7 +783,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 		for (Options opt : opts) {
 			String mapName = editorConfig.getString(opt);
-			if (mapName.isBlank()) {
+			if (mapName == null || mapName.isBlank()) {
 				continue;
 			}
 
@@ -927,7 +927,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 		if (editorConfig != null) {
 			String lastMapName = editorConfig.getString(Options.RecentMap0);
-			if (!lastMapName.isBlank()) {
+			if (lastMapName != null && !lastMapName.isBlank()) {
 				AssetHandle ah = AssetManager.getMap(lastMapName);
 				if (ah.exists()) {
 					options = new String[] { "Browse Maps", "Reopen " + lastMapName };

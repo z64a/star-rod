@@ -1,12 +1,11 @@
 package game.map.editor.camera;
 
-import game.map.editor.geometry.Vector3f;
-
+import common.KeyboardInput;
+import common.MouseInput;
+import common.Vector3f;
 import game.map.BoundingBox;
 import game.map.editor.CursorObject;
 import game.map.editor.MapEditor;
-import game.map.editor.common.KeyboardInput;
-import game.map.editor.common.MouseInput;
 import game.map.hit.CameraZoneData;
 
 public class PerspZoneCamera extends PerspBaseCamera
