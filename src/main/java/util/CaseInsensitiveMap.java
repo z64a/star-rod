@@ -1,11 +1,11 @@
 package util;
 
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 public class CaseInsensitiveMap<T>
 {
-	private final HashMap<String, T> map = new HashMap<>();
+	private final LinkedHashMap<String, T> map = new LinkedHashMap<>();
 
 	public T put(String key, T value)
 	{

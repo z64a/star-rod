@@ -9,6 +9,7 @@ import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -22,10 +23,10 @@ import javax.swing.JTree;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
-import javax.swing.WindowConstants;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 
+import app.Themes.Theme;
 import app.config.Options;
 import net.miginfocom.swing.MigLayout;
 
@@ -37,7 +38,7 @@ public class ThemesEditor
 	private StarRodFrame frame;
 	public boolean exitToMainMenu;
 
-	public String initialThemeName;
+	public Theme initialTheme;
 
 	private JLabel lblR;
 	private JLabel lblG;
@@ -56,7 +57,7 @@ public class ThemesEditor
 
 	public ThemesEditor(CountDownLatch guiClosedSignal)
 	{
-		initialThemeName = Themes.getCurrentThemeName();
+		initialTheme = Themes.getCurrentTheme();
 
 		frame = new StarRodFrame();
 
@@ -65,14 +66,14 @@ public class ThemesEditor
 		frame.setBounds(0, 0, WINDOW_SIZE_X, WINDOW_SIZE_Y);
 		frame.setLocationRelativeTo(null);
 
-		frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+		frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 		frame.addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent e)
 			{
 				exitToMainMenu = true;
-				String currentThemeName = Themes.getCurrentThemeName();
-				if (!initialThemeName.equals(currentThemeName)) {
+				Theme currentTheme = Themes.getCurrentTheme();
+				if (initialTheme != currentTheme) {
 					int choice = SwingUtils.getConfirmDialog()
 						.setTitle("Save Changes")
 						.setMessage("Theme has been changed.", "Do you want to save changes?")
@@ -80,18 +81,19 @@ public class ThemesEditor
 
 					switch (choice) {
 						case JOptionPane.YES_OPTION:
-							Environment.mainConfig.setString(Options.Theme, Themes.getCurrentThemeKey());
-							Environment.mainConfig.saveConfigFile();
+							if (Themes.getCurrentTheme() != null) {
+								Environment.mainConfig.setString(Options.Theme, Themes.getCurrentTheme().key);
+								Environment.mainConfig.saveConfigFile();
 
-							SwingUtils.getWarningDialog()
-								.setTitle("Theme Changed")
-								.setMessage("Theme has been changed.", "Star Rod must restart.")
-								.show();
-
-							Environment.exit();
+								SwingUtils.getWarningDialog()
+									.setTitle("Theme Changed")
+									.setMessage("Theme has been changed.", "Star Rod must restart.")
+									.show();
+							}
+							exitToMainMenu = false;
 							break;
 						case JOptionPane.NO_OPTION:
-							Themes.setThemeByName(initialThemeName);
+							Themes.setTheme(initialTheme);
 							SwingUtilities.updateComponentTreeUI(frame);
 							break;
 						case JOptionPane.CANCEL_OPTION:
@@ -113,18 +115,18 @@ public class ThemesEditor
 
 	private JPanel getThemesPanel()
 	{
-		DefaultListModel<String> themes = new DefaultListModel<>();
+		DefaultListModel<Theme> themes = new DefaultListModel<>();
 
-		for (String name : Themes.getThemeNames())
-			themes.addElement(name);
+		for (Theme theme : Themes.getThemes())
+			themes.addElement(theme);
 
-		JList<String> themeList = new JList<>(themes);
+		JList<Theme> themeList = new JList<>(themes);
 		themeList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-		themeList.setSelectedValue(Themes.getCurrentThemeName(), true);
+		themeList.setSelectedValue(Themes.getCurrentTheme(), true);
 
 		themeList.addListSelectionListener(e -> SwingUtilities.invokeLater(() -> {
-			Themes.setThemeByName(themeList.getSelectedValue());
+			Themes.setTheme(themeList.getSelectedValue());
 			SwingUtilities.updateComponentTreeUI(frame);
 			lblR.setForeground(SwingUtils.getRedTextColor());
 			lblG.setForeground(SwingUtils.getGreenTextColor());
