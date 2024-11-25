@@ -20,7 +20,7 @@ public enum ExpectedAsset
 	CIRCLE_SHADOW		(AssetSubdir.ENTITY, "shadow/circle.png", false),
 	SQUARE_SHADOW		(AssetSubdir.ENTITY, "shadow/square.png", false),
 	KMR_BG				(AssetSubdir.MAP_BG, "kmr_bg.png", true),
-	WORLD_MAP_BG		(AssetSubdir.PAUSE, "world_map.png", true),
+	WORLD_MAP_BG		(AssetSubdir.PAUSE, "world_map.png", false),
 	CRASH_GUY			(AssetSubdir.NPC_SPRITE, "ShyGuy/rasters/Raster1A.png", true);
 	// @formatter:on
 
