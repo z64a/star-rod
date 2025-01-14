@@ -112,8 +112,7 @@ public class OrthographicViewport extends MapEditViewport
 		camera.glLoadTransform();
 		RenderState.setModelMatrix(null);
 
-		if (editor.gridEnabled)
-			camera.drawBackground();
+		camera.drawBackground();
 
 		Map shapeMap = editor.getGeometryMap();
 		Map hitMap = editor.getCollisionMap();

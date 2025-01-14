@@ -1,4 +1,4 @@
-package game.map.editor;
+package common;
 
 import static org.lwjgl.opengl.GL.createCapabilities;
 import static org.lwjgl.opengl.GL11.GL_VERSION;

@@ -5,6 +5,7 @@ val appProperties = Properties().apply {
     file("app.properties").inputStream().use { load(it) }
 }
 
+val bootMain = "boot.StarRodBootstrap"
 val appMain = "app.StarRodMain"
 val appVersion = appProperties.getProperty("version")
 
@@ -16,12 +17,13 @@ plugins {
     id("java")
     id("com.github.johnrengelman.shadow") version "8.1.1"
     id("net.nemerosa.versioning") version "3.1.0"
-    id("com.jaredsburrows.license") version "0.9.7"
+    id("com.cmgapps.licenses") version "4.8.0"
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
 }
 
 dependencies {
@@ -93,8 +95,51 @@ dependencies {
     implementation("org.ahocorasick:ahocorasick:0.6.3")
 }
 
+
+val bootBuildDir = layout.buildDirectory.dir("bootstrap")
+val appBuildDir = layout.buildDirectory.dir("app")
+val licenseBuildDir = layout.buildDirectory.dir("reports/licenses/licenseReport")
+val releaseBuildDir = layout.buildDirectory.dir("release")
+
 tasks {
+    val compileBoot = register<JavaCompile>("compileBoot") {
+        source = fileTree("src/bootstrap/java")
+        destinationDirectory.set(bootBuildDir.get().asFile)
+        classpath = files() // use empty classpath since there are no dependencies
+        options.release.set(8)
+    }
+    
+    val jarBoot = register<Jar>("jarBoot") {
+        dependsOn(compileBoot)
+        archiveBaseName.set("boot")
+        manifest {
+            attributes["Main-Class"] = bootMain
+        }
+        from(bootBuildDir)
+    }
+    
+    val compileApp = register<JavaCompile>("compileApp") {
+        source = fileTree("src/main/java")
+        destinationDirectory.set(appBuildDir.get().asFile)
+        classpath = sourceSets.main.get().compileClasspath // use the default classpath
+        options.release.set(17)
+        options.compilerArgs.add("-Xlint:deprecation")
+    }
+    
+    val jarApp = register<Jar>("jarApp") {
+        dependsOn(compileApp)
+        archiveBaseName.set("main-app")
+        manifest {
+            attributes["Main-Class"] = appMain
+        }
+        from(appBuildDir)
+    }
+
     shadowJar {
+        dependsOn(jarBoot, jarApp)
+        
+        from(bootBuildDir, appBuildDir)
+        
         mergeServiceFiles("META-INF/spring.*")
         exclude("META-INF/*.SF")
         exclude("META-INF/*.DSA")
@@ -103,8 +148,8 @@ tasks {
         archiveFileName.set("StarRod.jar")
         
         manifest {
-            attributes["Main-Class"] = "$appMain"
-            attributes["App-Version"] = "$appVersion"
+            attributes["Main-Class"] = bootMain
+            attributes["App-Version"] = appVersion
             attributes["Build-Branch"] = versioning.info.branchId
             attributes["Build-Commit"] = versioning.info.commit
             if (versioning.info.tag != null)
@@ -112,7 +157,9 @@ tasks {
         }
     }
 
-    register("createReleaseZip", Zip::class) {
+    register<Zip>("createReleaseZip") {
+        dependsOn(clean, licenseReport, shadowJar)
+        
         group = "release"
         description = "Create zip file for Star Rod release"
 
@@ -122,8 +169,8 @@ tasks {
             into("database")
         }
         
-        from(file(layout.buildDirectory.dir("reports"))) {
-            into("database")
+        from(file(licenseBuildDir)) {
+            into("database/licenses")
         }
         
         from(file("exec")) {
@@ -141,12 +188,6 @@ tasks {
             }
         )
 
-        destinationDirectory.set(layout.buildDirectory.dir("release"))
-    }
-
-    named("createReleaseZip") {
-        dependsOn("clean")
-        dependsOn("shadowJar")
-        dependsOn("licenseReport")
+        destinationDirectory.set(releaseBuildDir)
     }
 }

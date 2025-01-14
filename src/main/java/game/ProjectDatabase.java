@@ -50,7 +50,7 @@ public class ProjectDatabase
 		decompEnums = new CaseInsensitiveMap<>();
 		DecompEnum.addEnums(decompEnums, Directories.PROJ_INCLUDE.file("enums.h").getAbsolutePath());
 		DecompEnum.addEnums(decompEnums, Directories.PROJ_INCLUDE.file("effects.h").getAbsolutePath());
-		DecompEnum.addEnums(decompEnums, Directories.PROJ_SRC.file("battle/formation_names.h").getAbsolutePath());
+		DecompEnum.addEnums(decompEnums, Directories.PROJ_SRC.file("battle/battle_names.h").getAbsolutePath());
 		DecompEnum.addEnums(decompEnums, Directories.PROJ_SRC.file("battle/stage_names.h").getAbsolutePath());
 
 		ESurfaceTypes = decompEnums.get("SurfaceType");

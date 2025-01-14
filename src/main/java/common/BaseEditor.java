@@ -52,7 +52,6 @@ import app.config.Options.Scope;
 import common.KeyboardInput.KeyboardInputListener;
 import common.MouseInput.MouseManagerListener;
 import game.map.editor.CommandManager;
-import game.map.editor.GLEditor;
 import game.map.editor.Tickable;
 import game.map.editor.commands.AbstractCommand;
 import net.miginfocom.swing.MigLayout;

@@ -1,4 +1,4 @@
-package game.map.editor;
+package common;
 
 import java.awt.Window;
 

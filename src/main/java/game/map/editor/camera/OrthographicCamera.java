@@ -279,11 +279,26 @@ public class OrthographicCamera extends MapEditCamera
 		}
 	}
 
+	@Override
+	public void drawBackground()
+	{
+		if (editor.gridEnabled)
+			drawGrid();
+
+		if (editor.showAxes)
+			drawAxes();
+
+		if (editor.gridEnabled || editor.showAxes) {
+			RenderState.setDepthWrite(false);
+			LineRenderQueue.render(true);
+			RenderState.setDepthWrite(true);
+		}
+	}
+
 	/**
 	 * Draw the grid in the background.
 	 */
-	@Override
-	public void drawBackground()
+	public void drawGrid()
 	{
 		int hmin = 0, hmax = 0;
 		int vmin = 0, vmax = 0;
@@ -393,20 +408,6 @@ public class OrthographicCamera extends MapEditCamera
 			}
 		}
 
-		if (editor.showAxes) {
-			LineRenderQueue.addLine(
-				LineRenderQueue.addVertex().setPosition(Short.MIN_VALUE, 0, 0).setColor(PresetColor.RED).getIndex(),
-				LineRenderQueue.addVertex().setPosition(Short.MAX_VALUE, 0, 0).setColor(PresetColor.RED).getIndex());
-
-			LineRenderQueue.addLine(
-				LineRenderQueue.addVertex().setPosition(0, Short.MIN_VALUE, 0).setColor(PresetColor.GREEN).getIndex(),
-				LineRenderQueue.addVertex().setPosition(0, Short.MAX_VALUE, 0).setColor(PresetColor.GREEN).getIndex());
-
-			LineRenderQueue.addLine(
-				LineRenderQueue.addVertex().setPosition(0, 0, Short.MIN_VALUE).setColor(PresetColor.BLUE).getIndex(),
-				LineRenderQueue.addVertex().setPosition(0, 0, Short.MAX_VALUE).setColor(PresetColor.BLUE).getIndex());
-		}
-
 		RenderState.setLineWidth(2.0f);
 		RenderState.setColor(0.35f, 0.35f, 0.35f, 1.0f);
 		int v1, v2, v3, v4;
@@ -440,11 +441,21 @@ public class OrthographicCamera extends MapEditCamera
 			default:
 				break;
 		}
+	}
 
-		RenderState.setDepthWrite(false);
-		LineRenderQueue.render(true);
-		RenderState.setDepthWrite(true);
+	public void drawAxes()
+	{
+		LineRenderQueue.addLine(
+			LineRenderQueue.addVertex().setPosition(Short.MIN_VALUE, 0, 0).setColor(PresetColor.RED).getIndex(),
+			LineRenderQueue.addVertex().setPosition(Short.MAX_VALUE, 0, 0).setColor(PresetColor.RED).getIndex());
 
+		LineRenderQueue.addLine(
+			LineRenderQueue.addVertex().setPosition(0, Short.MIN_VALUE, 0).setColor(PresetColor.GREEN).getIndex(),
+			LineRenderQueue.addVertex().setPosition(0, Short.MAX_VALUE, 0).setColor(PresetColor.GREEN).getIndex());
+
+		LineRenderQueue.addLine(
+			LineRenderQueue.addVertex().setPosition(0, 0, Short.MIN_VALUE).setColor(PresetColor.BLUE).getIndex(),
+			LineRenderQueue.addVertex().setPosition(0, 0, Short.MAX_VALUE).setColor(PresetColor.BLUE).getIndex());
 	}
 
 	@Override

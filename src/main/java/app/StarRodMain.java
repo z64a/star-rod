@@ -585,7 +585,7 @@ public class StarRodMain extends StarRodFrame
 					break;
 
 				default:
-					Logger.logfError("Unrecognized command line arg: ", args[i]);
+					Logger.logfError("Unrecognized command line arg: %s", args[i]);
 			}
 		}
 	}

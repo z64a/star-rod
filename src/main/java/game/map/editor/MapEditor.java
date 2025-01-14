@@ -53,6 +53,7 @@ import assets.AssetManager;
 import assets.ui.SelectMapDialog;
 import assets.ui.SelectTexDialog;
 import common.FrameLimiter;
+import common.GLEditor;
 import common.KeyboardInput;
 import common.KeyboardInput.KeyInputEvent;
 import common.KeyboardInput.KeyboardInputListener;
@@ -183,6 +184,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	private boolean loading = true;
 	private boolean exitCompletely = !Environment.mainConfig.getBoolean(Options.ExitToMenu);
+	private boolean showLoadingScreen;
 
 	public boolean needsTextureReload;
 	public boolean needsBackgroundReload;
@@ -451,7 +453,6 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	private CommandManager commandManager; // handles comnmand execution and undo/redo
 	private DrawTrianglesManager drawTriManager;
 	public SwingGUI gui;
-	private boolean showLoadingScreen;
 
 	public boolean showLightingPanel;
 	public boolean showMapCameraTab;
