@@ -326,16 +326,6 @@ public abstract class Environment
 
 		// we may need to create a new config file here
 		if (!configFile.exists()) {
-			int choice = SwingUtils.getConfirmDialog()
-				.setTitle("Missing Config")
-				.setMessage("Could not find Star Rod config!", "Create a new one?")
-				.setMessageType(JOptionPane.QUESTION_MESSAGE)
-				.setOptionsType(JOptionPane.YES_NO_OPTION)
-				.choose();
-
-			if (choice != JOptionPane.OK_OPTION)
-				exit();
-
 			mainConfig = makeConfig(configFile, Scope.Main);
 
 			SwingUtils.getMessageDialog()
