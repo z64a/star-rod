@@ -205,6 +205,11 @@ public abstract class Environment
 			checkForDependencies();
 			File projDir = readMainConfig();
 
+			if (projDir == null) {
+				// User declined to select a project directory
+				exit();
+			}
+
 			boolean logDetails = mainConfig.getBoolean(Options.LogDetails);
 			Logger.setDefaultOuputPriority(logDetails ? Priority.DETAIL : Priority.STANDARD);
 
@@ -213,10 +218,10 @@ public abstract class Environment
 				// UIManager.put("TabbedPane.tabWidthMode", "compact");
 				// UIManager.put("TabbedPane.showTabSeparators", true);
 				// UIManager.put("TabbedPane.tabSeparatorsFullHeight", true);
-			}
 
-			if (fromJar && mainConfig.getBoolean(Options.CheckForUpdates))
-				checkForUpdate();
+				if (fromJar && mainConfig.getBoolean(Options.CheckForUpdates))
+					checkForUpdate();
+			}
 
 			LoadingBar.show("Loading Project", true);
 			boolean validProject = loadProject(projDir);
@@ -349,42 +354,40 @@ public abstract class Environment
 		// we may need to create a new config file here
 		if (!configFile.exists()) {
 			mainConfig = makeConfig(configFile, Scope.Main);
-
-			SwingUtils.getMessageDialog()
-				.setTitle("Select Project Directory")
-				.setMessage("Select your project directory.")
-				.setMessageType(JOptionPane.PLAIN_MESSAGE)
-				.show();
-
-			return promptSelectProject();
 		}
 		else {
 			// read existing config
 			mainConfig = new Config(configFile, Scope.Main);
 			mainConfig.readConfig();
-
-			// get project directory from config
-			String directoryName = mainConfig.getString(Options.ProjPath);
-			if (directoryName != null) {
-				File dir;
-				if (directoryName.startsWith("."))
-					dir = new File(codeSource.getParent(), directoryName);
-				else
-					dir = new File(directoryName);
-
-				if (dir.exists() && dir.isDirectory()) {
-					return dir;
-				}
-			}
-
-			// project directory is missing, prompt to select new one
-			SwingUtils.getErrorDialog()
-				.setTitle("Missing Project Directory")
-				.setMessage("Could not find project directory!", "Please select a new one.")
-				.show();
-
-			return promptSelectProject();
 		}
+
+		// if current directory seems to be a decomp project, use it regardless of config
+		File decompCfg = new File("./ver/us/", FN_SPLAT);
+		if (decompCfg.exists()) {
+			return new File(".");
+		}
+
+		// get project directory from config
+		String directoryName = mainConfig.getString(Options.ProjPath);
+		if (directoryName != null) {
+			File dir;
+			if (directoryName.startsWith("."))
+				dir = new File(codeSource.getParent(), directoryName);
+			else
+				dir = new File(directoryName);
+
+			if (dir.exists() && dir.isDirectory()) {
+				return dir;
+			}
+		}
+
+		// project directory is missing, prompt to select new one
+		SwingUtils.getErrorDialog()
+			.setTitle("Missing Project Directory")
+			.setMessage("Could not find project directory!", "Please select a new one.")
+			.show();
+
+		return promptSelectProject();
 	}
 
 	public static void promptChangeProject() throws IOException
