@@ -4,5 +4,6 @@
     "editor.formatOnSave": true,
     "editor.rulers": [
         150
-    ]
+    ],
+    "java.configuration.updateBuildConfiguration": "automatic"
 }

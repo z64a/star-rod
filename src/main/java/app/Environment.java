@@ -182,7 +182,7 @@ public abstract class Environment
 
 				Logger.logf("Detected version %s (%s-%s)", versionString, gitBuildBranch, gitBuildCommit.subSequence(0, 8));
 			}
-			catch (IOException e) {
+			catch (IOException | IndexOutOfBoundsException e) {
 				Logger.logError("Could not read MANIFEST.MF");
 				Logger.printStackTrace(e);
 			}

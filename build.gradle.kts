@@ -177,16 +177,7 @@ tasks {
             into("")
         }
         
-        val versionTag = versioning.info.tag
-        val commitHash = versioning.info.build
-
-        archiveFileName.set(
-            if (versionTag != null && versionTag.startsWith("v")) {
-                "StarRod-$appVersion.zip"
-            } else {
-                "StarRod-$appVersion-$commitHash.zip"
-            }
-        )
+        archiveFileName.set("StarRod.zip")
 
         destinationDirectory.set(releaseBuildDir)
     }
