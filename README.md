@@ -2,7 +2,7 @@
 
 [![Release](https://img.shields.io/github/v/release/z64a/star-rod)][releases]
 [![Download](https://img.shields.io/github/downloads/z64a/star-rod/total)][download]
-![Build Status](https://img.shields.io/github/actions/workflow/status/z64a/star-rod/validate.yaml)
+![Build Status](https://img.shields.io/github/actions/workflow/status/z64a/star-rod/validate.yml)
 [![#star-rod channel in the Star Haven Discord][discord-badge]][discord]
 
 A suite of tools for editing assets from the [Paper Mario (2000) decompilation](https://github.com/pmret/papermario).
