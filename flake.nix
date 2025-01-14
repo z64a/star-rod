@@ -12,27 +12,19 @@ rec {
         pkgs = import nixpkgs { inherit system; };
       });
     in {
-      overlays.default =
-        final: prev:
-        let
-          jdk = prev."jdk${toString javaVersion}";
-        in
-        {
-          inherit jdk;
-          maven = prev.maven.override { jdk_headless = jdk; };
-          gradle = prev.gradle.override { java = jdk; };
-          lombok = prev.lombok.override { inherit jdk; };
-        };
-      devShells = forEachSupportedSystem ({ pkgs }: {
+      devShells = forEachSupportedSystem ({ pkgs }: let
+        jdk = pkgs."jdk${toString javaVersion}";
+        gradle = pkgs.gradle.override { java = jdk; };
+        lombok = pkgs.lombok.override { inherit jdk; };
+      in {
         default = pkgs.mkShell {
-          packages = with pkgs; [
+          packages = [
             gradle
             jdk
-            maven
           ];
           shellHook =
             let
-              loadLombok = "-javaagent:${pkgs.lombok}/share/java/lombok.jar";
+              loadLombok = "-javaagent:${lombok}/share/java/lombok.jar";
               prev = "\${JAVA_TOOL_OPTIONS:+ $JAVA_TOOL_OPTIONS}";
             in
             ''
@@ -64,13 +56,15 @@ rec {
             inherit pname;
             version = "0.9.2";
             src = ./.;
-            nativeBuildInputs = with pkgs; [
-              makeWrapper
-              unzip
+            nativeBuildInputs = let
+              jdk = pkgs."jdk${toString javaVersion}";
+              gradle = pkgs.gradle.override { java = jdk; };
+            in [
+              pkgs.makeWrapper
+              pkgs.unzip
 
               gradle
               jdk
-              maven
             ];
             buildPhase = ''
               gradle createReleaseZip --info -I ${gradle-init-script} --offline --full-stacktrace
