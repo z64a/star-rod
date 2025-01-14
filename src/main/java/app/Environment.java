@@ -50,7 +50,7 @@ import util.Priority;
 
 public abstract class Environment
 {
-	private static final String FN_MAIN_CONFIG = "cfg/main.cfg";
+	private static final String FN_MAIN_CONFIG = "main.cfg";
 	private static final String FN_PROJ_CONFIG = "star_rod.cfg";
 	private static final String FN_BASEROM = "ver/us/baserom.z64";
 	private static final String FN_SPLAT = "splat.yaml";
@@ -320,9 +320,31 @@ public abstract class Environment
 		}
 	}
 
+	private static final File getUserConfigDir()
+	{
+		String userHome = System.getProperty("user.home");
+
+		if (isWindows()) return new File(userHome, "/AppData/Local/StarRod/");
+
+		String xdgConfigHome = System.getenv("XDG_CONFIG_HOME");
+		String dotConfig = (xdgConfigHome != null && !xdgConfigHome.isEmpty())
+			? xdgConfigHome
+			: (userHome + "/.config");
+		return new File(dotConfig, "/star-rod/");
+	}
+
 	private static final File readMainConfig() throws IOException
 	{
-		File configFile = new File(codeSource.getParent(), FN_MAIN_CONFIG);
+		File configDir = getUserConfigDir();
+		configDir.mkdirs();
+
+		File configFile = new File(configDir, FN_MAIN_CONFIG);
+
+		// backwards compatibility for Star Rod 0.9.2 and below: move old config to new location
+		File oldConfigFile = new File(codeSource.getParent(), "cfg/main.cfg");
+		if (oldConfigFile.exists()) {
+			FileUtils.moveFile(oldConfigFile, configFile);
+		}
 
 		// we may need to create a new config file here
 		if (!configFile.exists()) {
