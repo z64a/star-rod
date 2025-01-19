@@ -58,10 +58,11 @@ public class FuseVertices extends AbstractCommand
 		HashMap<Vertex, TriangleBatch> batchMap = new HashMap<>();
 
 		for (Triangle t : triangles) {
-			for (int i = 0; i < 3; i++) {
-				vertexMap.put(new FusionWrapper(t.vert[i]), new FusionWrapper(t.vert[i]));
-				batchMap.put(t.vert[i], t.parentBatch);
-				oldVertices.add(t.vert[i]);
+			for (Vertex v : t.vert) {
+				FusionWrapper wrapped = new FusionWrapper(v);
+				vertexMap.put(wrapped, wrapped);
+				batchMap.put(v, t.parentBatch);
+				oldVertices.add(v);
 			}
 		}
 
