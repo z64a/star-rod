@@ -90,6 +90,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	{
 		this.parentAnimation = anim;
 		this.usesKeyframes = original.usesKeyframes;
+		this.rawAnim = new RawAnimation(original.rawAnim);
 		this.cmdAnimator = new CommandAnimator(this);
 		this.keyframeAnimator = new KeyframeAnimator(this);
 		animator = usesKeyframes ? keyframeAnimator : cmdAnimator;

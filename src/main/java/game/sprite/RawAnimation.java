@@ -18,6 +18,13 @@ public class RawAnimation extends ArrayList<Short>
 		labels = new TreeMap<>();
 	}
 
+	public RawAnimation(RawAnimation other)
+	{
+		this();
+		this.addAll(other);
+		labels.putAll(other.labels);
+	}
+
 	public void setLabel(int pos, String name)
 	{
 		labels.put(pos, name);
