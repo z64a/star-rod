@@ -7,7 +7,7 @@ rec {
   outputs = { nixpkgs, gradle-dot-nix, ... }:
     let
       javaVersion = 17;
-      supportedSystems = [ "x86_64-linux" "x86_64-darwin" ]; # TODO: fix arm
+      supportedSystems = [ "x86_64-linux" "x86_64-darwin" "x86_64-darwin" "aarch64-darwin" ];
       forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
         pkgs = import nixpkgs { inherit system; };
       });
@@ -67,6 +67,7 @@ rec {
               jdk
             ];
             buildPhase = ''
+              export GRADLE_USER_HOME="/tmp" # https://github.com/NixOS/nixpkgs/issues/34707
               gradle createReleaseZip --info -I ${gradle-init-script} --offline --full-stacktrace
             '';
             installPhase = ''
@@ -75,6 +76,7 @@ rec {
 
               mkdir -p $out/share/java
               mv $out/StarRod.jar $out/share/java
+              mv $out/database $out/share/java
 
               mkdir -p $out/bin
               makeWrapper ${pkgs.jre}/bin/java $out/bin/${pname} \
@@ -83,11 +85,6 @@ rec {
               # TODO: icon
               #install -Dm444 logo_512.png $out/share/icons/hicolor/512x512/apps/${pname}.png
               install -Dm444 -t $out/share/applications ${desktopItem}/share/applications/*
-
-              # TODO: database should be writeable, as should cfg. so move to /etc/ and XDG_CONFIG_HOME respectively
-              #mkdir -p $out/etc/${pname}
-              #mv $out/database $out/etc/${pname}
-              mv $out/database $out/share/java      # terrible
             '';
             meta = with pkgs.lib; {
               homepage = "https://github.com/z64a/star-rod";
