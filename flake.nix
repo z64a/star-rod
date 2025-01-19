@@ -54,7 +54,7 @@ rec {
         in {
           default = pkgs.stdenv.mkDerivation rec {
             inherit pname;
-            version = "0.9.2";
+            version = builtins.elemAt (builtins.match "^.*version=([[:digit:].]+).*$" (builtins.readFile ./app.properties)) 0;
             src = ./.;
             nativeBuildInputs = let
               jdk = pkgs."jdk${toString javaVersion}";
