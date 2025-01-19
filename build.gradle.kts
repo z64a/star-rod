@@ -71,7 +71,9 @@ dependencies {
     runtimeOnly("org.lwjgl:lwjgl-assimp::natives-linux")
     runtimeOnly("org.lwjgl:lwjgl-assimp::natives-linux-arm64")
     
-    implementation("org.lwjglx:lwjgl3-awt:0.1.8")
+    implementation("org.lwjglx:lwjgl3-awt:0.2.2") {
+        exclude(group = "org.lwjgl") // https://github.com/LWJGLX/lwjgl3-awt/issues/74
+    }
     
     implementation("commons-io:commons-io:2.16.1")
     implementation("org.apache.commons:commons-text:1.12.0")
