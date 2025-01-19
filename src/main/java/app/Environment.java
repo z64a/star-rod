@@ -175,12 +175,18 @@ public abstract class Environment
 			try {
 				Manifest manifest = new Manifest(cl.getResourceAsStream("META-INF/MANIFEST.MF"));
 				Attributes attr = manifest.getMainAttributes();
+	
 				versionString = attr.getValue("App-Version");
 				gitBuildBranch = attr.getValue("Build-Branch");
 				gitBuildCommit = attr.getValue("Build-Commit");
 				gitBuildTag = attr.getValue("Build-Tag");
 
-				Logger.logf("Detected version %s (%s-%s)", versionString, gitBuildBranch, gitBuildCommit.subSequence(0, 8));
+				// Git info not available when built with Nix; normalise empty strings to null
+				if (gitBuildBranch != null && gitBuildBranch.isEmpty()) gitBuildBranch = null;
+				if (gitBuildCommit != null && gitBuildCommit.isEmpty()) gitBuildCommit = null;
+				if (gitBuildTag != null && gitBuildTag.isEmpty()) gitBuildTag = null;
+	
+				Logger.logf("Detected version %s (%s-%s)", versionString, gitBuildBranch, gitBuildCommit);
 			}
 			catch (IOException | IndexOutOfBoundsException e) {
 				Logger.logError("Could not read MANIFEST.MF");
@@ -200,6 +206,10 @@ public abstract class Environment
 		}
 
 		projectChooser = new DirChooser(codeSource.getParentFile(), "Select Project Directory");
+
+		// Create user directories
+		getUserConfigDir().mkdirs();
+		getUserStateDir().mkdirs();
 
 		try {
 			checkForDependencies();
@@ -312,7 +322,7 @@ public abstract class Environment
 
 	private static final void checkForDependencies() throws IOException
 	{
-		File db = Directories.DATABASE.toFile();
+		File db = Directories.SEED_DATABASE.toFile();
 
 		if (!db.exists() || !db.isDirectory()) {
 			SwingUtils.getErrorDialog()
@@ -323,9 +333,17 @@ public abstract class Environment
 
 			exit();
 		}
+
+		// Copy SEED_DATABASE to DATABASE if DATABASE does not exist
+		// TODO: handle upgrades
+		File writeDb = Directories.DATABASE.toFile();
+		if (!writeDb.exists()) {
+			writeDb.mkdirs();
+			FileUtils.copyDirectory(db, writeDb);
+		}
 	}
 
-	private static final File getUserConfigDir()
+	public static final File getUserConfigDir()
 	{
 		String userHome = System.getProperty("user.home");
 
@@ -338,10 +356,22 @@ public abstract class Environment
 		return new File(dotConfig, "/star-rod/");
 	}
 
+	public static final File getUserStateDir()
+	{
+		String userHome = System.getProperty("user.home");
+
+		if (isWindows()) return new File(userHome, "/AppData/Local/StarRod/");
+
+		String xdgStateHome = System.getenv("XDG_STATE_HOME");
+		String dotState = (xdgStateHome != null && !xdgStateHome.isEmpty())
+			? xdgStateHome
+			: (userHome + "/.local/state");
+		return new File(dotState, "/star-rod/");
+	}
+
 	private static final File readMainConfig() throws IOException
 	{
 		File configDir = getUserConfigDir();
-		configDir.mkdirs();
 
 		File configFile = new File(configDir, FN_MAIN_CONFIG);
 
@@ -506,17 +536,6 @@ public abstract class Environment
 		File configFile = new File(projectDirectory, FN_PROJ_CONFIG);
 
 		if (!configFile.exists()) {
-
-			int choice = SwingUtils.getConfirmDialog()
-				.setTitle("Missing Config")
-				.setMessage("Could not find project config!", "Create a new one?")
-				.setMessageType(JOptionPane.QUESTION_MESSAGE)
-				.setOptionsType(JOptionPane.YES_NO_OPTION)
-				.choose();
-
-			if (choice != JOptionPane.OK_OPTION)
-				exit();
-
 			projectConfig = makeConfig(configFile, Scope.Project);
 			projectConfig.saveConfigFile();
 		}

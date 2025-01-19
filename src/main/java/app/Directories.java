@@ -12,14 +12,14 @@ public enum Directories
 	// @formatter:off
 	//=======================================================================================
 	// Directories not related to any specific project
-	// These live alongside the Star Rod jar
 
-	DATABASE			(Root.NONE,				"/database/"),
-	DATABASE_EDITOR		(Root.NONE, DATABASE,		"/editor/"),
-	DATABASE_THEMES		(Root.NONE, DATABASE,		"/themes/"),
+	SEED_DATABASE		(Root.NONE,				"/database/"), // Read-only database that comes with the jar
+	DATABASE			(Root.CONFIG,				"/database/"),
+	DATABASE_EDITOR		(Root.CONFIG, DATABASE,		"/editor/"),
+	DATABASE_THEMES		(Root.CONFIG, DATABASE,		"/themes/"),
 
-	TEMP				(Root.NONE,				"/temp/"),
-	LOGS				(Root.NONE, 			"/logs/"),
+	TEMP				(Root.STATE,				"/temp/"),
+	LOGS				(Root.STATE, 			"/logs/"),
 
 	//=======================================================================================
 	// Directories contain dumped content needed for Star Rod to function
@@ -129,7 +129,7 @@ public enum Directories
 
 	private enum Root
 	{
-		NONE, DUMP, PROJECT
+		NONE, DUMP, PROJECT, CONFIG, STATE
 	}
 
 	private static String getRootPath(Root root)
@@ -141,6 +141,11 @@ public enum Directories
 				return dumpPath;
 			case PROJECT:
 				return projPath;
+			case CONFIG:
+				return Environment.getUserConfigDir().getAbsolutePath();
+			case STATE:
+				return Environment.getUserStateDir().getAbsolutePath();
+
 		}
 		return null;
 	}
