@@ -19,3 +19,17 @@ jobs:
       uses: gradle/actions/setup-gradle@v3
     - name: Build
       run: ./gradlew createReleaseZip
+  build-nix-flake:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Setup Nix
+      uses: cachix/install-nix-action@v25
+    - name: Setup Cachix
+      uses: cachix/cachix-action@v15
+      with:
+        name: papermario-dx
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+    - name: Build
+      run: nix build

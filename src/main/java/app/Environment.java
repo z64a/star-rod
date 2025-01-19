@@ -50,7 +50,7 @@ import util.Priority;
 
 public abstract class Environment
 {
-	private static final String FN_MAIN_CONFIG = "cfg/main.cfg";
+	private static final String FN_MAIN_CONFIG = "main.cfg";
 	private static final String FN_PROJ_CONFIG = "star_rod.cfg";
 	private static final String FN_BASEROM = "ver/us/baserom.z64";
 	private static final String FN_SPLAT = "splat.yaml";
@@ -175,14 +175,20 @@ public abstract class Environment
 			try {
 				Manifest manifest = new Manifest(cl.getResourceAsStream("META-INF/MANIFEST.MF"));
 				Attributes attr = manifest.getMainAttributes();
+	
 				versionString = attr.getValue("App-Version");
 				gitBuildBranch = attr.getValue("Build-Branch");
 				gitBuildCommit = attr.getValue("Build-Commit");
 				gitBuildTag = attr.getValue("Build-Tag");
 
-				Logger.logf("Detected version %s (%s-%s)", versionString, gitBuildBranch, gitBuildCommit.subSequence(0, 8));
+				// Git info not available when built with Nix; normalise empty strings to null
+				if (gitBuildBranch != null && gitBuildBranch.isEmpty()) gitBuildBranch = null;
+				if (gitBuildCommit != null && gitBuildCommit.isEmpty()) gitBuildCommit = null;
+				if (gitBuildTag != null && gitBuildTag.isEmpty()) gitBuildTag = null;
+	
+				Logger.logf("Detected version %s (%s-%s)", versionString, gitBuildBranch, gitBuildCommit);
 			}
-			catch (IOException e) {
+			catch (IOException | IndexOutOfBoundsException e) {
 				Logger.logError("Could not read MANIFEST.MF");
 				Logger.printStackTrace(e);
 			}
@@ -201,9 +207,18 @@ public abstract class Environment
 
 		projectChooser = new DirChooser(codeSource.getParentFile(), "Select Project Directory");
 
+		// Create user directories
+		getUserConfigDir().mkdirs();
+		getUserStateDir().mkdirs();
+
 		try {
 			checkForDependencies();
 			File projDir = readMainConfig();
+
+			if (projDir == null) {
+				// User declined to select a project directory
+				exit();
+			}
 
 			boolean logDetails = mainConfig.getBoolean(Options.LogDetails);
 			Logger.setDefaultOuputPriority(logDetails ? Priority.DETAIL : Priority.STANDARD);
@@ -213,10 +228,10 @@ public abstract class Environment
 				// UIManager.put("TabbedPane.tabWidthMode", "compact");
 				// UIManager.put("TabbedPane.showTabSeparators", true);
 				// UIManager.put("TabbedPane.tabSeparatorsFullHeight", true);
-			}
 
-			if (fromJar && mainConfig.getBoolean(Options.CheckForUpdates))
-				checkForUpdate();
+				if (fromJar && mainConfig.getBoolean(Options.CheckForUpdates))
+					checkForUpdate();
+			}
 
 			LoadingBar.show("Loading Project", true);
 			boolean validProject = loadProject(projDir);
@@ -307,7 +322,7 @@ public abstract class Environment
 
 	private static final void checkForDependencies() throws IOException
 	{
-		File db = Directories.DATABASE.toFile();
+		File db = Directories.SEED_DATABASE.toFile();
 
 		if (!db.exists() || !db.isDirectory()) {
 			SwingUtils.getErrorDialog()
@@ -318,61 +333,91 @@ public abstract class Environment
 
 			exit();
 		}
+
+		// Copy SEED_DATABASE to DATABASE if DATABASE does not exist
+		// TODO: handle upgrades
+		File writeDb = Directories.DATABASE.toFile();
+		if (!writeDb.exists()) {
+			writeDb.mkdirs();
+			FileUtils.copyDirectory(db, writeDb);
+		}
+	}
+
+	public static final File getUserConfigDir()
+	{
+		String userHome = System.getProperty("user.home");
+
+		if (isWindows()) return new File(userHome, "/AppData/Local/StarRod/");
+
+		String xdgConfigHome = System.getenv("XDG_CONFIG_HOME");
+		String dotConfig = (xdgConfigHome != null && !xdgConfigHome.isEmpty())
+			? xdgConfigHome
+			: (userHome + "/.config");
+		return new File(dotConfig, "/star-rod/");
+	}
+
+	public static final File getUserStateDir()
+	{
+		String userHome = System.getProperty("user.home");
+
+		if (isWindows()) return new File(userHome, "/AppData/Local/StarRod/");
+
+		String xdgStateHome = System.getenv("XDG_STATE_HOME");
+		String dotState = (xdgStateHome != null && !xdgStateHome.isEmpty())
+			? xdgStateHome
+			: (userHome + "/.local/state");
+		return new File(dotState, "/star-rod/");
 	}
 
 	private static final File readMainConfig() throws IOException
 	{
-		File configFile = new File(codeSource.getParent(), FN_MAIN_CONFIG);
+		File configDir = getUserConfigDir();
+
+		File configFile = new File(configDir, FN_MAIN_CONFIG);
+
+		// backwards compatibility for Star Rod 0.9.2 and below: move old config to new location
+		File oldConfigFile = new File(codeSource.getParent(), "cfg/main.cfg");
+		if (oldConfigFile.exists()) {
+			FileUtils.moveFile(oldConfigFile, configFile);
+		}
 
 		// we may need to create a new config file here
 		if (!configFile.exists()) {
-			int choice = SwingUtils.getConfirmDialog()
-				.setTitle("Missing Config")
-				.setMessage("Could not find Star Rod config!", "Create a new one?")
-				.setMessageType(JOptionPane.QUESTION_MESSAGE)
-				.setOptionsType(JOptionPane.YES_NO_OPTION)
-				.choose();
-
-			if (choice != JOptionPane.OK_OPTION)
-				exit();
-
 			mainConfig = makeConfig(configFile, Scope.Main);
-
-			SwingUtils.getMessageDialog()
-				.setTitle("Select Project Directory")
-				.setMessage("Select your project directory.")
-				.setMessageType(JOptionPane.PLAIN_MESSAGE)
-				.show();
-
-			return promptSelectProject();
 		}
 		else {
 			// read existing config
 			mainConfig = new Config(configFile, Scope.Main);
 			mainConfig.readConfig();
-
-			// get project directory from config
-			String directoryName = mainConfig.getString(Options.ProjPath);
-			if (directoryName != null) {
-				File dir;
-				if (directoryName.startsWith("."))
-					dir = new File(codeSource.getParent(), directoryName);
-				else
-					dir = new File(directoryName);
-
-				if (dir.exists() && dir.isDirectory()) {
-					return dir;
-				}
-			}
-
-			// project directory is missing, prompt to select new one
-			SwingUtils.getErrorDialog()
-				.setTitle("Missing Project Directory")
-				.setMessage("Could not find project directory!", "Please select a new one.")
-				.show();
-
-			return promptSelectProject();
 		}
+
+		// if current directory seems to be a decomp project, use it regardless of config
+		File decompCfg = new File("./ver/us/", FN_SPLAT);
+		if (decompCfg.exists()) {
+			return new File(".");
+		}
+
+		// get project directory from config
+		String directoryName = mainConfig.getString(Options.ProjPath);
+		if (directoryName != null) {
+			File dir;
+			if (directoryName.startsWith("."))
+				dir = new File(codeSource.getParent(), directoryName);
+			else
+				dir = new File(directoryName);
+
+			if (dir.exists() && dir.isDirectory()) {
+				return dir;
+			}
+		}
+
+		// project directory is missing, prompt to select new one
+		SwingUtils.getErrorDialog()
+			.setTitle("Missing Project Directory")
+			.setMessage("Could not find project directory!", "Please select a new one.")
+			.show();
+
+		return promptSelectProject();
 	}
 
 	public static void promptChangeProject() throws IOException
@@ -491,17 +536,6 @@ public abstract class Environment
 		File configFile = new File(projectDirectory, FN_PROJ_CONFIG);
 
 		if (!configFile.exists()) {
-
-			int choice = SwingUtils.getConfirmDialog()
-				.setTitle("Missing Config")
-				.setMessage("Could not find project config!", "Create a new one?")
-				.setMessageType(JOptionPane.QUESTION_MESSAGE)
-				.setOptionsType(JOptionPane.YES_NO_OPTION)
-				.choose();
-
-			if (choice != JOptionPane.OK_OPTION)
-				exit();
-
 			projectConfig = makeConfig(configFile, Scope.Project);
 			projectConfig.saveConfigFile();
 		}
