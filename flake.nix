@@ -71,7 +71,7 @@ rec {
               gradle createReleaseZip --info -I ${gradle-init-script} --offline --full-stacktrace
             '';
             installPhase = ''
-              unzip -d $out build/release/StarRod.zip
+              unzip -d $out build/release/StarRod-*.zip
               rm $out/StarRod.bat
 
               mkdir -p $out/share/java
