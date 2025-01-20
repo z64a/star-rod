@@ -36,8 +36,9 @@ jobs:
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - name: Build
       run: nix build
-    - name: Push package to cache
+    - name: Try to push package to cache
       run: |
         nix build --json \
           | jq -r '.[].outputs | to_entries[].value' \
-          | cachix push papermario-dx
+          | cachix push papermario-dx \
+          || true
