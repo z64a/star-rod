@@ -29,6 +29,8 @@ rec {
             in
             ''
               export JAVA_TOOL_OPTIONS="${loadLombok}${prev}"
+              export JAVA_HOME="${jdk}"
+              export GRADLE_HOME="${gradle}"
             '';
         };
       });
