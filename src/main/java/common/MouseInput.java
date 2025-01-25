@@ -17,6 +17,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.swing.SwingUtilities;
 
+import app.Environment;
 import util.Logger;
 
 public class MouseInput implements MouseListener, MouseWheelListener
@@ -196,7 +197,11 @@ public class MouseInput implements MouseListener, MouseWheelListener
 			new Point(),
 			null);
 		try {
-			robot = new Robot();
+			if (Environment.isMacOS()) {
+				// Moving mouse with Robot on macOS is not supported without enabling accessibility permissions
+			} else {
+				robot = new Robot();
+			}
 		}
 		catch (AWTException e) {
 			robot = null;
@@ -230,7 +235,7 @@ public class MouseInput implements MouseListener, MouseWheelListener
 		SwingUtilities.convertPointFromScreen(curPos, comp);
 
 		boolean hadLocation = hasLocation;
-		hasLocation = comp.contains(curPos);
+		hasLocation = comp.contains(curPos) || Environment.isMacOS();
 
 		if (hasLocation) {
 			int posX = (int) Math.round(curPos.getX());
