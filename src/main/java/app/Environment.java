@@ -26,6 +26,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
+import org.apache.commons.io.FileExistsException;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.yaml.snakeyaml.Yaml;
@@ -378,7 +379,11 @@ public abstract class Environment
 		// backwards compatibility for Star Rod 0.9.2 and below: move old config to new location
 		File oldConfigFile = new File(codeSource.getParent(), "cfg/main.cfg");
 		if (oldConfigFile.exists()) {
-			FileUtils.moveFile(oldConfigFile, configFile);
+			try {
+				FileUtils.moveFile(oldConfigFile, configFile);
+			} catch (FileExistsException e) {
+				// existing configFile takes precedence
+			}
 		}
 
 		// we may need to create a new config file here
