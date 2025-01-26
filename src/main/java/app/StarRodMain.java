@@ -187,7 +187,7 @@ public class StarRodMain extends StarRodFrame
 
 		JButton extractDataButton = new JButton("Extract Map Data");
 		trySetIcon(extractDataButton, ExpectedAsset.ICON_EXTRACT);
-		SwingUtils.setFontSize(themesMenuButton, 12);
+		SwingUtils.setFontSize(extractDataButton, 12);
 		extractDataButton.addActionListener((e) -> {
 			action_extractMapData();
 		});
@@ -197,12 +197,28 @@ public class StarRodMain extends StarRodFrame
 		/*
 		JButton captureThumbnailsButton = new JButton("Capture Thumbnails");
 		trySetIcon(captureThumbnailsButton, ExpectedAsset.ICON_THEMES);
-		SwingUtils.setFontSize(themesMenuButton, 12);
+		SwingUtils.setFontSize(captureThumbnailsButton, 12);
 		captureThumbnailsButton.addActionListener((e) -> {
 			action_captureThumbnails();
 		});
 		buttons.add(captureThumbnailsButton);
 		*/
+
+		JButton openConfigDirButton = new JButton("Open Config Dir");
+		trySetIcon(openConfigDirButton, ExpectedAsset.ICON_SILVER);
+		SwingUtils.setFontSize(openConfigDirButton, 12);
+		openConfigDirButton.addActionListener((e) -> {
+			action_openDir(Environment.getUserConfigDir());
+		});
+		buttons.add(openConfigDirButton);
+
+		JButton openProjectDirButton = new JButton("Open Project Dir");
+		trySetIcon(openProjectDirButton, ExpectedAsset.ICON_GOLD);
+		SwingUtils.setFontSize(openProjectDirButton, 12);
+		openProjectDirButton.addActionListener((e) -> {
+			action_openDir(Environment.getProjectDirectory());
+		});
+		buttons.add(openProjectDirButton);
 
 		consoleTextArea = new JTextArea();
 		consoleTextArea.setRows(8);
@@ -277,6 +293,9 @@ public class StarRodMain extends StarRodFrame
 
 		add(themesMenuButton, "grow");
 		add(extractDataButton, "grow");
+
+		add(openConfigDirButton, "grow");
+		add(openProjectDirButton, "grow");
 
 		add(progressPanel, "grow, span, wrap, gap top 8");
 		add(consoleScrollPane, "grow, span");
@@ -446,6 +465,30 @@ public class StarRodMain extends StarRodFrame
 					editor.shutdownThumbnail();
 			}
 		});
+	}
+
+	private void action_openDir(File dir)
+	{
+		if (dir.exists()) {
+			try {
+				Desktop desktop = Desktop.getDesktop();
+				desktop.open(dir);
+			}
+			catch (IOException e) {
+				Logger.printStackTrace(e);
+				SwingUtils.getWarningDialog()
+					.setTitle("IOException")
+					.setMessage(e.getMessage())
+					.show();
+			}
+		}
+		else {
+			Toolkit.getDefaultToolkit().beep();
+			SwingUtils.getWarningDialog()
+				.setTitle("Directory Not Found")
+				.setMessage("Could not find:", dir.getAbsolutePath())
+				.show();
+		}
 	}
 
 	public static void handleEarlyCrash(Throwable e)

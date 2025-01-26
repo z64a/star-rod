@@ -1,15 +1,18 @@
 package app;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -25,6 +28,7 @@ public abstract class Resource
 	{
 		// @formatter:off
 		EditorAsset			("editor/"),
+		ProtoDatabase       ("database/"),
 		Extract             ("extract/"),
 		EntityModelRoots	("entity/"),
 		Font				("font/"),
@@ -119,14 +123,14 @@ public abstract class Resource
 		}
 	}
 
-	public static String[] getResourceNames(ResourceType type)
+	public static List<String> getResourceNames(ResourceType type)
 	{
 		try {
-			return getResourceListing(Resource.class, type.path);
+			return getAllResourceNames(Resource.class, type.path);
 		}
 		catch (Exception e) {
 			Logger.printStackTrace(e);
-			return new String[] {};
+			return new ArrayList<String>();
 		}
 	}
 
@@ -134,20 +138,30 @@ public abstract class Resource
 	  * List directory contents for a resource folder. Not recursive.
 	  * This is basically a brute-force implementation.
 	  * Works for regular files and also JARs.
+	  * Modified from a method written by Greg Briggs
 	  *
-	  * @author Greg Briggs
 	  * @param clazz Any java class that lives in the same place as the resources you want.
 	  * @param path Should end with "/", but not start with one.
 	  * @return Just the name of each member item, not the full paths.
 	  * @throws URISyntaxException
 	  * @throws IOException
 	  */
-	private static String[] getResourceListing(Class<?> clazz, String path) throws URISyntaxException, IOException
+	private static List<String> getAllResourceNames(Class<?> clazz, String path) throws IOException
 	{
 		URL dirURL = clazz.getClassLoader().getResource(path);
 		if (dirURL != null && dirURL.getProtocol().equals("file")) {
-			// A file path: easy enough
-			return new File(dirURL.toURI()).list();
+			// resource exists as a file
+			try {
+				Path dirPath = Paths.get(dirURL.toURI());
+				return Files.walk(dirPath)
+					.filter(Files::isRegularFile)
+					.map(filePath -> dirPath.relativize(filePath).toString().replace("\\", "/"))
+					.toList();
+			}
+			catch (URISyntaxException e) {
+				Logger.printStackTrace(e);
+				return new ArrayList<String>();
+			}
 		}
 
 		if (dirURL == null) {
@@ -158,27 +172,42 @@ public abstract class Resource
 		}
 
 		if (dirURL.getProtocol().equals("jar")) {
-			// A JAR path
-			String jarPath = dirURL.getPath().substring(5, dirURL.getPath().indexOf("!")); //strip out only the JAR file
+			// resource exists within the jar
+			String jarPath = dirURL.getPath().substring(5, dirURL.getPath().indexOf("!")); // strip out only the JAR file
 			try (JarFile jar = new JarFile(URLDecoder.decode(jarPath, "UTF-8"))) {
-				Enumeration<JarEntry> entries = jar.entries(); //gives ALL entries in jar
-				Set<String> result = new HashSet<String>(); //avoid duplicates in case it is a subdirectory
-				while (entries.hasMoreElements()) {
-					String name = entries.nextElement().getName();
-					if (name.startsWith(path)) { //filter according to the path
-						String entry = name.substring(path.length());
-						int checkSubdir = entry.indexOf("/");
-						if (checkSubdir >= 0) {
-							// if it is a subdirectory, we just return the directory name
-							entry = entry.substring(0, checkSubdir);
-						}
-						result.add(entry);
-					}
-				}
-				return result.toArray(new String[result.size()]);
+				return jar.stream()
+					.map(JarEntry::getName)
+					.filter(name -> name.startsWith(path) && !name.endsWith("/")) // only files
+					.map(name -> name.substring(path.length())) // strip out path prefix
+					.map(name -> name.startsWith("/") ? name.substring(1) : name) // remove leading slash if present
+					.toList();
 			}
 		}
 
 		throw new UnsupportedOperationException("Cannot list files for URL " + dirURL);
+	}
+
+	public static void copyMissing(ResourceType type, File dir) throws IOException
+	{
+		for (String filename : getAllResourceNames(Resource.class, type.path)) {
+			// the destination file in the user's database directory
+			File targetFile = new File(Directories.DATABASE.toFile(), filename);
+			targetFile.getParentFile().mkdirs();
+
+			try (InputStream resourceStream = Resource.getStream(type, filename)) {
+				if (resourceStream != null) {
+					// copy the file if it doesn't exist
+					if (!targetFile.exists()) {
+						try (OutputStream outStream = new FileOutputStream(targetFile)) {
+							byte[] buffer = new byte[4096];
+							int bytesRead;
+							while ((bytesRead = resourceStream.read(buffer)) != -1) {
+								outStream.write(buffer, 0, bytesRead);
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 }

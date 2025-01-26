@@ -13,13 +13,12 @@ public enum Directories
 	//=======================================================================================
 	// Directories not related to any specific project
 
-	SEED_DATABASE		(Root.NONE,				"/database/"), // Read-only database that comes with the jar
-	DATABASE			(Root.CONFIG,				"/database/"),
+	DATABASE			(Root.CONFIG,			"/database/"),
 	DATABASE_EDITOR		(Root.CONFIG, DATABASE,		"/editor/"),
 	DATABASE_THEMES		(Root.CONFIG, DATABASE,		"/themes/"),
 
-	TEMP				(Root.STATE,				"/temp/"),
 	LOGS				(Root.STATE, 			"/logs/"),
+	TEMP				(Root.STATE, 			"/temp/"),
 
 	//=======================================================================================
 	// Directories contain dumped content needed for Star Rod to function

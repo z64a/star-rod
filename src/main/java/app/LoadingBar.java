@@ -5,6 +5,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.imageio.ImageIO;
@@ -88,11 +89,11 @@ public class LoadingBar
 						bimg = ImageIO.read(Resource.getStream(ResourceType.Deluxe, "splash.jpg"));
 					}
 					else {
-						String[] splashNames = Resource.getResourceNames(ResourceType.Splash);
+						List<String> splashNames = Resource.getResourceNames(ResourceType.Splash);
 
-						if (splashNames.length > 0) {
-							int randomNum = ThreadLocalRandom.current().nextInt(0, splashNames.length);
-							bimg = ImageIO.read(Resource.getStream(ResourceType.Splash, splashNames[randomNum]));
+						if (splashNames.size() > 0) {
+							int randomNum = ThreadLocalRandom.current().nextInt(0, splashNames.size());
+							bimg = ImageIO.read(Resource.getStream(ResourceType.Splash, splashNames.get(randomNum)));
 						}
 					}
 

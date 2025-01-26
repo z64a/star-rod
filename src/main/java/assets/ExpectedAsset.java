@@ -15,6 +15,8 @@ public enum ExpectedAsset
 	ICON_IMAGE_EDITOR	(AssetSubdir.ICON, "food/TastyTonic.png", true),
 	ICON_THEMES			(AssetSubdir.ICON, "badge/PUpDDown.png", true),
 	ICON_EXTRACT		(AssetSubdir.ICON, "badge/Peekaboo.png", true),
+	ICON_GOLD			(AssetSubdir.ICON, "key/card_gold.png", true),
+	ICON_SILVER			(AssetSubdir.ICON, "key/card_silver.png", true),
 	ICON_APP			(AssetSubdir.ICON, "battle/ShootingStar.png", true),
 	ICON_X				(AssetSubdir.ICON, "battle/XBandage.png", true),
 	CIRCLE_SHADOW		(AssetSubdir.ENTITY, "shadow/circle.png", false),

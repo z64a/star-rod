@@ -23,7 +23,6 @@ import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
-import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import org.apache.commons.io.FileExistsException;
@@ -176,17 +175,20 @@ public abstract class Environment
 			try {
 				Manifest manifest = new Manifest(cl.getResourceAsStream("META-INF/MANIFEST.MF"));
 				Attributes attr = manifest.getMainAttributes();
-	
+
 				versionString = attr.getValue("App-Version");
 				gitBuildBranch = attr.getValue("Build-Branch");
 				gitBuildCommit = attr.getValue("Build-Commit");
 				gitBuildTag = attr.getValue("Build-Tag");
 
 				// Git info not available when built with Nix; normalise empty strings to null
-				if (gitBuildBranch != null && gitBuildBranch.isEmpty()) gitBuildBranch = null;
-				if (gitBuildCommit != null && gitBuildCommit.isEmpty()) gitBuildCommit = null;
-				if (gitBuildTag != null && gitBuildTag.isEmpty()) gitBuildTag = null;
-	
+				if (gitBuildBranch != null && gitBuildBranch.isEmpty())
+					gitBuildBranch = null;
+				if (gitBuildCommit != null && gitBuildCommit.isEmpty())
+					gitBuildCommit = null;
+				if (gitBuildTag != null && gitBuildTag.isEmpty())
+					gitBuildTag = null;
+
 				Logger.logf("Detected version %s (%s-%s)", versionString, gitBuildBranch, gitBuildCommit);
 			}
 			catch (IOException | IndexOutOfBoundsException e) {
@@ -213,7 +215,7 @@ public abstract class Environment
 		getUserStateDir().mkdirs();
 
 		try {
-			checkForDependencies();
+			unpackDatabase();
 			File projDir = readMainConfig();
 
 			if (projDir == null) {
@@ -321,34 +323,21 @@ public abstract class Environment
 		}
 	}
 
-	private static final void checkForDependencies() throws IOException
+	private static final void unpackDatabase() throws IOException
 	{
-		File db = Directories.SEED_DATABASE.toFile();
+		File dbDir = Directories.DATABASE.toFile();
+		if (!dbDir.exists())
+			dbDir.mkdirs();
 
-		if (!db.exists() || !db.isDirectory()) {
-			SwingUtils.getErrorDialog()
-				.setTitle("Missing Directory")
-				.setMessage("Could not find required directory: " + db.getName(),
-					"It should be in the same directory as the jar.")
-				.show();
-
-			exit();
-		}
-
-		// Copy SEED_DATABASE to DATABASE if DATABASE does not exist
-		// TODO: handle upgrades
-		File writeDb = Directories.DATABASE.toFile();
-		if (!writeDb.exists()) {
-			writeDb.mkdirs();
-			FileUtils.copyDirectory(db, writeDb);
-		}
+		Resource.copyMissing(ResourceType.ProtoDatabase, dbDir);
 	}
 
 	public static final File getUserConfigDir()
 	{
 		String userHome = System.getProperty("user.home");
 
-		if (isWindows()) return new File(userHome, "/AppData/Local/StarRod/");
+		if (isWindows())
+			return new File(userHome, "/AppData/Local/StarRod/");
 
 		String xdgConfigHome = System.getenv("XDG_CONFIG_HOME");
 		String dotConfig = (xdgConfigHome != null && !xdgConfigHome.isEmpty())
@@ -361,7 +350,8 @@ public abstract class Environment
 	{
 		String userHome = System.getProperty("user.home");
 
-		if (isWindows()) return new File(userHome, "/AppData/Local/StarRod/");
+		if (isWindows())
+			return new File(userHome, "/AppData/Local/StarRod/");
 
 		String xdgStateHome = System.getenv("XDG_STATE_HOME");
 		String dotState = (xdgStateHome != null && !xdgStateHome.isEmpty())

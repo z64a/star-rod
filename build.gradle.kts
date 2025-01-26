@@ -166,13 +166,9 @@ tasks {
         description = "Create zip file for Star Rod release"
 
         from(shadowJar.get().outputs.files)
-
-        from(file("database")) {
-            into("database")
-        }
         
         from(file(licenseBuildDir)) {
-            into("database/licenses")
+            into("licenses")
         }
         
         from(file("exec")) {
