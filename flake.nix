@@ -78,7 +78,6 @@ rec {
 
               mkdir -p $out/share/java
               mv $out/StarRod.jar $out/share/java
-              mv $out/database $out/share/java
 
               mkdir -p $out/bin
               makeWrapper ${pkgs.jre}/bin/java $out/bin/${pname} \
