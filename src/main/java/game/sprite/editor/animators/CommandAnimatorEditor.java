@@ -2,8 +2,10 @@ package game.sprite.editor.animators;
 
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -11,13 +13,16 @@ import java.util.Enumeration;
 
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
+import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
+import javax.swing.InputMap;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
@@ -79,6 +84,8 @@ public class CommandAnimatorEditor
 
 	private SpriteEditor editor;
 	private CommandAnimator animator;
+
+	private AnimCommand clipboard;
 
 	public static void bind(SpriteEditor editor, CommandAnimator animator, Container commandListContainer, Container commandEditContainer)
 	{
@@ -150,16 +157,66 @@ public class CommandAnimatorEditor
 			commandEditPanel.repaint();
 		});
 
-		commandList.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "DeleteCommands");
-		commandList.getActionMap().put("DeleteCommands", new AbstractAction() {
+		InputMap im = commandList.getInputMap(JComponent.WHEN_FOCUSED);
+		ActionMap am = commandList.getActionMap();
+
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK), "copy");
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK), "paste");
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, InputEvent.CTRL_DOWN_MASK), "duplicate");
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete");
+
+		am.put("copy", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e)
 			{
-				if (!commandList.isSelectionEmpty()) {
-					int i = commandList.getSelectedIndex();
-					DefaultListModel<?> model = (DefaultListModel<?>) commandList.getModel();
-					model.remove(i);
+				AnimCommand cmd = commandList.getSelectedValue();
+				if (cmd == null) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
 				}
+				clipboard = (AnimCommand) cmd.copy();
+			}
+		});
+
+		am.put("paste", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				int i = commandList.getSelectedIndex();
+				if (i == -1 || clipboard == null) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+				AnimCommand copy = (AnimCommand) clipboard.copy();
+				commandList.getDefaultModel().add(i + 1, copy);
+			}
+		});
+
+		am.put("duplicate", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				AnimCommand cmd = commandList.getSelectedValue();
+				if (cmd == null) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+				int i = commandList.getSelectedIndex();
+				AnimCommand copy = (AnimCommand) cmd.copy();
+				commandList.getDefaultModel().add(i + 1, copy);
+			}
+		});
+
+		am.put("delete", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				int i = commandList.getSelectedIndex();
+				if (i == -1) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+				commandList.getDefaultModel().remove(i);
 			}
 		});
 
@@ -173,12 +230,6 @@ public class CommandAnimatorEditor
 				AnimElement elem = commandList.getModel().getElementAt(row);
 
 				switch (e.getButton()) {
-					case MouseEvent.BUTTON1: // left-click
-						if (e.isControlDown()) {
-							DefaultListModel<AnimCommand> model = (DefaultListModel<AnimCommand>) instance().commandList.getModel();
-							model.addElement((AnimCommand) elem.copy());
-						}
-						break;
 					case MouseEvent.BUTTON3: // right click
 						animator.advanceTo(elem);
 						commandListPanel.repaint();
@@ -272,7 +323,7 @@ public class CommandAnimatorEditor
 
 	private static void create(AnimCommand cmd)
 	{
-		DefaultListModel<AnimCommand> model = (DefaultListModel<AnimCommand>) instance().commandList.getModel();
+		DefaultListModel<AnimCommand> model = instance().commandList.getDefaultModel();
 
 		if (instance().commandList.isSelectionEmpty())
 			model.addElement(cmd);

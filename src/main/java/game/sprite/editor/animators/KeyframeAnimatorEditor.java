@@ -2,18 +2,23 @@ package game.sprite.editor.animators;
 
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 import javax.swing.AbstractAction;
+import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
 import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
+import javax.swing.InputMap;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
@@ -60,6 +65,8 @@ public class KeyframeAnimatorEditor
 
 	private SpriteEditor editor;
 	private KeyframeAnimator animator;
+
+	private AnimKeyframe clipboard;
 
 	public static void bind(SpriteEditor editor, KeyframeAnimator animator, Container commandListContainer, Container commandEditContainer)
 	{
@@ -130,16 +137,66 @@ public class KeyframeAnimatorEditor
 			commandEditPanel.repaint();
 		});
 
-		commandList.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "DeleteCommands");
-		commandList.getActionMap().put("DeleteCommands", new AbstractAction() {
+		InputMap im = commandList.getInputMap(JComponent.WHEN_FOCUSED);
+		ActionMap am = commandList.getActionMap();
+
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK), "copy");
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK), "paste");
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, InputEvent.CTRL_DOWN_MASK), "duplicate");
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete");
+
+		am.put("copy", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e)
 			{
-				if (!commandList.isSelectionEmpty()) {
-					int i = commandList.getSelectedIndex();
-					DefaultListModel<?> model = (DefaultListModel<?>) commandList.getModel();
-					model.remove(i);
+				AnimKeyframe cmd = commandList.getSelectedValue();
+				if (cmd == null) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
 				}
+				clipboard = (AnimKeyframe) cmd.copy();
+			}
+		});
+
+		am.put("paste", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				int i = commandList.getSelectedIndex();
+				if (i == -1 || clipboard == null) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+				AnimKeyframe copy = (AnimKeyframe) clipboard.copy();
+				commandList.getDefaultModel().add(i + 1, copy);
+			}
+		});
+
+		am.put("duplicate", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				AnimKeyframe cmd = commandList.getSelectedValue();
+				if (cmd == null) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+				int i = commandList.getSelectedIndex();
+				AnimKeyframe copy = (AnimKeyframe) cmd.copy();
+				commandList.getDefaultModel().add(i + 1, copy);
+			}
+		});
+
+		am.put("delete", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				int i = commandList.getSelectedIndex();
+				if (i == -1) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+				commandList.getDefaultModel().remove(i);
 			}
 		});
 
@@ -153,12 +210,6 @@ public class KeyframeAnimatorEditor
 				AnimElement elem = commandList.getModel().getElementAt(row);
 
 				switch (e.getButton()) {
-					case MouseEvent.BUTTON1: // left-click
-						if (e.isControlDown()) {
-							DefaultListModel<AnimKeyframe> model = (DefaultListModel<AnimKeyframe>) instance().commandList.getModel();
-							model.addElement((AnimKeyframe) elem.copy());
-						}
-						break;
 					case MouseEvent.BUTTON3: // right click
 						animator.advanceTo(elem);
 						commandListPanel.repaint();
@@ -220,7 +271,7 @@ public class KeyframeAnimatorEditor
 
 	private static void create(AnimKeyframe cmd)
 	{
-		DefaultListModel<AnimKeyframe> model = (DefaultListModel<AnimKeyframe>) instance().commandList.getModel();
+		DefaultListModel<AnimKeyframe> model = instance().commandList.getDefaultModel();
 
 		if (instance().commandList.isSelectionEmpty())
 			model.addElement(cmd);

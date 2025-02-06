@@ -39,6 +39,11 @@ public class DragReorderList<T> extends JList<T>
 		}
 	}
 
+	public DefaultListModel<T> getDefaultModel()
+	{
+		return (DefaultListModel<T>) getModel();
+	}
+
 	private class ReorderingTransferHandler extends TransferHandler
 	{
 		private DataFlavor dummyFlavor;
