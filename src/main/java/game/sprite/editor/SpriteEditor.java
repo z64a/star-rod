@@ -1445,10 +1445,15 @@ public class SpriteEditor extends BaseEditor
 		getOptionDialog("Edit " + sprite + " Animations", listPanel).setOptions("Done").choose();
 
 		invokeLater(() -> {
-			setSprite(spriteID, false);
 			sprite.recalculateIndices();
-			if (currentAnim != null && sprite.animations.contains(currentAnim))
-				animationComboBox.setSelectedItem(currentAnim);
+			if (currentAnim != null) {
+				if (sprite.animations.contains(currentAnim))
+					animationComboBox.setSelectedItem(currentAnim);
+				else if (!sprite.animations.isEmpty())
+					animationComboBox.setSelectedIndex(0);
+				else
+					animationComboBox.setSelectedItem(null);
+			}
 			animationComboBox.repaint();
 		});
 	}

@@ -37,7 +37,7 @@ public class ImageInfoPanel extends JPanel
 				Graphics2D g2 = (Graphics2D) g;
 				g.drawImage(TextureManager.background, 0, 0, IMG_SIZE, IMG_SIZE, null);
 
-				if (ref.asset != null) {
+				if (ref != null && ref.asset != null) {
 					ref.asset.previewImg = new BufferedImage(
 						ref.asset.getPalette().getIndexColorModel(),
 						ref.asset.previewImg.getRaster(), false, null);

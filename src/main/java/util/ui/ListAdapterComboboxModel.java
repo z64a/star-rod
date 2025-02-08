@@ -2,6 +2,7 @@ package util.ui;
 
 import javax.swing.ComboBoxModel;
 import javax.swing.ListModel;
+import javax.swing.SwingUtilities;
 import javax.swing.event.EventListenerList;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
@@ -74,7 +75,6 @@ public class ListAdapterComboboxModel<T> implements ComboBoxModel<T>
 		public void addListDataListener(ListDataListener l)
 		{
 			listenerList.add(ListDataListener.class, l);
-
 		}
 
 		@Override
@@ -99,23 +99,31 @@ public class ListAdapterComboboxModel<T> implements ComboBoxModel<T>
 
 		private void checkSelection(ListDataEvent e)
 		{
-			Object selectedItem = getSelectedItem();
-			@SuppressWarnings("unchecked")
-			ListModel<T> listModel = (ListModel<T>) e.getSource();
-			int size = listModel.getSize();
-			boolean selectedItemNoLongerExists = true;
+			// defer until later to avoid setting selectedObject to null during a drag reordering
+			// event which triggers a deletion followed by an insertion
+			SwingUtilities.invokeLater(() -> {
+				Object selectedItem = getSelectedItem();
+				if (selectedItem == null)
+					return;
 
-			for (int i = 0; i < size; i++) {
-				Object elementAt = listModel.getElementAt(i);
-				if (elementAt != null && elementAt.equals(selectedItem)) {
-					selectedItemNoLongerExists = false;
-					break;
+				@SuppressWarnings("unchecked")
+				ListModel<T> listModel = (ListModel<T>) e.getSource();
+				int size = listModel.getSize();
+
+				boolean selectedItemNoLongerExists = true;
+
+				for (int i = 0; i < size; i++) {
+					Object elementAt = listModel.getElementAt(i);
+					if (elementAt != null && elementAt.equals(selectedItem)) {
+						selectedItemNoLongerExists = false;
+						break;
+					}
 				}
-			}
 
-			if (selectedItemNoLongerExists) {
-				ListAdapterComboboxModel.this.selectedObject = null;
-			}
+				if (selectedItemNoLongerExists) {
+					ListAdapterComboboxModel.this.selectedObject = null;
+				}
+			});
 		}
 
 		protected void delegateListDataEvent(ListDataEvent lde)
