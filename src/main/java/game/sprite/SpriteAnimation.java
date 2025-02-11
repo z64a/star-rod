@@ -16,6 +16,10 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 	public transient String name = "";
 	protected transient int listIndex;
 
+	public transient int lastSelectedComp;
+
+	public transient int animTime;
+
 	public SpriteAnimation(Sprite parentSprite)
 	{
 		this.parentSprite = parentSprite;
@@ -61,6 +65,8 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 			SpriteComponent comp = components.elementAt(i);
 			comp.step();
 		}
+
+		animTime += 2;
 	}
 
 	public void reset()
@@ -69,6 +75,8 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 			SpriteComponent comp = components.elementAt(i);
 			comp.reset();
 		}
+
+		animTime = 0;
 	}
 
 	public boolean end()
@@ -93,6 +101,7 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 			iterations++;
 		}
 
+		animTime = 2 * iterations;
 		return !notDone;
 	}
 

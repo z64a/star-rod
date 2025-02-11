@@ -26,7 +26,6 @@ public abstract class ListPanel<T> extends JPanel
 		list = new DragReorderList<>();
 		list.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		list.addListSelectionListener((e) -> {
 			if (e.getValueIsAdjusting())
 				return;
@@ -34,8 +33,8 @@ public abstract class ListPanel<T> extends JPanel
 			onSelectEDT(list.getSelectedValue());
 		});
 
-		list.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "DeleteCommands");
-		list.getActionMap().put("DeleteCommands", new AbstractAction() {
+		list.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete");
+		list.getActionMap().put("delete", new AbstractAction() {
 			@Override
 			public void actionPerformed(ActionEvent e)
 			{

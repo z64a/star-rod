@@ -79,12 +79,10 @@ public class SpriteList extends JPanel
 
 		JScrollPane listScrollPane = new JScrollPane(list);
 		listScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		listScrollPane.setWheelScrollingEnabled(true);
 
 		add(SwingUtils.getLabel("Filter:", 12), "w 40!, split 2");
 		add(filterField, "growx");
 		add(listScrollPane, "grow, push, gaptop 8");
-		//add(new JPanel(), "growx, sg but");
 	}
 
 	public void setSprites(Collection<SpriteMetadata> sprites)
@@ -96,7 +94,6 @@ public class SpriteList extends JPanel
 		}
 
 		updateListFilter();
-		//   list.repaint();
 	}
 
 	public void setSelected(SpriteMetadata sprite)

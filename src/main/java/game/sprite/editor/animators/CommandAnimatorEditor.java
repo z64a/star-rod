@@ -20,12 +20,10 @@ import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
 import javax.swing.InputMap;
-import javax.swing.JCheckBox;
+import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JMenuItem;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
@@ -42,8 +40,6 @@ import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
-
-import com.alexandriasoftware.swing.JSplitButton;
 
 import app.SwingUtils;
 import game.sprite.Sprite;
@@ -142,7 +138,7 @@ public class CommandAnimatorEditor
 		commandList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		commandList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-		commandListPanel = new JPanel(new MigLayout("fill, ins 0, wrap"));
+		commandListPanel = new JPanel(new MigLayout("fill, ins 0, wrap 3", "[grow, sg col][grow, sg col]"));
 		commandEditPanel = new JPanel(new MigLayout("fill, ins 0, wrap"));
 
 		commandList.addListSelectionListener((e) -> {
@@ -239,66 +235,58 @@ public class CommandAnimatorEditor
 			}
 		});
 
-		JPopupMenu createMenu = new JPopupMenu();
-		JSplitButton createButton = new JSplitButton("Add Command");
-		createButton.setPopupMenu(createMenu);
-		createButton.setAlwaysPopup(true);
+		JButton waitBtn = new JButton("Wait");
+		waitBtn.addActionListener((e) -> create(animator.new Wait()));
 
-		JMenuItem waitItem = new JMenuItem("Wait");
-		waitItem.addActionListener((e) -> create(animator.new Wait()));
-		createMenu.add(waitItem);
+		JButton imgBtn = new JButton("Raster");
+		imgBtn.addActionListener((e) -> create(animator.new SetImage()));
 
-		JMenuItem imgItem = new JMenuItem("Set Raster");
-		imgItem.addActionListener((e) -> create(animator.new SetImage()));
-		createMenu.add(imgItem);
+		JButton palBtn = new JButton("Palette");
+		palBtn.addActionListener((e) -> create(animator.new SetPalette()));
 
-		JMenuItem palItem = new JMenuItem("Set Palette");
-		palItem.addActionListener((e) -> create(animator.new SetPalette()));
-		createMenu.add(palItem);
+		JButton labelBtn = new JButton("Label");
+		labelBtn.addActionListener((e) -> create(animator.new Label()));
 
-		createMenu.addSeparator();
+		JButton gotoBtn = new JButton("Goto");
+		gotoBtn.addActionListener((e) -> create(animator.new Goto()));
 
-		JMenuItem labelItem = new JMenuItem("Label");
-		labelItem.addActionListener((e) -> create(animator.new Label()));
-		createMenu.add(labelItem);
+		JButton loopBtn = new JButton("Repeat");
+		loopBtn.addActionListener((e) -> create(animator.new Loop()));
 
-		JMenuItem gotoItem = new JMenuItem("Goto");
-		gotoItem.addActionListener((e) -> create(animator.new Goto()));
-		createMenu.add(gotoItem);
+		JButton posBtn = new JButton("Position");
+		posBtn.addActionListener((e) -> create(animator.new SetPosition()));
 
-		JMenuItem loopItem = new JMenuItem("Repeat");
-		loopItem.addActionListener((e) -> create(animator.new Loop()));
-		createMenu.add(loopItem);
+		JButton rotBtn = new JButton("Rotation");
+		rotBtn.addActionListener((e) -> create(animator.new SetRotation()));
 
-		createMenu.addSeparator();
+		JButton scaleBtn = new JButton("Scale");
+		scaleBtn.addActionListener((e) -> create(animator.new SetScale()));
 
-		JMenuItem posItem = new JMenuItem("Set Position");
-		posItem.addActionListener((e) -> create(animator.new SetPosition()));
-		createMenu.add(posItem);
+		JButton parentBtn = new JButton("Parent");
+		parentBtn.addActionListener((e) -> create(animator.new SetParent()));
 
-		JMenuItem rotItem = new JMenuItem("Set Rotation");
-		rotItem.addActionListener((e) -> create(animator.new SetRotation()));
-		createMenu.add(rotItem);
-
-		JMenuItem scaleItem = new JMenuItem("Set Scale");
-		scaleItem.addActionListener((e) -> create(animator.new SetScale()));
-		createMenu.add(scaleItem);
-
-		createMenu.addSeparator();
-
-		JMenuItem parentItem = new JMenuItem("Set Parent");
-		parentItem.addActionListener((e) -> create(animator.new SetParent()));
-		createMenu.add(parentItem);
-
-		JMenuItem notifyItem = new JMenuItem("Set Notify");
-		notifyItem.addActionListener((e) -> create(animator.new SetNotify()));
-		createMenu.add(notifyItem);
+		JButton notifyBtn = new JButton("Notify");
+		notifyBtn.addActionListener((e) -> create(animator.new SetNotify()));
 
 		JScrollPane listScrollPane = new JScrollPane(commandList);
 		listScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		commandListPanel.add(SwingUtils.getLabel("Commands", 14));
-		commandListPanel.add(listScrollPane, "grow, push");
-		commandListPanel.add(createButton, "growx");
+		commandListPanel.add(SwingUtils.getLabel("Commands", 14), "growx, span");
+		commandListPanel.add(listScrollPane, "grow, span, push");
+
+		commandListPanel.add(waitBtn, "growx");
+		commandListPanel.add(imgBtn, "growx");
+		commandListPanel.add(palBtn, "growx");
+
+		commandListPanel.add(posBtn, "growx");
+		commandListPanel.add(rotBtn, "growx");
+		commandListPanel.add(scaleBtn, "growx");
+
+		commandListPanel.add(labelBtn, "growx");
+		commandListPanel.add(gotoBtn, "growx");
+		commandListPanel.add(loopBtn, "growx");
+
+		commandListPanel.add(parentBtn, "growx");
+		commandListPanel.add(notifyBtn, "growx");
 
 		commandListListener = new ListDataListener() {
 			@Override
@@ -358,9 +346,10 @@ public class CommandAnimatorEditor
 			labelNameField.setBorder(BorderFactory.createCompoundBorder(
 				labelNameField.getBorder(),
 				BorderFactory.createEmptyBorder(2, 4, 2, 4)));
+			SwingUtils.setFontSize(labelNameField, 14);
 
 			add(SwingUtils.getLabel("Label Name", 14), "gapbottom 4");
-			add(labelNameField, "grow");
+			add(labelNameField, "growx, pushx");
 		}
 
 		protected void set(Label cmd)
@@ -399,7 +388,7 @@ public class CommandAnimatorEditor
 			});
 
 			add(SwingUtils.getLabel("Goto Label", 14), "gapbottom 4");
-			add(labelComboBox, "w 200!");
+			add(labelComboBox, "growx, pushx");
 		}
 
 		private boolean ignoreChanges = false;
@@ -445,18 +434,20 @@ public class CommandAnimatorEditor
 			});
 
 			countSpinner = new JSpinner();
-			SwingUtils.setFontSize(countSpinner, 12);
 			countSpinner.setModel(new SpinnerNumberModel(1, 0, 300, 1));
-			SwingUtils.centerSpinnerText(countSpinner);
 			countSpinner.addChangeListener((e) -> {
 				cmd.count = (int) countSpinner.getValue();
 				repaintCommandList();
 			});
 
-			add(SwingUtils.getLabel("Repeat Properties", 14), "gapbottom 4");
-			add(labelComboBox, "w 200!");
-			add(SwingUtils.getLabel("Repetitions: ", 12), "sg lbl, split 2");
-			add(countSpinner, "sg etc, grow");
+			SwingUtils.setFontSize(countSpinner, 12);
+			SwingUtils.centerSpinnerText(countSpinner);
+			SwingUtils.addBorderPadding(countSpinner);
+
+			add(SwingUtils.getLabel("Repeat from Label", 14), "gapbottom 4");
+			add(labelComboBox, "growx, pushx");
+			add(SwingUtils.getLabel("Repetitions: ", 12), "split 2");
+			add(countSpinner, "w 30%");
 		}
 
 		private boolean ignoreChanges = false;
@@ -493,13 +484,15 @@ public class CommandAnimatorEditor
 			super(new MigLayout(PANEL_LAYOUT_PROPERTIES));
 
 			countSpinner = new JSpinner();
-			SwingUtils.setFontSize(countSpinner, 12);
 			countSpinner.setModel(new SpinnerNumberModel(1, 0, 300, 1)); // longest used = 260
-			SwingUtils.centerSpinnerText(countSpinner);
 			countSpinner.addChangeListener((e) -> {
 				cmd.count = (int) countSpinner.getValue();
 				repaintCommandList();
 			});
+
+			SwingUtils.setFontSize(countSpinner, 12);
+			SwingUtils.centerSpinnerText(countSpinner);
+			SwingUtils.addBorderPadding(countSpinner);
 
 			add(SwingUtils.getLabel("Wait Duration", 14), "gapbottom 4");
 			add(countSpinner, "w 30%, split 2");
@@ -548,7 +541,7 @@ public class CommandAnimatorEditor
 				repaintCommandList();
 			});
 
-			add(SwingUtils.getLabel("Choose Raster", 14), "gapbottom 4");
+			add(SwingUtils.getLabel("Set Raster", 14), "gapbottom 4");
 			add(imageComboBox, "w 60%, h 120!");
 		}
 
@@ -599,8 +592,8 @@ public class CommandAnimatorEditor
 				repaintCommandList();
 			});
 
-			add(SwingUtils.getLabel("Choose Palette", 14), "gapbottom 4");
-			add(paletteComboBox, "w 200!");
+			add(SwingUtils.getLabel("Set Palette", 14), "gapbottom 4");
+			add(paletteComboBox, "growx, pushx");
 		}
 
 		protected void set(SetPalette cmd)
@@ -651,7 +644,7 @@ public class CommandAnimatorEditor
 			});
 
 			add(SwingUtils.getLabel("Set Parent", 14), "gapbottom 4");
-			add(componentComboBox, "w 200!");
+			add(componentComboBox, "growx, pushx");
 		}
 
 		protected void set(SetParent cmd)
@@ -686,15 +679,17 @@ public class CommandAnimatorEditor
 			super(new MigLayout(PANEL_LAYOUT_PROPERTIES));
 
 			valueSpinner = new JSpinner();
-			SwingUtils.setFontSize(valueSpinner, 12);
 			valueSpinner.setModel(new SpinnerNumberModel(0, 0, 255, 1));
-			SwingUtils.centerSpinnerText(valueSpinner);
 			valueSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
 				cmd.value = (int) valueSpinner.getValue();
 				repaintCommandList();
 			});
+
+			SwingUtils.setFontSize(valueSpinner, 12);
+			SwingUtils.centerSpinnerText(valueSpinner);
+			SwingUtils.addBorderPadding(valueSpinner);
 
 			add(SwingUtils.getLabel("Set Notify", 14), "gapbottom 4");
 			add(valueSpinner, "w 30%!");
@@ -730,15 +725,17 @@ public class CommandAnimatorEditor
 			super(new MigLayout(PANEL_LAYOUT_PROPERTIES));
 
 			valueSpinner = new JSpinner();
-			SwingUtils.setFontSize(valueSpinner, 12);
 			valueSpinner.setModel(new SpinnerNumberModel(0, 0, 255, 1));
-			SwingUtils.centerSpinnerText(valueSpinner);
 			valueSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
 				cmd.value = (int) valueSpinner.getValue();
 				repaintCommandList();
 			});
+
+			SwingUtils.setFontSize(valueSpinner, 12);
+			SwingUtils.centerSpinnerText(valueSpinner);
+			SwingUtils.addBorderPadding(valueSpinner);
 
 			add(SwingUtils.getLabel("Set Notify", 14), "gapbottom 4");
 			add(valueSpinner, "w 30%");
@@ -761,7 +758,6 @@ public class CommandAnimatorEditor
 
 		private boolean ignoreChanges = false;
 		private JSpinner xSpinner, ySpinner, zSpinner;
-		private JCheckBox unknownCheckbox;
 
 		protected static SetPositionPanel instance()
 		{
@@ -775,9 +771,7 @@ public class CommandAnimatorEditor
 			super(new MigLayout(PANEL_LAYOUT_PROPERTIES));
 
 			xSpinner = new JSpinner();
-			SwingUtils.setFontSize(xSpinner, 12);
 			xSpinner.setModel(new SpinnerNumberModel(0, -256, 256, 1));
-			SwingUtils.centerSpinnerText(xSpinner);
 			xSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
@@ -785,10 +779,12 @@ public class CommandAnimatorEditor
 				repaintCommandList();
 			});
 
+			SwingUtils.setFontSize(xSpinner, 12);
+			SwingUtils.centerSpinnerText(xSpinner);
+			SwingUtils.addBorderPadding(xSpinner);
+
 			ySpinner = new JSpinner();
-			SwingUtils.setFontSize(ySpinner, 12);
 			ySpinner.setModel(new SpinnerNumberModel(0, -256, 256, 1));
-			SwingUtils.centerSpinnerText(ySpinner);
 			ySpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
@@ -796,10 +792,12 @@ public class CommandAnimatorEditor
 				repaintCommandList();
 			});
 
+			SwingUtils.setFontSize(ySpinner, 12);
+			SwingUtils.centerSpinnerText(ySpinner);
+			SwingUtils.addBorderPadding(ySpinner);
+
 			zSpinner = new JSpinner();
-			SwingUtils.setFontSize(zSpinner, 12);
 			zSpinner.setModel(new SpinnerNumberModel(0, -256, 256, 1));
-			SwingUtils.centerSpinnerText(zSpinner);
 			zSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
@@ -807,20 +805,17 @@ public class CommandAnimatorEditor
 				repaintCommandList();
 			});
 
-			unknownCheckbox = new JCheckBox("Unknown purpose");
-			unknownCheckbox.addActionListener((e) -> {
-				if (ignoreChanges)
-					return;
-				cmd.unknown = unknownCheckbox.isSelected();
-				repaintCommandList();
-			});
-			unknownCheckbox.setToolTipText("Flag of unknown purpose. I don't think it does anything. Toggle it if you like surprises.");
+			SwingUtils.setFontSize(zSpinner, 12);
+			SwingUtils.centerSpinnerText(zSpinner);
+			SwingUtils.addBorderPadding(zSpinner);
 
-			add(SwingUtils.getLabel("Component Position Offset", 14), "gapbottom 4");
-			add(xSpinner, "split 3, sg xyz");
-			add(ySpinner, "sg xyz");
-			add(zSpinner, "sg xyz");
-			add(unknownCheckbox, "gapbottom push");
+			JPanel coordPanel = new JPanel(new MigLayout("fill, ins 0", "[sg spin]4[sg spin]4[sg spin]"));
+			coordPanel.add(xSpinner);
+			coordPanel.add(ySpinner);
+			coordPanel.add(zSpinner);
+
+			add(SwingUtils.getLabel("Set Position Offset", 14), "gapbottom 4");
+			add(coordPanel, "growx");
 		}
 
 		protected void set(SetPosition cmd)
@@ -830,7 +825,6 @@ public class CommandAnimatorEditor
 			xSpinner.setValue(cmd.x);
 			ySpinner.setValue(cmd.y);
 			zSpinner.setValue(cmd.z);
-			unknownCheckbox.setSelected(cmd.unknown);
 			ignoreChanges = false;
 		}
 	}
@@ -855,9 +849,7 @@ public class CommandAnimatorEditor
 			super(new MigLayout(PANEL_LAYOUT_PROPERTIES));
 
 			xSpinner = new JSpinner();
-			SwingUtils.setFontSize(xSpinner, 12);
 			xSpinner.setModel(new SpinnerNumberModel(0, -180, 180, 1));
-			SwingUtils.centerSpinnerText(xSpinner);
 			xSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
@@ -865,10 +857,12 @@ public class CommandAnimatorEditor
 				repaintCommandList();
 			});
 
+			SwingUtils.setFontSize(xSpinner, 12);
+			SwingUtils.centerSpinnerText(xSpinner);
+			SwingUtils.addBorderPadding(xSpinner);
+
 			ySpinner = new JSpinner();
-			SwingUtils.setFontSize(ySpinner, 12);
 			ySpinner.setModel(new SpinnerNumberModel(0, -180, 180, 1));
-			SwingUtils.centerSpinnerText(ySpinner);
 			ySpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
@@ -876,10 +870,12 @@ public class CommandAnimatorEditor
 				repaintCommandList();
 			});
 
+			SwingUtils.setFontSize(ySpinner, 12);
+			SwingUtils.centerSpinnerText(ySpinner);
+			SwingUtils.addBorderPadding(ySpinner);
+
 			zSpinner = new JSpinner();
-			SwingUtils.setFontSize(zSpinner, 12);
 			zSpinner.setModel(new SpinnerNumberModel(0, -180, 180, 1));
-			SwingUtils.centerSpinnerText(zSpinner);
 			zSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
@@ -887,10 +883,17 @@ public class CommandAnimatorEditor
 				repaintCommandList();
 			});
 
-			add(SwingUtils.getLabel("Component Rotation Angles", 14), "gapbottom 4");
-			add(xSpinner, "split 3, sg xyz");
-			add(ySpinner, "sg xyz");
-			add(zSpinner, "sg xyz");
+			SwingUtils.setFontSize(zSpinner, 12);
+			SwingUtils.centerSpinnerText(zSpinner);
+			SwingUtils.addBorderPadding(zSpinner);
+
+			JPanel coordPanel = new JPanel(new MigLayout("fill, ins 0", "[sg spin]4[sg spin]4[sg spin]"));
+			coordPanel.add(xSpinner);
+			coordPanel.add(ySpinner);
+			coordPanel.add(zSpinner);
+
+			add(SwingUtils.getLabel("Set Rotation Angles", 14), "gapbottom 4");
+			add(coordPanel, "growx");
 		}
 
 		protected void set(SetRotation cmd)
@@ -924,13 +927,15 @@ public class CommandAnimatorEditor
 			super(new MigLayout(PANEL_LAYOUT_PROPERTIES));
 
 			scaleSpinner = new JSpinner();
-			SwingUtils.setFontSize(scaleSpinner, 12);
 			scaleSpinner.setModel(new SpinnerNumberModel(1, 0, 500, 1));
-			SwingUtils.centerSpinnerText(scaleSpinner);
 			scaleSpinner.addChangeListener((e) -> {
 				cmd.scalePercent = (int) scaleSpinner.getValue();
 				repaintCommandList();
 			});
+
+			SwingUtils.setFontSize(scaleSpinner, 12);
+			SwingUtils.centerSpinnerText(scaleSpinner);
+			SwingUtils.addBorderPadding(scaleSpinner);
 
 			ButtonGroup scaleButtons = new ButtonGroup();
 
@@ -958,13 +963,12 @@ public class CommandAnimatorEditor
 			scaleButtons.add(yButton);
 			scaleButtons.add(zButton);
 
-			add(SwingUtils.getLabel("Component Scale", 14), "gapbottom 4");
-			add(scaleSpinner, "w 30%, split 2");
-			add(SwingUtils.getLabel(" percent", 12));
-			add(allButton, "sg but, split 4");
-			add(xButton, "sg but");
-			add(yButton, "sg but");
-			add(zButton, "sg but, grow");
+			add(SwingUtils.getLabel("Set Scale Percent", 14), "gapbottom 4");
+			add(scaleSpinner);
+			add(allButton);
+			add(xButton);
+			add(yButton);
+			add(zButton);
 		}
 
 		protected void set(SetScale cmd)

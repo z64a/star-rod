@@ -1,9 +1,10 @@
 package util.ui;
 
-import java.awt.Point;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.DefaultListModel;
 import javax.swing.DropMode;
@@ -17,6 +18,13 @@ import util.Logger;
 // a special JList that supports drag and drop
 public class DragReorderList<T> extends JList<T>
 {
+	public static interface DropListener
+	{
+		public void drop();
+	}
+
+	private List<DropListener> dropListeners;
+
 	public DragReorderList()
 	{
 		super();
@@ -25,18 +33,13 @@ public class DragReorderList<T> extends JList<T>
 		setTransferHandler(new ReorderingTransferHandler());
 		setDropMode(DropMode.INSERT);
 		setDragEnabled(true);
+
+		dropListeners = new ArrayList<>();
 	}
 
-	@Override
-	public int locationToIndex(Point location)
+	public void addDropListener(DropListener listener)
 	{
-		int index = super.locationToIndex(location);
-		if (index != -1 && !getCellBounds(index, index).contains(location)) {
-			return -1;
-		}
-		else {
-			return index;
-		}
+		dropListeners.add(listener);
 	}
 
 	public DefaultListModel<T> getDefaultModel()
@@ -116,6 +119,10 @@ public class DragReorderList<T> extends JList<T>
 			model.removeElement(obj);
 			model.insertElementAt(obj, dropDestination);
 			list.setSelectedIndex(dropDestination);
+
+			for (DropListener listener : dropListeners) {
+				listener.drop();
+			}
 
 			return true;
 		}

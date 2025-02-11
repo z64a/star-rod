@@ -266,31 +266,31 @@ public class CommandAnimator implements ComponentAnimator
 			comp.sp = null;
 	}
 
-	// gets the (logical) command list index for the real position in the command list
-	private int getListIndex(int pos)
+	// gets the (logical) command list index for the real position (in bytes) in the command list
+	private int getListIndex(int target)
 	{
-		int j = 0;
+		int pos = 0;
 		for (int i = 0; i < commandListModel.size(); i++) {
-			AnimCommand cmd = commandListModel.get(i);
-			if (j == pos)
+			if (target == pos)
 				return i;
-			j += cmd.length();
+
+			AnimCommand cmd = commandListModel.get(i);
+			pos += 2 * cmd.length();
 		}
 		return -1;
 	}
 
-	private int getFloorListIndex(int pos)
+	private int getFloorListIndex(int target)
 	{
-		int floor = 0;
-		int j = 0;
+		int pos = 0;
 		for (int i = 0; i < commandListModel.size(); i++) {
 			AnimCommand cmd = commandListModel.get(i);
-			if (j > floor)
-				return floor;
-			floor = j;
-			j += cmd.length();
+			pos += 2 * cmd.length();
+
+			if (target < pos)
+				return i;
 		}
-		return floor;
+		return commandListModel.size();
 	}
 
 	private String getLabelName(RawAnimation rawAnim, int pos)
@@ -652,7 +652,7 @@ public class CommandAnimator implements ComponentAnimator
 	}
 
 	// 3VVV XXXX YYYY ZZZZ
-	// set position -- flag: doesn't seem to do ANYTHING! TODO
+	// set position -- flag: doesn't do anything
 	public class SetPosition extends AnimCommand
 	{
 		public boolean unknown;

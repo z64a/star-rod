@@ -61,8 +61,8 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	public SpritePalette sp = null;
 	public SpriteComponent parent = null;
 	public int parentType;
+	private int frameCount; //TODO remove?
 	public int keyframeCount; // how many 'keyframes' have we gone through
-	public int frameCount;
 	public boolean complete;
 
 	public int delayCount;

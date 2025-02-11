@@ -412,7 +412,6 @@ public class KeyframeAnimatorEditor
 		private JComboBox<SpritePalette> paletteComboBox;
 		private JComboBox<SpriteComponent> componentComboBox;
 
-		private JCheckBox unknownCheckbox;
 		private JSpinner dxSpinner, dySpinner, dzSpinner;
 		private JSpinner rxSpinner, rySpinner, rzSpinner;
 		private JSpinner sxSpinner, sySpinner, szSpinner;
@@ -538,14 +537,6 @@ public class KeyframeAnimatorEditor
 				cmd.dz = (int) dzSpinner.getValue();
 			});
 
-			unknownCheckbox = new JCheckBox("Unknown position flag");
-			unknownCheckbox.addActionListener((e) -> {
-				if (ignoreChanges)
-					return;
-				cmd.unknown = unknownCheckbox.isSelected();
-			});
-			unknownCheckbox.setToolTipText("Flag of unknown purpose. I don't think it does anything. Toggle it if you like surprises.");
-
 			rxSpinner = new JSpinner();
 			SwingUtils.setFontSize(rxSpinner, 12);
 			rxSpinner.setModel(new SpinnerNumberModel(0, -180, 180, 1));
@@ -644,8 +635,6 @@ public class KeyframeAnimatorEditor
 			add(SwingUtils.getLabel("Set Notify", 12), "sg lbl, top, wrap");
 			add(new JLabel(), "w 8!, span, split 2");
 			add(notifySpinner, "sg xyz, wrap");
-
-			add(unknownCheckbox, "gaptop 8, span, wrap");
 		}
 
 		protected void set(Keyframe cmd)
@@ -679,8 +668,6 @@ public class KeyframeAnimatorEditor
 			cbEnableParent.setSelected(cmd.setParent);
 
 			notifySpinner.setValue(cmd.notifyValue);
-
-			unknownCheckbox.setSelected(cmd.unknown);
 
 			dxSpinner.setValue(cmd.dx);
 			dySpinner.setValue(cmd.dy);

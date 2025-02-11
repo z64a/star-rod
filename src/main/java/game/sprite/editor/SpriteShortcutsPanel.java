@@ -18,7 +18,7 @@ public class SpriteShortcutsPanel extends JPanel
 
 		tabs.addTab("Animations", getAnimationsTab());
 
-		add(tabs, "grow, w 320!, h 360!");
+		add(tabs, "grow, w 320!");
 	}
 
 	private void addHeader(JPanel panel, String text)

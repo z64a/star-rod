@@ -371,7 +371,8 @@ public abstract class Environment
 		if (oldConfigFile.exists()) {
 			try {
 				FileUtils.moveFile(oldConfigFile, configFile);
-			} catch (FileExistsException e) {
+			}
+			catch (FileExistsException e) {
 				// existing configFile takes precedence
 			}
 		}
