@@ -1,4 +1,4 @@
-package game.sprite.editor.dialogs;
+package game.sprite.editor;
 
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;

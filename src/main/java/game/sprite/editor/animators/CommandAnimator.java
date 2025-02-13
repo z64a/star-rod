@@ -167,11 +167,11 @@ public class CommandAnimator implements ComponentAnimator
 					commandListModel.addElement(new SetImage(cmdQueue.poll()));
 					break;
 				case 2: {
-					int pos = cmdQueue.poll() & 0xFFF;
-					if (!labels.containsKey(pos))
-						labels.put(pos, new Label(getLabelName(rawAnim, pos)));
+					int streamPos = cmdQueue.poll() & 0xFFF;
+					if (!labels.containsKey(streamPos))
+						labels.put(streamPos, new Label(getLabelName(rawAnim, streamPos)));
 
-					Goto go2 = new Goto(labels.get(pos), pos);
+					Goto go2 = new Goto(labels.get(streamPos), streamPos);
 					commandListModel.addElement(go2);
 				}
 					break;
@@ -188,11 +188,11 @@ public class CommandAnimator implements ComponentAnimator
 					commandListModel.addElement(new SetPalette(cmdQueue.poll()));
 					break;
 				case 7: {
-					int pos = cmdQueue.poll() & 0xFFF;
-					if (!labels.containsKey(pos))
-						labels.put(pos, new Label(getLabelName(rawAnim, pos)));
+					int streamPos = cmdQueue.poll() & 0xFFF;
+					if (!labels.containsKey(streamPos))
+						labels.put(streamPos, new Label(getLabelName(rawAnim, streamPos)));
 
-					Loop loop = new Loop(labels.get(pos), pos, cmdQueue.poll());
+					Loop loop = new Loop(labels.get(streamPos), streamPos, cmdQueue.poll());
 					commandListModel.addElement(loop);
 				}
 					break;
@@ -221,14 +221,15 @@ public class CommandAnimator implements ComponentAnimator
 		// insert labels
 		for (Entry<Integer, Label> e : labels.entrySet()) {
 			Label lbl = e.getValue();
-			int absPos = e.getKey();
-			int listPos = getListIndex(absPos);
+			int streamPos = e.getKey();
+			int listPos = getListIndex(streamPos);
+
 			if (listPos >= 0) {
 				commandListModel.add(listPos, lbl);
 			}
 			else {
-				lbl.labelName = String.format("#%X", absPos);
-				commandListModel.add(getFloorListIndex(absPos), lbl);
+				lbl.labelName = String.format("#%X", streamPos);
+				commandListModel.add(getFloorListIndex(streamPos), lbl);
 			}
 		}
 
@@ -266,28 +267,29 @@ public class CommandAnimator implements ComponentAnimator
 			comp.sp = null;
 	}
 
-	// gets the (logical) command list index for the real position (in bytes) in the command list
-	private int getListIndex(int target)
+	// gets the index of the command matching a certain position in the raw stream of shorts
+	private int getListIndex(int streamPos)
 	{
 		int pos = 0;
 		for (int i = 0; i < commandListModel.size(); i++) {
-			if (target == pos)
+			if (streamPos == pos)
 				return i;
 
 			AnimCommand cmd = commandListModel.get(i);
-			pos += 2 * cmd.length();
+			pos += cmd.length();
 		}
 		return -1;
 	}
 
-	private int getFloorListIndex(int target)
+	// gets the index of the first command preceding or equal to a certain position in the raw stream of shorts
+	private int getFloorListIndex(int streamPos)
 	{
 		int pos = 0;
 		for (int i = 0; i < commandListModel.size(); i++) {
 			AnimCommand cmd = commandListModel.get(i);
-			pos += 2 * cmd.length();
+			pos += cmd.length();
 
-			if (target < pos)
+			if (streamPos < pos)
 				return i;
 		}
 		return commandListModel.size();
@@ -300,7 +302,7 @@ public class CommandAnimator implements ComponentAnimator
 			return s;
 		if (pos == 0)
 			return "Start";
-		return String.format("Pos %X", pos);
+		return String.format("Pos_%X", pos);
 	}
 
 	@Override

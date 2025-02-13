@@ -12,6 +12,8 @@ import java.awt.Font;
 import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
 import java.awt.Rectangle;
+import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
@@ -24,13 +26,17 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Queue;
 
+import javax.swing.AbstractAction;
+import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
+import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JMenu;
@@ -119,6 +125,9 @@ public class SpriteEditor extends BaseEditor
 
 	private DragReorderList<SpriteAnimation> animList;
 	private DragReorderList<SpriteComponent> compList;
+
+	private SpriteAnimation animClipboard;
+	private SpriteComponent compClipboard;
 
 	private JPanel componentPanel;
 
@@ -375,11 +384,6 @@ public class SpriteEditor extends BaseEditor
 		final SpritePalette selectedPalette = (SpritePalette) paletteComboBox.getSelectedItem();
 		if (selectedPalette != null && animOverridePalette != selectedPalette)
 			setPalette(selectedPalette);
-
-		//TODO old code -- why?
-		//	final SpriteAnimation selectedAnimation = animList.getSelectedValue();
-		//	if (currentAnim != selectedAnimation)
-		//		setAnimation(selectedAnimation);
 
 		while (!playerEventQueue.isEmpty()) {
 			if (currentAnim == null)
@@ -662,6 +666,8 @@ public class SpriteEditor extends BaseEditor
 				compxSpinner.setValue(currentComp.posx);
 				compySpinner.setValue(currentComp.posy);
 				compzSpinner.setValue(currentComp.posz);
+
+				componentPanel.repaint();
 			});
 		}
 	}
@@ -725,8 +731,7 @@ public class SpriteEditor extends BaseEditor
 								if (JOptionPane.YES_OPTION == super.getConfirmDialog("Confirm", "Delete component?").choose()) {
 									invokeLater(() -> {
 										currentAnim.components.removeElement(currentComp);
-										sprite.recalculateIndices();
-										//XXX todo setComponent(0, false);
+										currentAnim.parentSprite.recalculateIndices();
 									});
 								}
 							});
@@ -856,6 +861,9 @@ public class SpriteEditor extends BaseEditor
 		rastersTab = new RastersTab(this);
 		palettesTab = new PalettesTab();
 
+		CommandAnimatorEditor.init();
+		KeyframeAnimatorEditor.init();
+
 		editorModeTabs = new JTabbedPane();
 		editorModeTabs.addTab(EditorMode.Rasters.tabName, rastersTab);
 		editorModeTabs.addTab(EditorMode.Palettes.tabName, palettesTab);
@@ -984,12 +992,12 @@ public class SpriteEditor extends BaseEditor
 				try {
 					int id = SpriteLoader.getMaximumID(spriteSet) + 1;
 					SpriteLoader.create(spriteSet, id);
-
+		
 					if(spriteSet == SpriteSet.Npc)
 						useNpcFiles(id);
 					else
 						usePlayerFiles(id);
-
+		
 				} catch (Throwable t) {
 					Logger.logError("Failed to create new sprite.");
 					incrementDialogsOpen();
@@ -999,7 +1007,7 @@ public class SpriteEditor extends BaseEditor
 			});
 		});
 		menu.add(item);
-
+		
 		menu.addSeparator();
 		 */
 
@@ -1071,8 +1079,7 @@ public class SpriteEditor extends BaseEditor
 			invokeLater(() -> {
 				if (sprite != null) {
 					sprite.convertToKeyframes();
-					if (currentComp != null)
-						setComponentByID(currentComp.getIndex());
+					setComponent(currentComp);
 				}
 			});
 		});
@@ -1083,8 +1090,7 @@ public class SpriteEditor extends BaseEditor
 			invokeLater(() -> {
 				if (sprite != null) {
 					sprite.convertToCommands();
-					if (currentComp != null)
-						setComponentByID(currentComp.getIndex());
+					setComponent(currentComp);
 				}
 			});
 		});
@@ -1332,20 +1338,64 @@ public class SpriteEditor extends BaseEditor
 		return componentPanel;
 	}
 
-	private JPanel getAnimationsTab()
+	private void promptRenameAnim(SpriteAnimation anim)
 	{
-		JLabel defaultPaletteLabel = new JLabel("Palette");
-		SwingUtils.setFontSize(defaultPaletteLabel, 12);
+		String name = SwingUtils.getInputDialog()
+			.setParent(getFrame())
+			.setTitle("Set Animation Name")
+			.setMessage("Choose a unique animation name")
+			.setMessageType(JOptionPane.QUESTION_MESSAGE)
+			.setDefault(anim.name)
+			.prompt();
 
-		paletteComboBox = new JComboBox<>();
-		SwingUtils.setFontSize(paletteComboBox, 14);
-		paletteComboBox.setMaximumRowCount(24);
-		paletteComboBox.setRenderer(new IndexableComboBoxRenderer());
-		paletteComboBox.addActionListener((e) -> {
-			if (cbOverridePalette.isSelected())
-				animOverridePalette = (SpritePalette) paletteComboBox.getSelectedItem();
-		});
+		if (name == null) {
+			// prompt canceled
+			return;
+		}
 
+		name = name.trim();
+
+		if (name.isBlank() || name.equals(anim.name)) {
+			// invalid name provided
+			return;
+		}
+
+		boolean success = anim.assignUniqueName(name);
+		if (!success) {
+			Toolkit.getDefaultToolkit().beep();
+		}
+	}
+
+	private void promptRenameComp(SpriteComponent comp)
+	{
+		String name = SwingUtils.getInputDialog()
+			.setParent(getFrame())
+			.setTitle("Set Component Name")
+			.setMessage("Choose a unique component name")
+			.setMessageType(JOptionPane.QUESTION_MESSAGE)
+			.setDefault(comp.name)
+			.prompt();
+
+		if (name == null) {
+			// prompt canceled
+			return;
+		}
+
+		name = name.trim();
+
+		if (name.isBlank() || name.equals(comp.name)) {
+			// invalid name provided
+			return;
+		}
+
+		boolean success = comp.assignUniqueName(name);
+		if (!success) {
+			Toolkit.getDefaultToolkit().beep();
+		}
+	}
+
+	private void buildAnimationsList()
+	{
 		animList = new DragReorderList<>();
 		animList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		animList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -1362,6 +1412,133 @@ public class SpriteEditor extends BaseEditor
 			sprite.recalculateIndices();
 		});
 
+		animList.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				// double click to rename
+				if (e.getClickCount() == 2) {
+					int index = animList.locationToIndex(e.getPoint());
+					if (index != -1) {
+						SpriteAnimation anim = animList.getModel().getElementAt(index);
+						promptRenameAnim(anim);
+					}
+				}
+			}
+		});
+
+		animList.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyPressed(KeyEvent e)
+			{
+				// rename with 'F2' key
+				if (e.getKeyCode() == KeyEvent.VK_F2) {
+					int index = animList.getSelectedIndex();
+					if (index != -1) {
+						SpriteAnimation anim = animList.getModel().getElementAt(index);
+						promptRenameAnim(anim);
+					}
+				}
+			}
+		});
+
+		InputMap im = animList.getInputMap(JComponent.WHEN_FOCUSED);
+		ActionMap am = animList.getActionMap();
+
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK), "copy");
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK), "paste");
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, InputEvent.CTRL_DOWN_MASK), "duplicate");
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete");
+
+		am.put("copy", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				SpriteAnimation cur = animList.getSelectedValue();
+				if (cur == null) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+				animClipboard = cur.copy();
+			}
+		});
+
+		am.put("paste", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				int i = animList.getSelectedIndex();
+				if (i == -1 || animClipboard == null || animClipboard.parentSprite != sprite) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+
+				if (animList.getDefaultModel().size() >= Sprite.MAX_ANIMATIONS) {
+					Logger.logError("Cannot have more than " + Sprite.MAX_ANIMATIONS + " animations!");
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+
+				SpriteAnimation copy = animClipboard.copy();
+				if (copy.assignUniqueName(copy.name)) {
+					animList.getDefaultModel().add(i + 1, copy);
+					sprite.recalculateIndices();
+				}
+				else {
+					Logger.logError("Could not generate unique name for " + copy.name);
+					Toolkit.getDefaultToolkit().beep();
+				}
+			}
+		});
+
+		am.put("duplicate", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				SpriteAnimation cur = animList.getSelectedValue();
+				if (cur == null) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+
+				if (animList.getDefaultModel().size() >= Sprite.MAX_ANIMATIONS) {
+					Logger.logError("Cannot have more than " + Sprite.MAX_ANIMATIONS + " animations!");
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+
+				int i = animList.getSelectedIndex();
+				SpriteAnimation copy = cur.copy();
+
+				if (copy.assignUniqueName(copy.name)) {
+					animList.getDefaultModel().add(i + 1, copy);
+					sprite.recalculateIndices();
+				}
+				else {
+					Logger.logError("Could not generate unique name for " + copy.name);
+					Toolkit.getDefaultToolkit().beep();
+				}
+			}
+		});
+
+		am.put("delete", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				int i = animList.getSelectedIndex();
+				if (i == -1) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+
+				animList.getDefaultModel().remove(i);
+				sprite.recalculateIndices();
+			}
+		});
+	}
+
+	private void buildComponentsList()
+	{
 		compList = new DragReorderList<>();
 		compList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		compList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -1376,30 +1553,48 @@ public class SpriteEditor extends BaseEditor
 			{
 				int index = compList.locationToIndex(e.getPoint());
 				if (index != -1) {
-					Rectangle cellBounds = compList.getCellBounds(index, index);
-					int min = cellBounds.x + 8;
-					int max = min + EYE_ICON_WIDTH;
-					if (cellBounds != null && e.getX() > min && e.getX() < max) {
+					// double click to rename
+					if (e.getClickCount() == 2) {
 						SpriteComponent comp = compList.getModel().getElementAt(index);
-						comp.hidden = !comp.hidden;
-						compList.repaint();
+						promptRenameComp(comp);
+					}
+					else {
+						// test for clicking on visibility toggle icons
+						Rectangle cellBounds = compList.getCellBounds(index, index);
+						int min = cellBounds.x + 8;
+						int max = min + EYE_ICON_WIDTH;
+						if (cellBounds != null && e.getX() > min && e.getX() < max) {
+							SpriteComponent comp = compList.getModel().getElementAt(index);
+							comp.hidden = !comp.hidden;
+							compList.repaint();
+						}
 					}
 				}
 			}
 		});
 
-		// key listener for 'H' key to toggle visibility
 		compList.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e)
 			{
-				if (e.getKeyCode() == KeyEvent.VK_H) {
-					int index = compList.getSelectedIndex();
-					if (index != -1) {
-						SpriteComponent comp = compList.getModel().getElementAt(index);
-						comp.hidden = !comp.hidden;
-						compList.repaint();
-					}
+				int index = compList.getSelectedIndex();
+
+				switch (e.getKeyCode()) {
+					// rename with 'F2' key
+					case KeyEvent.VK_F2:
+						if (index != -1) {
+							SpriteComponent comp = compList.getModel().getElementAt(index);
+							promptRenameComp(comp);
+						}
+						break;
+					// toggle visibility with 'H' key
+					case KeyEvent.VK_H:
+						if (index != -1) {
+							SpriteComponent comp = compList.getModel().getElementAt(index);
+							comp.hidden = !comp.hidden;
+							compList.repaint();
+						}
+						break;
 				}
 			}
 		});
@@ -1411,8 +1606,123 @@ public class SpriteEditor extends BaseEditor
 			setComponent(compList.getSelectedValue());
 		});
 
+		InputMap im = compList.getInputMap(JComponent.WHEN_FOCUSED);
+		ActionMap am = compList.getActionMap();
+
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK), "copy");
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK), "paste");
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, InputEvent.CTRL_DOWN_MASK), "duplicate");
+		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete");
+
+		am.put("copy", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				SpriteComponent cur = compList.getSelectedValue();
+				if (cur == null) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+				compClipboard = cur.copy();
+			}
+		});
+
+		am.put("paste", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				int i = compList.getSelectedIndex();
+				if (i == -1 || compClipboard == null) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+
+				if (compClipboard.parentAnimation.parentSprite != currentAnim.parentSprite) {
+					Logger.logError("Can't paste component " + compClipboard.name + " from sprite " + compClipboard.parentAnimation.parentSprite);
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+
+				if (compList.getDefaultModel().size() >= Sprite.MAX_COMPONENTS) {
+					Logger.logError("Cannot have more than " + Sprite.MAX_COMPONENTS + " components!");
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+
+				SpriteComponent copy = new SpriteComponent(currentAnim, compClipboard);
+				if (copy.assignUniqueName(copy.name)) {
+					compList.getDefaultModel().add(i + 1, copy);
+					currentAnim.parentSprite.recalculateIndices();
+				}
+				else {
+					Logger.logError("Could not generate unique name for " + copy.name);
+					Toolkit.getDefaultToolkit().beep();
+				}
+			}
+		});
+
+		am.put("duplicate", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				SpriteComponent cur = compList.getSelectedValue();
+				if (cur == null) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+
+				if (compList.getDefaultModel().size() >= Sprite.MAX_COMPONENTS) {
+					Logger.logError("Cannot have more than " + Sprite.MAX_COMPONENTS + " components!");
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+
+				int i = compList.getSelectedIndex();
+				SpriteComponent copy = cur.copy();
+
+				if (copy.assignUniqueName(copy.name)) {
+					compList.getDefaultModel().add(i + 1, copy);
+					currentAnim.parentSprite.recalculateIndices();
+				}
+				else {
+					Logger.logError("Could not generate unique name for " + copy.name);
+					Toolkit.getDefaultToolkit().beep();
+				}
+			}
+		});
+
+		am.put("delete", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				int i = compList.getSelectedIndex();
+				if (i == -1) {
+					Toolkit.getDefaultToolkit().beep();
+					return;
+				}
+
+				compList.getDefaultModel().remove(i);
+				currentAnim.parentSprite.recalculateIndices();
+			}
+		});
+	}
+
+	private JPanel getAnimationsTab()
+	{
+		buildAnimationsList();
+		buildComponentsList();
+
 		cbShowOnlySelectedComponent = new JCheckBox(" Draw current only");
 		cbShowOnlySelectedComponent.setSelected(false);
+
+		paletteComboBox = new JComboBox<>();
+		SwingUtils.setFontSize(paletteComboBox, 14);
+		paletteComboBox.setMaximumRowCount(24);
+		paletteComboBox.setRenderer(new IndexableComboBoxRenderer());
+		paletteComboBox.addActionListener((e) -> {
+			if (cbOverridePalette.isSelected())
+				animOverridePalette = (SpritePalette) paletteComboBox.getSelectedItem();
+		});
 
 		cbOverridePalette = new JCheckBox(" Override palette");
 		cbOverridePalette.setSelected(false);
@@ -1423,6 +1733,48 @@ public class SpriteEditor extends BaseEditor
 				animOverridePalette = null;
 		});
 
+		JButton btnAddAnim = new JButton(ThemedIcon.ADD_16);
+		btnAddAnim.setToolTipText("New Animation");
+		btnAddAnim.addActionListener((e) -> {
+			if (sprite == null) {
+				return;
+			}
+
+			if (sprite.animations.size() >= Sprite.MAX_ANIMATIONS) {
+				Logger.logError("Cannot have more than " + Sprite.MAX_ANIMATIONS + " animations!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			SpriteAnimation anim = new SpriteAnimation(sprite);
+			anim.assignUniqueName(String.format("Anim_%X", sprite.animations.size()));
+			sprite.animations.addElement(anim);
+			sprite.recalculateIndices();
+
+			animList.setSelectedValue(anim, true);
+		});
+
+		JButton btnAddComp = new JButton(ThemedIcon.ADD_16);
+		btnAddComp.setToolTipText("New Component");
+		btnAddComp.addActionListener((e) -> {
+			if (sprite == null) {
+				return;
+			}
+
+			if (currentAnim.components.size() >= Sprite.MAX_COMPONENTS) {
+				Logger.logError("Cannot have more than " + Sprite.MAX_COMPONENTS + " components!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			SpriteComponent comp = new SpriteComponent(currentAnim);
+			comp.assignUniqueName(String.format("Comp_%X", currentAnim.components.size()));
+			currentAnim.components.addElement(comp);
+			sprite.recalculateIndices();
+
+			compList.setSelectedValue(comp, true);
+		});
+
 		JScrollPane animScrollPane = new JScrollPane(animList);
 		animScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
@@ -1431,9 +1783,13 @@ public class SpriteEditor extends BaseEditor
 
 		JPanel listsPanel = new JPanel(new MigLayout("fill, ins 0, wrap 2", "[grow, sg col][grow, sg col]"));
 
-		listsPanel.add(new JLabel("Animation"), "growx");
-		listsPanel.add(new JLabel("Component"), "growx, split 2");
+		listsPanel.add(btnAddAnim, "split 2");
+		listsPanel.add(new JLabel("Animations"), "growx");
+
+		listsPanel.add(btnAddComp, "split 3");
+		listsPanel.add(new JLabel("Components"), "growx");
 		listsPanel.add(cbShowOnlySelectedComponent, "gapleft push, align right");
+
 		listsPanel.add(animScrollPane, "growx, sg list");
 		listsPanel.add(compScrollPane, "growx, sg list");
 

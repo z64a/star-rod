@@ -61,8 +61,8 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	public SpritePalette sp = null;
 	public SpriteComponent parent = null;
 	public int parentType;
-	private int frameCount; //TODO remove?
 	public int keyframeCount; // how many 'keyframes' have we gone through
+	private int frameCount;
 	public boolean complete;
 
 	public int delayCount;
@@ -123,6 +123,11 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		this.scaleX = original.scaleX;
 		this.scaleY = original.scaleY;
 		this.scaleZ = original.scaleZ;
+	}
+
+	public SpriteComponent copy()
+	{
+		return new SpriteComponent(parentAnimation, this);
 	}
 
 	public void reset()
@@ -243,12 +248,12 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	{
 		rawAnim = new RawAnimation();
 
-		int bufPos = 0;
+		int streamPos = 0;
 		for (Node child = compElem.getFirstChild(); child != null; child = child.getNextSibling()) {
 			if (child instanceof Element elem) {
 				switch (elem.getNodeName()) {
 					case "Label":
-						rawAnim.setLabel(bufPos, elem.getAttribute("name"));
+						rawAnim.setLabel(streamPos, elem.getAttribute("name"));
 						break;
 					case "Wait":
 					case "Goto":
@@ -257,17 +262,17 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 					case "Unknown":
 					case "SetParent":
 					case "SetNotify":
-						bufPos += 2;
+						streamPos += 1;
 						break;
 					case "SetPos":
-						bufPos += 8;
+						streamPos += 4;
 						break;
 					case "SetRot":
-						bufPos += 6;
+						streamPos += 3;
 						break;
 					case "SetScale":
 					case "Loop":
-						bufPos += 4;
+						streamPos += 2;
 						break;
 				}
 			}
@@ -299,7 +304,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 						}
 						else {
 							String name = xmr.getAttribute(elem, ATTR_DEST);
-							gotoPos = rawAnim.getPos(name);
+							gotoPos = rawAnim.getStreamPos(name);
 							if (gotoPos < 0) {
 								xmr.complain("Could not find label: " + name);
 							}
@@ -359,7 +364,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 						}
 						else {
 							String name = xmr.getAttribute(elem, ATTR_DEST);
-							loopPos = rawAnim.getPos(name);
+							loopPos = rawAnim.getStreamPos(name);
 							if (loopPos < 0) {
 								xmr.complain("Could not find label: " + name);
 							}
@@ -469,6 +474,37 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	public int getIndex()
 	{
 		return listIndex;
+	}
+
+	public boolean assignUniqueName(String name)
+	{
+		String baseName = name;
+
+		for (int iteration = 0; iteration < 256; iteration++) {
+			boolean conflict = false;
+
+			// compare to all other names
+			for (SpriteComponent other : parentAnimation.components) {
+				if (other != this && other.name.equals(name)) {
+					conflict = true;
+					break;
+				}
+			}
+
+			if (!conflict) {
+				// name is valid, assign it
+				this.name = name;
+				return true;
+			}
+			else {
+				// try next iteration
+				name = baseName + "_" + iteration;
+				iteration++;
+			}
+		}
+
+		// could not form a valid name
+		return false;
 	}
 
 	/*

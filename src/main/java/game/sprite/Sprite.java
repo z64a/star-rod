@@ -38,6 +38,9 @@ public class Sprite implements XmlSerializable
 	// see component matrix located in S0 at [802DC958]
 	public static final float WORLD_SCALE = 0.714286f;
 
+	public static final int MAX_ANIMATIONS = 255;
+	public static final int MAX_COMPONENTS = 255;
+
 	public final IterableListModel<SpriteAnimation> animations = new IterableListModel<>();
 	public final IterableListModel<SpriteRaster> rasters = new IterableListModel<>();
 	public final IterableListModel<SpritePalette> palettes = new IterableListModel<>();
@@ -52,7 +55,7 @@ public class Sprite implements XmlSerializable
 	private transient boolean readyForEditor = false;
 	public transient boolean enableStencilBuffer = false;
 
-	// create the list models and have the animators generate their animation commands
+	// have the animators generate their animation commands
 	public void prepareForEditor()
 	{
 		if (readyForEditor)

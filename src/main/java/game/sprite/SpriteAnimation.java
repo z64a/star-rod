@@ -1,16 +1,15 @@
 package game.sprite;
 
-import javax.swing.DefaultListModel;
-
 import game.sprite.SpriteLoader.Indexable;
 import game.sprite.editor.animators.AnimElement;
 import game.sprite.editor.animators.ComponentAnimator;
+import util.IterableListModel;
 
 public class SpriteAnimation implements Indexable<SpriteAnimation>
 {
 	public final Sprite parentSprite;
 
-	public final DefaultListModel<SpriteComponent> components = new DefaultListModel<>();
+	public final IterableListModel<SpriteComponent> components = new IterableListModel<>();
 
 	// editor fields
 	public transient String name = "";
@@ -36,6 +35,11 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 		}
 	}
 
+	public SpriteAnimation copy()
+	{
+		return new SpriteAnimation(this);
+	}
+
 	public int getComponentCount()
 	{
 		return components.size();
@@ -57,6 +61,37 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 	public int getIndex()
 	{
 		return listIndex;
+	}
+
+	public boolean assignUniqueName(String name)
+	{
+		String baseName = name;
+
+		for (int iteration = 0; iteration < 256; iteration++) {
+			boolean conflict = false;
+
+			// compare to all other names
+			for (SpriteAnimation other : parentSprite.animations) {
+				if (other != this && other.name.equals(name)) {
+					conflict = true;
+					break;
+				}
+			}
+
+			if (!conflict) {
+				// name is valid, assign it
+				this.name = name;
+				return true;
+			}
+			else {
+				// try next iteration
+				name = baseName + "_" + iteration;
+				iteration++;
+			}
+		}
+
+		// could not form a valid name
+		return false;
 	}
 
 	public void step()

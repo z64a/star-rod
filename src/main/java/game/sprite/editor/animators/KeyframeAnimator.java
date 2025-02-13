@@ -101,14 +101,15 @@ public class KeyframeAnimator implements ComponentAnimator
 		}
 
 		int iterations = 0;
-		int maxIterations = 256;
+		int maxIterations = 1024;
 
-		// prevent infinite loops from crashing the editor
+		// prevent infinite loops from freezing the editor
 		while (comp.delayCount <= 0 && currentKeyframe != null && iterations < maxIterations) {
 			currentKeyframe.advance();
 
-			if (currentKeyframe != null)
+			if (currentKeyframe != null) {
 				currentKeyframe.exec();
+			}
 			iterations++;
 		}
 	}
@@ -663,20 +664,6 @@ public class KeyframeAnimator implements ComponentAnimator
 				}
 			}
 
-			if (notifyValue > 0) {
-				seq.add((short) (0x8200 | (notifyValue & 0xFF)));
-			}
-
-			if (setImage) {
-				int id = (img == null) ? -1 : img.getIndex();
-				seq.add((short) (0x1000 | (id & 0xFFF)));
-			}
-
-			if (setPalette) {
-				int id = (pal == null) ? -1 : pal.getIndex();
-				seq.add((short) (0x6000 | (id & 0xFFF)));
-			}
-
 			if (duration > 0 && dx != 0 || dy != 0 || dz != 0) {
 				seq.add(unknown ? (short) 0x3001 : (short) 0x3000);
 				seq.add((short) dx);
@@ -709,6 +696,20 @@ public class KeyframeAnimator implements ComponentAnimator
 						seq.add((short) sz);
 					}
 				}
+			}
+
+			if (notifyValue > 0) {
+				seq.add((short) (0x8200 | (notifyValue & 0xFF)));
+			}
+
+			if (setImage) {
+				int id = (img == null) ? -1 : img.getIndex();
+				seq.add((short) (0x1000 | (id & 0xFFF)));
+			}
+
+			if (setPalette) {
+				int id = (pal == null) ? -1 : pal.getIndex();
+				seq.add((short) (0x6000 | (id & 0xFFF)));
 			}
 
 			if (duration > 0)
@@ -814,7 +815,7 @@ public class KeyframeAnimator implements ComponentAnimator
 		@Override
 		public String toString()
 		{
-			boolean highlight = (highlighted && editor.highlightCommand);
+			boolean highlight = (highlighted && editor != null && editor.highlightCommand);
 
 			StringBuilder sb = new StringBuilder("<html>");
 			if (highlight)

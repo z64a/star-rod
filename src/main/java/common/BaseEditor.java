@@ -494,6 +494,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	{
 		openDialogs.increment();
 		int choice = SwingUtils.getConfirmDialog()
+			.setParent(frame)
 			.setTitle("Warning")
 			.setMessage("Unsaved changes will be lost!", "Would you like to save now?")
 			.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)

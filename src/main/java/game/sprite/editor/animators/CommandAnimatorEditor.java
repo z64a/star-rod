@@ -127,6 +127,12 @@ public class CommandAnimatorEditor
 		return instance;
 	}
 
+	public static void init()
+	{
+		// allow SpriteEditor to pre-load at startup
+		instance();
+	}
+
 	private static void repaintCommandList()
 	{
 		instance().commandList.repaint();
@@ -138,7 +144,8 @@ public class CommandAnimatorEditor
 		commandList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		commandList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-		commandListPanel = new JPanel(new MigLayout("fill, ins 0, wrap 3", "[grow, sg col][grow, sg col]"));
+		commandListPanel = new JPanel(new MigLayout("fill, ins 0, wrap 3",
+			"[grow, sg col][grow, sg col][grow, sg col]"));
 		commandEditPanel = new JPanel(new MigLayout("fill, ins 0, wrap"));
 
 		commandList.addListSelectionListener((e) -> {

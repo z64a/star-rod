@@ -16,13 +16,12 @@ import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
 import javax.swing.InputMap;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JMenuItem;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.KeyStroke;
@@ -32,8 +31,6 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
-
-import com.alexandriasoftware.swing.JSplitButton;
 
 import app.SwingUtils;
 import game.sprite.Sprite;
@@ -111,6 +108,12 @@ public class KeyframeAnimatorEditor
 		return instance;
 	}
 
+	public static void init()
+	{
+		// allow SpriteEditor to pre-load at startup
+		instance();
+	}
+
 	private static void repaintCommandList()
 	{
 		instance().commandList.repaint();
@@ -122,7 +125,8 @@ public class KeyframeAnimatorEditor
 		commandList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		commandList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-		commandListPanel = new JPanel(new MigLayout("fill, ins 0, wrap"));
+		commandListPanel = new JPanel(new MigLayout("fill, ins 0, wrap 3",
+			"[grow, sg col][grow, sg col][grow, sg col]"));
 		commandEditPanel = new JPanel(new MigLayout("fill, ins 0, wrap"));
 
 		commandList.addListSelectionListener((e) -> {
@@ -219,31 +223,24 @@ public class KeyframeAnimatorEditor
 			}
 		});
 
-		JPopupMenu createMenu = new JPopupMenu();
-		JSplitButton createButton = new JSplitButton("Add Command");
-		createButton.setPopupMenu(createMenu);
-		createButton.setAlwaysPopup(true);
+		JButton newBtn = new JButton("Keyframe");
+		newBtn.addActionListener((e) -> create(animator.new Keyframe()));
 
-		JMenuItem keyframeItem = new JMenuItem("Keyframe");
-		keyframeItem.addActionListener((e) -> create(animator.new Keyframe()));
-		createMenu.add(keyframeItem);
+		JButton repeatBtn = new JButton("Repeat");
+		repeatBtn.addActionListener((e) -> create(animator.new Loop(null, 3)));
 
-		createMenu.addSeparator();
-
-		JMenuItem waitItem = new JMenuItem("Repeat");
-		waitItem.addActionListener((e) -> create(animator.new Loop(null, 3)));
-		createMenu.add(waitItem);
-
-		JMenuItem imgItem = new JMenuItem("Goto");
-		imgItem.addActionListener((e) -> create(animator.new Goto(null)));
-		createMenu.add(imgItem);
+		JButton gotoBtn = new JButton("Goto");
+		gotoBtn.addActionListener((e) -> create(animator.new Goto(null)));
 
 		JScrollPane listScrollPane = new JScrollPane(commandList);
 		listScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
-		commandListPanel.add(SwingUtils.getLabel("Commands", 14));
-		commandListPanel.add(listScrollPane, "grow, push");
-		commandListPanel.add(createButton, "growx");
+		commandListPanel.add(SwingUtils.getLabel("Commands", 14), "growx, span");
+		commandListPanel.add(listScrollPane, "grow, span, push");
+
+		commandListPanel.add(newBtn, "growx");
+		commandListPanel.add(repeatBtn, "growx");
+		commandListPanel.add(gotoBtn, "growx");
 
 		commandListListener = new ListDataListener() {
 			@Override

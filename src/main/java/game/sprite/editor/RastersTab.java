@@ -17,7 +17,6 @@ import game.sprite.ImgAsset;
 import game.sprite.Sprite;
 import game.sprite.SpritePalette;
 import game.sprite.SpriteRaster;
-import game.sprite.editor.dialogs.ListPanel;
 import net.miginfocom.swing.MigLayout;
 import util.ui.ListAdapterComboboxModel;
 

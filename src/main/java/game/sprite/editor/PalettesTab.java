@@ -26,7 +26,6 @@ import app.SwingUtils;
 import game.map.editor.ui.SwatchPanel;
 import game.sprite.Sprite;
 import game.sprite.SpritePalette;
-import game.sprite.editor.dialogs.ListPanel;
 import net.miginfocom.swing.MigLayout;
 import util.ui.ColorSlider;
 import util.ui.ColorSlider.SliderListener;
