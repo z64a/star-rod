@@ -299,24 +299,24 @@ public class SwingUtils
 		}
 	}
 
-	public static final void showDialog(JDialog dialog, String title)
+	public static final void showDialog(JDialog dialog, Component parent, String title)
 	{
 		dialog.setTitle(title);
 		dialog.setIconImage(Environment.getDefaultIconImage());
 
 		dialog.pack();
-		dialog.setLocationRelativeTo(null);
+		dialog.setLocationRelativeTo(parent);
 		dialog.setModal(false);
 		dialog.setVisible(true);
 	}
 
-	public static final void showModalDialog(JDialog dialog, String title)
+	public static final void showModalDialog(JDialog dialog, Component parent, String title)
 	{
 		dialog.setTitle(title);
 		dialog.setIconImage(Environment.getDefaultIconImage());
 
 		dialog.pack();
-		dialog.setLocationRelativeTo(null);
+		dialog.setLocationRelativeTo(parent);
 		dialog.setModal(true);
 		dialog.setVisible(true);
 

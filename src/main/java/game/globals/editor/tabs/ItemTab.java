@@ -266,7 +266,7 @@ public class ItemTab extends SingleListTab<ItemRecord>
 	{
 		ListSelectorDialog<Message> chooser = new ListSelectorDialog<>(editor.messageListModel, new MessageCellRenderer(48));
 
-		SwingUtils.showModalDialog(chooser, title);
+		SwingUtils.showModalDialog(chooser, this, title);
 		if (!chooser.isResultAccepted())
 			return null;
 
@@ -533,7 +533,7 @@ public class ItemTab extends SingleListTab<ItemRecord>
 				ListSelectorDialog<IconRecord> chooser = new ListSelectorDialog<>(
 					editor.data.icons, new IconListRenderer());
 				chooser.setValue(editor.data.icons.getElement(item.iconName));
-				SwingUtils.showModalDialog(chooser, "Choose Image");
+				SwingUtils.showModalDialog(chooser, this, "Choose Image");
 				if (chooser.isResultAccepted())
 					iconPreviewBox.setSelectedItem(chooser.getValue() == null ? "" : chooser.getValue().getIdentifier());
 			}
@@ -546,7 +546,7 @@ public class ItemTab extends SingleListTab<ItemRecord>
 				ItemRecord item = getSelected();
 				ListSelectorDialog<MoveRecord> chooser = new ListSelectorDialog<>(editor.data.moves);
 				chooser.setValue(editor.data.moves.getElement(item.moveName));
-				SwingUtils.showModalDialog(chooser, "Choose Associated Move");
+				SwingUtils.showModalDialog(chooser, this, "Choose Associated Move");
 				if (chooser.isResultAccepted())
 					moveBox.setSelectedItem(chooser.getValue() == null ? "" : chooser.getValue().enumName);
 			}
@@ -580,7 +580,7 @@ public class ItemTab extends SingleListTab<ItemRecord>
 
 			BadgeReorderDialog chooser = new BadgeReorderDialog(sortedBadgeModel, new BadgeCellRenderer(editor.data));
 
-			SwingUtils.showModalDialog(chooser, "Change Badge Menu Order");
+			SwingUtils.showModalDialog(chooser, this, "Change Badge Menu Order");
 			if (chooser.isResultAccepted()) {
 				short currentValue = 0;
 				short prevOldValue = 0;

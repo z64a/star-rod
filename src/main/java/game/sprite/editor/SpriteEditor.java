@@ -992,12 +992,12 @@ public class SpriteEditor extends BaseEditor
 				try {
 					int id = SpriteLoader.getMaximumID(spriteSet) + 1;
 					SpriteLoader.create(spriteSet, id);
-		
+
 					if(spriteSet == SpriteSet.Npc)
 						useNpcFiles(id);
 					else
 						usePlayerFiles(id);
-		
+
 				} catch (Throwable t) {
 					Logger.logError("Failed to create new sprite.");
 					incrementDialogsOpen();
@@ -1007,7 +1007,7 @@ public class SpriteEditor extends BaseEditor
 			});
 		});
 		menu.add(item);
-		
+
 		menu.addSeparator();
 		 */
 
@@ -2051,5 +2051,12 @@ public class SpriteEditor extends BaseEditor
 			playbackTime.setEnabled(true);
 			playbackTime.setValue(Math.max(currentAnim.animTime - 2, 0));
 		}
+	}
+
+	public SpriteRaster promptForRaster(Sprite s)
+	{
+		RasterSelectDialog dialog = new RasterSelectDialog(s.rasters);
+		showModalDialog(dialog, "Choose Raster");
+		return dialog.getSelected();
 	}
 }

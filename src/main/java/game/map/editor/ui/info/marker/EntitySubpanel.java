@@ -151,7 +151,7 @@ public class EntitySubpanel extends JPanel
 			items.add((String) box.getItemAt(i));
 
 		StringSelectorDialog chooser = new StringSelectorDialog(items);
-		SwingUtils.showModalDialog(chooser, title);
+		SwingUtils.showModalDialog(chooser, SwingGUI.instance(), title);
 		if (chooser.isResultAccepted())
 			return chooser.getValue();
 		else

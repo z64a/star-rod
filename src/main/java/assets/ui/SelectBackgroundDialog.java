@@ -1,5 +1,6 @@
 package assets.ui;
 
+import java.awt.Component;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -34,15 +35,15 @@ public class SelectBackgroundDialog extends JDialog
 	public static void main(String[] args) throws IOException
 	{
 		Environment.initialize();
-		SelectBackgroundDialog.showPrompt();
+		SelectBackgroundDialog.showPrompt(null);
 		Environment.exit();
 	}
 
-	public static File showPrompt()
+	public static File showPrompt(Component parent)
 	{
 		try {
 			SelectBackgroundDialog chooser = new SelectBackgroundDialog(AssetManager.getBackgrounds());
-			SwingUtils.showModalDialog(chooser, "Choose Background");
+			SwingUtils.showModalDialog(chooser, parent, "Choose Background");
 			if (chooser.result == DialogResult.ACCEPT)
 				return chooser.getSelectedFile();
 		}

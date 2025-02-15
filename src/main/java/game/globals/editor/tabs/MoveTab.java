@@ -138,7 +138,7 @@ public class MoveTab extends SingleListTab<MoveRecord>
 	{
 		ListSelectorDialog<Message> chooser = new ListSelectorDialog<>(editor.messageListModel, new MessageCellRenderer(48));
 
-		SwingUtils.showModalDialog(chooser, title);
+		SwingUtils.showModalDialog(chooser, this, title);
 		if (!chooser.isResultAccepted())
 			return null;
 

@@ -23,6 +23,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 
 import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JMenuBar;
 import javax.swing.JOptionPane;
@@ -542,6 +543,22 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			.setMessage(message)
 			.setCounter(openDialogs)
 			.setMessageType(JOptionPane.PLAIN_MESSAGE);
+	}
+
+	protected final void showModalDialog(JDialog dialog, String title)
+	{
+		dialog.setTitle(title);
+		dialog.setIconImage(Environment.getDefaultIconImage());
+
+		dialog.pack();
+		dialog.setLocationRelativeTo(frame);
+		dialog.setModal(true);
+
+		openDialogs.increment();
+		dialog.setVisible(true);
+
+		dialog.dispose();
+		openDialogs.decrement();
 	}
 
 	/**

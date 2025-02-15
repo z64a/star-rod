@@ -1288,7 +1288,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 	{
 		if (!editor.map.modified || promptForSave()) {
 			openDialogCount.increment();
-			File mapFile = SelectMapDialog.showPrompt();
+			File mapFile = SelectMapDialog.showPrompt(this);
 			openDialogCount.decrement();
 
 			if (mapFile != null) {
@@ -1342,7 +1342,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 	private void prompt_ChangeBackground()
 	{
 		openDialogCount.increment();
-		File bgFile = SelectBackgroundDialog.showPrompt();
+		File bgFile = SelectBackgroundDialog.showPrompt(this);
 		openDialogCount.decrement();
 
 		if (bgFile != null) {

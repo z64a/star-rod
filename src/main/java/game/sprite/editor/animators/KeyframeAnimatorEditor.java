@@ -405,6 +405,9 @@ public class KeyframeAnimatorEditor
 
 		private JCheckBox cbEnableImg, cbEnablePal, cbEnableParent;
 
+		private JButton btnChoose;
+		private JButton btnClear;
+
 		private JComboBox<SpriteRaster> imageComboBox;
 		private JComboBox<SpritePalette> paletteComboBox;
 		private JComboBox<SpriteComponent> componentComboBox;
@@ -446,6 +449,34 @@ public class KeyframeAnimatorEditor
 				cmd.img = (SpriteRaster) imageComboBox.getSelectedItem();
 			});
 
+			btnChoose = new JButton("Select");
+			SwingUtils.addBorderPadding(btnChoose);
+
+			btnChoose.addActionListener((e) -> {
+				Sprite sprite = cmd.ownerComp.parentAnimation.parentSprite;
+				SpriteRaster raster = KeyframeAnimatorEditor.instance().editor.promptForRaster(sprite);
+				if (raster != null) {
+					cmd.img = raster;
+
+					ignoreChanges = true;
+					imageComboBox.setSelectedItem(cmd.img);
+					ignoreChanges = false;
+				}
+			});
+
+			btnClear = new JButton("Clear");
+			SwingUtils.addBorderPadding(btnClear);
+
+			btnClear.addActionListener((e) -> {
+				cmd.img = null;
+
+				ignoreChanges = true;
+				imageComboBox.setSelectedItem(cmd.img);
+				ignoreChanges = false;
+
+				repaintCommandList();
+			});
+
 			cbEnableImg = new JCheckBox(" Raster");
 			cbEnableImg.addActionListener((e) -> {
 				if (ignoreChanges)
@@ -453,6 +484,8 @@ public class KeyframeAnimatorEditor
 				boolean value = cbEnableImg.isSelected();
 				cmd.setImage = value;
 				imageComboBox.setEnabled(value);
+				btnChoose.setEnabled(value);
+				btnClear.setEnabled(value);
 			});
 
 			paletteComboBox = new JComboBox<>();
@@ -605,6 +638,10 @@ public class KeyframeAnimatorEditor
 			add(cbEnableImg, "top");
 			add(imageComboBox, "growx, h 120!, wrap");
 
+			add(new JPanel());
+			add(btnChoose, "split 2, growx, sg imgbut");
+			add(btnClear, "growx, sg imgbut, wrap");
+
 			add(cbEnablePal, "gaptop 2, top");
 			add(paletteComboBox, "growx, wrap, gapbottom 8");
 
@@ -644,6 +681,8 @@ public class KeyframeAnimatorEditor
 
 			imageComboBox.setSelectedItem(cmd.img);
 			imageComboBox.setEnabled(cmd.setImage);
+			btnChoose.setEnabled(cmd.setImage);
+			btnClear.setEnabled(cmd.setImage);
 			cbEnableImg.setSelected(cmd.setImage);
 
 			paletteComboBox.setSelectedItem(cmd.pal);

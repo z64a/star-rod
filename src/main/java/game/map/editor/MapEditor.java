@@ -955,7 +955,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			}
 
 			if (choice == 0) {
-				File mapFile = SelectMapDialog.showPrompt();
+				File mapFile = SelectMapDialog.showPrompt(null);
 				if (mapFile != null) {
 					selectedMap = Map.loadMap(mapFile);
 					break;

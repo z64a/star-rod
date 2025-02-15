@@ -1,5 +1,6 @@
 package assets.ui;
 
+import java.awt.Component;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -42,14 +43,14 @@ public class SelectTexDialog extends JDialog
 
 	public static File showPrompt()
 	{
-		return showPrompt("");
+		return showPrompt(null, "");
 	}
 
-	public static File showPrompt(String initialSelection)
+	public static File showPrompt(Component parent, String initialSelection)
 	{
 		try {
 			SelectTexDialog chooser = new SelectTexDialog(AssetManager.getTextureArchives(), initialSelection);
-			SwingUtils.showModalDialog(chooser, "Choose Textures");
+			SwingUtils.showModalDialog(chooser, parent, "Choose Textures");
 			if (chooser.result == DialogResult.ACCEPT)
 				return chooser.getSelectedFile();
 		}

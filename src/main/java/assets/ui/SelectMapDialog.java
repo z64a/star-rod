@@ -1,5 +1,6 @@
 package assets.ui;
 
+import java.awt.Component;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
@@ -35,7 +36,7 @@ public class SelectMapDialog extends JDialog
 	public static void main(String[] args) throws IOException
 	{
 		Environment.initialize();
-		SelectMapDialog.showPrompt();
+		SelectMapDialog.showPrompt(null);
 		Environment.exit();
 	}
 
@@ -47,11 +48,11 @@ public class SelectMapDialog extends JDialog
 		CANCEL
 	}
 
-	public static File showPrompt()
+	public static File showPrompt(Component parent)
 	{
 		try {
 			SelectMapDialog chooser = new SelectMapDialog(AssetManager.getMapSources());
-			SwingUtils.showModalDialog(chooser, "Choose Map");
+			SwingUtils.showModalDialog(chooser, parent, "Choose Map");
 
 			MapAsset selectedFile = chooser.list.getSelectedValue();
 			if (selectedFile == null)
@@ -67,7 +68,7 @@ public class SelectMapDialog extends JDialog
 					}
 					return newMapFile;
 				case NEW:
-					newMapFile = promptNewMap();
+					newMapFile = promptNewMap(parent);
 					if (newMapFile == null) {
 						chooser.result = SelectMapResult.CANCEL;
 					}
@@ -118,7 +119,7 @@ public class SelectMapDialog extends JDialog
 		return newMapFile;
 	}
 
-	public static File promptNewMap()
+	public static File promptNewMap(Component parent)
 	{
 		// prompt for a name
 		File newMapFile = requestNewMapFile();
@@ -139,11 +140,11 @@ public class SelectMapDialog extends JDialog
 		newMap.desc = (newMapDesc != null) ? newMapDesc : "";
 
 		// prompt for textures
-		File texFile = SelectTexDialog.showPrompt(newMap.getExpectedTexFilename());
+		File texFile = SelectTexDialog.showPrompt(parent, newMap.getExpectedTexFilename());
 		newMap.texName = FilenameUtils.getBaseName(texFile.getName());
 
 		// prompt for background
-		File bgFile = SelectBackgroundDialog.showPrompt();
+		File bgFile = SelectBackgroundDialog.showPrompt(parent);
 		if (bgFile != null) {
 			newMap.bgName = FilenameUtils.getBaseName(bgFile.getName());
 			newMap.hasBackground = true;

@@ -548,8 +548,40 @@ public class CommandAnimatorEditor
 				repaintCommandList();
 			});
 
+			JButton btnChoose = new JButton("Select");
+			SwingUtils.addBorderPadding(btnChoose);
+
+			btnChoose.addActionListener((e) -> {
+				Sprite sprite = cmd.ownerComp.parentAnimation.parentSprite;
+				SpriteRaster raster = CommandAnimatorEditor.instance().editor.promptForRaster(sprite);
+				if (raster != null) {
+					cmd.img = raster;
+
+					ignoreChanges = true;
+					imageComboBox.setSelectedItem(cmd.img);
+					ignoreChanges = false;
+
+					repaintCommandList();
+				}
+			});
+
+			JButton btnClear = new JButton("Clear");
+			SwingUtils.addBorderPadding(btnClear);
+
+			btnClear.addActionListener((e) -> {
+				cmd.img = null;
+
+				ignoreChanges = true;
+				imageComboBox.setSelectedItem(cmd.img);
+				ignoreChanges = false;
+
+				repaintCommandList();
+			});
+
 			add(SwingUtils.getLabel("Set Raster", 14), "gapbottom 4");
 			add(imageComboBox, "w 60%, h 120!");
+			add(btnChoose, "split 2, growx");
+			add(btnClear, "growx");
 		}
 
 		protected void set(SetImage cmd)
