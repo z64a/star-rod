@@ -11,6 +11,9 @@ rec {
       forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
         pkgs = import nixpkgs { inherit system; };
       });
+      makeLibPath = pkgs: (with pkgs; lib.makeLibraryPath [
+        libGL
+      ]);
     in {
       devShells = forEachSupportedSystem ({ pkgs }: let
         jdk = pkgs."jdk${toString javaVersion}";
@@ -31,6 +34,7 @@ rec {
               export JAVA_TOOL_OPTIONS="${loadLombok}${prev}"
               export JAVA_HOME="${jdk}"
               export GRADLE_HOME="${gradle}"
+              export LD_LIBRARY_PATH="${makeLibPath pkgs}"
             '';
         };
       });
@@ -81,7 +85,7 @@ rec {
 
               mkdir -p $out/bin
               makeWrapper ${pkgs.jre}/bin/java $out/bin/${pname} \
-                --add-flags "-cp $out/share/java/StarRod.jar -mx2G app.StarRodMain"
+                --add-flags "-cp $out/share/java/StarRod.jar -mx2G -Djava.library.path=${makeLibPath pkgs} app.StarRodMain"
 
               # TODO: icon
               #install -Dm444 logo_512.png $out/share/icons/hicolor/512x512/apps/${pname}.png
