@@ -232,7 +232,7 @@ public abstract class Environment
 				// UIManager.put("TabbedPane.showTabSeparators", true);
 				// UIManager.put("TabbedPane.tabSeparatorsFullHeight", true);
 
-				if (fromJar && mainConfig.getBoolean(Options.CheckForUpdates))
+				if (fromJar && gitBuildTag != null && mainConfig.getBoolean(Options.CheckForUpdates))
 					checkForUpdate();
 			}
 
