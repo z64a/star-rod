@@ -81,7 +81,7 @@ rec {
 
               mkdir -p $out/bin
               makeWrapper ${pkgs.jre}/bin/java $out/bin/${pname} \
-                --add-flags "-cp $out/share/java/StarRod.jar app.StarRodMain"
+                --add-flags "-cp $out/share/java/StarRod.jar -mx2G app.StarRodMain"
 
               # TODO: icon
               #install -Dm444 logo_512.png $out/share/icons/hicolor/512x512/apps/${pname}.png
