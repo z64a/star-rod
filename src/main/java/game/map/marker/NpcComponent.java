@@ -737,39 +737,36 @@ public class NpcComponent extends BaseMarkerComponent
 		if (moveType.get() == MoveType.Wander) {
 			lines.add("{");
 			lines.addf("    .wander = {");
-			lines.addf("        .isFlying = %s,", isFlying);
-			lines.addf("        .moveSpeedOverride = %s,", speedOverride);
-			lines.addf("        .wanderShape = %s,", useWanderCircle.get() ? "SHAPE_CYLINDER" : "SHAPE_RECT");
 			lines.addf("        .centerPos   = { %d, %d, %d },",
 				wanderCenter.point.getX(), wanderCenter.point.getY(), wanderCenter.point.getZ());
 			if (useWanderCircle.get())
 				lines.addf("        .wanderSize  = { %d },", wanderRadius.get());
 			else
 				lines.addf("        .wanderSize  = { %d, %d },", wanderSizeX.get(), wanderSizeZ.get());
-
+			lines.addf("        .moveSpeedOverride = %s,", speedOverride);
+			lines.addf("        .wanderShape = %s,", useWanderCircle.get() ? "SHAPE_CYLINDER" : "SHAPE_RECT");
 		}
 		else if (moveType.get() == MoveType.Patrol) {
 			lines.add("{");
 			lines.addf("    .patrol = {");
-			lines.addf("        .isFlying = %s,", isFlying);
-			lines.addf("        .moveSpeedOverride = %s,", speedOverride);
 			lines.addf("        .numPoints = %d,", patrolPath.points.size());
 			lines.addf("        .points = {");
 			for (PathPoint wp : patrolPath.points) {
 				lines.addf("            { %d, %d, %d },", wp.point.getX(), wp.point.getY(), wp.point.getZ());
 			}
 			lines.addf("        },");
+			lines.addf("        .moveSpeedOverride = %s,", speedOverride);
 		}
 
 		if (moveType.get() != MoveType.Stationary) {
-			lines.addf("        .detectShape = %s,", useDetectCircle.get() ? "SHAPE_CYLINDER" : "SHAPE_RECT");
 			lines.addf("        .detectPos   = { %d, %d, %d },",
 				detectCenter.point.getX(), detectCenter.point.getY(), detectCenter.point.getZ());
 			if (useDetectCircle.get())
 				lines.addf("        .detectSize  = { %d },", detectRadius.get());
 			else
 				lines.addf("        .detectSize  = { %d, %d },", detectSizeX.get(), detectSizeZ.get());
-
+			lines.addf("        .detectShape = %s,", useDetectCircle.get() ? "SHAPE_CYLINDER" : "SHAPE_RECT");
+			lines.addf("        .isFlying = %s,", isFlying);
 			lines.addf("    },");
 			lines.addf("}");
 		}
