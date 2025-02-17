@@ -64,6 +64,8 @@ import app.config.Options.Scope;
 import common.BaseEditor;
 import common.BaseEditorSettings;
 import common.KeyboardInput.KeyInputEvent;
+import common.commands.AbstractCommand;
+import common.commands.CommandManager;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
 import game.map.shape.TransformMatrix;
@@ -79,6 +81,7 @@ import game.sprite.SpriteRaster;
 import game.sprite.editor.SpriteCamera.BasicTraceRay;
 import game.sprite.editor.animators.CommandAnimatorEditor;
 import game.sprite.editor.animators.KeyframeAnimatorEditor;
+import game.sprite.editor.commands.SpriteCommandManager;
 import game.texture.Palette;
 import game.texture.Tile;
 import net.miginfocom.swing.MigLayout;
@@ -222,6 +225,8 @@ public class SpriteEditor extends BaseEditor
 	// fields used by the renderer, don't set these from the gui
 	private volatile int spriteID;
 
+	private CommandManager commandManager; // handles comnmand execution and undo/redo
+
 	public static void main(String[] args) throws IOException
 	{
 		Environment.initialize();
@@ -249,9 +254,33 @@ public class SpriteEditor extends BaseEditor
 
 		assetWatcher = new SpriteAssetWatcher();
 
-		modified = true; // actually tracking this will be difficult
-
 		Logger.log("Loaded sprite editor.");
+	}
+
+	// singleton
+	private static SpriteEditor instance = null;
+
+	public static SpriteEditor instance()
+	{
+		return instance;
+	}
+
+	public static boolean exists()
+	{
+		return instance != null;
+	}
+
+	public static void execute(AbstractCommand cmd)
+	{
+		if (SwingUtilities.isEventDispatchThread())
+			instance().invokeLater(() -> instance().commandManager.executeCommand(cmd));
+		else
+			instance().commandManager.executeCommand(cmd);
+	}
+
+	public void flushUndoRedo()
+	{
+		commandManager.flush();
 	}
 
 	@Override
@@ -273,6 +302,8 @@ public class SpriteEditor extends BaseEditor
 
 		spriteLoader = new SpriteLoader();
 		spriteLoader.tryLoadingPlayerAssets(false);
+
+		commandManager = new SpriteCommandManager(this, 32);
 	}
 
 	@Override
@@ -1990,6 +2021,7 @@ public class SpriteEditor extends BaseEditor
 	protected void saveChanges()
 	{
 		saveSprite();
+		modified = false;
 	}
 
 	@Override

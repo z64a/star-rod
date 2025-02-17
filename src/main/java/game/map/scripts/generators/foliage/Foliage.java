@@ -4,9 +4,9 @@ import static game.map.MapKey.*;
 
 import org.w3c.dom.Element;
 
-import game.map.editor.commands.fields.EditableField;
-import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
-import game.map.editor.commands.fields.EditableField.StandardBoolName;
+import common.commands.EditableField;
+import common.commands.EditableField.EditableFieldFactory;
+import common.commands.EditableField.StandardBoolName;
 import game.map.scripts.GeneratorsPanel;
 import game.map.scripts.generators.Generator;
 import game.map.tree.CategoryTreeModel;

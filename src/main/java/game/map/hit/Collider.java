@@ -4,8 +4,8 @@ import static game.map.MapKey.*;
 
 import org.w3c.dom.Element;
 
-import game.map.editor.commands.fields.EditableField;
-import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
+import common.commands.EditableField;
+import common.commands.EditableField.EditableFieldFactory;
 import game.map.editor.render.Color4f;
 import game.map.mesh.BasicMesh;
 import game.map.shape.TriangleBatch;

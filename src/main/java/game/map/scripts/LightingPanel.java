@@ -16,10 +16,10 @@ import javax.swing.border.Border;
 import javax.swing.border.EtchedBorder;
 
 import app.SwingUtils;
+import common.commands.AbstractCommand;
 import game.map.Map;
 import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.IShutdownListener;
-import game.map.editor.commands.AbstractCommand;
 import game.map.editor.ui.SwingGUI;
 import game.map.shape.Light;
 import game.map.shape.LightSet;
@@ -243,7 +243,7 @@ public class LightingPanel extends JPanel implements IShutdownListener
 		public CreateLightset(LightSet newLights)
 		{
 			super("Create Lighting");
-			this.map = editor.map;
+			this.map = MapEditor.instance().map;
 			newLightSet = newLights;
 			oldLightSet = lightSet;
 		}
@@ -252,7 +252,7 @@ public class LightingPanel extends JPanel implements IShutdownListener
 		public CreateLightset()
 		{
 			super("Create Light Set");
-			this.map = editor.map;
+			this.map = MapEditor.instance().map;
 			newLightSet = LightSet.createEmptySet();
 			newLightSet.name = "Lights_New";
 			oldLightSet = lightSet;
@@ -285,7 +285,7 @@ public class LightingPanel extends JPanel implements IShutdownListener
 		public DeleteLightset(LightSet lightSet)
 		{
 			super("Delete Light Set");
-			this.map = editor.map;
+			this.map = MapEditor.instance().map;
 			this.lightSet = lightSet;
 			this.listIndex = map.lightSets.indexOf(lightSet);
 

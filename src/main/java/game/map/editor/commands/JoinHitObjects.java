@@ -2,6 +2,8 @@ package game.map.editor.commands;
 
 import java.util.List;
 
+import common.commands.AbstractCommand;
+import game.map.editor.MapEditor;
 import game.map.hit.Collider;
 import game.map.hit.HitObject;
 import game.map.hit.Zone;
@@ -46,6 +48,8 @@ public abstract class JoinHitObjects<T extends HitObject> extends AbstractComman
 	{
 		super.exec();
 
+		MapEditor editor = MapEditor.instance();
+
 		HitObject first = objs.get(0);
 		first.mesh.batch = newBatch;
 		first.dirtyAABB = true;
@@ -63,6 +67,8 @@ public abstract class JoinHitObjects<T extends HitObject> extends AbstractComman
 	public void undo()
 	{
 		super.undo();
+
+		MapEditor editor = MapEditor.instance();
 
 		HitObject first = objs.get(0);
 		first.mesh.batch = oldBatch;

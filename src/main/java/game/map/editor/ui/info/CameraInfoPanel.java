@@ -11,7 +11,7 @@ import javax.swing.SwingConstants;
 import app.SwingUtils;
 import game.map.editor.MapEditor;
 import game.map.editor.MapInfoPanel;
-import game.map.editor.commands.AbstractCommand;
+import common.commands.AbstractCommand;
 import game.map.editor.selection.SelectablePoint;
 import game.map.hit.CameraZoneData;
 import game.map.hit.CameraZoneData.SetCameraFlag;

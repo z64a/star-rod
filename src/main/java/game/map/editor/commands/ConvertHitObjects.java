@@ -3,6 +3,8 @@ package game.map.editor.commands;
 import java.util.ArrayList;
 import java.util.List;
 
+import common.commands.AbstractCommand;
+import game.map.editor.MapEditor;
 import game.map.hit.Collider;
 import game.map.hit.HitObject;
 import game.map.hit.Zone;
@@ -68,6 +70,8 @@ public abstract class ConvertHitObjects<T extends HitObject, S extends HitObject
 	{
 		super.exec();
 
+		MapEditor editor = MapEditor.instance();
+
 		for (int i = oldObjects.size() - 1; i >= 0; i--) {
 			HitObject obj = oldObjects.get(i);
 			editor.map.remove(obj);
@@ -84,6 +88,8 @@ public abstract class ConvertHitObjects<T extends HitObject, S extends HitObject
 	public void undo()
 	{
 		super.undo();
+
+		MapEditor editor = MapEditor.instance();
 
 		for (int i = newObjects.size() - 1; i >= 0; i--) {
 			HitObject obj = newObjects.get(i);

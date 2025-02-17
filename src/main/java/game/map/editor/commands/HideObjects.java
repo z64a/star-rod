@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.Stack;
 
+import common.commands.AbstractCommand;
 import game.map.MapObject;
+import game.map.editor.MapEditor;
 import game.map.tree.MapObjectNode;
 
 public class HideObjects extends AbstractCommand
@@ -64,7 +66,7 @@ public class HideObjects extends AbstractCommand
 	}
 
 	@Override
-	public boolean modifiesMap()
+	public boolean modifiesData()
 	{
 		return false;
 	}
@@ -76,6 +78,8 @@ public class HideObjects extends AbstractCommand
 
 		for (MapObject obj : hideList)
 			obj.hidden = !obj.hidden;
+
+		MapEditor editor = MapEditor.instance();
 		editor.gui.repaintObjectPanel();
 	}
 
@@ -86,6 +90,8 @@ public class HideObjects extends AbstractCommand
 
 		for (MapObject obj : hideList)
 			obj.hidden = !obj.hidden;
+
+		MapEditor editor = MapEditor.instance();
 		editor.gui.repaintObjectPanel();
 	}
 }

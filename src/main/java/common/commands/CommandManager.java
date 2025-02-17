@@ -1,12 +1,11 @@
-package game.map.editor;
+package common.commands;
 
 import java.util.Stack;
 
-import game.map.editor.commands.AbstractCommand;
 import util.EvictingStack;
 import util.Logger;
 
-public class CommandManager
+public abstract class CommandManager
 {
 	private EvictingStack<AbstractCommand> undoStack;
 	private Stack<AbstractCommand> redoStack;
@@ -31,8 +30,8 @@ public class CommandManager
 		undoStack.push(cmd);
 		redoStack.clear();
 
-		if (cmd.modifiesMap())
-			MapEditor.instance().map.modified = true;
+		if (cmd.modifiesData())
+			onModified();
 	}
 
 	/**
@@ -76,4 +75,6 @@ public class CommandManager
 		undoStack.clear();
 		redoStack.clear();
 	}
+
+	public abstract void onModified();
 }

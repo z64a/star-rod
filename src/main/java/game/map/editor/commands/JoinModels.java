@@ -3,6 +3,8 @@ package game.map.editor.commands;
 import java.util.ArrayList;
 import java.util.List;
 
+import common.commands.AbstractCommand;
+import game.map.editor.MapEditor;
 import game.map.mesh.TexturedMesh;
 import game.map.shape.Model;
 import game.map.shape.TriangleBatch;
@@ -34,6 +36,7 @@ public class JoinModels extends AbstractCommand
 	{
 		super.exec();
 
+		MapEditor editor = MapEditor.instance();
 		Model first = models.get(0);
 
 		for (int i = 1; i < models.size(); i++) {
@@ -60,6 +63,8 @@ public class JoinModels extends AbstractCommand
 	public void undo()
 	{
 		super.undo();
+
+		MapEditor editor = MapEditor.instance();
 
 		for (int i = models.size() - 1; i >= 0; i--) {
 			Model mdl = models.get(i);

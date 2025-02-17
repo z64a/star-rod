@@ -7,11 +7,11 @@ import java.util.function.Consumer;
 
 import org.w3c.dom.Element;
 
+import common.commands.EditableField;
+import common.commands.EditableField.EditableFieldFactory;
 import game.map.MutablePoint;
 import game.map.MutablePoint.PointBackup;
 import game.map.editor.camera.MapEditViewport;
-import game.map.editor.commands.fields.EditableField;
-import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;
 import game.map.editor.selection.SelectablePoint;

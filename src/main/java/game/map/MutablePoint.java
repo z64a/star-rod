@@ -3,7 +3,7 @@ package game.map;
 import java.util.Objects;
 
 import common.Vector3f;
-import game.map.editor.commands.AbstractCommand;
+import common.commands.AbstractCommand;
 
 public class MutablePoint
 {

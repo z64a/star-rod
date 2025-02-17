@@ -1,11 +1,9 @@
-package game.map.editor.commands.fields;
+package common.commands;
 
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
-
-import game.map.editor.commands.AbstractCommand;
 
 public class EditableField<T>
 {

@@ -1,22 +1,19 @@
-package game.map.editor.commands;
+package common.commands;
 
 import javax.swing.SwingUtilities;
 
-import game.map.editor.MapEditor;
 import util.Logger;
 
 public abstract class AbstractCommand
 {
-	public static enum STATE
+	public static enum ExecState
 	{
 		READY, EXECUTED, UNDONE
 	}
 
-	private STATE state;
+	private ExecState state;
 	private final String name;
 	private boolean silent;
-
-	protected final MapEditor editor;
 
 	public AbstractCommand(String name)
 	{
@@ -25,8 +22,7 @@ public abstract class AbstractCommand
 
 	public AbstractCommand(String name, boolean silent)
 	{
-		editor = MapEditor.instance();
-		state = STATE.READY;
+		state = ExecState.READY;
 		this.name = name;
 		this.silent = silent;
 	}
@@ -42,7 +38,7 @@ public abstract class AbstractCommand
 		return true;
 	}
 
-	public boolean modifiesMap()
+	public boolean modifiesData()
 	{
 		return true;
 	}
@@ -52,19 +48,19 @@ public abstract class AbstractCommand
 		if (SwingUtilities.isEventDispatchThread())
 			throw new RuntimeException("Invalid state. Tried to exec command from EDT.");
 
-		state = STATE.EXECUTED;
+		state = ExecState.EXECUTED;
 		if (!silent)
 			Logger.log("Exec: " + name);
 	}
 
 	public void undo()
 	{
-		state = STATE.UNDONE;
+		state = ExecState.UNDONE;
 		if (!silent)
 			Logger.log("Undo: " + name);
 	}
 
-	public STATE getState()
+	public ExecState getState()
 	{
 		return state;
 	}

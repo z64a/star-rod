@@ -6,7 +6,7 @@ import game.map.BoundingBox;
 import game.map.MutablePoint;
 import game.map.PointListBackup;
 import game.map.ReversibleTransform;
-import game.map.editor.commands.AbstractCommand;
+import common.commands.AbstractCommand;
 import game.map.shape.TransformMatrix;
 import util.identity.IdentityHashSet;
 

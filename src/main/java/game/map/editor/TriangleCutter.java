@@ -6,9 +6,9 @@ import java.util.List;
 
 import common.Vector3f;
 import game.map.MapObject;
-import game.map.editor.commands.AbstractCommand;
-import game.map.editor.commands.CommandBatch;
 import game.map.editor.commands.CreateObject;
+import common.commands.CommandBatch;
+import common.commands.AbstractCommand;
 import game.map.editor.geometry.GeometryUtils;
 import game.map.hit.Collider;
 import game.map.hit.Zone;

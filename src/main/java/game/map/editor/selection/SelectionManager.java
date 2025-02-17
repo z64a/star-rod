@@ -17,12 +17,12 @@ import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.EditorMode;
 import game.map.editor.camera.MapEditViewport;
 import game.map.editor.camera.ViewType;
-import game.map.editor.commands.AbstractCommand;
 import game.map.editor.commands.CloneObjects;
 import game.map.editor.commands.CloneTriangles;
-import game.map.editor.commands.CommandBatch;
 import game.map.editor.commands.DeleteObjects;
 import game.map.editor.commands.DeleteTriangles;
+import common.commands.CommandBatch;
+import common.commands.AbstractCommand;
 import game.map.editor.selection.PickRay.PickHit;
 import game.map.hit.Collider;
 import game.map.hit.Zone;
@@ -1632,7 +1632,7 @@ public class SelectionManager
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}
@@ -1780,7 +1780,7 @@ public class SelectionManager
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}
@@ -1848,7 +1848,7 @@ public class SelectionManager
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}

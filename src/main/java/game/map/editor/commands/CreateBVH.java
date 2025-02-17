@@ -6,9 +6,11 @@ import java.util.IdentityHashMap;
 import java.util.List;
 
 import common.Vector3f;
+import common.commands.AbstractCommand;
 import game.map.BoundingBox;
 import game.map.MapObject;
 import game.map.MapObject.HitType;
+import game.map.editor.MapEditor;
 import game.map.hit.Collider;
 import game.map.tree.MapObjectNode;
 
@@ -45,6 +47,8 @@ public class CreateBVH extends AbstractCommand
 	{
 		super.exec();
 
+		MapEditor editor = MapEditor.instance();
+
 		for (Collider c : colliders)
 			newParents.get(c).add(c.getNode());
 
@@ -56,6 +60,8 @@ public class CreateBVH extends AbstractCommand
 	public void undo()
 	{
 		super.undo();
+
+		MapEditor editor = MapEditor.instance();
 
 		//XXX
 

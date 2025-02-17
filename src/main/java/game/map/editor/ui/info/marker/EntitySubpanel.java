@@ -20,6 +20,7 @@ import javax.swing.SwingConstants;
 import com.alexandriasoftware.swing.JSplitButton;
 
 import app.SwingUtils;
+import common.commands.EditableField;
 import game.ProjectDatabase;
 import game.entity.EntityInfo.EntityParam;
 import game.entity.EntityInfo.EntityType;
@@ -27,7 +28,6 @@ import game.entity.EntityMenuGroup;
 import game.map.MapKey;
 import game.map.MapObject.MapObjectType;
 import game.map.editor.MapEditor;
-import game.map.editor.commands.fields.EditableField;
 import game.map.editor.ui.MapObjectComboBox;
 import game.map.editor.ui.StandardEditableComboBox;
 import game.map.editor.ui.SwingGUI;

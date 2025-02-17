@@ -29,12 +29,12 @@ import app.SwingUtils;
 import app.input.IOUtils;
 import assets.AssetManager;
 import assets.AssetSubdir;
+import common.commands.AbstractCommand;
+import common.commands.CommandBatch;
 import game.map.MapObject.MapObjectType;
 import game.map.editor.EditorObject;
 import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.MapEditorMetadata;
-import game.map.editor.commands.AbstractCommand;
-import game.map.editor.commands.CommandBatch;
 import game.map.editor.commands.CreateObjects;
 import game.map.editor.render.TextureManager;
 import game.map.editor.selection.PickRay;
@@ -1434,7 +1434,7 @@ public class Map implements XmlSerializable
 		public ToggleStage()
 		{
 			super(MapEditor.instance().map.isStage ? "Set World Map" : "Set Battle Map");
-			this.m = editor.map;
+			this.m = MapEditor.instance().map;
 		}
 
 		@Override
@@ -1442,7 +1442,7 @@ public class Map implements XmlSerializable
 		{
 			super.exec();
 			m.isStage = !m.isStage;
-			editor.gui.isStageCheckbox.setSelected(m.isStage);
+			MapEditor.instance().gui.isStageCheckbox.setSelected(m.isStage);
 		}
 
 		@Override
@@ -1450,7 +1450,7 @@ public class Map implements XmlSerializable
 		{
 			super.undo();
 			m.isStage = !m.isStage;
-			editor.gui.isStageCheckbox.setSelected(m.isStage);
+			MapEditor.instance().gui.isStageCheckbox.setSelected(m.isStage);
 		}
 	}
 
@@ -1461,7 +1461,7 @@ public class Map implements XmlSerializable
 		public ToggleBackground()
 		{
 			super(MapEditor.instance().map.hasBackground ? "Disable Background" : "Enable Background");
-			this.m = editor.map;
+			this.m = MapEditor.instance().map;
 		}
 
 		@Override
@@ -1469,7 +1469,7 @@ public class Map implements XmlSerializable
 		{
 			super.exec();
 			m.hasBackground = !m.hasBackground;
-			editor.gui.hasBackgroundCheckbox.setSelected(m.hasBackground);
+			MapEditor.instance().gui.hasBackgroundCheckbox.setSelected(m.hasBackground);
 		}
 
 		@Override
@@ -1477,7 +1477,7 @@ public class Map implements XmlSerializable
 		{
 			super.undo();
 			m.hasBackground = !m.hasBackground;
-			editor.gui.hasBackgroundCheckbox.setSelected(m.hasBackground);
+			MapEditor.instance().gui.hasBackgroundCheckbox.setSelected(m.hasBackground);
 		}
 	}
 
@@ -1493,7 +1493,7 @@ public class Map implements XmlSerializable
 		public SetBackground(String name, BufferedImage img)
 		{
 			super("Set Background");
-			this.map = editor.map;
+			this.map = MapEditor.instance().map;
 
 			oldName = map.bgName;
 			oldImage = map.bgImage;
@@ -1514,7 +1514,7 @@ public class Map implements XmlSerializable
 			super.exec();
 			map.bgName = newName;
 			map.bgImage = newImage;
-			editor.needsBackgroundReload = true;
+			MapEditor.instance().needsBackgroundReload = true;
 		}
 
 		@Override
@@ -1523,7 +1523,7 @@ public class Map implements XmlSerializable
 			super.undo();
 			map.bgName = oldName;
 			map.bgImage = oldImage;
-			editor.needsBackgroundReload = true;
+			MapEditor.instance().needsBackgroundReload = true;
 		}
 	}
 

@@ -1,4 +1,4 @@
-package game.map.editor.commands;
+package common.commands;
 
 import java.util.ArrayList;
 
@@ -6,7 +6,7 @@ public class CommandBatch extends AbstractCommand
 {
 	private ArrayList<AbstractCommand> commands;
 	private final boolean hasName;
-	private boolean modifiesMap = true;
+	private boolean modifiesData = true;
 
 	public CommandBatch()
 	{
@@ -33,15 +33,15 @@ public class CommandBatch extends AbstractCommand
 			c.silence();
 	}
 
-	public void setModifiesMap(boolean value)
+	public void setModifiesData(boolean value)
 	{
-		modifiesMap = value;
+		modifiesData = value;
 	}
 
 	@Override
-	public boolean modifiesMap()
+	public boolean modifiesData()
 	{
-		return modifiesMap;
+		return modifiesData;
 	}
 
 	@Override
@@ -57,7 +57,7 @@ public class CommandBatch extends AbstractCommand
 		for (AbstractCommand cmd : commands) {
 			if (!cmd.shouldExec())
 				continue;
-			if (cmd.getState() != AbstractCommand.STATE.EXECUTED)
+			if (cmd.getState() != AbstractCommand.ExecState.EXECUTED)
 				cmd.exec();
 		}
 	}
@@ -73,5 +73,4 @@ public class CommandBatch extends AbstractCommand
 			cmd.undo();
 		}
 	}
-
 }

@@ -1,10 +1,8 @@
-package game.map.editor.commands.fields;
+package common.commands;
 
 import java.util.Arrays;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
-
-import game.map.editor.commands.AbstractCommand;
 
 public class EditableArrayField<T>
 {

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import common.commands.AbstractCommand;
+import game.map.editor.MapEditor;
 import game.map.mesh.TexturedMesh;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
@@ -71,6 +73,7 @@ public class SplitModel extends AbstractCommand
 	{
 		super.exec();
 
+		MapEditor editor = MapEditor.instance();
 		editor.map.create(newModel);
 		editor.selectionManager.createObject(newModel);
 
@@ -87,6 +90,7 @@ public class SplitModel extends AbstractCommand
 	{
 		super.undo();
 
+		MapEditor editor = MapEditor.instance();
 		editor.map.remove(newModel);
 		editor.selectionManager.deleteObject(newModel);
 

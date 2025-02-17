@@ -70,7 +70,7 @@ import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.EditorMode;
 import game.map.editor.MapEditor.IShutdownListener;
 import game.map.editor.PaintManager;
-import game.map.editor.commands.AbstractCommand;
+import common.commands.AbstractCommand;
 import game.map.editor.commands.ChangeTextureArchive;
 import game.map.editor.commands.CreateObjects;
 import game.map.editor.render.TextureManager;

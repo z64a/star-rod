@@ -6,7 +6,7 @@ import org.w3c.dom.Element;
 
 import game.map.Map;
 import game.map.MapObject.MapObjectType;
-import game.map.editor.commands.AbstractCommand;
+import common.commands.AbstractCommand;
 import game.map.scripts.generators.Generator.GeneratorType;
 import game.map.scripts.generators.Generator.ValidationState;
 import util.xml.XmlWrapper.XmlReader;

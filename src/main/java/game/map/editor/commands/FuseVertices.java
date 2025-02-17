@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import common.commands.AbstractCommand;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
 import game.map.shape.TriangleBatch;

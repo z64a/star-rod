@@ -52,9 +52,7 @@ import app.config.Options;
 import app.config.Options.Scope;
 import common.KeyboardInput.KeyboardInputListener;
 import common.MouseInput.MouseManagerListener;
-import game.map.editor.CommandManager;
 import game.map.editor.Tickable;
-import game.map.editor.commands.AbstractCommand;
 import net.miginfocom.swing.MigLayout;
 import util.LogFile;
 import util.Logger;
@@ -94,14 +92,13 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	private static final float MESSAGE_FADE_TIME = 0.5f;
 
 	// editor state
-	protected volatile boolean modified = false;
+	public volatile boolean modified = false;
 	private volatile boolean closeRequested = false;
 	private volatile OpenDialogCounter openDialogs = new OpenDialogCounter();
 
 	protected boolean glWindowGrabsMouse;
 	protected boolean glWindowHaltsForDialogs;
 
-	private CommandManager commandManager; // handles comnmand execution and undo/redo
 	private BlockingQueue<Runnable> eventQueue = new ArrayBlockingQueue<>(16);
 
 	// logging
@@ -142,7 +139,6 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			config = readEditorConfig(settings.configScope, editorConfigFile);
 		}
 
-		commandManager = new CommandManager(32);
 		beforeCreateGui();
 
 		// create the GUI
@@ -171,14 +167,6 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	public void invokeLater(Runnable run)
 	{
 		eventQueue.add(run);
-	}
-
-	public void execute(AbstractCommand cmd)
-	{
-		if (SwingUtilities.isEventDispatchThread())
-			eventQueue.add(() -> commandManager.executeCommand(cmd));
-		else
-			commandManager.executeCommand(cmd);
 	}
 
 	public void registerTickable(Tickable ticker)

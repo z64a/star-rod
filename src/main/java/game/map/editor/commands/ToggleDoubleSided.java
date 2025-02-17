@@ -1,5 +1,6 @@
 package game.map.editor.commands;
 
+import common.commands.AbstractCommand;
 import game.map.mesh.Triangle;
 
 public class ToggleDoubleSided extends AbstractCommand

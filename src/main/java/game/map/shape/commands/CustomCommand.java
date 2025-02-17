@@ -2,7 +2,7 @@ package game.map.shape.commands;
 
 import javax.swing.JPanel;
 
-import game.map.editor.commands.AbstractCommand;
+import common.commands.AbstractCommand;
 import game.map.mesh.AbstractMesh;
 import game.map.shape.Model;
 import net.miginfocom.swing.MigLayout;

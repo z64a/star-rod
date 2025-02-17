@@ -2,6 +2,7 @@ package game.map.editor.commands;
 
 import java.util.IdentityHashMap;
 
+import common.commands.AbstractCommand;
 import game.map.editor.render.Color4d;
 import game.map.mesh.Vertex;
 

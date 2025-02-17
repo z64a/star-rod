@@ -3,6 +3,8 @@ package game.map.editor.commands;
 import java.util.ArrayList;
 import java.util.List;
 
+import common.commands.AbstractCommand;
+import game.map.editor.MapEditor;
 import game.map.mesh.Triangle;
 import util.MathUtil;
 
@@ -23,6 +25,7 @@ public class CleanupTriangles extends AbstractCommand
 				targets.add(t);
 		}
 
+		MapEditor editor = MapEditor.instance();
 		deselectCommand = editor.selectionManager.getModifyTriangles(null, targets, true);
 		deselectCommand.silence();
 	}

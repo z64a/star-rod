@@ -13,7 +13,7 @@ import org.w3c.dom.Element;
 
 import game.map.editor.UpdateProvider;
 import game.map.editor.camera.MapEditViewport;
-import game.map.editor.commands.AbstractCommand;
+import common.commands.AbstractCommand;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;
 import game.map.editor.selection.PickRay;

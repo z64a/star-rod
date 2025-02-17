@@ -3,9 +3,9 @@ package game.map.shading;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 
+import common.commands.EditableField;
+import common.commands.EditableField.EditableFieldFactory;
 import game.map.editor.UpdateProvider;
-import game.map.editor.commands.fields.EditableField;
-import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
 
 public class ShadingGroup extends UpdateProvider
 {

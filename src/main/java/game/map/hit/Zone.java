@@ -4,12 +4,12 @@ import static game.map.MapKey.*;
 
 import org.w3c.dom.Element;
 
+import common.commands.EditableField;
+import common.commands.EditableField.EditableFieldFactory;
+import common.commands.EditableField.StandardBoolName;
 import game.map.MutablePoint;
 import game.map.editor.MapEditor;
 import game.map.editor.camera.MapEditViewport;
-import game.map.editor.commands.fields.EditableField;
-import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
-import game.map.editor.commands.fields.EditableField.StandardBoolName;
 import game.map.editor.render.Color4f;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;

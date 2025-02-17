@@ -6,10 +6,10 @@ import java.util.Comparator;
 
 import org.w3c.dom.Element;
 
+import common.commands.EditableField;
+import common.commands.EditableField.EditableFieldFactory;
+import common.commands.EditableField.StandardBoolName;
 import game.ProjectDatabase;
-import game.map.editor.commands.fields.EditableField;
-import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
-import game.map.editor.commands.fields.EditableField.StandardBoolName;
 import game.map.scripts.GeneratorsPanel;
 import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlSerializable;

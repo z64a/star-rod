@@ -4,8 +4,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import common.Vector3f;
+import common.commands.AbstractCommand;
 import game.map.editor.MapEditor;
-import game.map.editor.commands.AbstractCommand;
 import game.map.editor.geometry.GeometryUtils;
 import game.map.editor.selection.SelectablePoint;
 import util.IterableListModel;
@@ -141,7 +141,7 @@ public class PathData
 			if (wp.isSelected())
 				deselectList.add(wp);
 
-			selectionModCommand = editor.selectionManager.getModifyPoints(null, deselectList);
+			selectionModCommand = MapEditor.instance().selectionManager.getModifyPoints(null, deselectList);
 		}
 
 		@Override

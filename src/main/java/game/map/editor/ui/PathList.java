@@ -31,8 +31,8 @@ import javax.swing.TransferHandler;
 import javax.swing.border.EtchedBorder;
 
 import app.SwingUtils;
+import common.commands.AbstractCommand;
 import game.map.editor.MapEditor;
-import game.map.editor.commands.AbstractCommand;
 import game.map.editor.selection.SelectablePoint.SetPointPosition;
 import game.map.marker.PathPoint;
 import net.miginfocom.swing.MigLayout;
@@ -512,7 +512,7 @@ public class PathList extends JList<PathPoint>
 				PathPoint wp = listModel.get(i);
 
 				if (isSelectedIndex(i))
-					deselectCommands.add(editor.selectionManager.getModifyPoints(Collections.singleton(wp), null));
+					deselectCommands.add(MapEditor.instance().selectionManager.getModifyPoints(Collections.singleton(wp), null));
 				else
 					newOrder.add(wp);
 			}

@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
 
+import common.commands.AbstractCommand;
 import game.map.MapObject;
+import game.map.editor.MapEditor;
 import game.map.editor.selection.Selection;
 
 public class DeleteObjects extends AbstractCommand
@@ -31,6 +33,8 @@ public class DeleteObjects extends AbstractCommand
 	{
 		super.exec();
 
+		MapEditor editor = MapEditor.instance();
+
 		for (MapObject obj : deleteList) {
 			editor.map.remove(obj);
 			editor.selectionManager.deleteObject(obj);
@@ -41,6 +45,8 @@ public class DeleteObjects extends AbstractCommand
 	public void undo()
 	{
 		super.undo();
+
+		MapEditor editor = MapEditor.instance();
 
 		for (int i = deleteList.size() - 1; i >= 0; i--) {
 			MapObject obj = deleteList.get(i);
