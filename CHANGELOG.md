@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4] - 2025-02-21
+
+### Fixed
+- (Map Editor) libGL loading for Mix
+- (Map Editor) EnemyTerritory generation now compatible with C++
+
 ## [0.9.3] - 2025-02-07
 
 ### Added
