@@ -8,8 +8,8 @@ import game.map.mesh.Vertex;
 
 public class PaintVertices extends AbstractCommand
 {
-	IdentityHashMap<Vertex, Color4d> oldColorMap;
-	IdentityHashMap<Vertex, Color4d> newColorMap;
+	private final IdentityHashMap<Vertex, Color4d> oldColorMap;
+	private final IdentityHashMap<Vertex, Color4d> newColorMap;
 
 	public PaintVertices(IdentityHashMap<Vertex, Color4d> backupVertexColorMap, IdentityHashMap<Vertex, Color4d> newVertexColorMap)
 	{

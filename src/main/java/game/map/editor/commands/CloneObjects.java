@@ -9,8 +9,8 @@ import game.map.editor.selection.Selection;
 
 public class CloneObjects extends AbstractCommand
 {
-	private ArrayList<MapObject> copies;
-	private ArrayList<MapObject> originals;
+	private final ArrayList<MapObject> copies;
+	private final ArrayList<MapObject> originals;
 
 	public CloneObjects(Selection<MapObject> selection)
 	{

@@ -1,7 +1,5 @@
 package common.commands;
 
-import javax.swing.SwingUtilities;
-
 import util.Logger;
 
 public abstract class AbstractCommand
@@ -45,8 +43,9 @@ public abstract class AbstractCommand
 
 	public void exec()
 	{
-		if (SwingUtilities.isEventDispatchThread())
-			throw new RuntimeException("Invalid state. Tried to exec command from EDT.");
+		//TODO map editor expects this but sprite editor expects the opposite!
+		//	if (SwingUtilities.isEventDispatchThread())
+		//		throw new RuntimeException("Invalid state. Tried to exec command from EDT.");
 
 		state = ExecState.EXECUTED;
 		if (!silent)

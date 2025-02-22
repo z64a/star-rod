@@ -8,9 +8,9 @@ import game.texture.ModelTexture;
 
 public class ApplyTextureToList extends AbstractCommand
 {
-	private Iterable<Model> modelList;
-	private HashMap<Model, ModelTexture> textureMap;
-	private ModelTexture newTexture;
+	private final Iterable<Model> modelList;
+	private final HashMap<Model, ModelTexture> textureMap;
+	private final ModelTexture newTexture;
 
 	public ApplyTextureToList(Iterable<Model> modelList, ModelTexture newTexture)
 	{

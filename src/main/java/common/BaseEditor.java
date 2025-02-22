@@ -164,16 +164,40 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		Logger.addListener(this);
 	}
 
-	public void invokeLater(Runnable run)
+	/**
+	 * Schedules code to execute during the main loop to ensure a valid GL context is available
+	 * @param runnable the code to execute
+	 */
+	public void invokeLater(Runnable runnable)
 	{
-		eventQueue.add(run);
+		eventQueue.add(runnable);
 	}
 
+	/**
+	 * Utility method for schedulign code to run in the EDT, or running immediately if invoked from the EDT
+	 * @param runnable the code to execute
+	 */
+	public void runInEDT(Runnable runnable)
+	{
+		if (SwingUtilities.isEventDispatchThread())
+			runnable.run();
+		else
+			SwingUtilities.invokeLater(runnable);
+	}
+
+	/**
+	 * Registers a callback that will execute during every iteration of the main loop
+	 * @param ticker the callback to register
+	 */
 	public void registerTickable(Tickable ticker)
 	{
 		tickers.add(ticker);
 	}
 
+	/**
+	 * Removes a previously registered tickable callback
+	 * @param ticker the callback to remove
+	 */
 	public void deregisterTickable(Tickable ticker)
 	{
 		tickers.remove(ticker);
@@ -200,7 +224,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 
 				// gl canvas acquires focus on mouseover
 				if (glWindowGrabsMouse && !glCanvas.hasFocus() && mouse.hasLocation() && openDialogs.isZero()) {
-					java.awt.EventQueue.invokeLater(() -> {
+					SwingUtilities.invokeLater(() -> {
 						glCanvas.requestFocusInWindow();
 					});
 				}
@@ -211,24 +235,27 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 					prevCanvasSize = glCanvas.getSize();
 				}
 
-				keyboard.update(this, frame.isFocused());
-				mouse.update(this, frame.isFocused());
+				synchronized (modifyLock) {
+					keyboard.update(this, frame.isFocused());
+					mouse.update(this, frame.isFocused());
 
-				if (!glWindowHaltsForDialogs || !areDialogsOpen()) {
-					runInContext(() -> {
-						while (!eventQueue.isEmpty())
-							eventQueue.poll().run();
+					if (!glWindowHaltsForDialogs || !areDialogsOpen()) {
+						runInContext(() -> {
+							while (!eventQueue.isEmpty())
+								eventQueue.poll().run();
 
-						for (Tickable ticker : tickers)
-							ticker.tick(deltaTime);
+							for (Tickable ticker : tickers)
+								ticker.tick(deltaTime);
 
-						// let the child do things
-						update(deltaTime);
-					});
+							// let the child do things
+							update(deltaTime);
+						});
+					}
+
+					if (glCanvas.isValid())
+						glCanvas.render();
 				}
 
-				if (glCanvas.isValid())
-					glCanvas.render();
 				limiter.sync(targetFPS);
 
 				// maybe before limiter?
@@ -549,9 +576,8 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		openDialogs.decrement();
 	}
 
-	/**
-	 * Interface for children
-	 */
+	// -------------------------------------------------------------------
+	// Interface for children
 
 	protected void beforeCreateGui()
 	{}
@@ -576,9 +602,8 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 
 	protected abstract void saveChanges();
 
-	/**
-	 * Exposed for children
-	 */
+	// -------------------------------------------------------------------
+	// Exposed for children
 
 	public final long getFrameCount()
 	{
@@ -626,7 +651,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		openDialogs.decrement();
 	}
 
-	protected final StarRodFrame getFrame()
+	public final StarRodFrame getFrame()
 	{
 		return frame;
 	}
@@ -646,9 +671,8 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		openDialogs.decrement();
 	}
 
-	/**
-	 * Implement interfaces
-	 */
+	// -------------------------------------------------------------------
+	// Implement interface
 
 	@Override
 	public void post(Message msg)

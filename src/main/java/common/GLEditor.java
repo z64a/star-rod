@@ -6,6 +6,8 @@ import util.Logger;
 
 public abstract class GLEditor
 {
+	public final Object modifyLock = new Object();
+
 	protected final EditorCanvas glCanvas;
 
 	protected abstract void glInit();

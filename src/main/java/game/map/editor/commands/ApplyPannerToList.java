@@ -7,9 +7,9 @@ import game.map.shape.Model;
 
 public class ApplyPannerToList extends AbstractCommand
 {
-	private Iterable<Model> modelList;
-	private HashMap<Model, Integer> oldPannerMap;
-	private int newPannerID;
+	private final Iterable<Model> modelList;
+	private final HashMap<Model, Integer> oldPannerMap;
+	private final int newPannerID;
 
 	public ApplyPannerToList(Iterable<Model> modelList, int pannerID)
 	{

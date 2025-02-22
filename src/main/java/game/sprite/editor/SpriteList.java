@@ -4,7 +4,6 @@ import java.awt.Component;
 import java.util.Collection;
 
 import javax.swing.BorderFactory;
-import javax.swing.DefaultListModel;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -18,16 +17,20 @@ import javax.swing.event.DocumentListener;
 
 import app.SwingUtils;
 import game.sprite.SpriteLoader.SpriteMetadata;
+import game.sprite.editor.commands.SelectSprite;
 import net.miginfocom.swing.MigLayout;
+import util.IterableListModel;
 import util.ui.FilteredListModel;
 
 public class SpriteList extends JPanel
 {
 	private JList<SpriteMetadata> list;
-	private DefaultListModel<SpriteMetadata> listModel;
+	private IterableListModel<SpriteMetadata> listModel;
 	private FilteredListModel<SpriteMetadata> filteredListModel;
 
 	private JTextField filterField;
+
+	public boolean ignoreSelectionChange = false;
 
 	public SpriteList(SpriteEditor editor)
 	{
@@ -37,20 +40,7 @@ public class SpriteList extends JPanel
 		list.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		list.setCellRenderer(new SpriteMetaCellRenderer());
 
-		list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		list.addListSelectionListener((e) -> {
-			if (e.getValueIsAdjusting())
-				return;
-
-			editor.invokeLater(() -> {
-				if (getSelected() == null)
-					editor.setSprite(-1, true);
-				else
-					editor.setSprite(getSelected().id, false);
-			});
-		});
-
-		listModel = new DefaultListModel<>();
+		listModel = new IterableListModel<>();
 		filteredListModel = new FilteredListModel<>(listModel);
 		list.setModel(filteredListModel);
 
@@ -77,6 +67,18 @@ public class SpriteList extends JPanel
 		});
 		SwingUtils.addBorderPadding(filterField);
 
+		list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		list.addListSelectionListener((e) -> {
+			if (e.getValueIsAdjusting())
+				return;
+
+			if (!ignoreSelectionChange) {
+				SpriteList list = SpriteList.this;
+				int newID = list.getSelected() == null ? -1 : list.getSelected().id;
+				SpriteEditor.execute(new SelectSprite(list, newID));
+			}
+		});
+
 		JScrollPane listScrollPane = new JScrollPane(list);
 		listScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
@@ -96,14 +98,28 @@ public class SpriteList extends JPanel
 		updateListFilter();
 	}
 
-	public void setSelected(SpriteMetadata sprite)
+	public void setSelectedID(int nextID)
 	{
-		list.setSelectedValue(sprite, true);
+		SpriteMetadata match = null;
+
+		for (SpriteMetadata sprite : listModel) {
+			if (sprite.id == nextID) {
+				match = sprite;
+				break;
+			}
+		}
+
+		list.setSelectedValue(match, true);
 	}
 
 	public void setSelectedIndex(int id)
 	{
 		list.setSelectedIndex(id);
+	}
+
+	public int getSelectedIndex()
+	{
+		return list.getSelectedIndex();
 	}
 
 	public SpriteMetadata getSelected()

@@ -11,9 +11,9 @@ import game.map.shape.TriangleBatch;
 
 public class FuseVertices extends AbstractCommand
 {
-	private List<Triangle> triangles;
-	private List<Vertex> oldVertices;
-	private List<Vertex> newVertices;
+	private final List<Triangle> triangles;
+	private final List<Vertex> oldVertices;
+	private final List<Vertex> newVertices;
 
 	private static class FusionWrapper
 	{

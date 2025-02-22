@@ -11,7 +11,6 @@ import util.MathUtil;
 public class CleanupTriangles extends AbstractCommand
 {
 	private final List<Triangle> targets;
-
 	private final AbstractCommand deselectCommand;
 
 	public CleanupTriangles(List<Triangle> triangles)

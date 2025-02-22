@@ -156,7 +156,7 @@ public class SpriteLoader
 		Sprite npcSprite = null;
 
 		try {
-			npcSprite = Sprite.readNpc(xmlFile, md.name);
+			npcSprite = Sprite.readNpc(md, xmlFile, md.name);
 			npcSprite.imgAssets = loadSpriteImages(AssetManager.getNpcSpriteRasters(md.name));
 			npcSprite.palAssets = loadSpritePalettes(AssetManager.getNpcSpritePalettes(md.name));
 			npcSprite.bindPalettes();
@@ -189,7 +189,7 @@ public class SpriteLoader
 		File xmlFile = md.xml;
 
 		try {
-			playerSprite = Sprite.readPlayer(xmlFile, md.name);
+			playerSprite = Sprite.readPlayer(md, xmlFile, md.name);
 			playerSprite.imgAssets = playerImgAssets;
 			playerSprite.palAssets = playerPalAssets;
 			playerSprite.bindPalettes();
@@ -234,7 +234,11 @@ public class SpriteLoader
 				imgAssets.put(name, ia);
 			}
 			catch (Throwable e) {
-				Logger.logWarning("Failed to load raster: " + ah.getName());
+				String assetName = ah.getName();
+				if ("PSR_1F880.png".equals(assetName) || "PSR_9CD50.png".equals(assetName))
+					; //TODO these assets should probably be removed in dx?
+				else
+					Logger.logWarning("Failed to load raster: " + assetName);
 			}
 		}
 

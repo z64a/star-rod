@@ -5,7 +5,7 @@ import game.map.mesh.Triangle;
 
 public class ToggleDoubleSided extends AbstractCommand
 {
-	private Iterable<Triangle> triangles;
+	private final Iterable<Triangle> triangles;
 
 	public ToggleDoubleSided(Iterable<Triangle> triangles)
 	{

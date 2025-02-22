@@ -18,6 +18,7 @@ import app.input.InputFileException;
 import common.Vector3f;
 import game.map.BoundingBox;
 import game.map.shading.ShadingProfile;
+import game.sprite.SpriteLoader.SpriteMetadata;
 import game.sprite.SpriteLoader.SpriteSet;
 import game.sprite.editor.SpriteCamera;
 import game.sprite.editor.SpriteCamera.BasicTraceHit;
@@ -41,6 +42,8 @@ public class Sprite implements XmlSerializable
 	public static final int MAX_ANIMATIONS = 255;
 	public static final int MAX_COMPONENTS = 255;
 
+	public final SpriteMetadata metadata;
+
 	public final IterableListModel<SpriteAnimation> animations = new IterableListModel<>();
 	public final IterableListModel<SpriteRaster> rasters = new IterableListModel<>();
 	public final IterableListModel<SpritePalette> palettes = new IterableListModel<>();
@@ -54,6 +57,9 @@ public class Sprite implements XmlSerializable
 	private transient boolean texturesLoaded = false;
 	private transient boolean readyForEditor = false;
 	public transient boolean enableStencilBuffer = false;
+
+	public transient int lastSelectedAnim;
+	public transient boolean hasLastSelected = false;
 
 	// have the animators generate their animation commands
 	public void prepareForEditor()
@@ -121,8 +127,9 @@ public class Sprite implements XmlSerializable
 
 	public transient BoundingBox aabb = new BoundingBox();
 
-	protected Sprite(SpriteSet set)
+	protected Sprite(SpriteMetadata metadata, SpriteSet set)
 	{
+		this.metadata = metadata;
 		this.isPlayerSprite = (set == SpriteSet.Player);
 	}
 
@@ -142,19 +149,19 @@ public class Sprite implements XmlSerializable
 		return isPlayerSprite;
 	}
 
-	public static Sprite readNpc(File xmlFile, String name)
+	public static Sprite readNpc(SpriteMetadata metadata, File xmlFile, String name)
 	{
 		XmlReader xmr = new XmlReader(xmlFile);
-		Sprite spr = new Sprite(SpriteSet.Npc);
+		Sprite spr = new Sprite(metadata, SpriteSet.Npc);
 		spr.name = name;
 		spr.fromXML(xmr, xmr.getRootElement());
 		return spr;
 	}
 
-	public static Sprite readPlayer(File xmlFile, String name)
+	public static Sprite readPlayer(SpriteMetadata metadata, File xmlFile, String name)
 	{
 		XmlReader xmr = new XmlReader(xmlFile);
-		Sprite spr = new Sprite(SpriteSet.Player);
+		Sprite spr = new Sprite(metadata, SpriteSet.Player);
 		spr.name = name;
 		spr.fromXML(xmr, xmr.getRootElement());
 		return spr;
@@ -551,12 +558,15 @@ public class Sprite implements XmlSerializable
 			pa.pal.glLoad();
 		}
 
+		texturesLoaded = true;
+	}
+
+	public void loadEditorImages()
+	{
 		for (int i = 0; i < rasters.size(); i++) {
 			SpriteRaster sr = rasters.get(i);
 			sr.loadEditorImages();
 		}
-
-		texturesLoaded = true;
 	}
 
 	public void unloadTextures()

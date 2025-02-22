@@ -7,7 +7,7 @@ import game.map.mesh.Triangle;
 
 public class InvertNormals extends AbstractCommand
 {
-	private List<Triangle> triangles;
+	private final List<Triangle> triangles;
 
 	public InvertNormals(List<Triangle> triangles)
 	{

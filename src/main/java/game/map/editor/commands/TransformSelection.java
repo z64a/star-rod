@@ -11,8 +11,8 @@ import game.map.shape.TransformMatrix;
 
 public class TransformSelection<T extends Selectable> extends AbstractCommand
 {
-	private LinkedList<ReversibleTransform> transformerList;
-	private Selection<T> selection;
+	private final LinkedList<ReversibleTransform> transformerList;
+	private final Selection<T> selection;
 
 	public TransformSelection(Selection<T> selection, TransformMatrix m)
 	{

@@ -11,7 +11,7 @@ import game.map.shape.TriangleBatch;
 
 public abstract class JoinHitObjects<T extends HitObject> extends AbstractCommand
 {
-	private List<T> objs;
+	private final List<T> objs;
 	private final TriangleBatch oldBatch;
 	private final TriangleBatch newBatch;
 

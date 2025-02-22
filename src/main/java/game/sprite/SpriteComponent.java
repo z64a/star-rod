@@ -73,6 +73,9 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	public int rx, ry, rz;
 	public int scaleX, scaleY, scaleZ;
 
+	// used while copying animations
+	public transient int parentID;
+
 	// 4f so we can operate on them with lwjgl matrix library
 	public transient Vector3f[] corners = new Vector3f[4];
 
@@ -108,7 +111,12 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 
 		this.sr = original.sr;
 		this.sp = original.sp;
-		this.parent = original.parent;
+
+		if (original.parent == null)
+			this.parentID = -1;
+		else
+			this.parentID = original.parent.listIndex;
+
 		this.parentType = original.parentType;
 
 		this.flag = original.flag;

@@ -5,40 +5,27 @@ import static org.lwjgl.opengl.GL11.*;
 
 import java.awt.Canvas;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Container;
 import java.awt.Desktop;
-import java.awt.Font;
 import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
-import java.awt.Rectangle;
 import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.InputEvent;
-import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Queue;
 
-import javax.swing.AbstractAction;
-import javax.swing.ActionMap;
-import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
-import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
-import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -48,8 +35,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.KeyStroke;
-import javax.swing.ListCellRenderer;
-import javax.swing.ListSelectionModel;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
@@ -65,7 +50,7 @@ import common.BaseEditor;
 import common.BaseEditorSettings;
 import common.KeyboardInput.KeyInputEvent;
 import common.commands.AbstractCommand;
-import common.commands.CommandManager;
+import common.commands.CommandBatch;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
 import game.map.shape.TransformMatrix;
@@ -81,7 +66,12 @@ import game.sprite.SpriteRaster;
 import game.sprite.editor.SpriteCamera.BasicTraceRay;
 import game.sprite.editor.animators.CommandAnimatorEditor;
 import game.sprite.editor.animators.KeyframeAnimatorEditor;
+import game.sprite.editor.commands.CreateAnimation;
+import game.sprite.editor.commands.CreateComponent;
 import game.sprite.editor.commands.SpriteCommandManager;
+import game.sprite.editor.commands.SelectAnimation;
+import game.sprite.editor.commands.SelectComponent;
+import game.sprite.editor.commands.SetSpritesTab;
 import game.texture.Palette;
 import game.texture.Tile;
 import net.miginfocom.swing.MigLayout;
@@ -90,7 +80,6 @@ import renderer.shaders.RenderState;
 import renderer.shaders.ShaderManager;
 import renderer.shaders.scene.SpriteShader;
 import util.Logger;
-import util.ui.DragReorderList;
 import util.ui.IntTextField;
 import util.ui.ListAdapterComboboxModel;
 import util.ui.ThemedIcon;
@@ -105,9 +94,8 @@ public class SpriteEditor extends BaseEditor
 	private static final int RIGHT_PANEL_WIDTH = 640;
 	private static final int LEFT_PANEL_WIDTH = 300;
 
+	private static final int UNDO_LIMIT = 64;
 	private static final int MIN_SPRITE_IDX = 1;
-
-	private static final int EYE_ICON_WIDTH = 16;
 
 	private static final BaseEditorSettings EDITOR_SETTINGS = BaseEditorSettings.create()
 		.setTitle(Environment.decorateTitle("Sprite Editor"))
@@ -126,11 +114,8 @@ public class SpriteEditor extends BaseEditor
 
 	private JComboBox<SpritePalette> paletteComboBox;
 
-	private DragReorderList<SpriteAnimation> animList;
-	private DragReorderList<SpriteComponent> compList;
-
-	private SpriteAnimation animClipboard;
-	private SpriteComponent compClipboard;
+	private AnimationsList animList;
+	private ComponentsList compList;
 
 	private JPanel componentPanel;
 
@@ -207,6 +192,7 @@ public class SpriteEditor extends BaseEditor
 
 	private static EditorMode editorMode = EditorMode.Rasters;
 
+	private int spriteTabIndex = 0;
 	private SpriteSet spriteSet = SpriteSet.Npc;
 
 	private Tile referenceTile;
@@ -220,12 +206,18 @@ public class SpriteEditor extends BaseEditor
 	private ImgAsset selectedImgAsset;
 	private ImgAsset highlightedImgAsset;
 
+	public Sprite unloadSprite = null;
+	public Sprite loadSprite = null;
+
 	private volatile SpritePalette animOverridePalette;
 
 	// fields used by the renderer, don't set these from the gui
 	private volatile int spriteID;
 
-	private CommandManager commandManager; // handles comnmand execution and undo/redo
+	public volatile boolean suppressSelectionEvents = false;
+
+	// handles comnmand execution and undo/redo
+	private SpriteCommandManager commandManager;
 
 	public static void main(String[] args) throws IOException
 	{
@@ -239,6 +231,11 @@ public class SpriteEditor extends BaseEditor
 	{
 		super(EDITOR_SETTINGS);
 
+		if (instance != null)
+			throw new IllegalStateException("Only one SpriteEditor open at a time please!");
+
+		instance = this;
+
 		animCamera = new SpriteCamera(
 			0.0f, 32.0f, 0.3f,
 			0.5f, 0.125f, 2.0f,
@@ -249,10 +246,12 @@ public class SpriteEditor extends BaseEditor
 			1.0f, 0.125f, 2.0f,
 			true, true);
 
-		loadPlayerSpriteList();
-		loadNpcSpriteList();
-
 		assetWatcher = new SpriteAssetWatcher();
+
+		SwingUtilities.invokeLater(() -> {
+			loadPlayerSpriteList();
+			loadNpcSpriteList();
+		});
 
 		Logger.log("Loaded sprite editor.");
 	}
@@ -272,15 +271,24 @@ public class SpriteEditor extends BaseEditor
 
 	public static void execute(AbstractCommand cmd)
 	{
-		if (SwingUtilities.isEventDispatchThread())
-			instance().invokeLater(() -> instance().commandManager.executeCommand(cmd));
-		else
-			instance().commandManager.executeCommand(cmd);
+		instance().commandManager.executeCommand(cmd);
 	}
 
 	public void flushUndoRedo()
 	{
 		commandManager.flush();
+	}
+
+	@Override
+	protected void undoEDT()
+	{
+		commandManager.action_Undo();
+	}
+
+	@Override
+	protected void redoEDT()
+	{
+		commandManager.action_Redo();
 	}
 
 	@Override
@@ -303,7 +311,7 @@ public class SpriteEditor extends BaseEditor
 		spriteLoader = new SpriteLoader();
 		spriteLoader.tryLoadingPlayerAssets(false);
 
-		commandManager = new SpriteCommandManager(this, 32);
+		commandManager = new SpriteCommandManager(this, UNDO_LIMIT);
 	}
 
 	@Override
@@ -350,14 +358,6 @@ public class SpriteEditor extends BaseEditor
 	@Override
 	protected void update(double deltaTime)
 	{
-		/*
-		final int guiSpriteID = spriteList.getSelected().id;
-		if(spriteID != guiSpriteID)
-		{
-			setSprite(guiSpriteID, false);
-		}
-		 */
-
 		assetWatcher.process();
 
 		switch (editorMode) {
@@ -396,6 +396,16 @@ public class SpriteEditor extends BaseEditor
 	{
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
+		if (unloadSprite != null) {
+			unloadSprite.unloadTextures();
+			unloadSprite = null;
+		}
+
+		if (loadSprite != null) {
+			loadSprite.loadTextures();
+			loadSprite = null;
+		}
+
 		switch (editorMode) {
 			case Rasters:
 			case Palettes:
@@ -412,6 +422,7 @@ public class SpriteEditor extends BaseEditor
 		if (sprite == null)
 			return;
 
+		//TODO move to EDT command
 		final SpritePalette selectedPalette = (SpritePalette) paletteComboBox.getSelectedItem();
 		if (selectedPalette != null && animOverridePalette != selectedPalette)
 			setPalette(selectedPalette);
@@ -496,9 +507,13 @@ public class SpriteEditor extends BaseEditor
 	 */
 	private void loadNpcSpriteList()
 	{
+		assert (SwingUtilities.isEventDispatchThread());
+
 		Collection<SpriteMetadata> spriteMetas = SpriteLoader.getValidSprites(SpriteSet.Npc);
 		if (spriteMetas.isEmpty())
 			throw new StarRodException("No valid NPC sprites could be found!");
+
+		npcSpriteList.ignoreSelectionChange = true;
 
 		npcSpriteList.setSprites(spriteMetas);
 
@@ -515,6 +530,10 @@ public class SpriteEditor extends BaseEditor
 
 		if (id < 0)
 			Logger.log("Could not select initial NPC sprite");
+
+		setSprite(npcSpriteList.getSelectedIndex() + 1, true);
+
+		npcSpriteList.ignoreSelectionChange = false;
 	}
 
 	/**
@@ -523,9 +542,13 @@ public class SpriteEditor extends BaseEditor
 	 */
 	private void loadPlayerSpriteList()
 	{
+		assert (SwingUtilities.isEventDispatchThread());
+
 		Collection<SpriteMetadata> spriteMetas = SpriteLoader.getValidSprites(SpriteSet.Player);
 		if (spriteMetas.isEmpty())
 			throw new StarRodException("No valid player sprites could be found!");
+
+		playerSpriteList.ignoreSelectionChange = true;
 
 		playerSpriteList.setSprites(spriteMetas);
 
@@ -542,21 +565,47 @@ public class SpriteEditor extends BaseEditor
 
 		if (id < 0)
 			Logger.log("Could not select initial player sprite");
+
+		playerSpriteList.ignoreSelectionChange = false;
 	}
 
-	public boolean setSprite(int id, boolean forceReload)
+	public void setSpritesTab(int tabIndex)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		spriteTabIndex = tabIndex;
+		SpriteList sprites;
 
-		if (!forceReload && spriteID == id)
-			return true;
+		if (spriteTabIndex == 0) {
+			spriteSet = SpriteSet.Npc;
+			sprites = npcSpriteList;
+		}
+		else {
+			spriteSet = SpriteSet.Player;
+			sprites = playerSpriteList;
+		}
+
+		//TODO
+		if (sprites.getSelected() == null)
+			setSprite(-1, false);
+		else
+			setSprite(sprites.getSelected().id, false);
+	}
+
+	public int getSpriteTab()
+	{
+		return spriteTabIndex;
+	}
+
+	public void setSprite(int id, boolean forceReload)
+	{
+		assert (SwingUtilities.isEventDispatchThread());
+
+		if (spriteID == id && !forceReload)
+			return;
 
 		selectedImgAsset = null;
 		highlightedImgAsset = null;
 
-		if (sprite != null) {
-			sprite.unloadTextures();
-		}
+		unloadSprite = sprite;
 
 		assetWatcher.release();
 
@@ -566,64 +615,112 @@ public class SpriteEditor extends BaseEditor
 			sprite = null;
 			setAnimation(null);
 			editorModeTabs.setVisible(false);
-			return true;
+			return;
 		}
+
+		// save current animation selection for old sprite
+		if (sprite != null)
+			sprite.lastSelectedAnim = animList.getSelectedIndex();
 
 		sprite = spriteLoader.getSprite(spriteSet, id, forceReload);
 
-		if (sprite == null) {
-			setAnimation(null);
-			editorModeTabs.setVisible(false);
-			return false;
-		}
+		// suppress selection events from setSelectedIndex and setModel operations on animList
+		animList.ignoreSelectionChange = true;
 
-		if (!editorModeTabs.isVisible())
+		if (sprite != null) {
 			editorModeTabs.setVisible(true);
 
-		assetWatcher.acquire(sprite);
+			assetWatcher.acquire(sprite);
 
-		spriteID = id;
-		sprite.prepareForEditor();
-		sprite.enableStencilBuffer = true;
-		CommandAnimatorEditor.setModels(sprite);
-		KeyframeAnimatorEditor.setModels(sprite);
+			spriteID = id;
+			sprite.prepareForEditor();
+			sprite.enableStencilBuffer = true;
+			CommandAnimatorEditor.setModels(sprite);
+			KeyframeAnimatorEditor.setModels(sprite);
 
-		sprite.makeAtlas();
-		sprite.centerAtlas(sheetCamera, glCanvasWidth(), glCanvasHeight());
+			sprite.makeAtlas();
+			sprite.centerAtlas(sheetCamera, glCanvasWidth(), glCanvasHeight());
 
-		sprite.loadTextures();
+			sprite.loadEditorImages();
+			loadSprite = sprite;
 
-		SwingUtilities.invokeLater(() -> {
-			//spriteList.setSelectedId(id);
+			referenceMaxPos = 0;
+
 			rastersTab.setSpriteEDT(sprite);
 			palettesTab.setSpriteEDT(sprite);
-		});
 
-		referenceMaxPos = 0;
+			animList.setModel(sprite.animations);
 
-		animList.setModel(sprite.animations);
+			// provide an initial selection if it has never been set for this sprite
+			if (!sprite.hasLastSelected) {
+				sprite.hasLastSelected = true;
 
-		if (sprite.animations.size() > 0)
-			animList.setSelectedIndex(0);
+				if (sprite.animations.size() > 0)
+					sprite.lastSelectedAnim = 0;
+				else
+					sprite.lastSelectedAnim = -1;
+			}
 
-		if (sprite.palettes.size() > 0) {
-			paletteComboBox.setModel(new ListAdapterComboboxModel<>(sprite.palettes));
-			paletteComboBox.setSelectedIndex(0);
-			paletteComboBox.setEnabled(true);
+			// restore component selection (if valid) for new animation
+			int old = sprite.lastSelectedAnim;
+			if (old >= -1 && old < sprite.animations.size()) {
+				// note: -1 is a valid index corresponding to no selection
+				animList.setSelectedIndex(old);
+				setAnimation(animList.getSelectedValue());
+			}
+			else if (sprite.animations.size() > 0) {
+				// safety condition -- remove? should not be needed if undo/redo state intact
+				Logger.logfWarning("Reference to out of range animation ID: %d", old);
+				animList.setSelectedIndex(0);
+				setAnimation(animList.getSelectedValue());
+			}
+			else {
+				// extra safety condition -- also remove?
+				Logger.logfWarning("Reference to invalid animation ID: %d", old);
+				animList.setSelectedIndex(-1);
+				setAnimation(null);
+			}
+
+			if (sprite.palettes.size() > 0) {
+				paletteComboBox.setModel(new ListAdapterComboboxModel<>(sprite.palettes));
+				paletteComboBox.setSelectedIndex(0);
+				paletteComboBox.setEnabled(true);
+			}
+			else {
+				// this is not expected to be a valid state...
+				animOverridePalette = null;
+				paletteComboBox.setModel(new ListAdapterComboboxModel<>(new DefaultListModel<SpritePalette>()));
+				paletteComboBox.setEnabled(false);
+			}
+
+			animList.setEnabled(true);
 		}
 		else {
-			// this is not expected to be a valid state...
-			animOverridePalette = null;
-			paletteComboBox.setModel(new ListAdapterComboboxModel<>(new DefaultListModel<SpritePalette>()));
-			paletteComboBox.setEnabled(false);
+			editorModeTabs.setVisible(false);
+
+			animList.setModel(new DefaultListModel<>()); // empty model
+			animList.setEnabled(false);
+
+			setAnimation(null);
 		}
 
-		return true;
+		// re-enable selection events from animList
+		animList.ignoreSelectionChange = false;
 	}
 
-	private boolean setAnimation(SpriteAnimation animation)
+	public Sprite getSprite()
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		return sprite;
+	}
+
+	public int getSpriteID()
+	{
+		return spriteID;
+	}
+
+	public boolean setAnimation(SpriteAnimation animation)
+	{
+		assert (SwingUtilities.isEventDispatchThread());
 
 		if (currentAnim == animation)
 			return true;
@@ -637,20 +734,53 @@ public class SpriteEditor extends BaseEditor
 
 		currentAnim = animation;
 
+		// suppress selection events from setSelectedIndex and setModel operations on compList
+		compList.ignoreSelectionChange = true;
+
 		if (currentAnim != null) {
 			compList.setModel(currentAnim.components);
-			compList.setEnabled(true);
+
+			// provide an initial selection if it has never been set for this animation
+			if (!currentAnim.hasLastSelected) {
+				currentAnim.hasLastSelected = true;
+
+				if (currentAnim.components.size() > 0)
+					currentAnim.lastSelectedComp = 0;
+				else
+					currentAnim.lastSelectedComp = -1;
+			}
 
 			// restore component selection (if valid) for new animation
-			if (currentAnim.lastSelectedComp >= 0 && currentAnim.lastSelectedComp < currentAnim.components.size())
-				compList.setSelectedIndex(currentAnim.lastSelectedComp);
-			else if (currentAnim.components.size() > 0)
+			int old = currentAnim.lastSelectedComp;
+			if (old >= -1 && old < currentAnim.components.size()) {
+				// note: -1 is a valid index corresponding to no selection
+				compList.setSelectedIndex(old);
+				setComponent(compList.getSelectedValue());
+			}
+			else if (currentAnim.components.size() > 0) {
+				// safety condition -- remove? should not be needed if undo/redo state intact
+				Logger.logfWarning("Reference to out of range component ID: %d", old);
 				compList.setSelectedIndex(0);
+				setComponent(compList.getSelectedValue());
+			}
+			else {
+				// extra safety condition -- also remove?
+				Logger.logfWarning("Reference to invalid component ID: %d", old);
+				compList.setSelectedIndex(-1);
+				setComponent(null);
+			}
+
+			compList.setEnabled(true);
 		}
 		else {
 			compList.setModel(new DefaultListModel<>()); // empty model
 			compList.setEnabled(false);
+
+			setComponent(null);
 		}
+
+		// re-enable selection events from compList
+		compList.ignoreSelectionChange = false;
 
 		playerEventQueue.add(PlayerEvent.Reset);
 		return true;
@@ -668,12 +798,18 @@ public class SpriteEditor extends BaseEditor
 		if (currentAnim == null || id < 0 || id >= currentAnim.components.size())
 			return;
 
-		compList.setSelectedIndex(id);
+		SwingUtilities.invokeLater(() -> {
+			compList.setSelectedIndex(id);
+		});
 	}
 
-	private void setComponent(SpriteComponent component)
+	/**
+	 * Sets <code>currentComp</code> and updates the content of component panel accordingly
+	 * @param component
+	 */
+	public void setComponent(SpriteComponent component)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (SwingUtilities.isEventDispatchThread());
 
 		currentComp = component;
 
@@ -691,16 +827,19 @@ public class SpriteEditor extends BaseEditor
 			if (currentAnim != null)
 				currentAnim.setComponentSelected(currentComp.listIndex);
 
-			SwingUtilities.invokeLater(() -> {
-				currentComp.bind(this, commandListPanel, commandEditPanel);
+			currentComp.bind(this, commandListPanel, commandEditPanel);
 
-				compxSpinner.setValue(currentComp.posx);
-				compySpinner.setValue(currentComp.posy);
-				compzSpinner.setValue(currentComp.posz);
+			compxSpinner.setValue(currentComp.posx);
+			compySpinner.setValue(currentComp.posy);
+			compzSpinner.setValue(currentComp.posz);
 
-				componentPanel.repaint();
-			});
+			componentPanel.repaint();
 		}
+	}
+
+	public SpriteComponent getComponent()
+	{
+		return currentComp;
 	}
 
 	public ImgAsset getSelectedImage()
@@ -915,26 +1054,11 @@ public class SpriteEditor extends BaseEditor
 		spriteSetTabs.addTab("NPC Sprites", npcSpriteListPanel);
 		spriteSetTabs.addTab("Player Sprites", playerSpriteListPanel);
 		spriteSetTabs.addChangeListener((e) -> {
-			JTabbedPane sourceTabbedPane = (JTabbedPane) e.getSource();
-			int index = sourceTabbedPane.getSelectedIndex();
-			SpriteList sprites;
+			JTabbedPane tabs = (JTabbedPane) e.getSource();
+			int index = tabs.getSelectedIndex();
 
-			if (index == 0) {
-				spriteSet = SpriteSet.Npc;
-				sprites = npcSpriteList;
-			}
-			else {
-				spriteSet = SpriteSet.Player;
-				sprites = playerSpriteList;
-			}
-
-			invokeLater(() -> {
-				if (sprites.getSelected() == null)
-					setSprite(-1, false);
-				else
-					setSprite(sprites.getSelected().id, false);
-			});
-
+			if (!suppressSelectionEvents)
+				execute(new SetSpritesTab(tabs, index));
 		});
 
 		toolPanel.add(spriteSetTabs, "grow, w " + LEFT_PANEL_WIDTH + "!");
@@ -1084,9 +1208,7 @@ public class SpriteEditor extends BaseEditor
 
 		item = new JMenuItem("Reload Current Sprite");
 		item.addActionListener((e) -> {
-			invokeLater(() -> {
-				setSprite(spriteID, true);
-			});
+			setSprite(spriteID, true);
 		});
 		menu.add(item);
 
@@ -1369,379 +1491,10 @@ public class SpriteEditor extends BaseEditor
 		return componentPanel;
 	}
 
-	private void promptRenameAnim(SpriteAnimation anim)
-	{
-		String name = SwingUtils.getInputDialog()
-			.setParent(getFrame())
-			.setTitle("Set Animation Name")
-			.setMessage("Choose a unique animation name")
-			.setMessageType(JOptionPane.QUESTION_MESSAGE)
-			.setDefault(anim.name)
-			.prompt();
-
-		if (name == null) {
-			// prompt canceled
-			return;
-		}
-
-		name = name.trim();
-
-		if (name.isBlank() || name.equals(anim.name)) {
-			// invalid name provided
-			return;
-		}
-
-		boolean success = anim.assignUniqueName(name);
-		if (!success) {
-			Toolkit.getDefaultToolkit().beep();
-		}
-	}
-
-	private void promptRenameComp(SpriteComponent comp)
-	{
-		String name = SwingUtils.getInputDialog()
-			.setParent(getFrame())
-			.setTitle("Set Component Name")
-			.setMessage("Choose a unique component name")
-			.setMessageType(JOptionPane.QUESTION_MESSAGE)
-			.setDefault(comp.name)
-			.prompt();
-
-		if (name == null) {
-			// prompt canceled
-			return;
-		}
-
-		name = name.trim();
-
-		if (name.isBlank() || name.equals(comp.name)) {
-			// invalid name provided
-			return;
-		}
-
-		boolean success = comp.assignUniqueName(name);
-		if (!success) {
-			Toolkit.getDefaultToolkit().beep();
-		}
-	}
-
-	private void buildAnimationsList()
-	{
-		animList = new DragReorderList<>();
-		animList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-		animList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		animList.setCellRenderer(new SpriteAnimCellRenderer());
-
-		animList.addListSelectionListener((e) -> {
-			if (e.getValueIsAdjusting())
-				return;
-
-			setAnimation(animList.getSelectedValue());
-		});
-
-		animList.addDropListener(() -> {
-			sprite.recalculateIndices();
-		});
-
-		animList.addMouseListener(new MouseAdapter() {
-			@Override
-			public void mouseClicked(MouseEvent e)
-			{
-				// double click to rename
-				if (e.getClickCount() == 2) {
-					int index = animList.locationToIndex(e.getPoint());
-					if (index != -1) {
-						SpriteAnimation anim = animList.getModel().getElementAt(index);
-						promptRenameAnim(anim);
-					}
-				}
-			}
-		});
-
-		animList.addKeyListener(new KeyAdapter() {
-			@Override
-			public void keyPressed(KeyEvent e)
-			{
-				// rename with 'F2' key
-				if (e.getKeyCode() == KeyEvent.VK_F2) {
-					int index = animList.getSelectedIndex();
-					if (index != -1) {
-						SpriteAnimation anim = animList.getModel().getElementAt(index);
-						promptRenameAnim(anim);
-					}
-				}
-			}
-		});
-
-		InputMap im = animList.getInputMap(JComponent.WHEN_FOCUSED);
-		ActionMap am = animList.getActionMap();
-
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK), "copy");
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK), "paste");
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, InputEvent.CTRL_DOWN_MASK), "duplicate");
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete");
-
-		am.put("copy", new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				SpriteAnimation cur = animList.getSelectedValue();
-				if (cur == null) {
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-				animClipboard = cur.copy();
-			}
-		});
-
-		am.put("paste", new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				int i = animList.getSelectedIndex();
-				if (i == -1 || animClipboard == null || animClipboard.parentSprite != sprite) {
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-
-				if (animList.getDefaultModel().size() >= Sprite.MAX_ANIMATIONS) {
-					Logger.logError("Cannot have more than " + Sprite.MAX_ANIMATIONS + " animations!");
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-
-				SpriteAnimation copy = animClipboard.copy();
-				if (copy.assignUniqueName(copy.name)) {
-					animList.getDefaultModel().add(i + 1, copy);
-					sprite.recalculateIndices();
-				}
-				else {
-					Logger.logError("Could not generate unique name for " + copy.name);
-					Toolkit.getDefaultToolkit().beep();
-				}
-			}
-		});
-
-		am.put("duplicate", new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				SpriteAnimation cur = animList.getSelectedValue();
-				if (cur == null) {
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-
-				if (animList.getDefaultModel().size() >= Sprite.MAX_ANIMATIONS) {
-					Logger.logError("Cannot have more than " + Sprite.MAX_ANIMATIONS + " animations!");
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-
-				int i = animList.getSelectedIndex();
-				SpriteAnimation copy = cur.copy();
-
-				if (copy.assignUniqueName(copy.name)) {
-					animList.getDefaultModel().add(i + 1, copy);
-					sprite.recalculateIndices();
-				}
-				else {
-					Logger.logError("Could not generate unique name for " + copy.name);
-					Toolkit.getDefaultToolkit().beep();
-				}
-			}
-		});
-
-		am.put("delete", new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				int i = animList.getSelectedIndex();
-				if (i == -1) {
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-
-				animList.getDefaultModel().remove(i);
-				sprite.recalculateIndices();
-			}
-		});
-	}
-
-	private void buildComponentsList()
-	{
-		compList = new DragReorderList<>();
-		compList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-		compList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		compList.setCellRenderer(new SpriteCompCellRenderer());
-
-		// visibility toggles in the component list are not really functional, we implment them
-		// via a mouse listener on the list and calculate whether mouse click locations overlap
-		// with the open/closed eye icons
-		compList.addMouseListener(new MouseAdapter() {
-			@Override
-			public void mouseClicked(MouseEvent e)
-			{
-				int index = compList.locationToIndex(e.getPoint());
-				if (index != -1) {
-					// double click to rename
-					if (e.getClickCount() == 2) {
-						SpriteComponent comp = compList.getModel().getElementAt(index);
-						promptRenameComp(comp);
-					}
-					else {
-						// test for clicking on visibility toggle icons
-						Rectangle cellBounds = compList.getCellBounds(index, index);
-						int min = cellBounds.x + 8;
-						int max = min + EYE_ICON_WIDTH;
-						if (cellBounds != null && e.getX() > min && e.getX() < max) {
-							SpriteComponent comp = compList.getModel().getElementAt(index);
-							comp.hidden = !comp.hidden;
-							compList.repaint();
-						}
-					}
-				}
-			}
-		});
-
-		compList.addKeyListener(new KeyAdapter() {
-			@Override
-			public void keyPressed(KeyEvent e)
-			{
-				int index = compList.getSelectedIndex();
-
-				switch (e.getKeyCode()) {
-					// rename with 'F2' key
-					case KeyEvent.VK_F2:
-						if (index != -1) {
-							SpriteComponent comp = compList.getModel().getElementAt(index);
-							promptRenameComp(comp);
-						}
-						break;
-					// toggle visibility with 'H' key
-					case KeyEvent.VK_H:
-						if (index != -1) {
-							SpriteComponent comp = compList.getModel().getElementAt(index);
-							comp.hidden = !comp.hidden;
-							compList.repaint();
-						}
-						break;
-				}
-			}
-		});
-
-		compList.addListSelectionListener((e) -> {
-			if (e.getValueIsAdjusting())
-				return;
-
-			setComponent(compList.getSelectedValue());
-		});
-
-		InputMap im = compList.getInputMap(JComponent.WHEN_FOCUSED);
-		ActionMap am = compList.getActionMap();
-
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK), "copy");
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK), "paste");
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, InputEvent.CTRL_DOWN_MASK), "duplicate");
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete");
-
-		am.put("copy", new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				SpriteComponent cur = compList.getSelectedValue();
-				if (cur == null) {
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-				compClipboard = cur.copy();
-			}
-		});
-
-		am.put("paste", new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				int i = compList.getSelectedIndex();
-				if (i == -1 || compClipboard == null) {
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-
-				if (compClipboard.parentAnimation.parentSprite != currentAnim.parentSprite) {
-					Logger.logError("Can't paste component " + compClipboard.name + " from sprite " + compClipboard.parentAnimation.parentSprite);
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-
-				if (compList.getDefaultModel().size() >= Sprite.MAX_COMPONENTS) {
-					Logger.logError("Cannot have more than " + Sprite.MAX_COMPONENTS + " components!");
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-
-				SpriteComponent copy = new SpriteComponent(currentAnim, compClipboard);
-				if (copy.assignUniqueName(copy.name)) {
-					compList.getDefaultModel().add(i + 1, copy);
-					currentAnim.parentSprite.recalculateIndices();
-				}
-				else {
-					Logger.logError("Could not generate unique name for " + copy.name);
-					Toolkit.getDefaultToolkit().beep();
-				}
-			}
-		});
-
-		am.put("duplicate", new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				SpriteComponent cur = compList.getSelectedValue();
-				if (cur == null) {
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-
-				if (compList.getDefaultModel().size() >= Sprite.MAX_COMPONENTS) {
-					Logger.logError("Cannot have more than " + Sprite.MAX_COMPONENTS + " components!");
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-
-				int i = compList.getSelectedIndex();
-				SpriteComponent copy = cur.copy();
-
-				if (copy.assignUniqueName(copy.name)) {
-					compList.getDefaultModel().add(i + 1, copy);
-					currentAnim.parentSprite.recalculateIndices();
-				}
-				else {
-					Logger.logError("Could not generate unique name for " + copy.name);
-					Toolkit.getDefaultToolkit().beep();
-				}
-			}
-		});
-
-		am.put("delete", new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				int i = compList.getSelectedIndex();
-				if (i == -1) {
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-
-				compList.getDefaultModel().remove(i);
-				currentAnim.parentSprite.recalculateIndices();
-			}
-		});
-	}
-
 	private JPanel getAnimationsTab()
 	{
-		buildAnimationsList();
-		buildComponentsList();
+		animList = new AnimationsList(this);
+		compList = new ComponentsList(this);
 
 		cbShowOnlySelectedComponent = new JCheckBox(" Draw current only");
 		cbShowOnlySelectedComponent.setSelected(false);
@@ -1779,10 +1532,11 @@ public class SpriteEditor extends BaseEditor
 
 			SpriteAnimation anim = new SpriteAnimation(sprite);
 			anim.assignUniqueName(String.format("Anim_%X", sprite.animations.size()));
-			sprite.animations.addElement(anim);
-			sprite.recalculateIndices();
 
-			animList.setSelectedValue(anim, true);
+			CommandBatch batch = new CommandBatch("Add Animation");
+			batch.addCommand(new CreateAnimation("Add Animation", sprite, anim));
+			batch.addCommand(new SelectAnimation(animList, anim));
+			execute(batch);
 		});
 
 		JButton btnAddComp = new JButton(ThemedIcon.ADD_16);
@@ -1800,10 +1554,11 @@ public class SpriteEditor extends BaseEditor
 
 			SpriteComponent comp = new SpriteComponent(currentAnim);
 			comp.assignUniqueName(String.format("Comp_%X", currentAnim.components.size()));
-			currentAnim.components.addElement(comp);
-			sprite.recalculateIndices();
 
-			compList.setSelectedValue(comp, true);
+			CommandBatch batch = new CommandBatch("Add Component");
+			batch.addCommand(new CreateComponent("Add Component", currentAnim, comp));
+			batch.addCommand(new SelectComponent(compList, comp));
+			execute(batch);
 		});
 
 		JScrollPane animScrollPane = new JScrollPane(animList);
@@ -1841,103 +1596,6 @@ public class SpriteEditor extends BaseEditor
 		return animTab;
 	}
 
-	private static class SpriteAnimCellRenderer extends JPanel implements ListCellRenderer<SpriteAnimation>
-	{
-		private JLabel nameLabel;
-		private JLabel idLabel;
-
-		public SpriteAnimCellRenderer()
-		{
-			idLabel = new JLabel();
-			nameLabel = new JLabel();
-
-			setLayout(new MigLayout("ins 0, fillx"));
-			add(idLabel, "gapleft 16, w 32!");
-			add(nameLabel, "growx, pushx, gapright push");
-
-			setOpaque(true);
-		}
-
-		@Override
-		public Component getListCellRendererComponent(
-			JList<? extends SpriteAnimation> list,
-			SpriteAnimation anim,
-			int index,
-			boolean isSelected,
-			boolean cellHasFocus)
-		{
-			if (isSelected) {
-				setBackground(list.getSelectionBackground());
-				setForeground(list.getSelectionForeground());
-			}
-			else {
-				setBackground(list.getBackground());
-				setForeground(list.getForeground());
-			}
-
-			setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
-			if (anim != null) {
-				idLabel.setText(String.format("%02X", anim.getIndex()));
-				nameLabel.setText(anim.name);
-			}
-			else {
-				idLabel.setText("XXX");
-				nameLabel.setText("error!");
-			}
-
-			return this;
-		}
-	}
-
-	private static class SpriteCompCellRenderer extends JPanel implements ListCellRenderer<SpriteComponent>
-	{
-		private JLabel iconLabel;
-		private JLabel nameLabel;
-
-		public SpriteCompCellRenderer()
-		{
-			iconLabel = new JLabel();
-			nameLabel = new JLabel();
-
-			setLayout(new MigLayout("ins 0, fillx", "8[" + EYE_ICON_WIDTH + "]8[grow]"));
-			add(iconLabel, "growx");
-			add(nameLabel, "growx");
-
-			setOpaque(true);
-		}
-
-		@Override
-		public Component getListCellRendererComponent(
-			JList<? extends SpriteComponent> list,
-			SpriteComponent comp,
-			int index,
-			boolean isSelected,
-			boolean cellHasFocus)
-		{
-			if (isSelected) {
-				setBackground(list.getSelectionBackground());
-				setForeground(list.getSelectionForeground());
-			}
-			else {
-				setBackground(list.getBackground());
-				setForeground(list.getForeground());
-			}
-
-			setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
-			if (comp != null) {
-				iconLabel.setIcon(comp.hidden ? ThemedIcon.VISIBILITY_OFF_16 : ThemedIcon.VISIBILITY_ON_16);
-				nameLabel.setText(comp.name);
-				nameLabel.setFont(getFont().deriveFont(comp.hidden ? Font.ITALIC : Font.PLAIN));
-			}
-			else {
-				iconLabel.setIcon(null);
-				nameLabel.setText("error!");
-			}
-
-			return this;
-		}
-	}
-
 	private void showControls()
 	{
 		incrementDialogsOpen();
@@ -1950,39 +1608,6 @@ public class SpriteEditor extends BaseEditor
 			.show();
 
 		decrementDialogsOpen();
-	}
-
-	private void onRasterListChange()
-	{
-		assert (!SwingUtilities.isEventDispatchThread());
-		sprite.recalculateIndices();
-		sprite.glRefreshRasters();
-		sprite.makeAtlas();
-
-		CommandAnimatorEditor.setModels(sprite);
-		KeyframeAnimatorEditor.setModels(sprite);
-
-		//XXX
-		for (int i = 0; i < sprite.animations.size(); i++) {
-			SpriteAnimation anim = sprite.animations.get(i);
-			anim.cleanDeletedRasters();
-		}
-	}
-
-	private void onPaletteListChange()
-	{
-		assert (!SwingUtilities.isEventDispatchThread());
-		sprite.recalculateIndices();
-		sprite.glRefreshPalettes();
-
-		CommandAnimatorEditor.setModels(sprite);
-		KeyframeAnimatorEditor.setModels(sprite);
-
-		//XXX
-		for (int i = 0; i < sprite.animations.size(); i++) {
-			SpriteAnimation anim = sprite.animations.get(i);
-			anim.cleanDeletedPalettes();
-		}
 	}
 
 	private void saveSprite()
@@ -2075,14 +1700,21 @@ public class SpriteEditor extends BaseEditor
 
 	public void updatePlaybackStatus()
 	{
-		if (currentAnim == null) {
-			playbackTime.setEnabled(false);
-			playbackTime.setValue(0);
-		}
-		else {
-			playbackTime.setEnabled(true);
-			playbackTime.setValue(Math.max(currentAnim.animTime - 2, 0));
-		}
+		//TODO command lists
+		if (animList.isDragging() || compList.isDragging())
+			return;
+
+		//TODO creates flickering of mouse icon during drag and drop
+		runInEDT(() -> {
+			if (currentAnim == null) {
+				playbackTime.setEnabled(false);
+				playbackTime.setValue(0);
+			}
+			else {
+				playbackTime.setEnabled(true);
+				playbackTime.setValue(Math.max(currentAnim.animTime - 2, 0));
+			}
+		});
 	}
 
 	public SpriteRaster promptForRaster(Sprite s)

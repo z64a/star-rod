@@ -8,8 +8,8 @@ import game.map.mesh.Triangle;
 
 public class CloneTriangles extends AbstractCommand
 {
-	private ArrayList<Triangle> copies;
-	private ArrayList<Triangle> originals;
+	private final ArrayList<Triangle> copies;
+	private final ArrayList<Triangle> originals;
 	private final Selection<Triangle> selection;
 
 	public CloneTriangles(Selection<Triangle> selection)

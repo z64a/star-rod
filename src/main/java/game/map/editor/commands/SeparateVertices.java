@@ -9,9 +9,9 @@ import game.map.mesh.Vertex;
 
 public class SeparateVertices extends AbstractCommand
 {
-	private List<Triangle> triangles;
-	private List<Vertex> oldVertices;
-	private List<Vertex> newVertices;
+	private final List<Triangle> triangles;
+	private final List<Vertex> oldVertices;
+	private final List<Vertex> newVertices;
 
 	public SeparateVertices(List<Triangle> triangles)
 	{

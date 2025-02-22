@@ -13,8 +13,8 @@ import game.map.shape.commands.DisplayCommand.CmdType;
 
 public class JoinModels extends AbstractCommand
 {
-	private List<Model> models;
-	private ArrayList<List<DisplayCommand>> oldDisplayLists;
+	private final List<Model> models;
+	private final ArrayList<List<DisplayCommand>> oldDisplayLists;
 
 	public JoinModels(List<Model> models)
 	{
