@@ -21,6 +21,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import org.apache.commons.io.FilenameUtils;
+
 import app.Environment;
 import app.SwingUtils;
 import assets.AssetHandle;
@@ -35,14 +37,14 @@ public class SelectBackgroundDialog extends JDialog
 	public static void main(String[] args) throws IOException
 	{
 		Environment.initialize();
-		SelectBackgroundDialog.showPrompt(null);
+		SelectBackgroundDialog.showPrompt(null, "");
 		Environment.exit();
 	}
 
-	public static File showPrompt(Component parent)
+	public static File showPrompt(Component parent, String initialSelection)
 	{
 		try {
-			SelectBackgroundDialog chooser = new SelectBackgroundDialog(AssetManager.getBackgrounds());
+			SelectBackgroundDialog chooser = new SelectBackgroundDialog(AssetManager.getBackgrounds(), initialSelection);
 			SwingUtils.showModalDialog(chooser, parent, "Choose Background");
 			if (chooser.result == DialogResult.ACCEPT)
 				return chooser.getSelectedFile();
@@ -60,7 +62,7 @@ public class SelectBackgroundDialog extends JDialog
 	private DialogResult result = DialogResult.NONE;
 	private BackgroundAsset selectedObject;
 
-	private SelectBackgroundDialog(Collection<AssetHandle> assets)
+	private SelectBackgroundDialog(Collection<AssetHandle> assets, String initialSelection)
 	{
 		super(null, java.awt.Dialog.ModalityType.TOOLKIT_MODAL);
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -155,10 +157,26 @@ public class SelectBackgroundDialog extends JDialog
 		add(cancelButton, "sg but");
 		add(selectButton, "sg but");
 
-		if (listModel.size() > 0)
-			list.setSelectedIndex(0);
-		else
+		if (listModel.size() > 0) {
+			for (int i = 0; i < listModel.getSize(); i++) {
+				BackgroundAsset bg = listModel.getElementAt(i);
+				if (initialSelection == null) {
+					if (bg == null) {
+						list.setSelectedValue(null, true);
+						break;
+					}
+				}
+				else if (bg != null) {
+					if (initialSelection.equals(FilenameUtils.getBaseName(bg.assetPath))) {
+						list.setSelectedValue(bg, true);
+						break;
+					}
+				}
+			}
+		}
+		else {
 			setValue(null);
+		}
 	}
 
 	private void updateListFilter()

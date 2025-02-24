@@ -31,7 +31,7 @@ public class CreateComponent extends AbstractCommand
 	{
 		super.exec();
 		anim.components.add(pos, newComp);
-		anim.parentSprite.recalculateIndices();
+		anim.parentSprite.revalidate();
 	}
 
 	@Override
@@ -39,6 +39,6 @@ public class CreateComponent extends AbstractCommand
 	{
 		super.undo();
 		anim.components.remove(pos);
-		anim.parentSprite.recalculateIndices();
+		anim.parentSprite.revalidate();
 	}
 }

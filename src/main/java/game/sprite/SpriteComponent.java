@@ -41,7 +41,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	public final SpriteAnimation parentAnimation;
 
 	public boolean usesKeyframes = false;
-	private CommandAnimator cmdAnimator;
+	public CommandAnimator cmdAnimator;
 	private KeyframeAnimator keyframeAnimator;
 
 	protected ComponentAnimator animator;
@@ -72,6 +72,9 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	public int dx, dy, dz;
 	public int rx, ry, rz;
 	public int scaleX, scaleY, scaleZ;
+
+	public transient boolean deleted;
+	public transient boolean hasError;
 
 	// used while copying animations
 	public transient int parentID;

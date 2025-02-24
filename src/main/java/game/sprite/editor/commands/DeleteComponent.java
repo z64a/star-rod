@@ -19,12 +19,22 @@ public class DeleteComponent extends AbstractCommand
 		this.pos = pos;
 	}
 
+	public DeleteComponent(SpriteAnimation anim, SpriteComponent comp)
+	{
+		super("Delete Component");
+
+		this.anim = anim;
+		this.comp = comp;
+		this.pos = anim.components.indexOf(comp);
+	}
+
 	@Override
 	public void exec()
 	{
 		super.exec();
 		anim.components.remove(pos);
-		anim.parentSprite.recalculateIndices();
+		comp.deleted = true;
+		anim.parentSprite.revalidate();
 	}
 
 	@Override
@@ -32,6 +42,7 @@ public class DeleteComponent extends AbstractCommand
 	{
 		super.undo();
 		anim.components.add(pos, comp);
-		anim.parentSprite.recalculateIndices();
+		comp.deleted = false;
+		anim.parentSprite.revalidate();
 	}
 }

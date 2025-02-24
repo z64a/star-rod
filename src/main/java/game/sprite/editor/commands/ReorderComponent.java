@@ -1,14 +1,15 @@
 package game.sprite.editor.commands;
 
+import javax.swing.DefaultListModel;
+
 import common.commands.AbstractCommand;
-import game.sprite.SpriteAnimation;
 import game.sprite.SpriteComponent;
 import game.sprite.editor.ComponentsList;
 
 public class ReorderComponent extends AbstractCommand
 {
 	private final ComponentsList list;
-	private final SpriteAnimation anim;
+	private final DefaultListModel<SpriteComponent> model;
 	private final SpriteComponent comp;
 	private final int prev;
 	private final int next;
@@ -19,8 +20,8 @@ public class ReorderComponent extends AbstractCommand
 
 		this.list = list;
 		this.comp = comp;
-		this.anim = comp.parentAnimation;
-		this.prev = anim.components.indexOf(comp);
+		this.model = comp.parentAnimation.components;
+		this.prev = model.indexOf(comp);
 		this.next = pos;
 	}
 
@@ -36,12 +37,12 @@ public class ReorderComponent extends AbstractCommand
 		super.exec();
 
 		list.ignoreSelectionChange = true;
-		anim.components.removeElement(comp);
-		anim.components.insertElementAt(comp, next);
+		model.removeElement(comp);
+		model.insertElementAt(comp, next);
 		list.setSelectedValue(comp, true);
 		list.ignoreSelectionChange = false;
 
-		anim.parentSprite.recalculateIndices();
+		comp.parentAnimation.parentSprite.revalidate();
 	}
 
 	@Override
@@ -50,11 +51,11 @@ public class ReorderComponent extends AbstractCommand
 		super.undo();
 
 		list.ignoreSelectionChange = true;
-		anim.components.removeElement(comp);
-		anim.components.insertElementAt(comp, prev);
+		model.removeElement(comp);
+		model.insertElementAt(comp, prev);
 		list.setSelectedValue(comp, true);
 		list.ignoreSelectionChange = false;
 
-		anim.parentSprite.recalculateIndices();
+		comp.parentAnimation.parentSprite.revalidate();
 	}
 }

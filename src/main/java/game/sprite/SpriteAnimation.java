@@ -20,6 +20,9 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 
 	public transient int animTime;
 
+	public transient boolean deleted;
+	public transient boolean hasError;
+
 	public SpriteAnimation(Sprite parentSprite)
 	{
 		this.parentSprite = parentSprite;

@@ -14,11 +14,17 @@ import java.awt.image.DataBufferInt;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 
 import javax.imageio.ImageIO;
+import javax.imageio.stream.MemoryCacheImageInputStream;
 
 import org.apache.commons.io.FileUtils;
 
@@ -28,7 +34,6 @@ import ar.com.hjg.pngj.ImageLineByte;
 import ar.com.hjg.pngj.PngWriter;
 import ar.com.hjg.pngj.chunks.PngChunkPLTE;
 import ar.com.hjg.pngj.chunks.PngChunkTRNS;
-import game.texture.ImageConverter.ImageFormatException;
 import renderer.shaders.components.TexUnit2D;
 
 public class Tile
@@ -243,20 +248,50 @@ public class Tile
 		return load(new File(filename), format, convert);
 	}
 
+	private static class ByteBufferInputStream extends InputStream
+	{
+		private final ByteBuffer buffer;
+
+		public ByteBufferInputStream(ByteBuffer buffer)
+		{
+			this.buffer = buffer;
+		}
+
+		@Override
+		public int read() throws IOException
+		{
+			if (!buffer.hasRemaining()) {
+				return -1; // end of stream
+			}
+			return buffer.get() & 0xFF;
+		}
+
+		@Override
+		public int read(byte[] bytes, int off, int len) throws IOException
+		{
+			if (!buffer.hasRemaining()) {
+				return -1;
+			}
+			len = Math.min(len, buffer.remaining());
+			buffer.get(bytes, off, len);
+			return len;
+		}
+	}
+
 	public static Tile load(File in, TileFormat format, boolean convert)
 	{
-		BufferedImage bimg;
 		Tile tile = null;
-		try {
-			bimg = ImageIO.read(in);
+
+		// using memory mapped files is a 4x performance increase while loading sprites
+		try (FileChannel channel = FileChannel.open(Paths.get(in.getAbsolutePath()), StandardOpenOption.READ)) {
+			MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
+			BufferedImage bimg = ImageIO.read(new MemoryCacheImageInputStream(new ByteBufferInputStream(buffer)));
 			tile = ImageConverter.getTile(bimg, format);
 		}
 		catch (IOException e) {
 			throw new StarRodException("Exception loading image: %s %n%s", in.getAbsolutePath(), e.getMessage());
 		}
-		catch (ImageFormatException e) {
-			throw new ImageFormatException(e.getMessage() + "\n" + in.getAbsolutePath());
-		}
+
 		return tile;
 	}
 
@@ -493,7 +528,7 @@ public class Tile
 
 		/*
 		GL_TEXTURE_MIN_FILTER:
-		
+
 		GL_NEAREST_MIPMAP_NEAREST
 		GL_NEAREST_MIPMAP_LINEAR
 		GL_LINEAR_MIPMAP_NEAREST

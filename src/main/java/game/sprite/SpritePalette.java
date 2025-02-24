@@ -19,7 +19,9 @@ public final class SpritePalette implements Indexable<SpritePalette>
 	protected transient int listIndex;
 	public transient boolean dirty; // needs reupload to GPU
 	public transient boolean modified;
+
 	public transient boolean deleted;
+	public transient boolean hasError;
 
 	public SpritePalette(Sprite spr)
 	{
@@ -41,12 +43,14 @@ public final class SpritePalette implements Indexable<SpritePalette>
 	}
 
 	@Override
+	@Deprecated //TODO remove
 	public String toString()
 	{
 		return filename;
 	}
 
 	@Override
+	@Deprecated //TODO remove
 	public SpritePalette getObject()
 	{
 		return this;

@@ -5,6 +5,7 @@ import static game.sprite.SpriteTableKey.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -12,9 +13,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import org.w3c.dom.Element;
 
+import app.Environment;
 import assets.AssetHandle;
 import assets.AssetManager;
 import assets.AssetSubdir;
@@ -36,14 +41,16 @@ public class SpriteLoader
 	{
 		public final int id;
 		public final String name;
+		public final boolean isPlayer;
 		public final boolean hasBack;
 		private final File xml;
 
-		private SpriteMetadata(int id, String name, File xml, boolean hasBack)
+		private SpriteMetadata(int id, String name, File xml, boolean isPlayer, boolean hasBack)
 		{
 			this.id = id;
 			this.name = name;
 			this.xml = xml;
+			this.isPlayer = isPlayer;
 			this.hasBack = hasBack;
 		}
 
@@ -115,6 +122,14 @@ public class SpriteLoader
 		return spriteMap.values();
 	}
 
+	public Sprite getSprite(SpriteMetadata metadata, boolean forceReload)
+	{
+		if (metadata.isPlayer)
+			return getSprite(SpriteSet.Player, metadata.id, forceReload);
+		else
+			return getSprite(SpriteSet.Npc, metadata.id, forceReload);
+	}
+
 	public Sprite getSprite(SpriteSet set, int id)
 	{
 		return getSprite(set, id, false);
@@ -159,9 +174,10 @@ public class SpriteLoader
 			npcSprite = Sprite.readNpc(md, xmlFile, md.name);
 			npcSprite.imgAssets = loadSpriteImages(AssetManager.getNpcSpriteRasters(md.name));
 			npcSprite.palAssets = loadSpritePalettes(AssetManager.getNpcSpritePalettes(md.name));
+
 			npcSprite.bindPalettes();
 			npcSprite.bindRasters();
-			npcSprite.recalculateIndices();
+			npcSprite.revalidate();
 			npcSpriteCache.put(id, npcSprite);
 		}
 		catch (Throwable e) {
@@ -194,7 +210,7 @@ public class SpriteLoader
 			playerSprite.palAssets = playerPalAssets;
 			playerSprite.bindPalettes();
 			playerSprite.bindRasters();
-			playerSprite.recalculateIndices();
+			playerSprite.revalidate();
 			playerSpriteCache.put(id, playerSprite);
 		}
 		catch (Throwable e) {
@@ -220,50 +236,80 @@ public class SpriteLoader
 		}
 	}
 
-	// load all raster assets
+	// load all raster assets in parallel
 	private static LinkedHashMap<String, ImgAsset> loadSpriteImages(Map<String, AssetHandle> assets)
 	{
-		LinkedHashMap<String, ImgAsset> imgAssets = new LinkedHashMap<>();
+		ConcurrentHashMap<String, ImgAsset> imgAssets = new ConcurrentHashMap<>();
+		List<CompletableFuture<Void>> futures = new ArrayList<>();
 
 		for (Entry<String, AssetHandle> entry : assets.entrySet()) {
 			String name = entry.getKey();
 			AssetHandle ah = entry.getValue();
 
-			try {
-				ImgAsset ia = new ImgAsset(ah);
-				imgAssets.put(name, ia);
-			}
-			catch (Throwable e) {
-				String assetName = ah.getName();
-				if ("PSR_1F880.png".equals(assetName) || "PSR_9CD50.png".equals(assetName))
-					; //TODO these assets should probably be removed in dx?
-				else
-					Logger.logWarning("Failed to load raster: " + assetName);
-			}
+			CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+				try {
+					ImgAsset ia = new ImgAsset(ah);
+					imgAssets.put(name, ia);
+				}
+				catch (Throwable e) {
+					String assetName = ah.getName();
+					if ("PSR_1F880.png".equals(assetName) || "PSR_9CD50.png".equals(assetName))
+						; //TODO these assets should probably be removed in dx?
+					else
+						Logger.logWarning("Failed to load raster: " + assetName);
+				}
+			}, Environment.getExecutor());
+
+			futures.add(future);
 		}
 
-		return imgAssets;
+		CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+		// return a sorted map
+		return imgAssets.entrySet().stream()
+			.sorted(Map.Entry.comparingByKey())
+			.collect(Collectors.toMap(
+				Map.Entry::getKey,
+				Map.Entry::getValue,
+				(e1, e2) -> e1,
+				LinkedHashMap::new
+			));
 	}
 
-	// load all palette assets
+	// load all palette assets in parallel
 	public static LinkedHashMap<String, PalAsset> loadSpritePalettes(Map<String, AssetHandle> assets)
 	{
-		LinkedHashMap<String, PalAsset> palAssets = new LinkedHashMap<>();
+		ConcurrentHashMap<String, PalAsset> palAssets = new ConcurrentHashMap<>();
+		List<CompletableFuture<Void>> futures = new ArrayList<>();
 
 		for (Entry<String, AssetHandle> entry : assets.entrySet()) {
 			String name = entry.getKey();
 			AssetHandle ah = entry.getValue();
 
-			try {
-				PalAsset pa = new PalAsset(ah);
-				palAssets.put(name, pa);
-			}
-			catch (IOException e) {
-				Logger.logWarning("Failed to load palette: " + ah.getName());
-			}
+			CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+				try {
+					PalAsset pa = new PalAsset(ah);
+					palAssets.put(name, pa);
+				}
+				catch (Throwable e) {
+					Logger.logWarning("Failed to load palette: " + ah.getName());
+				}
+			}, Environment.getExecutor());
+
+			futures.add(future);
 		}
 
-		return palAssets;
+		CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+		// return a sorted map
+		return palAssets.entrySet().stream()
+			.sorted(Map.Entry.comparingByKey())
+			.collect(Collectors.toMap(
+				Map.Entry::getKey,
+				Map.Entry::getValue,
+				(e1, e2) -> e1,
+				LinkedHashMap::new
+			));
 	}
 
 	private static void readSpriteTable()
@@ -293,7 +339,7 @@ public class SpriteLoader
 					continue;
 				}
 
-				npcSpriteData.put(curID, new SpriteMetadata(curID, name, ah, false));
+				npcSpriteData.put(curID, new SpriteMetadata(curID, name, ah, false, false));
 				curID++;
 			}
 		}
@@ -332,7 +378,7 @@ public class SpriteLoader
 					hasBack = spriteXmr.readBoolean(spriteRoot, ATTR_SPRITE_HAS_BACK);
 				}
 
-				playerSpriteData.put(curID, new SpriteMetadata(curID, name, ah, hasBack));
+				playerSpriteData.put(curID, new SpriteMetadata(curID, name, ah, true, hasBack));
 				curID++;
 				if (hasBack) {
 					curID++; // consume extra ID for back sprite

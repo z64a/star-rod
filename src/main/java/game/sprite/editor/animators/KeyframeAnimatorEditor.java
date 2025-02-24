@@ -2,29 +2,20 @@ package game.sprite.editor.animators;
 
 import java.awt.Container;
 import java.awt.Dimension;
-import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
-import javax.swing.AbstractAction;
-import javax.swing.ActionMap;
 import javax.swing.BorderFactory;
 import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
-import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
-import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
-import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SpinnerNumberModel;
@@ -44,17 +35,18 @@ import game.sprite.editor.animators.KeyframeAnimator.AnimKeyframe;
 import game.sprite.editor.animators.KeyframeAnimator.Goto;
 import game.sprite.editor.animators.KeyframeAnimator.Keyframe;
 import game.sprite.editor.animators.KeyframeAnimator.Loop;
+import game.sprite.editor.commands.CreateCommand;
 import net.miginfocom.swing.MigLayout;
-import util.ui.DragReorderList;
+import util.ui.EvenSpinner;
 import util.ui.ListAdapterComboboxModel;
 
-public class KeyframeAnimatorEditor
+public class KeyframeAnimatorEditor extends AnimationEditor
 {
 	private static final String PANEL_LAYOUT_PROPERTIES = "ins 0 10 0 10, wrap";
 
 	private static KeyframeAnimatorEditor instance;
 
-	private DragReorderList<AnimKeyframe> commandList;
+	private AnimElementsList<AnimKeyframe> commandList;
 	private ListDataListener commandListListener;
 
 	private JPanel commandListPanel;
@@ -63,7 +55,7 @@ public class KeyframeAnimatorEditor
 	private SpriteEditor editor;
 	private KeyframeAnimator animator;
 
-	private AnimKeyframe clipboard;
+	private AnimElement selected;
 
 	public static void bind(SpriteEditor editor, KeyframeAnimator animator, Container commandListContainer, Container commandEditContainer)
 	{
@@ -121,88 +113,13 @@ public class KeyframeAnimatorEditor
 
 	private KeyframeAnimatorEditor()
 	{
-		commandList = new DragReorderList<>();
+		commandList = new AnimElementsList<AnimKeyframe>(editor, this);
 		commandList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		commandList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
 		commandListPanel = new JPanel(new MigLayout("fill, ins 0, wrap 3",
 			"[grow, sg col][grow, sg col][grow, sg col]"));
 		commandEditPanel = new JPanel(new MigLayout("fill, ins 0, wrap"));
-
-		commandList.addListSelectionListener((e) -> {
-			if (e.getValueIsAdjusting())
-				return;
-
-			AnimKeyframe cmd = commandList.getSelectedValue();
-			commandEditPanel.removeAll();
-			if (cmd != null)
-				commandEditPanel.add(cmd.getPanel(), "grow, pushy");
-			commandEditPanel.revalidate();
-			commandEditPanel.repaint();
-		});
-
-		InputMap im = commandList.getInputMap(JComponent.WHEN_FOCUSED);
-		ActionMap am = commandList.getActionMap();
-
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK), "copy");
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK), "paste");
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, InputEvent.CTRL_DOWN_MASK), "duplicate");
-		im.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete");
-
-		am.put("copy", new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				AnimKeyframe cmd = commandList.getSelectedValue();
-				if (cmd == null) {
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-				clipboard = (AnimKeyframe) cmd.copy();
-			}
-		});
-
-		am.put("paste", new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				int i = commandList.getSelectedIndex();
-				if (i == -1 || clipboard == null) {
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-				AnimKeyframe copy = (AnimKeyframe) clipboard.copy();
-				commandList.getDefaultModel().add(i + 1, copy);
-			}
-		});
-
-		am.put("duplicate", new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				AnimKeyframe cmd = commandList.getSelectedValue();
-				if (cmd == null) {
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-				int i = commandList.getSelectedIndex();
-				AnimKeyframe copy = (AnimKeyframe) cmd.copy();
-				commandList.getDefaultModel().add(i + 1, copy);
-			}
-		});
-
-		am.put("delete", new AbstractAction() {
-			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				int i = commandList.getSelectedIndex();
-				if (i == -1) {
-					Toolkit.getDefaultToolkit().beep();
-					return;
-				}
-				commandList.getDefaultModel().remove(i);
-			}
-		});
 
 		commandList.addMouseListener(new MouseAdapter() {
 			@Override
@@ -266,14 +183,39 @@ public class KeyframeAnimatorEditor
 		};
 	}
 
+	@Override
+	public AnimElement getSelected()
+	{
+		return selected;
+	}
+
+	@Override
+	public void setSelected(AnimElement elem)
+	{
+		if (elem == selected)
+			return;
+
+		selected = elem;
+
+		commandEditPanel.removeAll();
+		if (elem != null)
+			commandEditPanel.add(elem.getPanel(), "grow, pushy");
+		commandEditPanel.revalidate();
+		commandEditPanel.repaint();
+	}
+
 	private static void create(AnimKeyframe cmd)
 	{
+		AnimElementsList<AnimKeyframe> list = instance().commandList;
 		DefaultListModel<AnimKeyframe> model = instance().commandList.getDefaultModel();
 
-		if (instance().commandList.isSelectionEmpty())
-			model.addElement(cmd);
+		int pos;
+		if (list.isSelectionEmpty())
+			pos = model.getSize();
 		else
-			model.add(instance().commandList.getSelectedIndex() + 1, cmd);
+			pos = list.getSelectedIndex() + 1;
+
+		SpriteEditor.execute(new CreateCommand("Create " + cmd.getName(), list, cmd, pos));
 	}
 
 	protected static class GotoPanel extends JPanel
@@ -426,7 +368,7 @@ public class KeyframeAnimatorEditor
 
 		private KeyframePanel()
 		{
-			timeSpinner = new JSpinner();
+			timeSpinner = new EvenSpinner();
 			SwingUtils.setFontSize(timeSpinner, 12);
 			timeSpinner.setModel(new SpinnerNumberModel(1, 0, 300, 1));
 			SwingUtils.centerSpinnerText(timeSpinner);

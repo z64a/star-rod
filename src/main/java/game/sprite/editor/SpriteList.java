@@ -74,8 +74,7 @@ public class SpriteList extends JPanel
 
 			if (!ignoreSelectionChange) {
 				SpriteList list = SpriteList.this;
-				int newID = list.getSelected() == null ? -1 : list.getSelected().id;
-				SpriteEditor.execute(new SelectSprite(list, newID));
+				SpriteEditor.execute(new SelectSprite(list, list.getSelected()));
 			}
 		});
 
@@ -98,33 +97,20 @@ public class SpriteList extends JPanel
 		updateListFilter();
 	}
 
-	public void setSelectedID(int nextID)
+	public void setSelected(SpriteMetadata metadata)
 	{
-		SpriteMetadata match = null;
-
-		for (SpriteMetadata sprite : listModel) {
-			if (sprite.id == nextID) {
-				match = sprite;
-				break;
-			}
-		}
-
-		list.setSelectedValue(match, true);
-	}
-
-	public void setSelectedIndex(int id)
-	{
-		list.setSelectedIndex(id);
-	}
-
-	public int getSelectedIndex()
-	{
-		return list.getSelectedIndex();
+		updateListFilter(metadata);
+		list.setSelectedValue(metadata, true);
 	}
 
 	public SpriteMetadata getSelected()
 	{
 		return list.getSelectedValue();
+	}
+
+	public void setSelectedIndex(int id)
+	{
+		list.setSelectedIndex(id);
 	}
 
 	public int getInitialSelection(String name)
@@ -141,11 +127,23 @@ public class SpriteList extends JPanel
 
 	private void updateListFilter()
 	{
+		updateListFilter(list.getSelectedValue());
+	}
+
+	private void updateListFilter(SpriteMetadata selected)
+	{
 		filteredListModel.setFilter(element -> {
 			SpriteMetadata sprite = (SpriteMetadata) element;
+
+			// provide an exception for the currently selected item
+			if (sprite == selected)
+				return true;
+
 			String needle = String.format("%02X ", sprite.id) + " " + sprite.name.toUpperCase();
 			return (needle.contains(filterField.getText().toUpperCase()));
 		});
+
+		list.setSelectedValue(selected, true);
 	}
 
 	private static class SpriteMetaCellRenderer extends JPanel implements ListCellRenderer<SpriteMetadata>

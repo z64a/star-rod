@@ -1,29 +1,38 @@
 package game.sprite.editor.commands;
 
 import common.commands.AbstractCommand;
+import game.sprite.Sprite;
+import game.sprite.SpriteLoader.SpriteMetadata;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.SpriteList;
 
 public class SelectSprite extends AbstractCommand
 {
 	private final SpriteList list;
-	private final int prevID;
-	private final int nextID;
+	private final SpriteMetadata prev;
+	private final SpriteMetadata next;
 
-	public SelectSprite(SpriteList list, int id)
+	public SelectSprite(SpriteList list, SpriteMetadata next)
 	{
 		super("Select Sprite");
 		this.list = list;
-		this.nextID = id;
+		this.next = next;
 
 		SpriteEditor editor = SpriteEditor.instance();
-		this.prevID = editor.getSpriteID();
+		Sprite spr = editor.getSprite();
+		prev = (spr != null) ? spr.metadata : null;
 	}
 
 	@Override
 	public boolean shouldExec()
 	{
-		return prevID != nextID;
+		return prev != next;
+	}
+
+	@Override
+	public boolean modifiesData()
+	{
+		return false;
 	}
 
 	@Override
@@ -33,11 +42,11 @@ public class SelectSprite extends AbstractCommand
 
 		// force list selection to update, but suppress generating a new command
 		list.ignoreSelectionChange = true;
-		list.setSelectedID(nextID);
+		list.setSelected(next);
 		list.ignoreSelectionChange = false;
 
 		SpriteEditor editor = SpriteEditor.instance();
-		editor.setSprite(nextID, false);
+		editor.setSprite(next, false);
 	}
 
 	@Override
@@ -47,10 +56,10 @@ public class SelectSprite extends AbstractCommand
 
 		// force list selection to update, but suppress generating a new command
 		list.ignoreSelectionChange = true;
-		list.setSelectedID(prevID);
+		list.setSelected(prev);
 		list.ignoreSelectionChange = false;
 
 		SpriteEditor editor = SpriteEditor.instance();
-		editor.setSprite(prevID, false);
+		editor.setSprite(prev, false);
 	}
 }

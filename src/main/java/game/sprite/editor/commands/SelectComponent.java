@@ -28,6 +28,12 @@ public class SelectComponent extends AbstractCommand
 	}
 
 	@Override
+	public boolean modifiesData()
+	{
+		return false;
+	}
+
+	@Override
 	public void exec()
 	{
 		super.exec();

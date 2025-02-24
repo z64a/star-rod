@@ -5,27 +5,33 @@ import javax.swing.JTabbedPane;
 import common.commands.AbstractCommand;
 import game.sprite.editor.SpriteEditor;
 
-public class SetSpritesTab extends AbstractCommand
+public class SelectModesTab extends AbstractCommand
 {
 	private final SpriteEditor editor;
 	private final JTabbedPane tabs;
 	private final int prevIndex;
 	private final int nextIndex;
 
-	public SetSpritesTab(JTabbedPane tabs, int index)
+	public SelectModesTab(JTabbedPane tabs, int index)
 	{
-		super(index == 0 ? "View NPC Sprites" : "View Player Sprites");
+		super("Change Editor Tab");
 		this.tabs = tabs;
 		this.nextIndex = index;
 
 		editor = SpriteEditor.instance();
-		this.prevIndex = editor.getSpriteTab();
+		this.prevIndex = editor.getModesTab();
 	}
 
 	@Override
 	public boolean shouldExec()
 	{
 		return prevIndex != nextIndex;
+	}
+
+	@Override
+	public boolean modifiesData()
+	{
+		return false;
 	}
 
 	@Override
@@ -39,7 +45,7 @@ public class SetSpritesTab extends AbstractCommand
 		editor.suppressSelectionEvents = false;
 
 		SpriteEditor editor = SpriteEditor.instance();
-		editor.setSpritesTab(nextIndex);
+		editor.setModesTab(nextIndex);
 	}
 
 	@Override
@@ -53,6 +59,6 @@ public class SetSpritesTab extends AbstractCommand
 		editor.suppressSelectionEvents = false;
 
 		SpriteEditor editor = SpriteEditor.instance();
-		editor.setSpritesTab(prevIndex);
+		editor.setModesTab(prevIndex);
 	}
 }

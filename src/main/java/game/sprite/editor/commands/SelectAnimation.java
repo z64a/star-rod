@@ -28,6 +28,12 @@ public class SelectAnimation extends AbstractCommand
 	}
 
 	@Override
+	public boolean modifiesData()
+	{
+		return false;
+	}
+
+	@Override
 	public void exec()
 	{
 		super.exec();

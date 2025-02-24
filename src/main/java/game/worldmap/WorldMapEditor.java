@@ -32,9 +32,9 @@ import common.BaseEditorSettings;
 import common.BasicCamera;
 import common.BasicCommandManager;
 import common.BasicEditorCommand;
-import common.MousePixelRead;
 import common.KeyboardInput.KeyInputEvent;
 import common.MouseInput.MouseManagerListener;
+import common.MousePixelRead;
 import game.ProjectDatabase;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
@@ -109,6 +109,8 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 
 	private JPanel sidePanel;
 	private JPanel selectedPanel;
+
+	private volatile boolean modified = false;
 
 	public WorldMapEditor()
 	{
@@ -687,6 +689,12 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 			locations = new ArrayList<>();
 			Logger.printStackTrace(e);
 		}
+	}
+
+	@Override
+	protected boolean isModified()
+	{
+		return modified;
 	}
 
 	@Override

@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.regex.Matcher;
@@ -57,6 +59,14 @@ public abstract class Environment
 
 	public static ImageIcon ICON_DEFAULT = loadIconResource(ResourceType.Icon, "icon.png");
 	public static ImageIcon ICON_ERROR = null;
+
+	private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
+	public static final ExecutorService GLOBAL_EXECUTOR = Executors.newFixedThreadPool(NUM_THREADS);
+
+	public static ExecutorService getExecutor()
+	{
+		return GLOBAL_EXECUTOR;
+	}
 
 	private static enum OSFamily
 	{

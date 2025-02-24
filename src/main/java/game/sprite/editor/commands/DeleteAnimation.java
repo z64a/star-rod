@@ -24,7 +24,8 @@ public class DeleteAnimation extends AbstractCommand
 	{
 		super.exec();
 		sprite.animations.remove(pos);
-		sprite.recalculateIndices();
+		anim.deleted = true;
+		sprite.revalidate();
 	}
 
 	@Override
@@ -32,6 +33,7 @@ public class DeleteAnimation extends AbstractCommand
 	{
 		super.undo();
 		sprite.animations.add(pos, anim);
-		sprite.recalculateIndices();
+		anim.deleted = false;
+		sprite.revalidate();
 	}
 }

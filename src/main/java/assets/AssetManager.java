@@ -4,16 +4,38 @@ import static app.Directories.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import app.Environment;
 import app.input.IOUtils;
+import util.Logger;
 
 public class AssetManager
 {
+	public static void main(String[] args) throws IOException
+	{
+		Environment.initialize();
+
+		long t0 = System.nanoTime();
+
+		Collection<AssetHandle> assets = getMessages();
+
+		long t1 = System.nanoTime();
+		System.out.println("Took " + ((t1 - t0) / 1e6) + " ms");
+
+		System.out.println(assets.size());
+
+		Environment.exit();
+	}
+
 	public static File getTopLevelAssetDir()
 	{
 		return Environment.assetDirectories.get(0);
@@ -88,53 +110,14 @@ public class AssetManager
 
 	public static Map<String, AssetHandle> getNpcSpriteRasters(String spriteName) throws IOException
 	{
-		// use TreeMap to keep assets sorted
-		TreeMap<String, AssetHandle> assetMap = new TreeMap<>();
-
-		for (File assetDir : Environment.assetDirectories) {
-			File npcDir = AssetSubdir.NPC_SPRITE.get(assetDir);
-			File imgDir = new File(npcDir, spriteName + "/rasters/");
-			if (!imgDir.exists())
-				continue;
-
-			for (File file : IOUtils.getFilesWithExtension(imgDir, EXT_PNG, false)) {
-				String filename = file.getName();
-				String relPath = AssetSubdir.NPC_SPRITE + spriteName + "/rasters/" + filename;
-
-				AssetHandle ah = new AssetHandle(assetDir, relPath);
-				if (!assetMap.containsKey(filename)) {
-					assetMap.put(filename, ah);
-				}
-			}
-		}
-
-		return assetMap;
+		return getAssetMap(AssetSubdir.NPC_SPRITE, spriteName + "/rasters/", EXT_PNG);
 	}
 
 	public static Map<String, AssetHandle> getNpcSpritePalettes(String spriteName) throws IOException
 	{
-		// use TreeMap to keep assets sorted
-		TreeMap<String, AssetHandle> assetMap = new TreeMap<>();
-
-		for (File assetDir : Environment.assetDirectories) {
-			File npcDir = AssetSubdir.NPC_SPRITE.get(assetDir);
-			File imgDir = new File(npcDir, spriteName + "/palettes/");
-			if (!imgDir.exists())
-				continue;
-
-			for (File file : IOUtils.getFilesWithExtension(imgDir, EXT_PNG, false)) {
-				String filename = file.getName();
-				String relPath = AssetSubdir.NPC_SPRITE + spriteName + "/palettes/" + filename;
-
-				AssetHandle ah = new AssetHandle(assetDir, relPath);
-				if (!assetMap.containsKey(filename)) {
-					assetMap.put(filename, ah);
-				}
-			}
-		}
-
-		return assetMap;
+		return getAssetMap(AssetSubdir.NPC_SPRITE, spriteName + "/palettes/", EXT_PNG);
 	}
+
 
 	public static AssetHandle getPlayerSprite(String spriteName)
 	{
@@ -143,166 +126,119 @@ public class AssetManager
 
 	public static Map<String, AssetHandle> getPlayerSpriteRasters() throws IOException
 	{
-		// use TreeMap to keep assets sorted
-		TreeMap<String, AssetHandle> assetMap = new TreeMap<>();
-
-		for (File assetDir : Environment.assetDirectories) {
-			File imgDir = AssetSubdir.PLR_SPRITE_IMG.get(assetDir);
-			if (!imgDir.exists())
-				continue;
-
-			for (File file : IOUtils.getFilesWithExtension(imgDir, EXT_PNG, false)) {
-				String filename = file.getName();
-				String relPath = AssetSubdir.PLR_SPRITE_IMG + filename;
-
-				AssetHandle ah = new AssetHandle(assetDir, relPath);
-				if (!assetMap.containsKey(filename)) {
-					assetMap.put(filename, ah);
-				}
-			}
-		}
-
-		return assetMap;
+		return getAssetMap(AssetSubdir.PLR_SPRITE_IMG, EXT_PNG);
 	}
 
 	public static Map<String, AssetHandle> getPlayerSpritePalettes() throws IOException
 	{
-		// use TreeMap to keep assets sorted
-		TreeMap<String, AssetHandle> assetMap = new TreeMap<>();
-
-		for (File assetDir : Environment.assetDirectories) {
-			File imgDir = AssetSubdir.PLR_SPRITE_PAL.get(assetDir);
-			if (!imgDir.exists())
-				continue;
-
-			for (File file : IOUtils.getFilesWithExtension(imgDir, EXT_PNG, false)) {
-				String filename = file.getName();
-				String relPath = AssetSubdir.PLR_SPRITE_PAL + filename;
-
-				AssetHandle ah = new AssetHandle(assetDir, relPath);
-				if (!assetMap.containsKey(filename)) {
-					assetMap.put(filename, ah);
-				}
-			}
-		}
-
-		return assetMap;
+		return getAssetMap(AssetSubdir.PLR_SPRITE_PAL, EXT_PNG);
 	}
 
 	public static Collection<AssetHandle> getMapSources() throws IOException
 	{
-		// use TreeMap to keep assets sorted
-		TreeMap<String, AssetHandle> assetMap = new TreeMap<>();
-
-		for (File assetDir : Environment.assetDirectories) {
-			File mapDir = AssetSubdir.MAP_GEOM.get(assetDir);
-			if (!mapDir.exists())
-				continue;
-
-			for (File file : IOUtils.getFilesWithExtension(mapDir, EXT_MAP, false)) {
-				String filename = file.getName();
-				if (filename.endsWith(MAP_CRASH_SUFFIX)) {
-					continue;
-				}
-				if (filename.endsWith(MAP_BACKUP_SUFFIX)) {
-					continue;
-				}
-				AssetHandle ah = new AssetHandle(assetDir, AssetSubdir.MAP_GEOM + filename);
-				if (!assetMap.containsKey(filename)) {
-					assetMap.put(filename, ah);
-				}
-			}
-		}
-
-		return assetMap.values();
+		return getAssets(AssetSubdir.MAP_GEOM, EXT_MAP, (p) -> {
+			// skip crash and backup files
+			String filename = p.getFileName().toString();
+			return !(filename.endsWith(MAP_CRASH_SUFFIX) || filename.endsWith(MAP_BACKUP_SUFFIX));
+		});
 	}
 
 	public static Collection<AssetHandle> getBackgrounds() throws IOException
 	{
-		// use TreeMap to keep assets sorted
-		TreeMap<String, AssetHandle> assetMap = new TreeMap<>();
-
-		for (File assetDir : Environment.assetDirectories) {
-			File bgDir = AssetSubdir.MAP_BG.get(assetDir);
-			if (!bgDir.exists())
-				continue;
-
-			for (File file : IOUtils.getFilesWithExtension(bgDir, EXT_PNG, false)) {
-				String filename = file.getName();
-				AssetHandle ah = new AssetHandle(assetDir, AssetSubdir.MAP_BG + filename);
-				if (!assetMap.containsKey(filename)) {
-					assetMap.put(filename, ah);
-				}
-			}
-		}
-
-		return assetMap.values();
+		return getAssets(AssetSubdir.MAP_BG, EXT_PNG);
 	}
 
 	public static Collection<AssetHandle> getLegacyTextureArchives() throws IOException
 	{
-		// use TreeMap to keep assets sorted
-		TreeMap<String, AssetHandle> assetMap = new TreeMap<>();
-
-		for (File assetDir : Environment.assetDirectories) {
-			File texDir = AssetSubdir.MAP_TEX.get(assetDir);
-			if (!texDir.exists())
-				continue;
-
-			for (File file : IOUtils.getFilesWithExtension(texDir, EXT_OLD_TEX, false)) {
-				String filename = file.getName();
-				AssetHandle ah = new AssetHandle(assetDir, AssetSubdir.MAP_TEX + filename);
-				if (!assetMap.containsKey(filename)) {
-					assetMap.put(filename, ah);
-				}
-			}
-		}
-
-		return assetMap.values();
+		return getAssets(AssetSubdir.MAP_TEX, EXT_OLD_TEX);
 	}
 
 	public static Collection<AssetHandle> getTextureArchives() throws IOException
 	{
-		// use TreeMap to keep assets sorted
-		TreeMap<String, AssetHandle> assetMap = new TreeMap<>();
-
-		for (File assetDir : Environment.assetDirectories) {
-			File texDir = AssetSubdir.MAP_TEX.get(assetDir);
-			if (!texDir.exists())
-				continue;
-
-			for (File file : IOUtils.getFilesWithExtension(texDir, EXT_NEW_TEX, false)) {
-				String filename = file.getName();
-				AssetHandle ah = new AssetHandle(assetDir, AssetSubdir.MAP_TEX + filename);
-				if (!assetMap.containsKey(filename)) {
-					assetMap.put(filename, ah);
-				}
-			}
-		}
-
-		return assetMap.values();
+		return getAssets(AssetSubdir.MAP_TEX, EXT_NEW_TEX);
 	}
 
 	public static Collection<AssetHandle> getMessages() throws IOException
 	{
-		// use TreeMap to keep assets sorted
-		TreeMap<String, AssetHandle> assetMap = new TreeMap<>();
+		return getAssets(AssetSubdir.MSG, EXT_MSG);
+	}
 
-		for (File assetDir : Environment.assetDirectories) {
-			File msgDir = AssetSubdir.MSG.get(assetDir);
-			if (!msgDir.exists())
+	private static Collection<AssetHandle> getAssets(AssetSubdir dir, String ext)
+	{
+		return getAssets(dir, "", ext, null);
+	}
+
+	private static Collection<AssetHandle> getAssets(AssetSubdir dir, String subdir, String ext)
+	{
+		return getAssets(dir, subdir, ext, null);
+	}
+
+	private static Collection<AssetHandle> getAssets(AssetSubdir dir, String ext, Predicate<Path> shouldAccept)
+	{
+		return getAssets(dir, "", ext, shouldAccept);
+	}
+
+	private static Collection<AssetHandle> getAssets(AssetSubdir dir, String subdir, String ext, Predicate<Path> shouldAccept)
+	{
+		Map<String, AssetHandle> assetMap = getAssetMap(dir, subdir, ext, shouldAccept);
+
+		// return sorted by filename
+		return assetMap.entrySet().stream()
+			.sorted(Map.Entry.comparingByKey())
+			.map(Map.Entry::getValue)
+			.collect(Collectors.toList());
+	}
+
+	private static Map<String, AssetHandle> getAssetMap(AssetSubdir dir, String ext)
+	{
+		return getAssetMap(dir, "", ext, null);
+	}
+
+	private static Map<String, AssetHandle> getAssetMap(AssetSubdir dir, String subdir, String ext)
+	{
+		return getAssetMap(dir, subdir, ext, null);
+	}
+
+	private static Map<String, AssetHandle> getAssetMap(AssetSubdir dir, String ext, Predicate<Path> shouldAccept)
+	{
+		return getAssetMap(dir, "", ext, shouldAccept);
+	}
+
+	private static Map<String, AssetHandle> getAssetMap(AssetSubdir dir, String subdir, String ext, Predicate<Path> shouldAccept)
+	{
+		Map<String, AssetHandle> assetMap = new HashMap<>();
+
+		for (File stackDir : Environment.assetDirectories) {
+			Path assetDir = dir.get(stackDir).toPath();
+
+			if (!subdir.isEmpty())
+				assetDir = assetDir.resolve(subdir);
+
+			if (!Files.exists(assetDir) || !Files.isDirectory(assetDir)) {
 				continue;
+			}
 
-			for (File file : IOUtils.getFilesWithExtension(msgDir, EXT_MSG, false)) {
-				String filename = file.getName();
-				AssetHandle ah = new AssetHandle(assetDir, AssetSubdir.MSG + filename);
-				if (!assetMap.containsKey(filename)) {
-					assetMap.put(filename, ah);
+			// only single directory depth allowed, we can use DirectoryStream instead of Files.walk
+			try (DirectoryStream<Path> stream = Files.newDirectoryStream(assetDir, "*" + ext)) {
+				for (Path file : stream) {
+					String filename = file.getFileName().toString();
+
+					if (shouldAccept != null && !shouldAccept.test(file))
+						continue;
+
+					String relPath = dir + subdir + filename;
+					AssetHandle ah = new AssetHandle(stackDir, relPath);
+
+					// only add first occurance down the asset stack traversal
+					assetMap.putIfAbsent(filename, ah);
 				}
+			}
+			catch (IOException e) {
+				Logger.logError("Failed to read directory: " + assetDir);
 			}
 		}
 
-		return assetMap.values();
+		return assetMap;
 	}
 
 	public static Collection<AssetHandle> getIcons() throws IOException

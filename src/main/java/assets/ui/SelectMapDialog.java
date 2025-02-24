@@ -144,7 +144,7 @@ public class SelectMapDialog extends JDialog
 		newMap.texName = FilenameUtils.getBaseName(texFile.getName());
 
 		// prompt for background
-		File bgFile = SelectBackgroundDialog.showPrompt(parent);
+		File bgFile = SelectBackgroundDialog.showPrompt(parent, "");
 		if (bgFile != null) {
 			newMap.bgName = FilenameUtils.getBaseName(bgFile.getName());
 			newMap.hasBackground = true;

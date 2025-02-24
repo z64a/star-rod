@@ -94,6 +94,8 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 	private OpenFileChooser importFileChooser;
 	private SaveFileChooser exportFileChooser;
 
+	private volatile boolean modified = false;
+
 	private boolean bDrawGrid = true;
 	private boolean bDrawBackground = false;
 	private JCheckBoxMenuItem cbGrid;
@@ -806,6 +808,12 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 		RenderState.setDepthWrite(false);
 		LineRenderQueue.render(true);
 		RenderState.setDepthWrite(true);
+	}
+
+	@Override
+	protected boolean isModified()
+	{
+		return modified;
 	}
 
 	@Override

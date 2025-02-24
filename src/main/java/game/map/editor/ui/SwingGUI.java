@@ -58,6 +58,7 @@ import assets.ui.SelectBackgroundDialog;
 import assets.ui.SelectMapDialog;
 import assets.ui.SelectTexDialog;
 import common.EditorCanvas;
+import common.commands.AbstractCommand;
 import game.ProjectDatabase;
 import game.map.Map;
 import game.map.Map.SetBackground;
@@ -70,7 +71,6 @@ import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.EditorMode;
 import game.map.editor.MapEditor.IShutdownListener;
 import game.map.editor.PaintManager;
-import common.commands.AbstractCommand;
 import game.map.editor.commands.ChangeTextureArchive;
 import game.map.editor.commands.CreateObjects;
 import game.map.editor.render.TextureManager;
@@ -378,7 +378,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 	public void destroyGUI()
 	{
 		setVisible(false);
-		dispose();
+		dispose(); //TODO verify if necessary
 	}
 
 	public boolean isModalDialogOpen()
@@ -1327,7 +1327,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 	private void prompt_LoadTextureArchive()
 	{
 		openDialogCount.increment();
-		File texFile = SelectTexDialog.showPrompt();
+		File texFile = SelectTexDialog.showPrompt(this, editor.map.texName);
 		openDialogCount.decrement();
 
 		if (texFile != null) {
@@ -1342,7 +1342,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 	private void prompt_ChangeBackground()
 	{
 		openDialogCount.increment();
-		File bgFile = SelectBackgroundDialog.showPrompt(this);
+		File bgFile = SelectBackgroundDialog.showPrompt(this, editor.map.bgName);
 		openDialogCount.decrement();
 
 		if (bgFile != null) {

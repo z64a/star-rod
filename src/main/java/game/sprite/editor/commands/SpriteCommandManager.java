@@ -79,6 +79,6 @@ public class SpriteCommandManager
 
 	public void onModified()
 	{
-		editor.modified = true;
+		editor.notifyModified();
 	}
 }

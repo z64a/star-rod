@@ -1,5 +1,7 @@
 package game.sprite.editor.animators;
 
+import java.awt.Component;
+
 import game.sprite.SpriteComponent;
 
 public abstract class AnimElement
@@ -12,8 +14,12 @@ public abstract class AnimElement
 		this.ownerComp = c;
 	}
 
+	public abstract String getName();
+
 	public abstract AnimElement copy();
 
 	// returns TRUE if the next keyframe should be executed
 	public abstract boolean advance();
+
+	public abstract Component getPanel();
 }

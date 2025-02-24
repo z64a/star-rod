@@ -1,6 +1,6 @@
 package game.sprite;
 
-import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.apache.commons.io.FilenameUtils;
 
@@ -37,7 +37,7 @@ public class ImgRef
 		this.resolved = other.resolved;
 	}
 
-	public void lookup(LinkedHashMap<String, ImgAsset> imgAssets)
+	public void lookup(Map<String, ImgAsset> imgAssets)
 	{
 		if (filename.isBlank()) {
 			asset = null;

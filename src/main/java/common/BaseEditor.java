@@ -92,7 +92,6 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	private static final float MESSAGE_FADE_TIME = 0.5f;
 
 	// editor state
-	public volatile boolean modified = false;
 	private volatile boolean closeRequested = false;
 	private volatile OpenDialogCounter openDialogs = new OpenDialogCounter();
 
@@ -366,7 +365,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			public void windowClosing(WindowEvent e)
 			{
 				openDialogs.increment();
-				closeRequested = !modified || promptForSave();
+				closeRequested = !isModified() || promptForSave();
 				if (!closeRequested)
 					openDialogs.decrement();
 			}
@@ -599,6 +598,8 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	@Override
 	protected void glDraw()
 	{}
+
+	protected abstract boolean isModified();
 
 	protected abstract void saveChanges();
 

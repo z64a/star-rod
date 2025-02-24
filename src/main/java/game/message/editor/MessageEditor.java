@@ -180,6 +180,8 @@ public class MessageEditor extends BaseEditor
 	private volatile boolean ignoreDocumentContentChanges = false;
 	private volatile boolean ignoreDocumentFormatChanges = false;
 
+	private volatile boolean modified = false;
+
 	// IO
 	public ArrayList<MessageAsset> resourcesToSave = new ArrayList<>();
 
@@ -1333,6 +1335,12 @@ public class MessageEditor extends BaseEditor
 		menu.add(cbShowGrid);
 
 		cbPrintDelay.setPreferredSize(menuItemDimension);
+	}
+
+	@Override
+	protected boolean isModified()
+	{
+		return modified;
 	}
 
 	@Override

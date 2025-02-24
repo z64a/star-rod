@@ -1,6 +1,6 @@
 package game.sprite;
 
-import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class SpriteRaster
 {
@@ -17,8 +17,8 @@ public class SpriteRaster
 	protected transient int listIndex;
 	public transient String name = "";
 
-	//TODO
-	public boolean deleted;
+	public transient boolean deleted;
+	public transient boolean hasError;
 
 	public SpriteRaster(Sprite spr)
 	{
@@ -55,7 +55,7 @@ public class SpriteRaster
 		return back.asset;
 	}
 
-	public void bindRasters(LinkedHashMap<String, ImgAsset> imgAssets)
+	public void bindRasters(Map<String, ImgAsset> imgAssets)
 	{
 		front.lookup(imgAssets);
 		back.lookup(imgAssets);

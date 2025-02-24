@@ -49,6 +49,7 @@ public class DragReorderTransferHandle<T> extends TransferHandler
 		try {
 			@SuppressWarnings("unchecked")
 			DragReorderList<T> sourceList = (DragReorderList<T>) support.getTransferable().getTransferData(dummyFlavor);
+
 			if (sourceList != list) // ensure the source and target are the same list
 				return false;
 		}

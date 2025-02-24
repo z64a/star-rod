@@ -61,6 +61,9 @@ public class Sprite implements XmlSerializable
 	public transient int lastSelectedAnim;
 	public transient boolean hasLastSelected = false;
 
+	public transient boolean deleted; // unused
+	public transient boolean hasError;
+
 	// have the animators generate their animation commands
 	public void prepareForEditor()
 	{
@@ -75,32 +78,58 @@ public class Sprite implements XmlSerializable
 			}
 		}
 
-		recalculateIndices();
+		revalidate();
 
 		readyForEditor = true;
 	}
 
-	public void recalculateIndices()
+	/**
+	 * Computes list indices for objects which need them and recomputes hasError propagation.
+	 */
+	public void revalidate()
 	{
+		hasError = false;
+
 		int idx = 0;
 		for (SpritePalette pal : palettes) {
-			if (pal.disabled) {
+			if (pal.disabled)
 				pal.listIndex = -1;
-			}
-			else {
+			else
 				pal.listIndex = idx++;
-			}
+
+			//TODO check for missing asset errors
+
+			if (pal.hasError)
+				hasError = true;
 		}
 
 		for (int i = 0; i < rasters.size(); i++) {
-			rasters.get(i).listIndex = i;
+			SpriteRaster raster = rasters.get(i);
+			raster.listIndex = i;
+
+			//TODO check for missing asset errors
+
+			if (raster.hasError)
+				hasError = true;
 		}
 
 		for (int i = 0; i < animations.size(); i++) {
 			SpriteAnimation anim = animations.get(i);
 			anim.listIndex = i;
-			for (int j = 0; j < anim.components.size(); j++)
-				anim.components.get(j).listIndex = j;
+			anim.hasError = false;
+
+			for (int j = 0; j < anim.components.size(); j++) {
+				SpriteComponent comp = anim.components.get(j);
+				comp.listIndex = j;
+
+				//TODO check for broken SetParent/SetRaster/SetPalette errors
+
+				if (comp.hasError)
+					anim.hasError = true;
+			}
+
+			if (anim.hasError)
+				hasError = true;
 		}
 	}
 
@@ -126,6 +155,8 @@ public class Sprite implements XmlSerializable
 	private int atlasH, atlasW;
 
 	public transient BoundingBox aabb = new BoundingBox();
+
+	public transient boolean modified;
 
 	protected Sprite(SpriteMetadata metadata, SpriteSet set)
 	{
@@ -423,7 +454,7 @@ public class Sprite implements XmlSerializable
 	@Override
 	public void toXML(XmlWriter xmw)
 	{
-		recalculateIndices();
+		revalidate();
 
 		XmlTag root = xmw.createTag(TAG_SPRITE, false);
 		xmw.addHex(root, ATTR_SPRITE_NUM_COMPONENTS, maxComponents);

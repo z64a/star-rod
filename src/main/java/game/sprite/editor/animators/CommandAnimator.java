@@ -8,7 +8,8 @@ import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.TreeMap;
 
-import javax.swing.DefaultListModel;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
 
 import app.SwingUtils;
 import game.sprite.RawAnimation;
@@ -28,12 +29,13 @@ import game.sprite.editor.animators.CommandAnimatorEditor.SetRotationPanel;
 import game.sprite.editor.animators.CommandAnimatorEditor.SetScalePanel;
 import game.sprite.editor.animators.CommandAnimatorEditor.SetUnknownPanel;
 import game.sprite.editor.animators.CommandAnimatorEditor.WaitPanel;
+import util.IterableListModel;
 import util.Logger;
 
 public class CommandAnimator implements ComponentAnimator
 {
-	public DefaultListModel<AnimCommand> commandListModel = new DefaultListModel<>();
-	public DefaultListModel<Label> labels = new DefaultListModel<>();
+	public final IterableListModel<AnimCommand> commandListModel;
+	public final IterableListModel<Label> labels;
 	private final SpriteComponent comp;
 
 	private SpriteEditor editor;
@@ -41,16 +43,63 @@ public class CommandAnimator implements ComponentAnimator
 	// command list control state
 	private int listPosition;
 
+	private boolean ignoreListDataChanges = false;
+
 	public CommandAnimator(SpriteComponent comp)
 	{
 		this.comp = comp;
+
+		commandListModel = new IterableListModel<>();
+		labels = new IterableListModel<>();
+
+		commandListModel.addListDataListener(new ListDataListener() {
+			@Override
+			public void intervalAdded(ListDataEvent e)
+			{
+				onListChanged(e);
+			}
+
+			@Override
+			public void intervalRemoved(ListDataEvent e)
+			{
+				onListChanged(e);
+			}
+
+			@Override
+			public void contentsChanged(ListDataEvent e)
+			{
+				onListChanged(e);
+			}
+
+			private void onListChanged(ListDataEvent e)
+			{
+				if (ignoreListDataChanges)
+					return;
+				findAllLabels();
+			}
+		});
+	}
+
+	private void findAllLabels()
+	{
+		labels.clear();
+		for (AnimCommand other : commandListModel) {
+			if (other instanceof Label lbl) {
+				labels.addElement(lbl);
+			}
+		}
 	}
 
 	@Override
 	public void bind(SpriteEditor editor, Container commandListContainer, Container commandEditContainer)
 	{
 		this.editor = editor;
+
+		ignoreListDataChanges = true;
 		CommandAnimatorEditor.bind(editor, this, commandListContainer, commandEditContainer);
+		ignoreListDataChanges = false;
+
+		findAllLabels();
 	}
 
 	private AnimElement setListPosition(int pos)
@@ -153,6 +202,7 @@ public class CommandAnimator implements ComponentAnimator
 	@Override
 	public boolean generate(RawAnimation rawAnim)
 	{
+		ignoreListDataChanges = true;
 		commandListModel.clear();
 
 		TreeMap<Integer, Label> labels = new TreeMap<>();
@@ -234,6 +284,10 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		reset();
+
+		ignoreListDataChanges = false;
+		findAllLabels();
+
 		return true;
 	}
 
@@ -384,8 +438,6 @@ public class CommandAnimator implements ComponentAnimator
 		protected abstract int length();
 
 		protected abstract void addTo(List<Short> seq);
-
-		protected abstract Component getPanel();
 	}
 
 	// Used with Goto and Loop to specify targets
@@ -420,6 +472,12 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public String getName()
+		{
+			return "Label";
+		}
+
+		@Override
 		public String toString()
 		{
 			return "<html>" + SwingUtils.makeFontTag(SwingUtils.getGreenTextColor())
@@ -435,7 +493,7 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Component getPanel()
 		{
-			LabelPanel.instance().set(this);
+			LabelPanel.instance().bind(this);
 			return LabelPanel.instance();
 		}
 
@@ -480,6 +538,12 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public String getName()
+		{
+			return "Wait";
+		}
+
+		@Override
 		public String toString()
 		{
 			if (highlighted && editor.highlightCommand)
@@ -497,7 +561,7 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Component getPanel()
 		{
-			WaitPanel.instance().set(this);
+			WaitPanel.instance().bind(this);
 			return WaitPanel.instance();
 		}
 
@@ -546,9 +610,15 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public String getName()
+		{
+			return "Set Raster";
+		}
+
+		@Override
 		public String toString()
 		{
-			return (img == null) ? "Clear Raster" : "Use Raster: " + img;
+			return (img == null) ? "Clear Raster" : "Raster: " + img;
 		}
 
 		@Override
@@ -560,7 +630,7 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Component getPanel()
 		{
-			SetImagePanel.instance().set(this);
+			SetImagePanel.instance().bind(this);
 			return SetImagePanel.instance();
 		}
 
@@ -610,6 +680,12 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public String getName()
+		{
+			return "Goto";
+		}
+
+		@Override
 		public String toString()
 		{
 			if (label == null)
@@ -632,7 +708,11 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Component getPanel()
 		{
-			GotoPanel.instance().set(this, labels);
+			// if the label is missing from the command, add it
+			if (!labels.contains(label))
+				labels.addElement(label);
+
+			GotoPanel.instance().bind(this, labels);
 			return GotoPanel.instance();
 		}
 
@@ -694,9 +774,15 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public String getName()
+		{
+			return "Set Position";
+		}
+
+		@Override
 		public String toString()
 		{
-			return "Offset Position";
+			return String.format("Position: (%d, %d, %d)", x, y, z);
 		}
 
 		@Override
@@ -708,7 +794,7 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Component getPanel()
 		{
-			SetPositionPanel.instance().set(this);
+			SetPositionPanel.instance().bind(this);
 			return SetPositionPanel.instance();
 		}
 
@@ -757,9 +843,15 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
-		public String toString()
+		public String getName()
 		{
 			return "Set Rotation";
+		}
+
+		@Override
+		public String toString()
+		{
+			return String.format("Rotation: (%d, %d, %d)", x, y, z);
 		}
 
 		@Override
@@ -771,7 +863,7 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Component getPanel()
 		{
-			SetRotationPanel.instance().set(this);
+			SetRotationPanel.instance().bind(this);
 			return SetRotationPanel.instance();
 		}
 
@@ -832,9 +924,31 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
-		public String toString()
+		public String getName()
 		{
 			return "Set Scale";
+		}
+
+		@Override
+		public String toString()
+		{
+			String typeName;
+			switch (type) {
+				case 0:
+					typeName = "All";
+					break;
+				case 1:
+					typeName = "X";
+					break;
+				case 2:
+					typeName = "Y";
+				case 3:
+					typeName = "Z";
+					break;
+				default:
+					throw new RuntimeException(String.format("Invalid scale command type: %X", type));
+			}
+			return "Scale " + typeName + ": " + scalePercent + "%";
 		}
 
 		@Override
@@ -846,7 +960,7 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Component getPanel()
 		{
-			SetScalePanel.instance().set(this);
+			SetScalePanel.instance().bind(this);
 			return SetScalePanel.instance();
 		}
 
@@ -887,15 +1001,20 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public boolean advance()
 		{
-			assert (pal != null);
 			ownerComp.sp = pal;
 			return false;
 		}
 
 		@Override
+		public String getName()
+		{
+			return "Set Palette";
+		}
+
+		@Override
 		public String toString()
 		{
-			return (pal == null) ? "Use Default Palette" : "Use Palette: " + pal;
+			return (pal == null) ? "Use Default Palette" : "Palette: " + pal;
 		}
 
 		@Override
@@ -907,7 +1026,7 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Component getPanel()
 		{
-			SetPalettePanel.instance().set(this);
+			SetPalettePanel.instance().bind(this);
 			return SetPalettePanel.instance();
 		}
 
@@ -961,6 +1080,12 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public String getName()
+		{
+			return "Loop";
+		}
+
+		@Override
 		public String toString()
 		{
 			if (label == null)
@@ -983,7 +1108,7 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Component getPanel()
 		{
-			LoopPanel.instance().set(this, labels);
+			LoopPanel.instance().bind(this, labels);
 			return LoopPanel.instance();
 		}
 
@@ -1035,9 +1160,15 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public String getName()
+		{
+			return "Set Unknown";
+		}
+
+		@Override
 		public String toString()
 		{
-			return "Set unknown: " + value;
+			return "Set Unknown: " + value;
 		}
 
 		@Override
@@ -1049,7 +1180,7 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Component getPanel()
 		{
-			SetUnknownPanel.instance().set(this);
+			SetUnknownPanel.instance().bind(this);
 			return SetUnknownPanel.instance();
 		}
 
@@ -1093,9 +1224,15 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public String getName()
+		{
+			return "Set Parent";
+		}
+
+		@Override
 		public String toString()
 		{
-			return "Set parent: " + comp;
+			return "Parent: " + comp;
 		}
 
 		@Override
@@ -1107,7 +1244,7 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Component getPanel()
 		{
-			SetParentPanel.instance().set(this);
+			SetParentPanel.instance().bind(this);
 			return SetParentPanel.instance();
 		}
 
@@ -1153,6 +1290,12 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public String getName()
+		{
+			return "Set Notify";
+		}
+
+		@Override
 		public String toString()
 		{
 			return "Set Notify: " + value;
@@ -1167,7 +1310,7 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Component getPanel()
 		{
-			SetNotifyPanel.instance().set(this);
+			SetNotifyPanel.instance().bind(this);
 			return SetNotifyPanel.instance();
 		}
 

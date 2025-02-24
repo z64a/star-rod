@@ -390,8 +390,6 @@ public class KeyframeAnimator implements ComponentAnimator
 		public abstract boolean advance();
 
 		protected abstract void addTo(List<Short> seq);
-
-		protected abstract Component getPanel();
 	}
 
 	public class Goto extends AnimKeyframe
@@ -441,6 +439,12 @@ public class KeyframeAnimator implements ComponentAnimator
 				throw new RuntimeException("Goto is missing target: " + target.name);
 
 			seq.add((short) (0x2000 | (pos & 0xFFF)));
+		}
+
+		@Override
+		public String getName()
+		{
+			return "Goto";
 		}
 
 		@Override
@@ -504,6 +508,12 @@ public class KeyframeAnimator implements ComponentAnimator
 					setCurrentKeyframe(target);
 			}
 			return true;
+		}
+
+		@Override
+		public String getName()
+		{
+			return "Loop";
 		}
 
 		@Override
@@ -810,6 +820,12 @@ public class KeyframeAnimator implements ComponentAnimator
 			int s0 = cmdQueue.poll();
 			notifyValue = (s0 & 0xFF);
 			return 1;
+		}
+
+		@Override
+		public String getName()
+		{
+			return "Keyframe";
 		}
 
 		@Override

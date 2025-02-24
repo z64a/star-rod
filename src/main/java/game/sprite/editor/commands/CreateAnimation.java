@@ -31,7 +31,7 @@ public class CreateAnimation extends AbstractCommand
 	{
 		super.exec();
 		sprite.animations.add(pos, anim);
-		sprite.recalculateIndices();
+		sprite.revalidate();
 	}
 
 	@Override
@@ -39,6 +39,6 @@ public class CreateAnimation extends AbstractCommand
 	{
 		super.undo();
 		sprite.animations.remove(pos);
-		sprite.recalculateIndices();
+		sprite.revalidate();
 	}
 }
