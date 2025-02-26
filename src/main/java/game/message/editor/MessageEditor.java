@@ -202,6 +202,12 @@ public class MessageEditor extends BaseEditor
 	{
 		super(EDITOR_SETTINGS);
 
+		setup();
+	}
+
+	@Override
+	public void afterCreateGui()
+	{
 		Config cfg = getConfig();
 		if (cfg != null) {
 			cbPrintDelay.setSelected(cfg.getBoolean(Options.StrPrintDelay));

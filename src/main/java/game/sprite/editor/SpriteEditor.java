@@ -83,6 +83,7 @@ import renderer.shaders.ShaderManager;
 import renderer.shaders.scene.SpriteShader;
 import util.Logger;
 import util.identity.IdentityHashSet;
+import util.ui.DragReorderList;
 import util.ui.EvenSpinner;
 import util.ui.IntTextField;
 import util.ui.ListAdapterComboboxModel;
@@ -113,6 +114,7 @@ public class SpriteEditor extends BaseEditor
 	private SpriteLoader spriteLoader;
 
 	private IdentityHashSet<Sprite> modifiedSprites = new IdentityHashSet<>();
+	private IdentityHashSet<DragReorderList<?>> dragLists = new IdentityHashSet<>();
 
 	private SpriteList playerSpriteList;
 	private SpriteList npcSpriteList;
@@ -142,6 +144,7 @@ public class SpriteEditor extends BaseEditor
 	// since the gui is created in the superclass constructor,
 	// setting values here will desync them from the checkboxes!
 	private boolean showGuide;
+	private boolean showAxes;
 	private boolean showBackground;
 	private boolean flipHorizontal;
 	private boolean useBackFacing;
@@ -198,14 +201,14 @@ public class SpriteEditor extends BaseEditor
 	}
 
 	private int modeTabIndex = 0; // slightly awkward duplication of state with editorMode
-	private EditorMode editorMode = EditorMode.Animation;
+	private EditorMode editorMode = EditorMode.Rasters;
 
 	private int spriteTabIndex = 0; // slightly awkward duplication of state with spriteSet
 	private SpriteSet spriteSet = SpriteSet.Npc;
 
 	private Tile referenceTile;
 	private Palette referencePal;
-	private int referenceMaxPos;
+	private int referencePos;
 
 	// only a single sprite can be selected at a time
 	private Sprite sprite;
@@ -214,6 +217,10 @@ public class SpriteEditor extends BaseEditor
 	private ImgAsset selectedImgAsset;
 	private ImgAsset highlightedImgAsset;
 
+	private SpriteComponent dragComp;
+	private float dragStartX;
+	private float dragStartY;
+
 	private Sprite unloadSprite = null;
 	private Sprite loadSprite = null;
 
@@ -221,7 +228,7 @@ public class SpriteEditor extends BaseEditor
 
 	private volatile SpritePalette animOverridePalette;
 
-	public volatile boolean suppressSelectionEvents = false;
+	public volatile boolean ignoreSelectionEvents = false;
 
 	// handles comnmand execution and undo/redo
 	private SpriteCommandManager commandManager;
@@ -244,7 +251,7 @@ public class SpriteEditor extends BaseEditor
 		instance = this;
 
 		animCamera = new SpriteCamera(
-			0.0f, 32.0f, 0.3f,
+			0.0f, 64.0f, 0.7f,
 			0.5f, 0.125f, 2.0f,
 			true, false);
 
@@ -254,6 +261,8 @@ public class SpriteEditor extends BaseEditor
 			true, true);
 
 		assetWatcher = new SpriteAssetWatcher();
+
+		setup();
 
 		SwingUtilities.invokeLater(() -> {
 			loadPlayerSpriteList();
@@ -308,6 +317,7 @@ public class SpriteEditor extends BaseEditor
 		Config cfg = getConfig();
 		if (cfg != null) {
 			useFiltering = cfg.getBoolean(Options.SprUseFiltering);
+			showAxes = cfg.getBoolean(Options.SprEnableAxes);
 			showBackground = cfg.getBoolean(Options.SprEnableBackground);
 			highlightComponent = cfg.getBoolean(Options.SprHighlightSelected);
 			highlightCommand = cfg.getBoolean(Options.SprHighlightCommand);
@@ -332,7 +342,7 @@ public class SpriteEditor extends BaseEditor
 
 		Sprite referenceSprite = spriteLoader.getSprite(SpriteSet.Player, 1);
 		if (referenceSprite != null) {
-			referenceTile = referenceSprite.rasters.get(0).getFront().img;
+			referenceTile = new Tile(referenceSprite.rasters.get(0).getFront().img);
 			referenceTile.glLoad(GL_REPEAT, GL_REPEAT, false);
 
 			Color c = new Color(0, 60, 80, 255);
@@ -398,6 +408,9 @@ public class SpriteEditor extends BaseEditor
 						playbackCounter = playbackRate;
 					}
 				}
+
+				if (dragComp != null)
+					componentDragUpdate();
 
 				handleInput(deltaTime);
 				break;
@@ -509,6 +522,11 @@ public class SpriteEditor extends BaseEditor
 
 	private void stepCurrentAnim()
 	{
+		for (DragReorderList<?> list : dragLists) {
+			if (list.isDragging())
+				return;
+		}
+
 		currentAnim.step();
 		commandListPanel.repaint();
 		updatePlaybackStatus();
@@ -596,22 +614,18 @@ public class SpriteEditor extends BaseEditor
 	public void setSpritesTab(int tabIndex)
 	{
 		spriteTabIndex = tabIndex;
-		SpriteList sprites;
+		SpriteList spriteList;
 
 		if (spriteTabIndex == 0) {
 			spriteSet = SpriteSet.Npc;
-			sprites = npcSpriteList;
+			spriteList = npcSpriteList;
 		}
 		else {
 			spriteSet = SpriteSet.Player;
-			sprites = playerSpriteList;
+			spriteList = playerSpriteList;
 		}
 
-		//TODO
-		if (sprites.getSelected() == null)
-			setSprite(null, false);
-		else
-			setSprite(sprites.getSelected(), false);
+		setSprite(spriteList.getSelected(), false);
 	}
 
 	public int getSpriteTab()
@@ -667,8 +681,6 @@ public class SpriteEditor extends BaseEditor
 
 			sprite.loadEditorImages();
 			loadSprite = sprite;
-
-			referenceMaxPos = 0;
 
 			rastersTab.setSpriteEDT(sprite);
 			palettesTab.setSpriteEDT(sprite);
@@ -847,11 +859,13 @@ public class SpriteEditor extends BaseEditor
 				currentAnim.setComponentSelected(currentComp.listIndex);
 
 			currentComp.bind(this, commandListPanel, commandEditPanel);
+			currentComp.calculateTiming();
 
-			//TODO
+			ignoreSelectionEvents = true;
 			compxSpinner.setValue(currentComp.posx);
 			compySpinner.setValue(currentComp.posy);
 			compzSpinner.setValue(currentComp.posz);
+			ignoreSelectionEvents = false;
 
 			componentPanel.repaint();
 		}
@@ -972,19 +986,21 @@ public class SpriteEditor extends BaseEditor
 		if (showBackground)
 			animCamera.drawBackground();
 
-		animCamera.setPerspView();
+		animCamera.setOrthoView();
 		animCamera.glLoadTransform();
 		RenderState.setModelMatrix(null);
 
-		drawAxes(1.0f);
+		if (showAxes)
+			drawAxes(1.0f);
 
 		if (showGuide && referenceTile != null)
 			renderReference();
 
-		TransformMatrix viewMtx = animCamera.viewMatrix;
-		if (flipHorizontal)
-			viewMtx.scale(-1.0, 1.0, 1.0);
-		RenderState.setViewMatrix(viewMtx);
+		if (flipHorizontal) {
+			TransformMatrix mtx = TransformMatrix.identity();
+			mtx.scale(-1.0, 1.0, 1.0);
+			RenderState.setModelMatrix(mtx);
+		}
 
 		glEnable(GL_STENCIL_TEST);
 		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
@@ -1001,12 +1017,20 @@ public class SpriteEditor extends BaseEditor
 
 	private void renderReference()
 	{
-		int xmax = sprite.aabb.max.getX();
-		if (xmax > referenceMaxPos)
-			referenceMaxPos = xmax;
+		if (sprite == null)
+			return;
+
+		int xmax = flipHorizontal ? -sprite.aabb.min.getX() : sprite.aabb.max.getX();
+		if (xmax != 0) {
+			int delta = xmax - referencePos;
+			if (referencePos == 0 || delta >= 30)
+				referencePos = xmax;
+			else
+				referencePos = referencePos + (xmax - referencePos) / 5;
+		}
 
 		TransformMatrix mtx = RenderState.pushModelMatrix();
-		mtx.translate(referenceMaxPos + 20, 0, 0);
+		mtx.translate(referencePos + 20, 0, 0);
 
 		SpriteShader shader = ShaderManager.use(SpriteShader.class);
 
@@ -1054,13 +1078,12 @@ public class SpriteEditor extends BaseEditor
 		editorModeTabs.addTab(EditorMode.Rasters.tabName, rastersTab);
 		editorModeTabs.addTab(EditorMode.Palettes.tabName, palettesTab);
 		editorModeTabs.addTab(EditorMode.Animation.tabName, getAnimationsTab());
-		editorModeTabs.setSelectedIndex(EditorMode.Animation.tabIndex);
 
 		editorModeTabs.addChangeListener((e) -> {
 			JTabbedPane tabs = (JTabbedPane) e.getSource();
 			int index = tabs.getSelectedIndex();
 
-			if (!suppressSelectionEvents)
+			if (!ignoreSelectionEvents)
 				execute(new SelectModesTab(tabs, index));
 		});
 
@@ -1078,7 +1101,7 @@ public class SpriteEditor extends BaseEditor
 			JTabbedPane tabs = (JTabbedPane) e.getSource();
 			int index = tabs.getSelectedIndex();
 
-			if (!suppressSelectionEvents)
+			if (!ignoreSelectionEvents)
 				execute(new SelectSpritesTab(tabs, index));
 		});
 
@@ -1275,6 +1298,14 @@ public class SpriteEditor extends BaseEditor
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
 
+		final JMenuItem itemAxes = new JCheckBoxMenuItem("Show Axes");
+		itemAxes.setSelected(showAxes);
+		itemAxes.addActionListener((e) -> {
+			showAxes = itemAxes.isSelected();
+			getConfig().setBoolean(Options.SprEnableAxes, showAxes);
+		});
+		menu.add(itemAxes);
+
 		final JMenuItem itemBackground = new JCheckBoxMenuItem("Show Background");
 		itemBackground.setSelected(showBackground);
 		itemBackground.addActionListener((e) -> {
@@ -1465,8 +1496,8 @@ public class SpriteEditor extends BaseEditor
 		SwingUtils.setFontSize(compxSpinner, 12);
 		compxSpinner.setModel(new SpinnerNumberModel(0, -128, 128, 1));
 		compxSpinner.addChangeListener((e) -> {
-			if (currentComp != null)
-				currentComp.posx = (int) compxSpinner.getValue();
+			if (!ignoreSelectionEvents)
+				execute(new SetComponentPosCommand(currentComp, 0, (int) compxSpinner.getValue()));
 		});
 		SwingUtils.centerSpinnerText(compxSpinner);
 		SwingUtils.addBorderPadding(compxSpinner);
@@ -1475,8 +1506,8 @@ public class SpriteEditor extends BaseEditor
 		SwingUtils.setFontSize(compySpinner, 12);
 		compySpinner.setModel(new SpinnerNumberModel(0, -128, 128, 1));
 		compySpinner.addChangeListener((e) -> {
-			if (currentComp != null)
-				currentComp.posy = (int) compySpinner.getValue();
+			if (!ignoreSelectionEvents)
+				execute(new SetComponentPosCommand(currentComp, 1, (int) compySpinner.getValue()));
 		});
 		SwingUtils.centerSpinnerText(compySpinner);
 		SwingUtils.addBorderPadding(compySpinner);
@@ -1485,8 +1516,8 @@ public class SpriteEditor extends BaseEditor
 		SwingUtils.setFontSize(compzSpinner, 12);
 		compzSpinner.setModel(new SpinnerNumberModel(0, -32, 32, 1));
 		compzSpinner.addChangeListener((e) -> {
-			if (currentComp != null)
-				currentComp.posz = (int) compzSpinner.getValue();
+			if (!ignoreSelectionEvents)
+				execute(new SetComponentPosCommand(currentComp, 2, (int) compzSpinner.getValue()));
 		});
 		SwingUtils.centerSpinnerText(compzSpinner);
 		SwingUtils.addBorderPadding(compzSpinner);
@@ -1498,6 +1529,95 @@ public class SpriteEditor extends BaseEditor
 		relativePosPanel.add(compzSpinner, "w 72!");
 
 		return relativePosPanel;
+	}
+
+	public class SetComponentPosCommand extends AbstractCommand
+	{
+		private final SpriteComponent comp;
+		private final int coord;
+		private final int next;
+		private final int prev;
+
+		public SetComponentPosCommand(SpriteComponent comp, int coord, int next)
+		{
+			super("Set Component Offset");
+
+			this.comp = comp;
+			this.coord = coord;
+			this.next = next;
+
+			switch (coord) {
+				case 0:
+					this.prev = comp.posx;
+					break;
+				case 1:
+					this.prev = comp.posy;
+					break;
+				default:
+					this.prev = comp.posz;
+					break;
+			}
+		}
+
+		@Override
+		public void exec()
+		{
+			switch (coord) {
+				case 0:
+					comp.posx = next;
+					break;
+				case 1:
+					comp.posy = next;
+					break;
+				default:
+					comp.posz = next;
+					break;
+			}
+
+			ignoreSelectionEvents = true;
+			switch (coord) {
+				case 0:
+					compxSpinner.setValue(next);
+					break;
+				case 1:
+					compySpinner.setValue(next);
+					break;
+				default:
+					compzSpinner.setValue(next);
+					break;
+			}
+			ignoreSelectionEvents = false;
+		}
+
+		@Override
+		public void undo()
+		{
+			switch (coord) {
+				case 0:
+					comp.posx = prev;
+					break;
+				case 1:
+					comp.posy = prev;
+					break;
+				default:
+					comp.posz = prev;
+					break;
+			}
+
+			ignoreSelectionEvents = true;
+			switch (coord) {
+				case 0:
+					compxSpinner.setValue(prev);
+					break;
+				case 1:
+					compySpinner.setValue(prev);
+					break;
+				default:
+					compzSpinner.setValue(prev);
+					break;
+			}
+			ignoreSelectionEvents = false;
+		}
 	}
 
 	private JPanel getComponentPanel()
@@ -1737,6 +1857,67 @@ public class SpriteEditor extends BaseEditor
 		}
 	}
 
+	@Override
+	public void startHoldingLMB()
+	{
+		if (editorMode == EditorMode.Animation && currentComp != null && currentComp.highlighted)
+			componentDragBegin();
+	}
+
+	@Override
+	public void stopHoldingLMB()
+	{
+		if (editorMode == EditorMode.Animation && dragComp != null)
+			componentDragEnd();
+	}
+
+	@Override
+	public void mouseExit()
+	{
+		if (editorMode == EditorMode.Animation && dragComp != null)
+			componentDragEnd();
+	}
+
+	private void componentDragBegin()
+	{
+		dragComp = currentComp;
+		dragComp.dragX = 0;
+		dragComp.dragY = 0;
+
+		dragStartX = animCamera.toWorldX(mouse.getPosX());
+		dragStartY = animCamera.toWorldY(mouse.getPosY());
+	}
+
+	private void componentDragEnd()
+	{
+		CommandBatch batch = new CommandBatch("Set Component Offset");
+		batch.addCommand(new SetComponentPosCommand(dragComp, 0, dragComp.posx + dragComp.dragX));
+		batch.addCommand(new SetComponentPosCommand(dragComp, 1, dragComp.posy + dragComp.dragY));
+		execute(batch);
+
+		dragComp.dragX = 0;
+		dragComp.dragY = 0;
+		dragComp = null;
+	}
+
+	private void componentDragUpdate()
+	{
+		dragComp.dragX = Math.round(animCamera.toWorldX(mouse.getPosX()) - dragStartX);
+		dragComp.dragY = Math.round(animCamera.toWorldY(mouse.getPosY()) - dragStartY);
+
+		if (flipHorizontal)
+			dragComp.dragX = -dragComp.dragX;
+
+		if (currentComp != null) {
+			SwingUtilities.invokeLater(() -> {
+				ignoreSelectionEvents = true;
+				compxSpinner.setValue(currentComp.posx + currentComp.dragX);
+				compySpinner.setValue(currentComp.posy + currentComp.dragY);
+				ignoreSelectionEvents = false;
+			});
+		}
+	}
+
 	public void resetAnimation()
 	{
 		playerEventQueue.add(PlayerEvent.Reset);
@@ -1744,10 +1925,6 @@ public class SpriteEditor extends BaseEditor
 
 	public void updatePlaybackStatus()
 	{
-		//TODO command lists
-		if (animList.isDragging() || compList.isDragging())
-			return;
-
 		//TODO creates flickering of mouse icon during drag and drop
 		runInEDT(() -> {
 			if (currentAnim == null) {
@@ -1759,6 +1936,11 @@ public class SpriteEditor extends BaseEditor
 				playbackTime.setValue(Math.max(currentAnim.animTime - 2, 0));
 			}
 		});
+	}
+
+	public void registerDragList(DragReorderList<?> list)
+	{
+		dragLists.add(list);
 	}
 
 	public SpriteRaster promptForRaster(Sprite s)

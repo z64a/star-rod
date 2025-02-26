@@ -42,6 +42,8 @@ public class ReorderCommand extends AbstractCommand
 		model.insertElementAt(cmd, next);
 		list.setSelectedValue(cmd, true);
 		list.ignoreSelectionChange = false;
+
+		cmd.ownerComp.calculateTiming();
 	}
 
 	@Override
@@ -54,5 +56,7 @@ public class ReorderCommand extends AbstractCommand
 		model.insertElementAt(cmd, prev);
 		list.setSelectedValue(cmd, true);
 		list.ignoreSelectionChange = false;
+
+		cmd.ownerComp.calculateTiming();
 	}
 }

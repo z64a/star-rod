@@ -142,6 +142,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			true, true);
 
 		resetEditor();
+		setup();
 	}
 
 	private void resetEditor()

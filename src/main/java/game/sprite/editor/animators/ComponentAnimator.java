@@ -22,4 +22,6 @@ public interface ComponentAnimator
 	public void cleanDeletedPalettes();
 
 	public boolean surpassed(AnimElement elem);
+
+	public void calculateTiming();
 }

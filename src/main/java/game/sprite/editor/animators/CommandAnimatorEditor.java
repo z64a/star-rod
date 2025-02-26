@@ -72,14 +72,12 @@ public class CommandAnimatorEditor extends AnimationEditor
 	private JPanel commandListPanel;
 	private JPanel commandEditPanel;
 
-	private SpriteEditor editor;
 	private CommandAnimator animator;
 
 	private AnimElement selected;
 
 	public static void bind(SpriteEditor editor, CommandAnimator animator, Container commandListContainer, Container commandEditContainer)
 	{
-		instance().editor = editor;
 		instance().animator = animator;
 
 		commandListContainer.removeAll();
@@ -134,7 +132,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 
 	private CommandAnimatorEditor()
 	{
-		commandList = new AnimElementsList<>(editor, this);
+		commandList = new AnimElementsList<>(this);
 		commandList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		commandList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
@@ -155,7 +153,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 					case MouseEvent.BUTTON3: // right click
 						animator.advanceTo(elem);
 						commandListPanel.repaint();
-						editor.updatePlaybackStatus();
+						SpriteEditor.instance().updatePlaybackStatus();
 						break;
 				}
 			}
@@ -428,6 +426,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				labelComboBox.setSelectedItem(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
 
@@ -440,6 +439,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				labelComboBox.setSelectedItem(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
 		}
@@ -533,6 +533,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				countSpinner.setValue(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
 
@@ -545,6 +546,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				countSpinner.setValue(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
 		}
@@ -573,6 +575,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				labelComboBox.setSelectedItem(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
 
@@ -585,6 +588,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				labelComboBox.setSelectedItem(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
 		}
@@ -660,6 +664,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				countSpinner.setValue(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
 
@@ -672,6 +677,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				countSpinner.setValue(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
 		}

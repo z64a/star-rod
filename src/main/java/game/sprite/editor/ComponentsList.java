@@ -51,6 +51,7 @@ public class ComponentsList extends DragReorderList<SpriteComponent>
 	public ComponentsList(SpriteEditor editor)
 	{
 		this.editor = editor;
+		editor.registerDragList(this);
 
 		setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		setSelectionMode(ListSelectionModel.SINGLE_SELECTION);

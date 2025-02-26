@@ -12,14 +12,12 @@ import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.ListSelectionModel;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SpinnerNumberModel;
-import javax.swing.SwingConstants;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
@@ -113,7 +111,7 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 
 	private KeyframeAnimatorEditor()
 	{
-		commandList = new AnimElementsList<AnimKeyframe>(editor, this);
+		commandList = new AnimElementsList<AnimKeyframe>(this);
 		commandList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		commandList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
@@ -345,7 +343,7 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 
 		private JSpinner timeSpinner;
 
-		private JCheckBox cbEnableImg, cbEnablePal, cbEnableParent;
+		private JCheckBox cbEnableImg, cbEnablePal, cbEnableParent, cbEnableNotify;
 
 		private JButton btnChoose;
 		private JButton btnClear;
@@ -371,12 +369,13 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			timeSpinner = new EvenSpinner();
 			SwingUtils.setFontSize(timeSpinner, 12);
 			timeSpinner.setModel(new SpinnerNumberModel(1, 0, 300, 1));
-			SwingUtils.centerSpinnerText(timeSpinner);
 			timeSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
 				cmd.duration = (int) timeSpinner.getValue();
 			});
+			SwingUtils.centerSpinnerText(timeSpinner);
+			SwingUtils.addBorderPadding(timeSpinner);
 
 			imageComboBox = new JComboBox<>();
 			imageComboBox.setUI(new BlankArrowUI());
@@ -396,7 +395,7 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 
 			btnChoose.addActionListener((e) -> {
 				Sprite sprite = cmd.ownerComp.parentAnimation.parentSprite;
-				SpriteRaster raster = KeyframeAnimatorEditor.instance().editor.promptForRaster(sprite);
+				SpriteRaster raster = SpriteEditor.instance().promptForRaster(sprite);
 				if (raster != null) {
 					cmd.img = raster;
 
@@ -472,145 +471,168 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			notifySpinner = new JSpinner();
 			SwingUtils.setFontSize(notifySpinner, 12);
 			notifySpinner.setModel(new SpinnerNumberModel(0, 0, 255, 1));
-			SwingUtils.centerSpinnerText(notifySpinner);
 			notifySpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
 				cmd.notifyValue = (int) notifySpinner.getValue();
 			});
+			SwingUtils.centerSpinnerText(notifySpinner);
+			SwingUtils.addBorderPadding(notifySpinner);
+
+			cbEnableNotify = new JCheckBox(" Notify");
+			cbEnableNotify.addActionListener((e) -> {
+				if (ignoreChanges)
+					return;
+				boolean value = cbEnableNotify.isSelected();
+				cmd.setNotify = value;
+
+				notifySpinner.setEnabled(cmd.setNotify);
+			});
 
 			dxSpinner = new JSpinner();
 			SwingUtils.setFontSize(dxSpinner, 12);
 			dxSpinner.setModel(new SpinnerNumberModel(0, -256, 256, 1));
-			SwingUtils.centerSpinnerText(dxSpinner);
 			dxSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
 				cmd.dx = (int) dxSpinner.getValue();
 			});
+			SwingUtils.centerSpinnerText(dxSpinner);
+			SwingUtils.addBorderPadding(dxSpinner);
 
 			dySpinner = new JSpinner();
 			SwingUtils.setFontSize(dySpinner, 12);
 			dySpinner.setModel(new SpinnerNumberModel(0, -256, 256, 1));
-			SwingUtils.centerSpinnerText(dySpinner);
 			dySpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
 				cmd.dy = (int) dySpinner.getValue();
 			});
+			SwingUtils.centerSpinnerText(dySpinner);
+			SwingUtils.addBorderPadding(dySpinner);
 
 			dzSpinner = new JSpinner();
 			SwingUtils.setFontSize(dzSpinner, 12);
 			dzSpinner.setModel(new SpinnerNumberModel(0, -256, 256, 1));
-			SwingUtils.centerSpinnerText(dzSpinner);
 			dzSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
 				cmd.dz = (int) dzSpinner.getValue();
 			});
+			SwingUtils.centerSpinnerText(dzSpinner);
+			SwingUtils.addBorderPadding(dzSpinner);
 
 			rxSpinner = new JSpinner();
 			SwingUtils.setFontSize(rxSpinner, 12);
 			rxSpinner.setModel(new SpinnerNumberModel(0, -180, 180, 1));
-			SwingUtils.centerSpinnerText(rxSpinner);
 			rxSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
 				cmd.rx = (int) rxSpinner.getValue();
 			});
+			SwingUtils.centerSpinnerText(rxSpinner);
+			SwingUtils.addBorderPadding(rxSpinner);
 
 			rySpinner = new JSpinner();
 			SwingUtils.setFontSize(rySpinner, 12);
 			rySpinner.setModel(new SpinnerNumberModel(0, -180, 180, 1));
-			SwingUtils.centerSpinnerText(rySpinner);
 			rySpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
 				cmd.ry = (int) rySpinner.getValue();
 			});
+			SwingUtils.centerSpinnerText(rySpinner);
+			SwingUtils.addBorderPadding(rySpinner);
 
 			rzSpinner = new JSpinner();
 			SwingUtils.setFontSize(rzSpinner, 12);
 			rzSpinner.setModel(new SpinnerNumberModel(0, -180, 180, 1));
-			SwingUtils.centerSpinnerText(rzSpinner);
 			rzSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
 				cmd.rz = (int) rzSpinner.getValue();
 			});
+			SwingUtils.centerSpinnerText(rzSpinner);
+			SwingUtils.addBorderPadding(rzSpinner);
 
 			sxSpinner = new JSpinner();
 			SwingUtils.setFontSize(sxSpinner, 12);
 			sxSpinner.setModel(new SpinnerNumberModel(1, 0, 500, 1));
-			SwingUtils.centerSpinnerText(sxSpinner);
 			sxSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
 				cmd.sx = (int) sxSpinner.getValue();
 			});
+			SwingUtils.centerSpinnerText(sxSpinner);
+			SwingUtils.addBorderPadding(sxSpinner);
 
 			sySpinner = new JSpinner();
 			SwingUtils.setFontSize(sySpinner, 12);
 			sySpinner.setModel(new SpinnerNumberModel(1, 0, 500, 1));
-			SwingUtils.centerSpinnerText(sySpinner);
 			sySpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
 				cmd.sy = (int) sySpinner.getValue();
 			});
+			SwingUtils.centerSpinnerText(sySpinner);
+			SwingUtils.addBorderPadding(sySpinner);
 
 			szSpinner = new JSpinner();
 			SwingUtils.setFontSize(szSpinner, 12);
 			szSpinner.setModel(new SpinnerNumberModel(1, 0, 500, 1));
-			SwingUtils.centerSpinnerText(szSpinner);
 			szSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
 				cmd.sz = (int) szSpinner.getValue();
 			});
+			SwingUtils.centerSpinnerText(szSpinner);
+			SwingUtils.addBorderPadding(szSpinner);
 
-			setLayout(new MigLayout("ins 0 10 0 10", "[grow]4[grow]"));
+			setLayout(new MigLayout("ins 0, wrap 2", "[grow]8[grow]", "[]12"));
 
 			add(SwingUtils.getLabel("Keyframe Properties", 14), "gapbottom 4, span, wrap");
 
-			add(SwingUtils.getLabel("Duration ", SwingConstants.RIGHT, 12), "sg lbl, gaptop 2, top");
-			add(timeSpinner, "w 25%, split 2");
-			add(SwingUtils.getLabel("frames", 12), "gapleft 6, wrap");
+			JPanel spinPanel = new JPanel(new MigLayout("fillx, ins 0, wrap 4", "[]8[sg spin]6[sg spin]6[sg spin]", "[]8[]8[]14[]4"));
+			String spinnerConstraints = "w 75!";
+
+			spinPanel.add(SwingUtils.getLabel("Pos", 12), "pushx, growx");
+			spinPanel.add(dxSpinner, spinnerConstraints);
+			spinPanel.add(dySpinner, spinnerConstraints);
+			spinPanel.add(dzSpinner, spinnerConstraints);
+
+			spinPanel.add(SwingUtils.getLabel("Rot", 12), "pushx, growx");
+			spinPanel.add(rxSpinner, spinnerConstraints);
+			spinPanel.add(rySpinner, spinnerConstraints);
+			spinPanel.add(rzSpinner, spinnerConstraints);
+
+			spinPanel.add(SwingUtils.getLabel("Scale", 12), "pushx, growx");
+			spinPanel.add(sxSpinner, spinnerConstraints);
+			spinPanel.add(sySpinner, spinnerConstraints);
+			spinPanel.add(szSpinner, spinnerConstraints);
+
+			spinPanel.add(SwingUtils.getLabel("Time", 12), "pushx, growx");
+			spinPanel.add(timeSpinner, spinnerConstraints);
+			spinPanel.add(SwingUtils.getLabel("frames", 12), "span, gapleft 4");
+
+			add(spinPanel, "growx, span");
+
+			JPanel rasterPanel = new JPanel(new MigLayout("fillx, ins 0, wrap 2", "[sg but][sg but]"));
+
+			rasterPanel.add(imageComboBox, "growx, h 120!, span");
+			rasterPanel.add(btnChoose, "growx, sg imgbut");
+			rasterPanel.add(btnClear, "growx, sg imgbut");
 
 			add(cbEnableImg, "top");
-			add(imageComboBox, "growx, h 120!, wrap");
-
-			add(new JPanel());
-			add(btnChoose, "split 2, growx, sg imgbut");
-			add(btnClear, "growx, sg imgbut, wrap");
+			add(rasterPanel, "grow");
 
 			add(cbEnablePal, "gaptop 2, top");
-			add(paletteComboBox, "growx, wrap, gapbottom 8");
+			add(paletteComboBox, "growx");
 
 			add(cbEnableParent, "gaptop 2, top");
-			add(componentComboBox, "growx, wrap, gapbottom 8");
+			add(componentComboBox, "growx");
 
-			add(SwingUtils.getLabel("Position", 12), "sg lbl, top, wrap");
-			add(new JLabel(), "w 8!, span, split 4");
-			add(dxSpinner, "sg xyz");
-			add(dySpinner, "sg xyz");
-			add(dzSpinner, "sg xyz, wrap");
-
-			add(SwingUtils.getLabel("Rotation", 12), "sg lbl, top, wrap");
-			add(new JLabel(), "w 8!, span, split 4");
-			add(rxSpinner, "sg xyz");
-			add(rySpinner, "sg xyz");
-			add(rzSpinner, "sg xyz, wrap");
-
-			add(SwingUtils.getLabel("Scale", 12), "sg lbl, top, wrap");
-			add(new JLabel(), "w 8!, span, split 4");
-			add(sxSpinner, "sg xyz");
-			add(sySpinner, "sg xyz");
-			add(szSpinner, "sg xyz, wrap");
-
-			add(SwingUtils.getLabel("Set Notify", 12), "sg lbl, top, wrap");
-			add(new JLabel(), "w 8!, span, split 2");
-			add(notifySpinner, "sg xyz, wrap");
+			add(cbEnableNotify, "sg lbl, gaptop 2, top");
+			add(notifySpinner, "w 25%");
 		}
 
 		protected void set(Keyframe cmd)
@@ -646,6 +668,8 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			cbEnableParent.setSelected(cmd.setParent);
 
 			notifySpinner.setValue(cmd.notifyValue);
+			notifySpinner.setEnabled(cmd.setNotify);
+			cbEnableNotify.setSelected(cmd.setNotify);
 
 			dxSpinner.setValue(cmd.dx);
 			dySpinner.setValue(cmd.dy);

@@ -121,6 +121,12 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 			0.08f, 0.0125f, 1.0f,
 			true, true);
 
+		setup();
+	}
+
+	@Override
+	public void afterCreateGui()
+	{
 		resetEditor();
 		loadData();
 	}

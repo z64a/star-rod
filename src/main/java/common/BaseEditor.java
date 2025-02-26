@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -72,7 +71,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 
 	private enum RunState
 	{
-		INIT, RUN, CLOSE
+		INIT, SETUP, RUN, CLOSE
 	}
 
 	private RunState runState = RunState.INIT;
@@ -111,9 +110,13 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 
 	// gl renderer information
 
+	private final BaseEditorSettings editorSettings;
+
 	public BaseEditor(BaseEditorSettings settings)
 	{
 		super();
+
+		this.editorSettings = settings;
 
 		LoadingBar.show("Please Wait");
 
@@ -137,21 +140,25 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			File editorConfigFile = new File(PROJ_CFG + "/" + settings.configFileName);
 			config = readEditorConfig(settings.configScope, editorConfigFile);
 		}
+	}
+
+	/**
+	 * Creates the GUI. Expects to be called in the constructor of a subclass.
+	 * This ensures all subclass fields are initialized before the callbacks here are invoked.
+	 */
+	public void setup()
+	{
+		if (runState != RunState.INIT)
+			throw new IllegalStateException("Only call setup *once* during construction!");
+		else
+			runState = RunState.SETUP;
 
 		beforeCreateGui();
 
-		// create the GUI
-		CountDownLatch guiReadySignal = new CountDownLatch(1);
-		SwingUtilities.invokeLater(() -> {
-			createFrame(settings);
-			guiReadySignal.countDown();
-		});
-
-		// wait for the swing thread to finish creating the GUI
 		try {
-			guiReadySignal.await();
+			SwingUtilities.invokeAndWait(() -> createFrame(editorSettings));
 		}
-		catch (InterruptedException e) {
+		catch (Throwable e) {
 			StarRodMain.displayStackTrace(e);
 			Environment.exit(-1);
 		}
@@ -161,6 +168,8 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		frame.pack();
 
 		Logger.addListener(this);
+
+		afterCreateGui();
 	}
 
 	/**
@@ -204,7 +213,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 
 	public final boolean launch()
 	{
-		if (runState != RunState.INIT)
+		if (runState != RunState.SETUP)
 			throw new IllegalStateException("Cannot launch an editor which is already running!");
 		else
 			runState = RunState.RUN;
@@ -579,6 +588,9 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	// Interface for children
 
 	protected void beforeCreateGui()
+	{}
+
+	protected void afterCreateGui()
 	{}
 
 	@Override

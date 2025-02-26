@@ -45,6 +45,7 @@ public class AnimationsList extends DragReorderList<SpriteAnimation>
 	public AnimationsList(SpriteEditor editor)
 	{
 		this.editor = editor;
+		editor.registerDragList(this);
 
 		setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		setSelectionMode(ListSelectionModel.SINGLE_SELECTION);

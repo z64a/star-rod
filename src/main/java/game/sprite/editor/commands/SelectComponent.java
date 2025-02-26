@@ -59,5 +59,6 @@ public class SelectComponent extends AbstractCommand
 
 		SpriteEditor editor = SpriteEditor.instance();
 		editor.setComponent(prev);
+		next.calculateTiming();
 	}
 }

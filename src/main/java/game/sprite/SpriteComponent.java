@@ -82,6 +82,9 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	// 4f so we can operate on them with lwjgl matrix library
 	public transient Vector3f[] corners = new Vector3f[4];
 
+	// temporary offsets using while dragging components are in the viewport
+	public transient int dragX, dragY;
+
 	public SpriteComponent(SpriteAnimation parentAnimation)
 	{
 		this.parentAnimation = parentAnimation;
@@ -159,12 +162,12 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 
 	public int getX()
 	{
-		return posx + dx;
+		return posx + dx + dragX;
 	}
 
 	public int getY()
 	{
-		return posy + dy;
+		return posy + dy + dragY;
 	}
 
 	public int getZ()
@@ -427,6 +430,11 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 
 		animator = cmdAnimator;
 		usesKeyframes = false;
+	}
+
+	public void calculateTiming()
+	{
+		animator.calculateTiming();
 	}
 
 	public void validateGenerators()

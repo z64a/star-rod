@@ -1,5 +1,6 @@
 package game.sprite.editor.animators;
 
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.util.LinkedList;
@@ -197,6 +198,74 @@ public class CommandAnimator implements ComponentAnimator
 	public boolean surpassed(AnimElement elem)
 	{
 		return listPosition >= commandListModel.indexOf(elem);
+	}
+
+	@Override
+	public void calculateTiming()
+	{
+		for (AnimCommand cmd : commandListModel) {
+			cmd.animTime = -1;
+		}
+
+		int pos = 0;
+		int time = 0;
+		int iter = 0;
+		boolean done = false;
+		int loopCount = 0;
+
+		while (!done) {
+			// prevent deadlocking from infinite loops
+			if (iter++ > 1024) {
+				break;
+			}
+
+			AnimCommand cmd = commandListModel.get(pos);
+			if ((cmd.animTime != -1) && loopCount == 0)
+				break;
+
+			if (cmd instanceof Loop l) {
+				int i = commandListModel.indexOf(l.label);
+				// label not found
+				if (i < 0)
+					break;
+
+				if (loopCount == 0) {
+					loopCount = l.count;
+					// goto label
+					pos = i;
+					continue;
+				}
+				else {
+					loopCount--;
+					if (loopCount != 0) {
+						// goto label
+						pos = i;
+						continue;
+					}
+				}
+			}
+			else if (cmd instanceof Goto g) {
+				int i = commandListModel.indexOf(g.label);
+				// label not found
+				if (i < 0)
+					break;
+				// decorate goto with current anim time
+				g.animTime = time;
+				// goto label
+				pos = i;
+				continue;
+			}
+			else if (cmd instanceof Wait w) {
+				// decorate wait with current anim time
+				w.animTime = time;
+				time += w.count;
+			}
+
+			// next command, but be careful not to overrun the list if it has no proper return
+			pos++;
+			if (pos == commandListModel.size())
+				break;
+		}
 	}
 
 	@Override
@@ -544,6 +613,16 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public Color getTextColor()
+		{
+			// highlight invalid values as errors
+			if (count == 0 || count % 2 == 1)
+				return SwingUtils.getRedTextColor();
+			else
+				return null;
+		}
+
+		@Override
 		public String toString()
 		{
 			if (highlighted && editor.highlightCommand)
@@ -616,9 +695,24 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public Color getTextColor()
+		{
+			// highlight invalid values as errors
+			if (img != null && img.deleted)
+				return SwingUtils.getRedTextColor();
+			else
+				return null;
+		}
+
+		@Override
 		public String toString()
 		{
-			return (img == null) ? "Clear Raster" : "Raster: " + img;
+			if (img == null)
+				return "Clear Raster";
+			else if (img.deleted)
+				return "Raster: " + img.name + " (missing)";
+			else
+				return "Raster: " + img.name;
 		}
 
 		@Override
@@ -686,17 +780,23 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public Color getTextColor()
+		{
+			if (label == null || findCommand(label) < 0)
+				return SwingUtils.getRedTextColor();
+			else
+				return SwingUtils.getBlueTextColor();
+		}
+
+		@Override
 		public String toString()
 		{
 			if (label == null)
-				return "<html>" + SwingUtils.makeFontTag(SwingUtils.getRedTextColor())
-					+ "Goto:  (missing)</font></html>";
+				return "Goto: (missing)";
 			else if (findCommand(label) < 0)
-				return "<html>" + SwingUtils.makeFontTag(SwingUtils.getRedTextColor())
-					+ "Goto: <i>" + label.labelName + "</i>  (missing)</font></html>";
+				return "<html>Goto: <i>" + label.labelName + "</i>  (missing)</html>";
 			else
-				return "<html>" + SwingUtils.makeFontTag(SwingUtils.getBlueTextColor())
-					+ "Goto: <i>" + label.labelName + "</i></font></html>";
+				return "<html>Goto: <i>" + label.labelName + "</i></html>";
 		}
 
 		@Override
@@ -1012,9 +1112,24 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public Color getTextColor()
+		{
+			// highlight invalid values as errors
+			if (pal != null && pal.deleted)
+				return SwingUtils.getRedTextColor();
+			else
+				return null;
+		}
+
+		@Override
 		public String toString()
 		{
-			return (pal == null) ? "Use Default Palette" : "Palette: " + pal;
+			if (pal == null)
+				return "Default Palette";
+			else if (pal.deleted)
+				return "Palette: " + pal + " (missing)";
+			else
+				return "Palette: " + pal;
 		}
 
 		@Override
@@ -1086,17 +1201,23 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public Color getTextColor()
+		{
+			if (label == null || findCommand(label) < 0)
+				return SwingUtils.getRedTextColor();
+			else
+				return SwingUtils.getBlueTextColor();
+		}
+
+		@Override
 		public String toString()
 		{
 			if (label == null)
-				return "<html>" + SwingUtils.makeFontTag(SwingUtils.getRedTextColor())
-					+ "Repeat:  (missing) (x" + count + ")</font></html>";
+				return "Repeat: (missing) (x" + count + ")";
 			else if (findCommand(label) < 0)
-				return "<html>" + SwingUtils.makeFontTag(SwingUtils.getRedTextColor())
-					+ "Repeat: <i>" + label.labelName + "</i>  (missing) (x" + count + ")</font></html>";
+				return "<html>Repeat: <i>" + label.labelName + "</i>  (missing) (x" + count + ")</html>";
 			else
-				return "<html>" + SwingUtils.makeFontTag(SwingUtils.getBlueTextColor())
-					+ "Repeat: <i>" + label.labelName + "</i>  (x" + count + ")</font></html>";
+				return "<html>Repeat: <i>" + label.labelName + "</i>  (x" + count + ")</html>";
 		}
 
 		@Override
@@ -1230,9 +1351,24 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public Color getTextColor()
+		{
+			// highlight invalid values as errors
+			if (comp == null || comp.deleted)
+				return SwingUtils.getRedTextColor();
+			else
+				return null;
+		}
+
+		@Override
 		public String toString()
 		{
-			return "Parent: " + comp;
+			if (comp == null)
+				return "Parent: (missing)";
+			else if (comp.deleted)
+				return "Parent: " + comp.name + " (missing)";
+			else
+				return "Parent: " + comp.name;
 		}
 
 		@Override

@@ -1,5 +1,6 @@
 package game.sprite.editor.animators;
 
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.util.ArrayList;
@@ -7,8 +8,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.TreeMap;
-
-import javax.swing.DefaultListModel;
 
 import app.SwingUtils;
 import game.sprite.RawAnimation;
@@ -19,11 +18,12 @@ import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.KeyframeAnimatorEditor.GotoPanel;
 import game.sprite.editor.animators.KeyframeAnimatorEditor.KeyframePanel;
 import game.sprite.editor.animators.KeyframeAnimatorEditor.LoopPanel;
+import util.IterableListModel;
 import util.Logger;
 
 public class KeyframeAnimator implements ComponentAnimator
 {
-	public DefaultListModel<AnimKeyframe> keyframeListModel = new DefaultListModel<>();
+	public IterableListModel<AnimKeyframe> keyframeListModel = new IterableListModel<>();
 	private final SpriteComponent comp;
 
 	private SpriteEditor editor;
@@ -40,6 +40,7 @@ public class KeyframeAnimator implements ComponentAnimator
 	public void bind(SpriteEditor editor, Container commandListContainer, Container commandEditContainer)
 	{
 		this.editor = editor;
+
 		KeyframeAnimatorEditor.bind(editor, this, commandListContainer, commandEditContainer);
 	}
 
@@ -64,7 +65,7 @@ public class KeyframeAnimator implements ComponentAnimator
 
 	public void resetAnimation()
 	{
-		editor.resetAnimation();
+		SpriteEditor.instance().resetAnimation();
 	}
 
 	@Override
@@ -182,6 +183,74 @@ public class KeyframeAnimator implements ComponentAnimator
 			keyframePositions.add(0);
 
 		return keyframePositions;
+	}
+
+	@Override
+	public void calculateTiming()
+	{
+		for (AnimKeyframe cmd : keyframeListModel) {
+			cmd.animTime = -1;
+		}
+
+		int pos = 0;
+		int time = 0;
+		int iter = 0;
+		boolean done = false;
+		int loopCount = 0;
+
+		while (!done) {
+			// prevent deadlocking from infinite loops
+			if (iter++ > 1024) {
+				break;
+			}
+
+			AnimKeyframe cmd = keyframeListModel.get(pos);
+			if ((cmd.animTime != -1) && loopCount == 0)
+				break;
+
+			if (cmd instanceof Loop l) {
+				int i = keyframeListModel.indexOf(l.target);
+				// label not found
+				if (i < 0)
+					break;
+
+				if (loopCount == 0) {
+					loopCount = l.count;
+					// goto label
+					pos = i;
+					continue;
+				}
+				else {
+					loopCount--;
+					if (loopCount != 0) {
+						// goto label
+						pos = i;
+						continue;
+					}
+				}
+			}
+			else if (cmd instanceof Goto g) {
+				int i = keyframeListModel.indexOf(g.target);
+				// label not found
+				if (i < 0)
+					break;
+				// decorate goto with current anim time
+				g.animTime = time;
+				// goto label
+				pos = i;
+				continue;
+			}
+			else if (cmd instanceof Keyframe kf) {
+				// decorate wait with current anim time
+				kf.animTime = time;
+				time += kf.duration;
+			}
+
+			// next command, but be careful not to overrun the list if it has no proper return
+			pos++;
+			if (pos == keyframeListModel.size())
+				break;
+		}
 	}
 
 	@Override
@@ -448,21 +517,23 @@ public class KeyframeAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public Color getTextColor()
+		{
+			if (target == null || !keyframeListModel.contains(target))
+				return SwingUtils.getRedTextColor();
+			else
+				return SwingUtils.getBlueTextColor();
+		}
+
+		@Override
 		public String toString()
 		{
-			StringBuilder sb = new StringBuilder("<html>");
-			if (target == null || !keyframeListModel.contains(target)) {
-				sb.append(SwingUtils.makeFontTag(SwingUtils.getRedTextColor()));
-				sb.append("Goto: (target missing)");
-				sb.append("</font>");
-			}
-			else {
-				sb.append(SwingUtils.makeFontTag(SwingUtils.getBlueTextColor()));
-				sb.append("Goto: <i>" + target.name + "</i>");
-				sb.append("</font>");
-			}
-			sb.append("</html>");
-			return sb.toString();
+			if (target == null)
+				return "Goto: (missing)";
+			else if (!keyframeListModel.contains(target))
+				return "<html>Goto: <i>" + target.name + "</i>  (missing)</html>";
+			else
+				return "<html>Goto: <i>" + target.name + "</i></html>";
 		}
 
 		@Override
@@ -517,21 +588,23 @@ public class KeyframeAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public Color getTextColor()
+		{
+			if (target == null || !keyframeListModel.contains(target))
+				return SwingUtils.getRedTextColor();
+			else
+				return SwingUtils.getBlueTextColor();
+		}
+
+		@Override
 		public String toString()
 		{
-			StringBuilder sb = new StringBuilder("<html>");
-			if (target == null || !keyframeListModel.contains(target)) {
-				sb.append(SwingUtils.makeFontTag(SwingUtils.getRedTextColor()));
-				sb.append("Repeat: (target missing) (x" + count + ")");
-				sb.append("</font>");
-			}
-			else {
-				sb.append(SwingUtils.makeFontTag(SwingUtils.getBlueTextColor()));
-				sb.append("Repeat: <i>" + target.name + "</i>  (x" + count + ")");
-				sb.append("</font>");
-			}
-			sb.append("</html>");
-			return sb.toString();
+			if (target == null)
+				return "Repeat: (missing) (x" + count + ")";
+			else if (!keyframeListModel.contains(target))
+				return "<html>Repeat: <i>" + target.name + "</i>  (missing) (x" + count + ")</html>";
+			else
+				return "<html>Repeat: <i>" + target.name + "</i>  (x" + count + ")</html>";
 		}
 
 		@Override
@@ -595,6 +668,8 @@ public class KeyframeAnimator implements ComponentAnimator
 		int listPos = -1;
 
 		public int duration;
+
+		boolean setNotify = false;
 		public int notifyValue;
 
 		boolean setParent = false;
@@ -829,8 +904,18 @@ public class KeyframeAnimator implements ComponentAnimator
 		}
 
 		@Override
+		public Color getTextColor()
+		{
+			if (duration == 0)
+				return SwingUtils.getRedTextColor();
+			else
+				return null;
+		}
+
+		@Override
 		public String toString()
 		{
+			SpriteEditor editor = SpriteEditor.instance();
 			boolean highlight = (highlighted && editor != null && editor.highlightCommand);
 
 			StringBuilder sb = new StringBuilder("<html>");

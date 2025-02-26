@@ -62,6 +62,7 @@ public enum Options
 	SprHighlightCommand		(true, Scope.SpriteEditor, Type.Boolean, "HighlightCommand", "true"),
 	SprHighlightSelected	(true, Scope.SpriteEditor, Type.Boolean, "HighlightSelected", "true"),
 	SprEnableBackground		(true, Scope.SpriteEditor, Type.Boolean, "EnableBackground", "false"),
+	SprEnableAxes			(true, Scope.SpriteEditor, Type.Boolean, "EnableAxes", "true"),
 
 	StrPrintDelay			(true, Scope.StringEditor, Type.Boolean, "PrintDelay", "true"),
 	StrViewportGuides		(true, Scope.StringEditor, Type.Boolean, "ViewportGuides", "true"),

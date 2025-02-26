@@ -1,6 +1,7 @@
 package game.sprite.editor;
 
 import java.awt.Dimension;
+import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -21,6 +22,9 @@ import util.IterableListModel;
 
 public class RasterSelectDialog extends JDialog
 {
+	// this dialog remembers its previous location when reopened
+	private static Point prevLocation = null;
+
 	private SpriteRaster selected = null;
 
 	public RasterSelectDialog(IterableListModel<SpriteRaster> rasters)
@@ -97,5 +101,20 @@ public class RasterSelectDialog extends JDialog
 	public SpriteRaster getSelected()
 	{
 		return selected;
+	}
+
+	@Override
+	public void setVisible(boolean visible)
+	{
+		if (prevLocation != null)
+			setLocation(prevLocation);
+		super.setVisible(visible);
+	}
+
+	@Override
+	public void dispose()
+	{
+		prevLocation = getLocation();
+		super.dispose();
 	}
 }
