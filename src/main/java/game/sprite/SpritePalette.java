@@ -1,24 +1,32 @@
 package game.sprite;
 
+import java.awt.Color;
 import java.io.File;
 
 import game.sprite.SpriteLoader.Indexable;
 import game.texture.Palette;
 
+/**
+ * Represents an entry from a sprite's palette list
+ */
 public final class SpritePalette implements Indexable<SpritePalette>
 {
 	private final Sprite spr;
 
-	public PalAsset asset;
-	public String filename = "";
-	public boolean frontOnly = false;
+	public String name = "";
 
-	public boolean disabled = false;
+	public String filename = ""; // soft link to PalAsset used only for serialization/deserialization
+	public PalAsset asset; // active link to PalAsset during editor runtime
+
+	public boolean frontOnly = false;
 
 	// editor fields
 	protected transient int listIndex;
 	public transient boolean dirty; // needs reupload to GPU
 	public transient boolean modified;
+
+	// remember colors before commands which adjust them are applied
+	public final Color[] savedColors = new Color[16];
 
 	public transient boolean deleted;
 	public transient boolean hasError;
@@ -31,10 +39,14 @@ public final class SpritePalette implements Indexable<SpritePalette>
 	public SpritePalette(SpritePalette other)
 	{
 		this.spr = other.spr;
+		this.name = other.name;
 		this.asset = other.asset;
-		this.filename = other.filename;
 		this.frontOnly = other.frontOnly;
-		this.disabled = other.disabled;
+	}
+
+	public SpritePalette copy()
+	{
+		return new SpritePalette(this);
 	}
 
 	public Sprite getSprite()
@@ -42,11 +54,53 @@ public final class SpritePalette implements Indexable<SpritePalette>
 		return spr;
 	}
 
+	public void stashColors()
+	{
+		for (int i = 0; i < 16; i++) {
+			savedColors[i] = asset.pal.getColor(i);
+		}
+	}
+
+	public void assignAsset(PalAsset asset)
+	{
+		this.asset = asset;
+		this.filename = (asset == null) ? "" : asset.getFilename();
+	}
+
+	public String createUniqueName(String name)
+	{
+		String baseName = name;
+
+		for (int iteration = 0; iteration < 256; iteration++) {
+			boolean conflict = false;
+
+			// compare to all other names
+			for (SpritePalette other : spr.palettes) {
+				if (other != this && other.name.equals(name)) {
+					conflict = true;
+					break;
+				}
+			}
+
+			if (!conflict) {
+				// name is valid
+				return name;
+			}
+			else {
+				// try next iteration
+				name = baseName + "_" + iteration;
+				iteration++;
+			}
+		}
+
+		// could not form a valid name
+		return null;
+	}
+
 	@Override
-	@Deprecated //TODO remove
 	public String toString()
 	{
-		return filename;
+		return name;
 	}
 
 	@Override
@@ -74,15 +128,7 @@ public final class SpritePalette implements Indexable<SpritePalette>
 
 	public void saveAs(File out)
 	{
+		//TODO
 		System.out.println(out.getAbsolutePath());
-	}
-
-	public static SpritePalette createDummy(Sprite spr, PalAsset pa, String name)
-	{
-		SpritePalette sp = new SpritePalette(spr);
-		sp.asset = pa;
-		sp.filename = name;
-		sp.disabled = true;
-		return sp;
 	}
 }

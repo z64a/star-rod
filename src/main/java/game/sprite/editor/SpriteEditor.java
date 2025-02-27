@@ -940,8 +940,11 @@ public class SpriteEditor extends BaseEditor
 		if (sprite == null)
 			return;
 
-		SpritePalette override = useAtlasOverride ? palettesTab.getOverridePalette() : null;
-		sprite.renderAtlas(selectedImgAsset, highlightedImgAsset, override, useFiltering);
+		if (editorMode == EditorMode.Palettes || useAtlasOverride)
+			sprite.renderAtlas(selectedImgAsset, highlightedImgAsset, sprite.selectedPalette, useFiltering);
+		else
+			sprite.renderAtlas(selectedImgAsset, highlightedImgAsset, null, useFiltering);
+
 	}
 
 	private void renderAnim()
@@ -1036,7 +1039,7 @@ public class SpriteEditor extends BaseEditor
 	protected void createGui(JPanel toolPanel, Canvas glCanvas, JMenuBar menuBar, JLabel infoLabel, ActionListener openLogAction)
 	{
 		rastersTab = new RastersTab(this);
-		palettesTab = new PalettesTab();
+		palettesTab = new PalettesTab(this);
 
 		CommandAnimatorEditor.init();
 		KeyframeAnimatorEditor.init();
@@ -1633,7 +1636,7 @@ public class SpriteEditor extends BaseEditor
 		});
 
 		JButton btnAddAnim = new JButton(ThemedIcon.ADD_16);
-		btnAddAnim.setToolTipText("New Animation");
+		btnAddAnim.setToolTipText("Add new animation");
 		btnAddAnim.addActionListener((e) -> {
 			if (sprite == null) {
 				return;
@@ -1662,7 +1665,7 @@ public class SpriteEditor extends BaseEditor
 		});
 
 		JButton btnAddComp = new JButton(ThemedIcon.ADD_16);
-		btnAddComp.setToolTipText("New Component");
+		btnAddComp.setToolTipText("Add new component");
 		btnAddComp.addActionListener((e) -> {
 			if (sprite == null) {
 				return;

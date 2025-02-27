@@ -1,8 +1,8 @@
 package game.sprite;
 
-import java.util.Map;
-
 import org.apache.commons.io.FilenameUtils;
+
+import game.sprite.editor.SpriteAssetCollection;
 
 public class ImgRef
 {
@@ -37,7 +37,7 @@ public class ImgRef
 		this.resolved = other.resolved;
 	}
 
-	public void lookup(Map<String, ImgAsset> imgAssets)
+	public void lookup(SpriteAssetCollection<ImgAsset> imgAssets)
 	{
 		if (filename.isBlank()) {
 			asset = null;

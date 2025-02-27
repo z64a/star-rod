@@ -48,6 +48,11 @@ public class ImgAsset
 		img.savePNG(source.getAbsolutePath());
 	}
 
+	public String getFileName()
+	{
+		return source.getName();
+	}
+
 	public String getName()
 	{
 		return FilenameUtils.removeExtension(source.getName());

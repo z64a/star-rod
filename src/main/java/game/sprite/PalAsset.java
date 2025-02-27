@@ -4,6 +4,8 @@ import static game.texture.TileFormat.CI_4;
 
 import java.io.IOException;
 
+import org.apache.commons.io.FilenameUtils;
+
 import assets.AssetHandle;
 import assets.AssetManager;
 import game.texture.Palette;
@@ -11,8 +13,6 @@ import game.texture.Tile;
 
 public class PalAsset
 {
-	public static final String EXT = ".png";
-
 	private AssetHandle source;
 	private final Tile sourceImg;
 
@@ -29,5 +29,16 @@ public class PalAsset
 	{
 		source = AssetManager.getTopLevel(source);
 		sourceImg.savePNG(source.getAbsolutePath());
+	}
+
+	public String getFilename()
+	{
+		return source.getName();
+	}
+
+	@Override
+	public String toString()
+	{
+		return FilenameUtils.removeExtension(source.getName());
 	}
 }

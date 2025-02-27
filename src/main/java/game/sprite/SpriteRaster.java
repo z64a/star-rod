@@ -1,13 +1,13 @@
 package game.sprite;
 
-import java.util.Map;
+import game.sprite.editor.SpriteAssetCollection;
 
 public class SpriteRaster
 {
 	private final Sprite spr;
 
-	public ImgRef front;
-	public ImgRef back;
+	public final ImgRef front;
+	public final ImgRef back;
 
 	// keep track of these, but do not expose them to users
 	public int specialWidth;
@@ -40,6 +40,11 @@ public class SpriteRaster
 		loadEditorImages();
 	}
 
+	public SpriteRaster copy()
+	{
+		return new SpriteRaster(this);
+	}
+
 	public Sprite getSprite()
 	{
 		return spr;
@@ -55,7 +60,7 @@ public class SpriteRaster
 		return back.asset;
 	}
 
-	public void bindRasters(Map<String, ImgAsset> imgAssets)
+	public void bindRasters(SpriteAssetCollection<ImgAsset> imgAssets)
 	{
 		front.lookup(imgAssets);
 		back.lookup(imgAssets);
@@ -68,6 +73,36 @@ public class SpriteRaster
 
 		if (back.asset != null)
 			back.asset.loadEditorImages();
+	}
+
+	public String createUniqueName(String name)
+	{
+		String baseName = name;
+
+		for (int iteration = 0; iteration < 256; iteration++) {
+			boolean conflict = false;
+
+			// compare to all other names
+			for (SpriteRaster other : spr.rasters) {
+				if (other != this && other.name.equals(name)) {
+					conflict = true;
+					break;
+				}
+			}
+
+			if (!conflict) {
+				// name is valid
+				return name;
+			}
+			else {
+				// try next iteration
+				name = baseName + "_" + iteration;
+				iteration++;
+			}
+		}
+
+		// could not form a valid name
+		return null;
 	}
 
 	@Override

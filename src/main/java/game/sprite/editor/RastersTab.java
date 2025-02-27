@@ -149,7 +149,7 @@ public class RastersTab extends JPanel
 		defaultPaletteBox = new JComboBox<>();
 		SwingUtils.setFontSize(defaultPaletteBox, 14);
 		defaultPaletteBox.setMaximumRowCount(24);
-		defaultPaletteBox.setRenderer(new PaletteSlicesRenderer());
+		defaultPaletteBox.setRenderer(new ThickPaletteSlicesRenderer());
 		defaultPaletteBox.addActionListener((e) -> {
 			if (ignoreChanges)
 				return;
@@ -165,7 +165,7 @@ public class RastersTab extends JPanel
 		backPaletteBox = new JComboBox<>();
 		SwingUtils.setFontSize(backPaletteBox, 14);
 		backPaletteBox.setMaximumRowCount(24);
-		backPaletteBox.setRenderer(new PaletteSlicesRenderer());
+		backPaletteBox.setRenderer(new ThickPaletteSlicesRenderer());
 		backPaletteBox.addActionListener((e) -> {
 			if (ignoreChanges)
 				return;
@@ -250,6 +250,11 @@ public class RastersTab extends JPanel
 		backPalettePanel.setVisible(sprite.hasBack);
 
 		selectRaster(selected);
+	}
+
+	public void setRaster(SpriteRaster img)
+	{
+		setRasterEDT(img); //TODO
 	}
 
 	public void selectRaster(SpriteRaster sr)

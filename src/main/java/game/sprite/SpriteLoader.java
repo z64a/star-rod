@@ -24,6 +24,7 @@ import assets.AssetHandle;
 import assets.AssetManager;
 import assets.AssetSubdir;
 import game.sprite.Sprite.SpriteSummary;
+import game.sprite.editor.SpriteAssetCollection;
 import util.Logger;
 import util.xml.XmlWrapper.XmlReader;
 
@@ -86,8 +87,8 @@ public class SpriteLoader
 	private HashMap<Integer, Sprite> npcSpriteCache = new HashMap<>();
 
 	private boolean loadedPlayerAssets = false;
-	private LinkedHashMap<String, ImgAsset> playerImgAssets;
-	private LinkedHashMap<String, PalAsset> playerPalAssets;
+	private SpriteAssetCollection<ImgAsset> playerImgAssets = new SpriteAssetCollection<>();
+	private SpriteAssetCollection<PalAsset> playerPalAssets = new SpriteAssetCollection<>();
 
 	public static void initialize()
 	{
@@ -172,8 +173,8 @@ public class SpriteLoader
 
 		try {
 			npcSprite = Sprite.readNpc(md, xmlFile, md.name);
-			npcSprite.imgAssets = loadSpriteImages(AssetManager.getNpcSpriteRasters(md.name));
-			npcSprite.palAssets = loadSpritePalettes(AssetManager.getNpcSpritePalettes(md.name));
+			npcSprite.imgAssets.set(loadSpriteImages(AssetManager.getNpcSpriteRasters(md.name)));
+			npcSprite.palAssets.set(loadSpritePalettes(AssetManager.getNpcSpritePalettes(md.name)));
 
 			npcSprite.bindPalettes();
 			npcSprite.bindRasters();
@@ -226,8 +227,8 @@ public class SpriteLoader
 	{
 		if (!loadedPlayerAssets || force) {
 			try {
-				playerImgAssets = loadSpriteImages(AssetManager.getPlayerSpriteRasters());
-				playerPalAssets = loadSpritePalettes(AssetManager.getPlayerSpritePalettes());
+				playerImgAssets.set(loadSpriteImages(AssetManager.getPlayerSpriteRasters()));
+				playerPalAssets.set(loadSpritePalettes(AssetManager.getPlayerSpritePalettes()));
 				loadedPlayerAssets = true;
 			}
 			catch (IOException e) {

@@ -2,24 +2,25 @@ package game.sprite;
 
 import static game.sprite.SpriteKey.*;
 
+import java.awt.Toolkit;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.Queue;
 
 import org.apache.commons.io.FilenameUtils;
 import org.w3c.dom.Element;
 
 import app.input.InputFileException;
+import assets.AssetManager;
 import common.Vector3f;
 import game.map.BoundingBox;
 import game.map.shading.ShadingProfile;
 import game.sprite.SpriteLoader.SpriteMetadata;
 import game.sprite.SpriteLoader.SpriteSet;
+import game.sprite.editor.SpriteAssetCollection;
 import game.sprite.editor.SpriteCamera;
 import game.sprite.editor.SpriteCamera.BasicTraceHit;
 import game.sprite.editor.SpriteCamera.BasicTraceRay;
@@ -48,11 +49,8 @@ public class Sprite implements XmlSerializable
 	public final IterableListModel<SpriteRaster> rasters = new IterableListModel<>();
 	public final IterableListModel<SpritePalette> palettes = new IterableListModel<>();
 
-	// working set of images for the sprite rasters to reference
-	//public LinkedHashMap<String, SpriteImage> images = new LinkedHashMap<>();
-
-	public LinkedHashMap<String, ImgAsset> imgAssets = new LinkedHashMap<>();
-	public LinkedHashMap<String, PalAsset> palAssets = new LinkedHashMap<>();
+	public SpriteAssetCollection<ImgAsset> imgAssets = new SpriteAssetCollection<>();
+	public SpriteAssetCollection<PalAsset> palAssets = new SpriteAssetCollection<>();
 
 	private transient boolean texturesLoaded = false;
 	private transient boolean readyForEditor = false;
@@ -63,10 +61,10 @@ public class Sprite implements XmlSerializable
 
 	// rasters tab state to restore when this sprite is selected
 	public transient int lastSelectedRaster = -1;
-	public transient int lastSelectedImgAsset = -1;
+	public transient SpriteRaster selectedRaster = null;
 	// palettes tab state to restore when this sprite is selected
 	public transient int lastSelectedPalette = -1;
-	public transient int lastSelectedPalAsset = -1;
+	public transient SpritePalette selectedPalette = null;
 	// animations tab state to restore when this sprite is selected
 	public transient int lastSelectedAnim = -1;
 	public transient boolean usingOverridePalette;
@@ -81,8 +79,11 @@ public class Sprite implements XmlSerializable
 		for (SpriteAnimation anim : animations)
 			anim.prepareForEditor();
 
-		if (palettes.size() > 0)
+		if (palettes.size() > 0) {
+			selectedPalette = palettes.get(0);
 			overridePalette = palettes.get(0);
+			lastSelectedPalette = 0;
+		}
 
 		if (animations.size() > 0)
 			lastSelectedAnim = 0;
@@ -99,12 +100,9 @@ public class Sprite implements XmlSerializable
 	{
 		hasError = false;
 
-		int idx = 0;
-		for (SpritePalette pal : palettes) {
-			if (pal.disabled)
-				pal.listIndex = -1;
-			else
-				pal.listIndex = idx++;
+		for (int i = 0; i < palettes.size(); i++) {
+			SpritePalette pal = palettes.get(i);
+			pal.listIndex = i;
 
 			//TODO check for missing asset errors
 
@@ -295,7 +293,13 @@ public class Sprite implements XmlSerializable
 
 			xmr.requiresAttribute(paletteElem, ATTR_SOURCE);
 			pal.filename = xmr.getAttribute(paletteElem, ATTR_SOURCE);
-			pal.filename = FilenameUtils.removeExtension(pal.filename);
+
+			if (xmr.hasAttribute(paletteElem, ATTR_NAME)) {
+				pal.name = xmr.getAttribute(paletteElem, ATTR_NAME);
+			}
+			else {
+				pal.name = FilenameUtils.removeExtension(pal.filename);
+			}
 
 			if (xmr.hasAttribute(paletteElem, ATTR_FRONT_ONLY)) {
 				pal.frontOnly = xmr.readBoolean(paletteElem, ATTR_FRONT_ONLY);
@@ -386,44 +390,50 @@ public class Sprite implements XmlSerializable
 		}
 	}
 
-	public void bindPalettes()
+	public void reloadPaletteAssets()
 	{
-		LinkedHashMap<String, PalAsset> remainingAssets = new LinkedHashMap<>(palAssets);
-
-		// remove any existing SpritePalettes which have been disabled
-		for (int i = 0; i < palettes.size(); i++) {
-			SpritePalette sp = palettes.elementAt(i);
-			if (sp.disabled) {
-				palettes.remove(i);
-				i--;
-			}
+		for (PalAsset pa : palAssets) {
+			pa.pal.glDelete();
 		}
 
-		// bind assets to palettes based on filename
+		try {
+			//TODO ONLY WORKS FOR NPC SPRITES!
+			palAssets.set(SpriteLoader.loadSpritePalettes(AssetManager.getNpcSpritePalettes(name)));
+			Logger.log("Loaded " + palAssets.size() + " assets");
+		}
+		catch (IOException e) {
+			Logger.logError("IOException while reloading palettes: " + e.getMessage());
+			Toolkit.getDefaultToolkit().beep();
+		}
+
+		for (PalAsset pa : palAssets) {
+			pa.pal.glLoad();
+		}
+
+		bindPalettes();
+	}
+
+	/**
+	 * Connect SpritePalettes to PalAssets by filename lookup
+	 */
+	public void bindPalettes()
+	{
 		for (SpritePalette sp : palettes) {
-			String fullName = sp.filename + PalAsset.EXT;
-			PalAsset asset = remainingAssets.get(fullName);
+			PalAsset asset = palAssets.get(sp.filename);
 
 			if (asset == null) {
-				Logger.logWarning("Can't find palette: " + fullName);
+				Logger.logWarning("Can't find palette: " + sp.filename);
 				sp.asset = null;
 			}
 			else {
 				sp.asset = asset;
-				remainingAssets.remove(fullName);
 			}
-		}
-
-		// add disabled 'dummy' SpritePalettes for all unused PalAssets
-		for (Entry<String, PalAsset> entry : remainingAssets.entrySet()) {
-			String name = FilenameUtils.removeExtension(entry.getKey());
-			PalAsset pa = entry.getValue();
-
-			SpritePalette dummyPalette = SpritePalette.createDummy(this, pa, name);
-			palettes.addElement(dummyPalette);
 		}
 	}
 
+	/**
+	 * Connect SpriteRasters to ImgAssets by filename lookup
+	 */
 	public void bindRasters()
 	{
 		for (SpriteRaster sr : rasters) {
@@ -433,7 +443,7 @@ public class Sprite implements XmlSerializable
 
 	protected void assignRasterPalettes()
 	{
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			ia.boundPal = null;
 		}
 
@@ -456,7 +466,7 @@ public class Sprite implements XmlSerializable
 		File dir = new File(source.getParentFile(), "palettes");
 
 		for (SpritePalette sp : palettes) {
-			sp.saveAs(new File(dir, sp.filename + PalAsset.EXT));
+			sp.saveAs(new File(dir, sp.filename));
 		}
 	}
 
@@ -475,14 +485,11 @@ public class Sprite implements XmlSerializable
 		for (int i = 0; i < palettes.size(); i++) {
 			SpritePalette sp = palettes.get(i);
 
-			if (sp.disabled) {
-				continue;
-			}
-
 			XmlTag paletteTag = xmw.createTag(TAG_PALETTE, true);
 			xmw.addHex(paletteTag, ATTR_ID, i);
 
-			xmw.addAttribute(paletteTag, ATTR_SOURCE, sp.filename + PalAsset.EXT);
+			xmw.addAttribute(paletteTag, ATTR_NAME, sp.name);
+			xmw.addAttribute(paletteTag, ATTR_SOURCE, sp.filename);
 
 			if (sp.frontOnly) {
 				xmw.addBoolean(paletteTag, ATTR_FRONT_ONLY, true);
@@ -545,7 +552,7 @@ public class Sprite implements XmlSerializable
 
 	public void resaveRasters() throws IOException
 	{
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			ia.save();
 		}
 	}
@@ -590,11 +597,11 @@ public class Sprite implements XmlSerializable
 
 	public void loadTextures()
 	{
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			ia.glLoad();
 		}
 
-		for (PalAsset pa : palAssets.values()) {
+		for (PalAsset pa : palAssets) {
 			pa.pal.glLoad();
 		}
 
@@ -611,25 +618,25 @@ public class Sprite implements XmlSerializable
 
 	public void unloadTextures()
 	{
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			ia.glDelete();
 		}
 
-		for (PalAsset pa : palAssets.values()) {
+		for (PalAsset pa : palAssets) {
 			pa.pal.glDelete();
 		}
 	}
 
 	public void glRefreshRasters()
 	{
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			ia.glLoad();
 		}
 	}
 
 	public void glRefreshPalettes()
 	{
-		for (PalAsset pa : palAssets.values()) {
+		for (PalAsset pa : palAssets) {
 			pa.pal.glReload();
 		}
 	}
@@ -725,7 +732,7 @@ public class Sprite implements XmlSerializable
 		int totalHeight = ATLAS_TILE_PADDING;
 		int validRasterCount = 0;
 
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			totalWidth += ATLAS_TILE_PADDING + ia.img.width;
 			totalHeight += ATLAS_TILE_PADDING + ia.img.height;
 			validRasterCount++;
@@ -743,7 +750,7 @@ public class Sprite implements XmlSerializable
 		int currentRow = 0;
 		rowTallest.add(0);
 
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			if (currentX + ia.img.width + ATLAS_TILE_PADDING > maxWidth) {
 				// start new row
 				currentY -= rowTallest.get(currentRow);
@@ -775,12 +782,12 @@ public class Sprite implements XmlSerializable
 		atlasW = maxWidth;
 		atlasH = currentY;
 
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			ia.atlasY = rowPosY.get(ia.atlasRow) + ia.img.height;
 		}
 
 		// center the atlas
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			ia.atlasX -= atlasW / 2.0f;
 			ia.atlasY -= atlasH / 2.0f;
 		}
@@ -797,7 +804,7 @@ public class Sprite implements XmlSerializable
 
 	public ImgAsset tryAtlasPick(BasicTraceRay trace)
 	{
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			Vector3f min = new Vector3f(
 				ia.atlasX - ATLAS_SELECT_PADDING,
 				ia.atlasY - ia.img.height - ATLAS_SELECT_PADDING,
@@ -819,7 +826,7 @@ public class Sprite implements XmlSerializable
 
 	public void renderAtlas(ImgAsset selected, ImgAsset highlighted, SpritePalette overridePalette, boolean useFiltering)
 	{
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			ia.inUse = false;
 		}
 
@@ -844,7 +851,7 @@ public class Sprite implements XmlSerializable
 		//		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 		//	}
 
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			//		if(enableStencilBuffer)
 			//			glStencilFunc(GL_ALWAYS, i + 1, 0xFF);
 

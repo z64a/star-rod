@@ -16,6 +16,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -156,9 +157,17 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		beforeCreateGui();
 
 		try {
-			SwingUtilities.invokeAndWait(() -> createFrame(editorSettings));
+			SwingUtilities.invokeAndWait(() -> {
+				try {
+					createFrame(editorSettings);
+				}
+				catch (Throwable e) {
+					StarRodMain.displayStackTrace(e);
+					Environment.exit(-1);
+				}
+			});
 		}
-		catch (Throwable e) {
+		catch (InvocationTargetException | InterruptedException e) {
 			StarRodMain.displayStackTrace(e);
 			Environment.exit(-1);
 		}

@@ -16,13 +16,13 @@ import game.map.editor.ui.SwatchPanel;
 import game.sprite.SpritePalette;
 import net.miginfocom.swing.MigLayout;
 
-public class PaletteSlicesRenderer extends JPanel implements ListCellRenderer<SpritePalette>
+public class ThickPaletteSlicesRenderer extends JPanel implements ListCellRenderer<SpritePalette>
 {
 	private JLabel nameLabel;
 	private SwatchPanel[] swatches;
 	private JPanel swatchesPanel;
 
-	public PaletteSlicesRenderer()
+	public ThickPaletteSlicesRenderer()
 	{
 		nameLabel = new JLabel();
 		swatches = new SwatchPanel[16];
@@ -82,14 +82,8 @@ public class PaletteSlicesRenderer extends JPanel implements ListCellRenderer<Sp
 		else {
 			swatchesPanel.setVisible(true);
 
-			if (value.disabled) {
-				nameLabel.setText(value.toString() + " (disabled)");
-				nameLabel.setForeground(Color.blue);
-			}
-			else {
-				nameLabel.setText(value.toString());
-				nameLabel.setForeground(null);
-			}
+			nameLabel.setText(value.toString());
+			nameLabel.setForeground(null);
 
 			Color[] colors = value.getPal().getColors();
 			for (int i = 0; i < swatches.length; i++)
