@@ -203,6 +203,9 @@ public class CommandAnimator implements ComponentAnimator
 	@Override
 	public void calculateTiming()
 	{
+		if (commandListModel.size() == 0)
+			return;
+
 		for (AnimCommand cmd : commandListModel) {
 			cmd.animTime = -1;
 		}

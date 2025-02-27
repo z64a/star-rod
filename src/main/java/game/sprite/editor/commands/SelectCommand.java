@@ -15,7 +15,7 @@ public class SelectCommand extends AbstractCommand
 	@SuppressWarnings("unchecked")
 	public SelectCommand(AnimElementsList<? extends AnimElement> list, AnimationEditor parent, AnimElement cmd)
 	{
-		super("Select " + (cmd == null ? null : cmd.getName()));
+		super(cmd == null ? "Deselect Command" : "Select " + cmd.getName());
 
 		this.parent = parent;
 		this.list = (AnimElementsList<AnimElement>) list;

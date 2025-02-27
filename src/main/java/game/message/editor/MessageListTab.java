@@ -191,7 +191,7 @@ public class MessageListTab extends JPanel
 			idLabel = new JLabel();
 			contentLabel = new JLabel();
 
-			contentLabel.setForeground(SwingUtils.getGreyTextColor());
+			contentLabel.setForeground(SwingUtils.getGrayTextColor());
 
 			setLayout(new MigLayout("ins 0, fillx"));
 			add(idLabel, "gapleft 8, w 15%");

@@ -73,7 +73,10 @@ import game.sprite.editor.commands.SelectAnimation;
 import game.sprite.editor.commands.SelectComponent;
 import game.sprite.editor.commands.SelectModesTab;
 import game.sprite.editor.commands.SelectSpritesTab;
+import game.sprite.editor.commands.SetOverridePalette;
 import game.sprite.editor.commands.SpriteCommandManager;
+import game.sprite.editor.commands.ToggleDrawCurrent;
+import game.sprite.editor.commands.TogglePaletteOverride;
 import game.texture.Palette;
 import game.texture.Tile;
 import net.miginfocom.swing.MigLayout;
@@ -210,10 +213,11 @@ public class SpriteEditor extends BaseEditor
 	private Palette referencePal;
 	private int referencePos;
 
-	// only a single sprite can be selected at a time
+	// current state
 	private Sprite sprite;
 	private SpriteAnimation currentAnim;
 	private SpriteComponent currentComp;
+
 	private ImgAsset selectedImgAsset;
 	private ImgAsset highlightedImgAsset;
 
@@ -226,9 +230,7 @@ public class SpriteEditor extends BaseEditor
 
 	private SpriteMetadata curMetadata = null;
 
-	private volatile SpritePalette animOverridePalette;
-
-	public volatile boolean ignoreSelectionEvents = false;
+	public volatile boolean suppressCommands = false;
 
 	// handles comnmand execution and undo/redo
 	private SpriteCommandManager commandManager;
@@ -447,11 +449,6 @@ public class SpriteEditor extends BaseEditor
 	{
 		if (sprite == null)
 			return;
-
-		//TODO move to EDT command
-		final SpritePalette selectedPalette = (SpritePalette) paletteComboBox.getSelectedItem();
-		if (selectedPalette != null && animOverridePalette != selectedPalette)
-			setPalette(selectedPalette);
 
 		while (!playerEventQueue.isEmpty()) {
 			if (currentAnim == null)
@@ -687,16 +684,6 @@ public class SpriteEditor extends BaseEditor
 
 			animList.setModel(sprite.animations);
 
-			// provide an initial selection if it has never been set for this sprite
-			if (!sprite.hasLastSelected) {
-				sprite.hasLastSelected = true;
-
-				if (sprite.animations.size() > 0)
-					sprite.lastSelectedAnim = 0;
-				else
-					sprite.lastSelectedAnim = -1;
-			}
-
 			// restore component selection (if valid) for new animation
 			int old = sprite.lastSelectedAnim;
 			if (old >= -1 && old < sprite.animations.size()) {
@@ -717,17 +704,11 @@ public class SpriteEditor extends BaseEditor
 				setAnimation(null);
 			}
 
-			if (sprite.palettes.size() > 0) {
-				paletteComboBox.setModel(new ListAdapterComboboxModel<>(sprite.palettes));
-				paletteComboBox.setSelectedIndex(0);
-				paletteComboBox.setEnabled(true);
-			}
-			else {
-				// this is not expected to be a valid state...
-				animOverridePalette = null;
-				paletteComboBox.setModel(new ListAdapterComboboxModel<>(new DefaultListModel<SpritePalette>()));
-				paletteComboBox.setEnabled(false);
-			}
+			paletteComboBox.setModel(new ListAdapterComboboxModel<>(sprite.palettes));
+			paletteComboBox.setSelectedItem(sprite.overridePalette);
+			paletteComboBox.setEnabled(true);
+
+			cbOverridePalette.setSelected(sprite.usingOverridePalette);
 
 			animList.setEnabled(true);
 		}
@@ -770,16 +751,6 @@ public class SpriteEditor extends BaseEditor
 
 		if (currentAnim != null) {
 			compList.setModel(currentAnim.components);
-
-			// provide an initial selection if it has never been set for this animation
-			if (!currentAnim.hasLastSelected) {
-				currentAnim.hasLastSelected = true;
-
-				if (currentAnim.components.size() > 0)
-					currentAnim.lastSelectedComp = 0;
-				else
-					currentAnim.lastSelectedComp = -1;
-			}
 
 			// restore component selection (if valid) for new animation
 			int old = currentAnim.lastSelectedComp;
@@ -861,11 +832,11 @@ public class SpriteEditor extends BaseEditor
 			currentComp.bind(this, commandListPanel, commandEditPanel);
 			currentComp.calculateTiming();
 
-			ignoreSelectionEvents = true;
+			suppressCommands = true;
 			compxSpinner.setValue(currentComp.posx);
 			compySpinner.setValue(currentComp.posy);
 			compzSpinner.setValue(currentComp.posz);
-			ignoreSelectionEvents = false;
+			suppressCommands = false;
 
 			componentPanel.repaint();
 		}
@@ -879,12 +850,6 @@ public class SpriteEditor extends BaseEditor
 	public ImgAsset getSelectedImage()
 	{
 		return selectedImgAsset;
-	}
-
-	private void setPalette(SpritePalette pm)
-	{
-		if (cbOverridePalette.isSelected())
-			animOverridePalette = pm;
 	}
 
 	private void checkPalettesForChanges()
@@ -1006,10 +971,12 @@ public class SpriteEditor extends BaseEditor
 		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
 		if (currentAnim != null) {
+			SpritePalette override = sprite.usingOverridePalette ? sprite.overridePalette : null;
+
 			if (cbShowOnlySelectedComponent.isSelected() && currentComp != null)
-				sprite.render(null, currentAnim, currentComp, animOverridePalette, useBackFacing, highlightComponent, false, useFiltering);
+				sprite.render(null, currentAnim, currentComp, override, useBackFacing, highlightComponent, false, useFiltering);
 			else
-				sprite.render(null, currentAnim, animOverridePalette, useBackFacing, highlightComponent, false, useFiltering);
+				sprite.render(null, currentAnim, override, useBackFacing, highlightComponent, false, useFiltering);
 		}
 
 		glDisable(GL_STENCIL_TEST);
@@ -1083,7 +1050,7 @@ public class SpriteEditor extends BaseEditor
 			JTabbedPane tabs = (JTabbedPane) e.getSource();
 			int index = tabs.getSelectedIndex();
 
-			if (!ignoreSelectionEvents)
+			if (!suppressCommands)
 				execute(new SelectModesTab(tabs, index));
 		});
 
@@ -1101,7 +1068,7 @@ public class SpriteEditor extends BaseEditor
 			JTabbedPane tabs = (JTabbedPane) e.getSource();
 			int index = tabs.getSelectedIndex();
 
-			if (!ignoreSelectionEvents)
+			if (!suppressCommands)
 				execute(new SelectSpritesTab(tabs, index));
 		});
 
@@ -1191,12 +1158,12 @@ public class SpriteEditor extends BaseEditor
 				try {
 					int id = SpriteLoader.getMaximumID(spriteSet) + 1;
 					SpriteLoader.create(spriteSet, id);
-
+		
 					if(spriteSet == SpriteSet.Npc)
 						useNpcFiles(id);
 					else
 						usePlayerFiles(id);
-
+		
 				} catch (Throwable t) {
 					Logger.logError("Failed to create new sprite.");
 					incrementDialogsOpen();
@@ -1206,7 +1173,7 @@ public class SpriteEditor extends BaseEditor
 			});
 		});
 		menu.add(item);
-
+		
 		menu.addSeparator();
 		 */
 
@@ -1496,7 +1463,7 @@ public class SpriteEditor extends BaseEditor
 		SwingUtils.setFontSize(compxSpinner, 12);
 		compxSpinner.setModel(new SpinnerNumberModel(0, -128, 128, 1));
 		compxSpinner.addChangeListener((e) -> {
-			if (!ignoreSelectionEvents)
+			if (!suppressCommands)
 				execute(new SetComponentPosCommand(currentComp, 0, (int) compxSpinner.getValue()));
 		});
 		SwingUtils.centerSpinnerText(compxSpinner);
@@ -1506,7 +1473,7 @@ public class SpriteEditor extends BaseEditor
 		SwingUtils.setFontSize(compySpinner, 12);
 		compySpinner.setModel(new SpinnerNumberModel(0, -128, 128, 1));
 		compySpinner.addChangeListener((e) -> {
-			if (!ignoreSelectionEvents)
+			if (!suppressCommands)
 				execute(new SetComponentPosCommand(currentComp, 1, (int) compySpinner.getValue()));
 		});
 		SwingUtils.centerSpinnerText(compySpinner);
@@ -1516,7 +1483,7 @@ public class SpriteEditor extends BaseEditor
 		SwingUtils.setFontSize(compzSpinner, 12);
 		compzSpinner.setModel(new SpinnerNumberModel(0, -32, 32, 1));
 		compzSpinner.addChangeListener((e) -> {
-			if (!ignoreSelectionEvents)
+			if (!suppressCommands)
 				execute(new SetComponentPosCommand(currentComp, 2, (int) compzSpinner.getValue()));
 		});
 		SwingUtils.centerSpinnerText(compzSpinner);
@@ -1574,7 +1541,7 @@ public class SpriteEditor extends BaseEditor
 					break;
 			}
 
-			ignoreSelectionEvents = true;
+			suppressCommands = true;
 			switch (coord) {
 				case 0:
 					compxSpinner.setValue(next);
@@ -1586,7 +1553,7 @@ public class SpriteEditor extends BaseEditor
 					compzSpinner.setValue(next);
 					break;
 			}
-			ignoreSelectionEvents = false;
+			suppressCommands = false;
 		}
 
 		@Override
@@ -1604,7 +1571,7 @@ public class SpriteEditor extends BaseEditor
 					break;
 			}
 
-			ignoreSelectionEvents = true;
+			suppressCommands = true;
 			switch (coord) {
 				case 0:
 					compxSpinner.setValue(prev);
@@ -1616,7 +1583,7 @@ public class SpriteEditor extends BaseEditor
 					compzSpinner.setValue(prev);
 					break;
 			}
-			ignoreSelectionEvents = false;
+			suppressCommands = false;
 		}
 	}
 
@@ -1644,23 +1611,25 @@ public class SpriteEditor extends BaseEditor
 
 		cbShowOnlySelectedComponent = new JCheckBox(" Draw current only");
 		cbShowOnlySelectedComponent.setSelected(false);
+		cbShowOnlySelectedComponent.addActionListener((e) -> {
+			if (!suppressCommands)
+				execute(new ToggleDrawCurrent(cbShowOnlySelectedComponent));
+		});
 
 		paletteComboBox = new JComboBox<>();
 		SwingUtils.setFontSize(paletteComboBox, 14);
 		paletteComboBox.setMaximumRowCount(24);
 		//XXX	paletteComboBox.setRenderer(new IndexableComboBoxRenderer());
 		paletteComboBox.addActionListener((e) -> {
-			if (cbOverridePalette.isSelected())
-				animOverridePalette = (SpritePalette) paletteComboBox.getSelectedItem();
+			if (!suppressCommands && sprite != null)
+				execute(new SetOverridePalette(paletteComboBox, sprite));
 		});
 
 		cbOverridePalette = new JCheckBox(" Override palette");
 		cbOverridePalette.setSelected(false);
 		cbOverridePalette.addActionListener((e) -> {
-			if (cbOverridePalette.isSelected())
-				animOverridePalette = (SpritePalette) paletteComboBox.getSelectedItem();
-			else
-				animOverridePalette = null;
+			if (!suppressCommands && sprite != null)
+				execute(new TogglePaletteOverride(cbOverridePalette, sprite));
 		});
 
 		JButton btnAddAnim = new JButton(ThemedIcon.ADD_16);
@@ -1677,8 +1646,15 @@ public class SpriteEditor extends BaseEditor
 			}
 
 			SpriteAnimation anim = new SpriteAnimation(sprite);
-			anim.assignUniqueName(String.format("Anim_%X", sprite.animations.size()));
+			String newName = anim.createUniqueName(String.format("Anim_%X", sprite.animations.size()));
 
+			if (newName == null) {
+				Logger.logError("Could not generate valid name for new animation!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			anim.name = newName;
 			CommandBatch batch = new CommandBatch("Add Animation");
 			batch.addCommand(new CreateAnimation("Add Animation", sprite, anim));
 			batch.addCommand(new SelectAnimation(animList, anim));
@@ -1699,8 +1675,15 @@ public class SpriteEditor extends BaseEditor
 			}
 
 			SpriteComponent comp = new SpriteComponent(currentAnim);
-			comp.assignUniqueName(String.format("Comp_%X", currentAnim.components.size()));
+			String newName = comp.createUniqueName(String.format("Comp_%X", currentAnim.components.size()));
 
+			if (newName == null) {
+				Logger.logError("Could not generate valid name for new component!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			comp.name = newName;
 			CommandBatch batch = new CommandBatch("Add Component");
 			batch.addCommand(new CreateComponent("Add Component", currentAnim, comp));
 			batch.addCommand(new SelectComponent(compList, comp));
@@ -1910,10 +1893,10 @@ public class SpriteEditor extends BaseEditor
 
 		if (currentComp != null) {
 			SwingUtilities.invokeLater(() -> {
-				ignoreSelectionEvents = true;
+				suppressCommands = true;
 				compxSpinner.setValue(currentComp.posx + currentComp.dragX);
 				compySpinner.setValue(currentComp.posy + currentComp.dragY);
-				ignoreSelectionEvents = false;
+				suppressCommands = false;
 			});
 		}
 	}

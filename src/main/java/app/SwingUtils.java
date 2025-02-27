@@ -600,7 +600,7 @@ public class SwingUtils
 			return new Color(0, 180, 255);
 	}
 
-	public static Color getGreyTextColor()
+	public static Color getGrayTextColor()
 	{
 		int lum = getBackgroundLuminance();
 		if (lum > 110)

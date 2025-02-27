@@ -40,9 +40,9 @@ public class SelectModesTab extends AbstractCommand
 		super.exec();
 
 		// force tab selection to update, but suppress generating a new command
-		editor.ignoreSelectionEvents = true;
+		editor.suppressCommands = true;
 		tabs.setSelectedIndex(nextIndex);
-		editor.ignoreSelectionEvents = false;
+		editor.suppressCommands = false;
 
 		SpriteEditor editor = SpriteEditor.instance();
 		editor.setModesTab(nextIndex);
@@ -54,9 +54,9 @@ public class SelectModesTab extends AbstractCommand
 		super.undo();
 
 		// force tab selection to update, but suppress generating a new command
-		editor.ignoreSelectionEvents = true;
+		editor.suppressCommands = true;
 		tabs.setSelectedIndex(prevIndex);
-		editor.ignoreSelectionEvents = false;
+		editor.suppressCommands = false;
 
 		SpriteEditor editor = SpriteEditor.instance();
 		editor.setModesTab(prevIndex);

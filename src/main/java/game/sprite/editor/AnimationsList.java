@@ -28,6 +28,7 @@ import game.sprite.Sprite;
 import game.sprite.SpriteAnimation;
 import game.sprite.editor.commands.CreateAnimation;
 import game.sprite.editor.commands.DeleteAnimation;
+import game.sprite.editor.commands.RenameAnimation;
 import game.sprite.editor.commands.ReorderAnimation;
 import game.sprite.editor.commands.SelectAnimation;
 import net.miginfocom.swing.MigLayout;
@@ -130,14 +131,16 @@ public class AnimationsList extends DragReorderList<SpriteAnimation>
 				}
 
 				SpriteAnimation copy = animClipboard.copy();
-				if (!copy.assignUniqueName(copy.name)) {
+				String newName = copy.createUniqueName(copy.name);
+
+				if (newName == null) {
 					Logger.logError("Could not generate unique name for " + copy.name);
 					Toolkit.getDefaultToolkit().beep();
 					return;
 				}
 
+				copy.name = newName;
 				SpriteEditor.execute(new CreateAnimation("Paste Animation", editor.getSprite(), copy, i + 1));
-
 			}
 		});
 
@@ -159,13 +162,15 @@ public class AnimationsList extends DragReorderList<SpriteAnimation>
 
 				int i = getSelectedIndex();
 				SpriteAnimation copy = cur.copy();
+				String newName = copy.createUniqueName(copy.name);
 
-				if (!copy.assignUniqueName(copy.name)) {
+				if (newName == null) {
 					Logger.logError("Could not generate unique name for " + copy.name);
 					Toolkit.getDefaultToolkit().beep();
 					return;
 				}
 
+				copy.name = newName;
 				SpriteEditor.execute(new CreateAnimation("Duplicate Animation", editor.getSprite(), copy, i + 1));
 			}
 		});
@@ -210,10 +215,14 @@ public class AnimationsList extends DragReorderList<SpriteAnimation>
 			return;
 		}
 
-		boolean success = anim.assignUniqueName(name);
-		if (!success) {
+		String newName = anim.createUniqueName(name);
+		if (newName == null) {
+			Logger.logError("Could not generate valid name from input!");
 			Toolkit.getDefaultToolkit().beep();
+			return;
 		}
+
+		SpriteEditor.execute(new RenameAnimation(this, anim, newName));
 	}
 
 	private class SpriteAnimTransferHandle extends DragReorderTransferHandle<SpriteAnimation>

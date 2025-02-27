@@ -144,6 +144,11 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		return new SpriteComponent(parentAnimation, this);
 	}
 
+	public void prepareForEditor()
+	{
+		generate();
+	}
+
 	public void reset()
 	{
 		animator.reset();
@@ -495,7 +500,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		return listIndex;
 	}
 
-	public boolean assignUniqueName(String name)
+	public String createUniqueName(String name)
 	{
 		String baseName = name;
 
@@ -511,9 +516,8 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 			}
 
 			if (!conflict) {
-				// name is valid, assign it
-				this.name = name;
-				return true;
+				// name is valid
+				return name;
 			}
 			else {
 				// try next iteration
@@ -523,7 +527,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		}
 
 		// could not form a valid name
-		return false;
+		return null;
 	}
 
 	/*

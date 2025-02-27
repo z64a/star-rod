@@ -31,8 +31,10 @@ import game.sprite.SpriteAnimation;
 import game.sprite.SpriteComponent;
 import game.sprite.editor.commands.CreateComponent;
 import game.sprite.editor.commands.DeleteComponent;
+import game.sprite.editor.commands.RenameComponent;
 import game.sprite.editor.commands.ReorderComponent;
 import game.sprite.editor.commands.SelectComponent;
+import game.sprite.editor.commands.ToggleComponentHidden;
 import net.miginfocom.swing.MigLayout;
 import util.Logger;
 import util.ui.DragReorderList;
@@ -80,8 +82,8 @@ public class ComponentsList extends DragReorderList<SpriteComponent>
 						int max = min + EYE_ICON_WIDTH;
 						if (cellBounds != null && e.getX() > min && e.getX() < max) {
 							SpriteComponent comp = getModel().getElementAt(index);
-							comp.hidden = !comp.hidden;
-							repaint();
+							if (comp != null)
+								SpriteEditor.execute(new ToggleComponentHidden(ComponentsList.this, comp));
 						}
 					}
 				}
@@ -106,8 +108,8 @@ public class ComponentsList extends DragReorderList<SpriteComponent>
 					case KeyEvent.VK_H:
 						if (index != -1) {
 							SpriteComponent comp = getModel().getElementAt(index);
-							comp.hidden = !comp.hidden;
-							repaint();
+							if (comp != null)
+								SpriteEditor.execute(new ToggleComponentHidden(ComponentsList.this, comp));
 						}
 						break;
 				}
@@ -174,12 +176,15 @@ public class ComponentsList extends DragReorderList<SpriteComponent>
 				}
 
 				SpriteComponent copy = new SpriteComponent(curAnim, compClipboard);
-				if (!copy.assignUniqueName(copy.name)) {
+				String newName = copy.createUniqueName(copy.name);
+
+				if (newName == null) {
 					Logger.logError("Could not generate unique name for " + copy.name);
 					Toolkit.getDefaultToolkit().beep();
 					return;
 				}
 
+				copy.name = newName;
 				SpriteEditor.execute(new CreateComponent("Paste Component", curAnim, copy, i + 1));
 			}
 		});
@@ -209,13 +214,15 @@ public class ComponentsList extends DragReorderList<SpriteComponent>
 
 				int i = getSelectedIndex();
 				SpriteComponent copy = cur.copy();
+				String newName = copy.createUniqueName(copy.name);
 
-				if (!copy.assignUniqueName(copy.name)) {
+				if (newName == null) {
 					Logger.logError("Could not generate unique name for " + copy.name);
 					Toolkit.getDefaultToolkit().beep();
 					return;
 				}
 
+				copy.name = newName;
 				SpriteEditor.execute(new CreateComponent("Duplicate Component", curAnim, copy, i + 1));
 			}
 		});
@@ -267,10 +274,14 @@ public class ComponentsList extends DragReorderList<SpriteComponent>
 			return;
 		}
 
-		boolean success = comp.assignUniqueName(name);
-		if (!success) {
+		String newName = comp.createUniqueName(name);
+		if (newName == null) {
+			Logger.logError("Could not generate valid name from input!");
 			Toolkit.getDefaultToolkit().beep();
+			return;
 		}
+
+		SpriteEditor.execute(new RenameComponent(this, comp, newName));
 	}
 
 	private class SpriteCompTransferHandle extends DragReorderTransferHandle<SpriteComponent>

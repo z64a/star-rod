@@ -14,7 +14,7 @@ public class SpriteRaster
 	public int specialHeight;
 
 	// editor fields
-	protected transient int listIndex;
+	protected transient int listIndex; // required to compile Set Image commands
 	public transient String name = "";
 
 	public transient boolean deleted;

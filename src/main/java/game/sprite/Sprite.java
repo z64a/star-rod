@@ -58,11 +58,19 @@ public class Sprite implements XmlSerializable
 	private transient boolean readyForEditor = false;
 	public transient boolean enableStencilBuffer = false;
 
-	public transient int lastSelectedAnim;
-	public transient boolean hasLastSelected = false;
-
 	public transient boolean deleted; // unused
 	public transient boolean hasError;
+
+	// rasters tab state to restore when this sprite is selected
+	public transient int lastSelectedRaster = -1;
+	public transient int lastSelectedImgAsset = -1;
+	// palettes tab state to restore when this sprite is selected
+	public transient int lastSelectedPalette = -1;
+	public transient int lastSelectedPalAsset = -1;
+	// animations tab state to restore when this sprite is selected
+	public transient int lastSelectedAnim = -1;
+	public transient boolean usingOverridePalette;
+	public transient SpritePalette overridePalette = null;
 
 	// have the animators generate their animation commands
 	public void prepareForEditor()
@@ -70,13 +78,14 @@ public class Sprite implements XmlSerializable
 		if (readyForEditor)
 			return;
 
-		for (int i = 0; i < animations.size(); i++) {
-			SpriteAnimation anim = animations.elementAt(i);
-			for (int j = 0; j < anim.components.size(); j++) {
-				SpriteComponent comp = anim.components.elementAt(j);
-				comp.generate();
-			}
-		}
+		for (SpriteAnimation anim : animations)
+			anim.prepareForEditor();
+
+		if (palettes.size() > 0)
+			overridePalette = palettes.get(0);
+
+		if (animations.size() > 0)
+			lastSelectedAnim = 0;
 
 		revalidate();
 

@@ -15,13 +15,12 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 	public transient String name = "";
 	protected transient int listIndex;
 
-	public transient int lastSelectedComp;
-	public transient boolean hasLastSelected = false;
-
 	public transient int animTime;
 
 	public transient boolean deleted;
 	public transient boolean hasError;
+
+	public transient int lastSelectedComp = -1;
 
 	public SpriteAnimation(Sprite parentSprite)
 	{
@@ -54,9 +53,13 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 		return new SpriteAnimation(this);
 	}
 
-	public int getComponentCount()
+	public void prepareForEditor()
 	{
-		return components.size();
+		for (SpriteComponent comp : components)
+			comp.prepareForEditor();
+
+		if (components.size() > 0)
+			lastSelectedComp = 0;
 	}
 
 	@Override
@@ -77,7 +80,7 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 		return listIndex;
 	}
 
-	public boolean assignUniqueName(String name)
+	public String createUniqueName(String name)
 	{
 		String baseName = name;
 
@@ -93,9 +96,8 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 			}
 
 			if (!conflict) {
-				// name is valid, assign it
-				this.name = name;
-				return true;
+				// name is valid
+				return name;
 			}
 			else {
 				// try next iteration
@@ -105,7 +107,7 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 		}
 
 		// could not form a valid name
-		return false;
+		return null;
 	}
 
 	public void step()
@@ -196,6 +198,7 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 		}
 	}
 
+	@Deprecated
 	public void cleanDeletedRasters()
 	{
 		for (int i = 0; i < components.getSize(); i++) {
@@ -204,6 +207,7 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 		}
 	}
 
+	@Deprecated
 	public void cleanDeletedPalettes()
 	{
 		for (int i = 0; i < components.getSize(); i++) {
