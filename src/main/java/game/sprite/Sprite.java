@@ -49,6 +49,7 @@ public class Sprite implements XmlSerializable
 	public final IterableListModel<SpriteRaster> rasters = new IterableListModel<>();
 	public final IterableListModel<SpritePalette> palettes = new IterableListModel<>();
 
+	// these are 'effectively' final, but must be assigned once to the global player assets for player sprites
 	public SpriteAssetCollection<ImgAsset> imgAssets = new SpriteAssetCollection<>();
 	public SpriteAssetCollection<PalAsset> palAssets = new SpriteAssetCollection<>();
 
@@ -63,6 +64,8 @@ public class Sprite implements XmlSerializable
 	public transient int lastSelectedRaster = -1;
 	public transient SpriteRaster selectedRaster = null;
 	// palettes tab state to restore when this sprite is selected
+	public transient int lastSelectedPalAsset = -1;
+	public transient PalAsset selectedPalAsset = null;
 	public transient int lastSelectedPalette = -1;
 	public transient SpritePalette selectedPalette = null;
 	// animations tab state to restore when this sprite is selected
@@ -76,14 +79,16 @@ public class Sprite implements XmlSerializable
 		if (readyForEditor)
 			return;
 
+		if (palAssets.size() > 0) {
+			selectedPalAsset = palAssets.get(0);
+			lastSelectedPalAsset = 0;
+		}
+
+		if (palettes.size() > 0)
+			overridePalette = palettes.get(0);
+
 		for (SpriteAnimation anim : animations)
 			anim.prepareForEditor();
-
-		if (palettes.size() > 0) {
-			selectedPalette = palettes.get(0);
-			overridePalette = palettes.get(0);
-			lastSelectedPalette = 0;
-		}
 
 		if (animations.size() > 0)
 			lastSelectedAnim = 0;
@@ -397,8 +402,13 @@ public class Sprite implements XmlSerializable
 		}
 
 		try {
-			//TODO ONLY WORKS FOR NPC SPRITES!
-			palAssets.set(SpriteLoader.loadSpritePalettes(AssetManager.getNpcSpritePalettes(name)));
+			if (metadata.isPlayer) {
+				palAssets.set(SpriteLoader.loadSpritePalettes(AssetManager.getPlayerSpritePalettes()));
+			}
+			else {
+				palAssets.set(SpriteLoader.loadSpritePalettes(AssetManager.getNpcSpritePalettes(name)));
+			}
+
 			Logger.log("Loaded " + palAssets.size() + " assets");
 		}
 		catch (IOException e) {
@@ -463,11 +473,26 @@ public class Sprite implements XmlSerializable
 
 	public void savePalettes()
 	{
-		File dir = new File(source.getParentFile(), "palettes");
-
-		for (SpritePalette sp : palettes) {
-			sp.saveAs(new File(dir, sp.filename));
+		int count = 0;
+		for (PalAsset asset : palAssets) {
+			if (asset.modified) {
+				try {
+					asset.save();
+					asset.modified = false;
+					count++;
+				}
+				catch (IOException e) {
+					Logger.logError("IOException while saving " + asset.getFilename() + ": " + e.getMessage());
+				}
+			}
 		}
+
+		if (count == 0)
+			Logger.log("No modified palettes found");
+		else if (count == 1)
+			Logger.log("Saved " + count + " modified palette");
+		else
+			Logger.log("Saved " + count + " modified palettes");
 	}
 
 	@Override
@@ -824,7 +849,7 @@ public class Sprite implements XmlSerializable
 		return null;
 	}
 
-	public void renderAtlas(ImgAsset selected, ImgAsset highlighted, SpritePalette overridePalette, boolean useFiltering)
+	public void renderAtlas(ImgAsset selected, ImgAsset highlighted, Palette overridePalette, boolean useFiltering)
 	{
 		for (ImgAsset ia : imgAssets) {
 			ia.inUse = false;
@@ -861,8 +886,8 @@ public class Sprite implements XmlSerializable
 			shader.alpha.set(ia.inUse ? 1.0f : 0.4f);
 
 			Palette renderPalette;
-			if (overridePalette != null && overridePalette.hasPal()) {
-				renderPalette = overridePalette.getPal();
+			if (overridePalette != null) {
+				renderPalette = overridePalette;
 			}
 			else {
 				renderPalette = ia.getPalette();

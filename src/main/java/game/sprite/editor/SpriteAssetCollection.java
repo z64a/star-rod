@@ -54,6 +54,11 @@ public class SpriteAssetCollection<T> implements Iterable<T>
 		}
 	}
 
+	public T get(int index)
+	{
+		return assetListModel.get(index);
+	}
+
 	public T get(String name)
 	{
 		return assetMap.get(name);
@@ -62,6 +67,11 @@ public class SpriteAssetCollection<T> implements Iterable<T>
 	public boolean containsKey(String name)
 	{
 		return assetMap.containsKey(name);
+	}
+
+	public boolean contains(T asset)
+	{
+		return assetMap.containsValue(asset);
 	}
 
 	public void clear()

@@ -2,6 +2,7 @@ package game.sprite;
 
 import static game.texture.TileFormat.CI_4;
 
+import java.awt.Color;
 import java.io.IOException;
 
 import org.apache.commons.io.FilenameUtils;
@@ -18,11 +19,24 @@ public class PalAsset
 
 	public final Palette pal;
 
+	// remember colors before commands which adjust them are applied
+	public final Color[] savedColors = new Color[16];
+
+	public transient boolean dirty; // needs reupload to GPU
+	public transient boolean modified;
+
 	public PalAsset(AssetHandle ah) throws IOException
 	{
 		source = ah;
 		sourceImg = Tile.load(source, CI_4);
 		pal = sourceImg.palette;
+	}
+
+	public void stashColors()
+	{
+		for (int i = 0; i < 16; i++) {
+			savedColors[i] = pal.getColor(i);
+		}
 	}
 
 	public void save() throws IOException

@@ -284,7 +284,7 @@ public class PalettesList extends DragReorderList<SpritePalette>
 			else if (!value.hasPal()) {
 				swatchesPanel.setVisible(false);
 				nameLabel.setText(value.toString() + " (missing)");
-				nameLabel.setForeground(Color.red);
+				nameLabel.setForeground(SwingUtils.getRedTextColor());
 				for (SwatchPanel panel : swatches)
 					panel.setForeground(Color.gray);
 			}

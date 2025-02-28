@@ -1,6 +1,5 @@
 package game.sprite;
 
-import java.awt.Color;
 import java.io.File;
 
 import game.sprite.SpriteLoader.Indexable;
@@ -22,11 +21,6 @@ public final class SpritePalette implements Indexable<SpritePalette>
 
 	// editor fields
 	protected transient int listIndex;
-	public transient boolean dirty; // needs reupload to GPU
-	public transient boolean modified;
-
-	// remember colors before commands which adjust them are applied
-	public final Color[] savedColors = new Color[16];
 
 	public transient boolean deleted;
 	public transient boolean hasError;
@@ -52,13 +46,6 @@ public final class SpritePalette implements Indexable<SpritePalette>
 	public Sprite getSprite()
 	{
 		return spr;
-	}
-
-	public void stashColors()
-	{
-		for (int i = 0; i < 16; i++) {
-			savedColors[i] = asset.pal.getColor(i);
-		}
 	}
 
 	public void assignAsset(PalAsset asset)

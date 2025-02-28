@@ -87,8 +87,8 @@ public class SpriteLoader
 	private HashMap<Integer, Sprite> npcSpriteCache = new HashMap<>();
 
 	private boolean loadedPlayerAssets = false;
-	private SpriteAssetCollection<ImgAsset> playerImgAssets = new SpriteAssetCollection<>();
-	private SpriteAssetCollection<PalAsset> playerPalAssets = new SpriteAssetCollection<>();
+	private final SpriteAssetCollection<ImgAsset> playerImgAssets = new SpriteAssetCollection<>();
+	private final SpriteAssetCollection<PalAsset> playerPalAssets = new SpriteAssetCollection<>();
 
 	public static void initialize()
 	{

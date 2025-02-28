@@ -55,6 +55,7 @@ import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
 import game.map.shape.TransformMatrix;
 import game.sprite.ImgAsset;
+import game.sprite.PalAsset;
 import game.sprite.Sprite;
 import game.sprite.SpriteAnimation;
 import game.sprite.SpriteComponent;
@@ -182,8 +183,6 @@ public class SpriteEditor extends BaseEditor
 
 	private RastersTab rastersTab;
 	private PalettesTab palettesTab;
-
-	private boolean useAtlasOverride = false;
 
 	private static enum EditorMode
 	{
@@ -676,6 +675,9 @@ public class SpriteEditor extends BaseEditor
 			sprite.makeAtlas();
 			sprite.centerAtlas(sheetCamera, glCanvasWidth(), glCanvasHeight());
 
+			sprite.bindPalettes();
+			sprite.bindRasters();
+
 			sprite.loadEditorImages();
 			loadSprite = sprite;
 
@@ -854,11 +856,10 @@ public class SpriteEditor extends BaseEditor
 
 	private void checkPalettesForChanges()
 	{
-		for (int i = 0; i < sprite.palettes.size(); i++) {
-			SpritePalette sp = sprite.palettes.get(i);
-			if (sp.dirty && sp.hasPal()) {
-				sp.getPal().glReload();
-				sp.dirty = false;
+		for (PalAsset asset : sprite.palAssets) {
+			if (asset.dirty) {
+				asset.pal.glReload();
+				asset.dirty = false;
 			}
 		}
 	}
@@ -940,8 +941,8 @@ public class SpriteEditor extends BaseEditor
 		if (sprite == null)
 			return;
 
-		if (editorMode == EditorMode.Palettes || useAtlasOverride)
-			sprite.renderAtlas(selectedImgAsset, highlightedImgAsset, sprite.selectedPalette, useFiltering);
+		if (editorMode == EditorMode.Palettes && sprite.selectedPalAsset != null)
+			sprite.renderAtlas(selectedImgAsset, highlightedImgAsset, sprite.selectedPalAsset.pal, useFiltering);
 		else
 			sprite.renderAtlas(selectedImgAsset, highlightedImgAsset, null, useFiltering);
 
@@ -1161,12 +1162,12 @@ public class SpriteEditor extends BaseEditor
 				try {
 					int id = SpriteLoader.getMaximumID(spriteSet) + 1;
 					SpriteLoader.create(spriteSet, id);
-		
+
 					if(spriteSet == SpriteSet.Npc)
 						useNpcFiles(id);
 					else
 						usePlayerFiles(id);
-		
+
 				} catch (Throwable t) {
 					Logger.logError("Failed to create new sprite.");
 					incrementDialogsOpen();
@@ -1176,7 +1177,7 @@ public class SpriteEditor extends BaseEditor
 			});
 		});
 		menu.add(item);
-		
+
 		menu.addSeparator();
 		 */
 

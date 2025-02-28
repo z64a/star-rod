@@ -66,7 +66,10 @@ public class PalAssetSlicesRenderer extends JPanel implements ListCellRenderer<P
 
 		setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 0));
 		if (asset != null) {
-			nameLabel.setText(asset.toString());
+			if (asset.modified)
+				nameLabel.setText(asset.toString() + " *");
+			else
+				nameLabel.setText(asset.toString());
 			nameLabel.setForeground(null);
 
 			Color[] colors = asset.pal.getColors();
