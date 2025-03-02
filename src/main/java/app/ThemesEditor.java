@@ -87,8 +87,11 @@ public class ThemesEditor
 
 								SwingUtils.getWarningDialog()
 									.setTitle("Theme Changed")
-									.setMessage("Theme has been changed.", "Star Rod must restart.")
+									.setMessage("Theme has been changed.", "Star Rod must be restarted.")
+									.setOptions("OK")
 									.show();
+
+								Environment.exit();
 							}
 							exitToMainMenu = false;
 							break;
