@@ -5,27 +5,27 @@ import java.util.function.Consumer;
 
 import common.commands.AbstractCommand;
 import game.sprite.ImgAsset;
-import game.sprite.ImgRef;
+import game.sprite.SpriteRasterFace;
 
 public class BindImgAsset extends AbstractCommand
 {
 	private final Component ui;
-	private final Consumer<ImgRef> callback;
+	private final Consumer<SpriteRasterFace> callback;
 
-	private final ImgRef ref;
+	private final SpriteRasterFace face;
 	private final ImgAsset next;
 	private final ImgAsset prev;
 
-	public BindImgAsset(Component ui, ImgRef ref, ImgAsset asset, Consumer<ImgRef> callback)
+	public BindImgAsset(Component ui, SpriteRasterFace face, ImgAsset asset, Consumer<SpriteRasterFace> callback)
 	{
 		super("Bind Raster");
 
 		this.ui = ui;
 		this.callback = callback;
 
-		this.ref = ref;
+		this.face = face;
 		this.next = asset;
-		this.prev = ref.asset;
+		this.prev = face.asset;
 	}
 
 	@Override
@@ -33,8 +33,10 @@ public class BindImgAsset extends AbstractCommand
 	{
 		super.exec();
 
-		ref.assignAsset(next);
-		callback.accept(ref);
+		face.assignAsset(next);
+		face.loadEditorImages();
+
+		callback.accept(face);
 		ui.repaint();
 	}
 
@@ -43,8 +45,10 @@ public class BindImgAsset extends AbstractCommand
 	{
 		super.undo();
 
-		ref.assignAsset(prev);
-		callback.accept(ref);
+		face.assignAsset(prev);
+		face.loadEditorImages();
+
+		callback.accept(face);
 		ui.repaint();
 	}
 }

@@ -88,18 +88,18 @@ public class RasterCellRenderer extends JPanel implements ListCellRenderer<Sprit
 				textColor = SwingUtils.getRedTextColor();
 			}
 			else {
-				frontLabel.setIcon(value.front.asset.tiny);
+				frontLabel.setIcon(value.front.preview.tiny);
 			}
 
-			backLabel.setVisible(value.independentBack);
+			backLabel.setVisible(value.hasIndependentBack);
 
-			if (value.independentBack) {
+			if (value.hasIndependentBack) {
 				if (value.back.asset == null) {
 					backLabel.setIcon(null);
 					textColor = SwingUtils.getRedTextColor();
 				}
 				else {
-					backLabel.setIcon(value.back.asset.tiny);
+					backLabel.setIcon(value.back.preview.tiny);
 				}
 			}
 		}
@@ -112,7 +112,7 @@ public class RasterCellRenderer extends JPanel implements ListCellRenderer<Sprit
 				textColor = SwingUtils.getRedTextColor();
 			}
 			else {
-				iconLabel.setIcon(value.front.asset.tiny);
+				iconLabel.setIcon(value.front.preview.tiny);
 			}
 		}
 

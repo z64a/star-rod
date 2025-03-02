@@ -14,9 +14,9 @@ import javax.swing.SwingUtilities;
 
 import common.commands.CommandBatch;
 import game.sprite.ImgAsset;
-import game.sprite.ImgRef;
 import game.sprite.Sprite;
 import game.sprite.SpriteRaster;
+import game.sprite.SpriteRasterFace;
 import game.sprite.editor.commands.BindImgAsset;
 import game.sprite.editor.commands.CreateRaster;
 import game.sprite.editor.commands.SelectImgAsset;
@@ -32,8 +32,8 @@ public class RastersTab extends JPanel
 	private AssetList<ImgAsset> imgAssetList;
 	private RastersList rasterList;
 
-	private ImageRefPanel frontImgPanel;
-	private ImageRefPanel backImgPanel;
+	private RasterFacePanel frontImgPanel;
+	private RasterFacePanel backImgPanel;
 
 	public RastersTab(SpriteEditor editor)
 	{
@@ -110,7 +110,6 @@ public class RastersTab extends JPanel
 					img.front.assignPal(sprite.selectedPalette);
 				else if (sprite.palettes.size() > 0)
 					img.front.assignPal(sprite.palettes.get(0));
-				//FIXME
 			}
 
 			img.name = newName;
@@ -120,8 +119,8 @@ public class RastersTab extends JPanel
 			SpriteEditor.execute(batch);
 		});
 
-		frontImgPanel = new ImageRefPanel(this, false);
-		backImgPanel = new ImageRefPanel(this, true);
+		frontImgPanel = new RasterFacePanel(this, false);
+		backImgPanel = new RasterFacePanel(this, true);
 
 		JScrollPane assetScrollPane = new JScrollPane(imgAssetList);
 		assetScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
@@ -146,30 +145,30 @@ public class RastersTab extends JPanel
 		add(listsPanel, "grow, push");
 	}
 
-	public void tryBindAsset(ImgRef ref, Consumer<ImgRef> callback)
+	public void tryBindAsset(SpriteRasterFace face, Consumer<SpriteRasterFace> callback)
 	{
 		ImgAsset asset = imgAssetList.getSelectedValue();
 
 		// null asset is allowed here
-		SpriteEditor.execute(new BindImgAsset(this, ref, asset, callback));
+		SpriteEditor.execute(new BindImgAsset(this, face, asset, callback));
 	}
 
-	public void trySelectAsset(ImgRef ref)
+	public void trySelectAsset(SpriteRasterFace face)
 	{
-		if (ref.asset == null) {
-			Logger.logError("No asset is bound for " + ref.parentRaster.name + "!");
+		if (face.asset == null) {
+			Logger.logError("No asset is bound for " + face.parentRaster.name + "!");
 			Toolkit.getDefaultToolkit().beep();
 			return;
 		}
 
-		if (!sprite.imgAssets.contains(ref.asset)) {
-			Logger.logError("Asset for " + ref.parentRaster.name + " is missing!");
+		if (!sprite.imgAssets.contains(face.asset)) {
+			Logger.logError("Asset for " + face.parentRaster.name + " is missing!");
 			Toolkit.getDefaultToolkit().beep();
 			return;
 		}
 
 		SpriteEditor.execute(new SelectImgAsset(imgAssetList, SpriteEditor.instance().getSprite(),
-			ref.asset, this::setImgAsset));
+			face.asset, this::setImgAsset));
 	}
 
 	public void setSprite(Sprite sprite)

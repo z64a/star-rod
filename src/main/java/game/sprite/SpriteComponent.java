@@ -545,21 +545,12 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		if (sr == null || hidden)
 			return;
 
-		ImgAsset ia = null;
-
-		// use back if it's available
-		if (useBack) {
-			ia = sr.getBack();
-		}
-
-		// fallback to front
-		if (ia == null) {
-			ia = sr.getFront();
-		}
+		boolean tryBack = parentAnimation.parentSprite.hasBack && sr.hasIndependentBack;
+		SpriteRasterFace face = (useBack && tryBack) ? sr.back : sr.front;
 
 		// no image found, skip drawing
 		//TODO perhaps draw a 32x32 error quad instead?
-		if (ia == null)
+		if (face == null || face.asset == null)
 			return;
 
 		if (enableStencilBuffer)
@@ -567,13 +558,20 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 
 		Palette renderPalette;
 		if (sp != null && sp.hasPal()) {
+			// use current palette set by command list
 			renderPalette = sp.getPal();
 		}
 		else if (paletteOverride != null && paletteOverride.hasPal()) {
+			// use override palette set in the Animations tab
 			renderPalette = paletteOverride.getPal();
 		}
+		else if (face.pal.hasPal()) {
+			// use palette assigned for this side of the SpriteRaster
+			renderPalette = face.pal.getPal();
+		}
 		else {
-			renderPalette = ia.getPalette();
+			// no valid palette could be found, fallback to palette of the image itself
+			renderPalette = face.asset.img.palette;
 		}
 
 		int x = (parent != null) ? parent.getX() + getX() : getX();
@@ -582,8 +580,8 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 
 		float depth = z / 100.0f;
 
-		float w = ia.img.width / 2;
-		float h = ia.img.height;
+		float w = face.asset.img.width / 2;
+		float h = face.asset.img.height;
 		corners[0].set(-w, 0, 0);
 		corners[1].set(w, 0, 0);
 		corners[2].set(w, h, 0);
@@ -620,7 +618,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 			spriteShading.setShaderParams(shader);
 		}
 
-		ia.img.glBind(shader.texture);
+		face.asset.img.glBind(shader.texture);
 		renderPalette.glBind(shader.palette);
 
 		shader.useFiltering.set(useFiltering);

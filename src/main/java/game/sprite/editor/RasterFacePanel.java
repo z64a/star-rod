@@ -3,7 +3,6 @@ package game.sprite.editor;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
 
 import javax.swing.ButtonGroup;
 import javax.swing.DefaultComboBoxModel;
@@ -17,19 +16,18 @@ import javax.swing.SwingUtilities;
 import app.SwingUtils;
 import common.commands.AbstractCommand;
 import game.map.editor.render.TextureManager;
-import game.sprite.ImgAsset;
-import game.sprite.ImgRef;
 import game.sprite.Sprite;
 import game.sprite.SpritePalette;
 import game.sprite.SpriteRaster;
+import game.sprite.SpriteRasterFace;
 import net.miginfocom.swing.MigLayout;
 import util.ui.ListAdapterComboboxModel;
 
-public class ImageRefPanel extends JPanel
+public class RasterFacePanel extends JPanel
 {
 	private static final int IMG_SIZE = 160;
 
-	private ImgRef ref = null;
+	private SpriteRasterFace face = null;
 
 	private final RastersTab tab;
 	private final boolean isBack;
@@ -45,7 +43,7 @@ public class ImageRefPanel extends JPanel
 
 	private boolean ignoreChanges = false;
 
-	public ImageRefPanel(RastersTab tab, boolean isBack)
+	public RasterFacePanel(RastersTab tab, boolean isBack)
 	{
 		this.tab = tab;
 		this.isBack = isBack;
@@ -61,37 +59,32 @@ public class ImageRefPanel extends JPanel
 				Graphics2D g2 = (Graphics2D) g;
 				g.drawImage(TextureManager.background, 0, 0, IMG_SIZE, IMG_SIZE, null);
 
-				if (ref == null)
+				if (face == null)
 					return;
 
-				boolean hasBack = ref.parentRaster.parentSprite.hasBack;
+				boolean hasBack = face.parentRaster.parentSprite.hasBack;
 
-				ImgRef drawRef = ref;
-				if (isBack && hasBack && !ref.parentRaster.independentBack)
-					drawRef = ref.parentRaster.front;
+				SpriteRasterFace drawSide = face;
+				if (isBack && hasBack && !face.parentRaster.hasIndependentBack)
+					drawSide = face.parentRaster.front;
 
-				if (drawRef != null && drawRef.asset != null) {
-					ImgAsset drawAsset = drawRef.asset;
-					drawAsset.previewImg = new BufferedImage(
-						drawAsset.getPalette().getIndexColorModel(),
-						drawAsset.previewImg.getRaster(), false, null);
-
-					SwingUtils.centerAndFitImage(drawAsset.previewImg, this, g2);
+				if (drawSide != null && drawSide.asset != null) {
+					SwingUtils.centerAndFitImage(drawSide.preview.previewImg, this, g2);
 				}
 			}
 		};
 
 		btnBind = new JButton("Bind Asset");
 		btnBind.addActionListener((e) -> {
-			if (ref != null)
-				tab.tryBindAsset(ref, this::setImage);
+			if (face != null)
+				tab.tryBindAsset(face, this::setImage);
 		});
 		SwingUtils.addBorderPadding(btnBind);
 
 		btnSelect = new JButton("Select Asset");
 		btnSelect.addActionListener((e) -> {
-			if (ref != null)
-				tab.trySelectAsset(ref);
+			if (face != null)
+				tab.trySelectAsset(face);
 		});
 		SwingUtils.addBorderPadding(btnSelect);
 
@@ -107,14 +100,14 @@ public class ImageRefPanel extends JPanel
 		if (isBack) {
 			btnUseFront.setSelected(true);
 			btnUseFront.addActionListener((e) -> {
-				if (!ignoreChanges && btnUseFront.isSelected() && ref != null)
-					SpriteEditor.execute(new SetRasterIndependent(ref.parentRaster, false));
+				if (!ignoreChanges && btnUseFront.isSelected() && face != null)
+					SpriteEditor.execute(new SetFacesIndependent(face.parentRaster, false));
 			});
 
 			btnSeparate.setSelected(false);
 			btnSeparate.addActionListener((e) -> {
-				if (!ignoreChanges && btnSeparate.isSelected() && ref != null)
-					SpriteEditor.execute(new SetRasterIndependent(ref.parentRaster, true));
+				if (!ignoreChanges && btnSeparate.isSelected() && face != null)
+					SpriteEditor.execute(new SetFacesIndependent(face.parentRaster, true));
 			});
 
 			ButtonGroup group = new ButtonGroup();
@@ -131,9 +124,9 @@ public class ImageRefPanel extends JPanel
 		paletteBox.setMaximumRowCount(24);
 		paletteBox.setRenderer(new PaletteCellRenderer());
 		paletteBox.addActionListener((e) -> {
-			if (!ignoreChanges && ref != null) {
+			if (!ignoreChanges && face != null) {
 				SpritePalette pal = (SpritePalette) paletteBox.getSelectedItem();
-				SpriteEditor.execute(new SetImgRefPalette(ref, pal));
+				SpriteEditor.execute(new SetFacePalette(face, pal));
 			}
 		});
 
@@ -151,7 +144,7 @@ public class ImageRefPanel extends JPanel
 
 	public void refresh()
 	{
-		setImage(ref);
+		setImage(face);
 		tab.repaint();
 	}
 
@@ -182,71 +175,71 @@ public class ImageRefPanel extends JPanel
 			setImage(img.front);
 	}
 
-	private void setImage(ImgRef newRef)
+	private void setImage(SpriteRasterFace newSide)
 	{
 		assert (SwingUtilities.isEventDispatchThread());
 
 		// easier to just separate these functions than dealing with all four
 		// combinations of isBack/hasBack at the same time
 		if (isBack)
-			setImageAsBack(newRef);
+			setImageAsBack(newSide);
 		else
-			setImageAsFront(newRef);
+			setImageAsFront(newSide);
 	}
 
-	private void setImageAsFront(ImgRef newRef)
+	private void setImageAsFront(SpriteRasterFace newSide)
 	{
 		assert (SwingUtilities.isEventDispatchThread());
 
-		ref = newRef;
+		face = newSide;
 		image.repaint();
 
-		if (ref == null) {
+		if (face == null) {
 			lblTitle.setForeground(SwingUtils.getRedTextColor());
 			lblTitle.setText("ERROR");
 			return;
 		}
 
-		boolean hasBack = ref.parentRaster.parentSprite.hasBack;
+		boolean hasBack = face.parentRaster.parentSprite.hasBack;
 
 		String text = hasBack ? "Front: " : "Asset: ";
 		Color color = null;
 
-		if (!ref.resolved) {
+		if (!face.resolved) {
 			color = SwingUtils.getRedTextColor();
-			text += ref.getName() + " (missing)";
+			text += face.getName() + " (missing)";
 		}
-		else if (ref.asset == null) {
+		else if (face.asset == null) {
 			color = SwingUtils.getRedTextColor();
 			text += "(not bound)";
 		}
 		else {
-			text += ref.getName();
+			text += face.getName();
 		}
 
 		lblTitle.setForeground(color);
 		lblTitle.setText(text);
 
 		ignoreChanges = true;
-		paletteBox.setSelectedItem(ref.pal);
+		paletteBox.setSelectedItem(face.pal);
 		ignoreChanges = false;
 	}
 
-	private void setImageAsBack(ImgRef newRef)
+	private void setImageAsBack(SpriteRasterFace newSide)
 	{
 		assert (SwingUtilities.isEventDispatchThread());
 
-		ref = newRef;
+		face = newSide;
 		image.repaint();
 
-		if (ref == null) {
+		if (face == null) {
 			lblTitle.setForeground(SwingUtils.getRedTextColor());
 			lblTitle.setText("ERROR");
 			return;
 		}
 
-		boolean hasBack = ref.parentRaster.parentSprite.hasBack;
-		boolean useFront = !ref.parentRaster.independentBack;
+		boolean hasBack = face.parentRaster.parentSprite.hasBack;
+		boolean useFront = !face.parentRaster.hasIndependentBack;
 
 		if (!hasBack) {
 			// should never appear, as this panel should not be visible if the sprite is not two-sided
@@ -274,38 +267,38 @@ public class ImageRefPanel extends JPanel
 			color = SwingUtils.getBlueTextColor();
 			text += "(using front)";
 		}
-		else if (!ref.resolved) {
+		else if (!face.resolved) {
 			color = SwingUtils.getRedTextColor();
-			text += ref.getName() + " (missing)";
+			text += face.getName() + " (missing)";
 		}
-		else if (ref.asset == null) {
+		else if (face.asset == null) {
 			color = SwingUtils.getRedTextColor();
 			text += "(not bound)";
 		}
 		else {
-			text += ref.getName();
+			text += face.getName();
 		}
 
 		lblTitle.setForeground(color);
 		lblTitle.setText(text);
 
 		ignoreChanges = true;
-		paletteBox.setSelectedItem(ref.pal);
+		paletteBox.setSelectedItem(face.pal);
 		ignoreChanges = false;
 	}
 
-	private class SetRasterIndependent extends AbstractCommand
+	private class SetFacesIndependent extends AbstractCommand
 	{
 		private final SpriteRaster img;
 		private final boolean next;
 		private final boolean prev;
 
-		public SetRasterIndependent(SpriteRaster img, boolean value)
+		public SetFacesIndependent(SpriteRaster img, boolean value)
 		{
 			super(value ? "Use Separate Assets" : "Use Shared Asset");
 
 			this.img = img;
-			this.prev = img.independentBack;
+			this.prev = img.hasIndependentBack;
 			this.next = value;
 		}
 
@@ -314,7 +307,7 @@ public class ImageRefPanel extends JPanel
 		{
 			super.exec();
 
-			img.independentBack = next;
+			img.hasIndependentBack = next;
 			refresh();
 		}
 
@@ -323,23 +316,23 @@ public class ImageRefPanel extends JPanel
 		{
 			super.undo();
 
-			img.independentBack = prev;
+			img.hasIndependentBack = prev;
 			refresh();
 		}
 	}
 
-	private class SetImgRefPalette extends AbstractCommand
+	private class SetFacePalette extends AbstractCommand
 	{
-		private final ImgRef ref;
+		private final SpriteRasterFace side;
 		private final SpritePalette next;
 		private final SpritePalette prev;
 
-		public SetImgRefPalette(ImgRef ref, SpritePalette pal)
+		public SetFacePalette(SpriteRasterFace side, SpritePalette pal)
 		{
 			super("Assign Palette");
 
-			this.ref = ref;
-			this.prev = ref.pal;
+			this.side = side;
+			this.prev = side.pal;
 			this.next = pal;
 		}
 
@@ -348,10 +341,9 @@ public class ImageRefPanel extends JPanel
 		{
 			super.exec();
 
-			ref.assignPal(next); //FIXME
-			//	ref.pal = next;
-			ref.parentRaster.reloadEditorImages();
-			repaint();
+			side.assignPal(next);
+			side.parentRaster.loadEditorImages();
+			tab.repaint();
 		}
 
 		@Override
@@ -359,10 +351,9 @@ public class ImageRefPanel extends JPanel
 		{
 			super.undo();
 
-			ref.assignPal(prev); //FIXME
-			//ref.pal = prev;
-			ref.parentRaster.reloadEditorImages();
-			repaint();
+			side.assignPal(prev);
+			side.parentRaster.loadEditorImages();
+			tab.repaint();
 		}
 	}
 }

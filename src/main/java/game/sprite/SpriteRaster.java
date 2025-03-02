@@ -6,10 +6,10 @@ public class SpriteRaster
 {
 	public final Sprite parentSprite;
 
-	public final ImgRef front;
-	public final ImgRef back;
+	public final SpriteRasterFace front;
+	public final SpriteRasterFace back;
 
-	public boolean independentBack;
+	public boolean hasIndependentBack;
 
 	// keep track of these, but do not expose them to users
 	public int specialWidth;
@@ -25,8 +25,8 @@ public class SpriteRaster
 	public SpriteRaster(Sprite spr)
 	{
 		this.parentSprite = spr;
-		front = new ImgRef(this);
-		back = new ImgRef(this);
+		front = new SpriteRasterFace(this);
+		back = new SpriteRasterFace(this);
 	}
 
 	public SpriteRaster(SpriteRaster original)
@@ -35,7 +35,7 @@ public class SpriteRaster
 		name = original.name;
 		front.setAll(original.front);
 		back.setAll(original.back);
-		this.independentBack = original.independentBack;
+		this.hasIndependentBack = original.hasIndependentBack;
 
 		specialWidth = original.specialWidth;
 		specialHeight = original.specialHeight;
@@ -46,29 +46,22 @@ public class SpriteRaster
 		return new SpriteRaster(this);
 	}
 
-	public ImgAsset getFront()
-	{
-		return front.asset;
-	}
-
-	public ImgAsset getBack()
-	{
-		return back.asset;
-	}
-
 	public void bindRasters(SpriteAssetCollection<ImgAsset> imgAssets)
 	{
-		front.lookup(imgAssets);
-		back.lookup(imgAssets);
+		front.resolve(imgAssets);
+		back.resolve(imgAssets);
 	}
 
-	public void reloadEditorImages()
+	public void loadEditorImages()
 	{
-		if (front.asset != null)
-			front.asset.loadEditorImages();
+		front.loadEditorImages();
+		back.loadEditorImages();
+	}
 
-		if (back.asset != null)
-			back.asset.loadEditorImages();
+	public void loadEditorImages(PalAsset filter)
+	{
+		front.loadEditorImages(filter);
+		back.loadEditorImages(filter);
 	}
 
 	public String createUniqueName(String name)

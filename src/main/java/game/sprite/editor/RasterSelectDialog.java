@@ -42,7 +42,7 @@ public class RasterSelectDialog extends JDialog
 		JPanel gridPanel = new JPanel(new MigLayout("wrap " + columns + ", gap 10"));
 
 		for (SpriteRaster raster : rasters) {
-			JButton button = new JButton(raster.getFront().icon);
+			JButton button = new JButton(raster.front.preview.icon);
 			button.setText(raster.name);
 			button.setVerticalTextPosition(SwingConstants.BOTTOM);
 			button.setHorizontalTextPosition(SwingConstants.CENTER);

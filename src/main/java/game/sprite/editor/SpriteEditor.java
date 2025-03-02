@@ -342,7 +342,8 @@ public class SpriteEditor extends BaseEditor
 
 		Sprite referenceSprite = spriteLoader.getSprite(SpriteSet.Player, 1);
 		if (referenceSprite != null) {
-			referenceTile = new Tile(referenceSprite.rasters.get(0).getFront().img);
+			SpriteRaster referenceRaster = referenceSprite.rasters.get(0);
+			referenceTile = new Tile(referenceRaster.front.asset.img);
 			referenceTile.glLoad(GL_REPEAT, GL_REPEAT, false);
 
 			Color c = new Color(0, 60, 80, 255);
@@ -1719,8 +1720,8 @@ public class SpriteEditor extends BaseEditor
 		listsPanel.add(new JLabel("Components"), "growx");
 		listsPanel.add(cbShowOnlySelectedComponent, "gapleft push, align right");
 
-		listsPanel.add(animScrollPane, "growx, sg list");
-		listsPanel.add(compScrollPane, "growx, sg list");
+		listsPanel.add(animScrollPane, "pushy, grow, sg list");
+		listsPanel.add(compScrollPane, "pushy, grow, sg list");
 
 		JPanel playbackPanel = getPlaybackPanel();
 

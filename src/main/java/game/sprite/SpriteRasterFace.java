@@ -2,10 +2,11 @@ package game.sprite;
 
 import org.apache.commons.io.FilenameUtils;
 
+import game.sprite.editor.ImgPreview;
 import game.sprite.editor.SpriteAssetCollection;
 import util.Logger;
 
-public class ImgRef
+public class SpriteRasterFace
 {
 	public final SpriteRaster parentRaster;
 
@@ -14,7 +15,9 @@ public class ImgRef
 	public SpritePalette pal;
 	public boolean resolved;
 
-	public ImgRef(SpriteRaster parentRaster)
+	public ImgPreview preview;
+
+	public SpriteRasterFace(SpriteRaster parentRaster)
 	{
 		this.parentRaster = parentRaster;
 
@@ -22,27 +25,43 @@ public class ImgRef
 		asset = null;
 		pal = null;
 		resolved = true;
+
+		preview = new ImgPreview();
 	}
 
 	public String getName()
 	{
-		if (filename.isBlank()) {
+		if (filename.isBlank())
 			return "";
-		}
-		else {
+		else
 			return FilenameUtils.removeExtension(filename);
-		}
 	}
 
-	public void setAll(ImgRef other)
+	public void setAll(SpriteRasterFace other)
 	{
 		this.filename = other.filename;
 		this.asset = other.asset;
 		this.pal = other.pal;
 		this.resolved = other.resolved;
+
+		//TODO copy?
+		this.preview = other.preview;
 	}
 
-	public void lookup(SpriteAssetCollection<ImgAsset> imgAssets)
+	public void loadEditorImages()
+	{
+		if (asset != null && pal != null)
+			preview.load(asset, pal.asset);
+	}
+
+	public void loadEditorImages(PalAsset filter)
+	{
+		//TODO load placeholder or error image when these conditions fail?
+		if (asset != null && pal != null && pal.asset == filter)
+			preview.load(asset, filter);
+	}
+
+	public void resolve(SpriteAssetCollection<ImgAsset> imgAssets)
 	{
 		if (filename.isBlank()) {
 			asset = null;
@@ -61,21 +80,11 @@ public class ImgRef
 		asset = img;
 		resolved = true;
 
-		if (img == null) {
-			filename = "";
-		}
-		else {
-			filename = img.getName();
-			img.boundPal = pal;
-		}
+		filename = (img == null) ? "" : img.getName();
 	}
 
 	public void assignPal(SpritePalette selectedPal)
 	{
 		pal = selectedPal;
-
-		if (asset != null) {
-			asset.boundPal = pal;
-		}
 	}
 }

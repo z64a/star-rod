@@ -153,9 +153,6 @@ public class SpriteLoader
 				throw new IllegalArgumentException("Unknown sprite set: " + set);
 		}
 
-		if (spr != null) {
-			spr.assignRasterPalettes();
-		}
 		return spr;
 	}
 

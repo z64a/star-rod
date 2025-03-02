@@ -353,13 +353,13 @@ public class Sprite implements XmlSerializable
 			if (hasBack) {
 				if (xmr.hasAttribute(rasterElem, ATTR_BACK)) {
 					sr.back.filename = xmr.getAttribute(rasterElem, ATTR_BACK);
-					sr.independentBack = true;
+					sr.hasIndependentBack = true;
 				}
 				else if (xmr.hasAttribute(rasterElem, ATTR_SPECIAL_SIZE)) {
 					int[] size = xmr.readHexArray(rasterElem, ATTR_SPECIAL_SIZE, 2);
 					sr.specialWidth = size[0];
 					sr.specialHeight = size[1];
-					sr.independentBack = false;
+					sr.hasIndependentBack = false;
 				}
 				else {
 					throw new InputFileException(source, "Raster requires 'back' or 'special' for sprite supporting back-facing");
@@ -432,7 +432,6 @@ public class Sprite implements XmlSerializable
 		// assign new ImgAssets to SpriteRasters
 		bindRasters();
 
-		assignRasterPalettes();
 		loadEditorImages();
 	}
 
@@ -490,26 +489,6 @@ public class Sprite implements XmlSerializable
 	{
 		for (SpriteRaster sr : rasters) {
 			sr.bindRasters(imgAssets);
-		}
-	}
-
-	protected void assignRasterPalettes()
-	{
-		for (ImgAsset ia : imgAssets) {
-			ia.boundPal = null;
-		}
-
-		// bind default palettes for images
-		for (SpriteRaster sr : rasters) {
-			ImgAsset front = sr.getFront();
-			if (front != null) {
-				front.boundPal = sr.front.pal;
-			}
-
-			ImgAsset back = sr.getBack();
-			if (back != null) {
-				back.boundPal = sr.back.pal;
-			}
 		}
 	}
 
@@ -580,7 +559,7 @@ public class Sprite implements XmlSerializable
 			xmw.addAttribute(rasterTag, ATTR_SOURCE, sr.front.filename);
 
 			if (hasBack) {
-				if (sr.independentBack) {
+				if (sr.hasIndependentBack) {
 					xmw.addAttribute(rasterTag, ATTR_BACK, sr.back.filename);
 				}
 				else {
@@ -683,6 +662,10 @@ public class Sprite implements XmlSerializable
 		for (ImgAsset asset : imgAssets) {
 			asset.loadEditorImages();
 		}
+
+		for (SpriteRaster raster : rasters) {
+			raster.loadEditorImages();
+		}
 	}
 
 	/**
@@ -691,8 +674,8 @@ public class Sprite implements XmlSerializable
 	 */
 	public void loadEditorImages(PalAsset filter)
 	{
-		for (ImgAsset asset : imgAssets) {
-			asset.loadEditorImages(filter);
+		for (SpriteRaster img : rasters) {
+			img.loadEditorImages(filter);
 		}
 	}
 
@@ -911,12 +894,12 @@ public class Sprite implements XmlSerializable
 		}
 
 		for (SpriteRaster sr : rasters) {
-			ImgAsset front = sr.getFront();
+			ImgAsset front = sr.front.asset;
 			if (front != null) {
 				front.inUse = true;
 			}
 
-			ImgAsset back = sr.getBack();
+			ImgAsset back = sr.back.asset;
 			if (back != null) {
 				back.inUse = true;
 			}
