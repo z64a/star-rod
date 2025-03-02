@@ -111,7 +111,7 @@ public class RastersList extends DragReorderList<SpriteRaster>
 			public void actionPerformed(ActionEvent e)
 			{
 				int i = getSelectedIndex();
-				if (i == -1 || clipboard == null || clipboard.getSprite() != editor.getSprite()) {
+				if (i == -1 || clipboard == null || clipboard.parentSprite != editor.getSprite()) {
 					Toolkit.getDefaultToolkit().beep();
 					return;
 				}

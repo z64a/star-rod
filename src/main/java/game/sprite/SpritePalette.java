@@ -10,7 +10,7 @@ import game.texture.Palette;
  */
 public final class SpritePalette implements Indexable<SpritePalette>
 {
-	private final Sprite spr;
+	public final Sprite parentSprite;
 
 	public String name = "";
 
@@ -27,12 +27,12 @@ public final class SpritePalette implements Indexable<SpritePalette>
 
 	public SpritePalette(Sprite spr)
 	{
-		this.spr = spr;
+		this.parentSprite = spr;
 	}
 
 	public SpritePalette(SpritePalette other)
 	{
-		this.spr = other.spr;
+		this.parentSprite = other.parentSprite;
 		this.name = other.name;
 		this.asset = other.asset;
 		this.frontOnly = other.frontOnly;
@@ -41,11 +41,6 @@ public final class SpritePalette implements Indexable<SpritePalette>
 	public SpritePalette copy()
 	{
 		return new SpritePalette(this);
-	}
-
-	public Sprite getSprite()
-	{
-		return spr;
 	}
 
 	public void assignAsset(PalAsset asset)
@@ -62,7 +57,7 @@ public final class SpritePalette implements Indexable<SpritePalette>
 			boolean conflict = false;
 
 			// compare to all other names
-			for (SpritePalette other : spr.palettes) {
+			for (SpritePalette other : parentSprite.palettes) {
 				if (other != this && other.name.equals(name)) {
 					conflict = true;
 					break;
@@ -76,7 +71,6 @@ public final class SpritePalette implements Indexable<SpritePalette>
 			else {
 				// try next iteration
 				name = baseName + "_" + iteration;
-				iteration++;
 			}
 		}
 

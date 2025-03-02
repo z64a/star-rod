@@ -1,5 +1,7 @@
 package game.sprite.editor.commands;
 
+import java.util.function.Consumer;
+
 import javax.swing.JCheckBox;
 
 import common.commands.AbstractCommand;
@@ -11,8 +13,9 @@ public class TogglePaletteOverride extends AbstractCommand
 	private final Sprite sprite;
 	private final boolean prev;
 	private final boolean next;
+	private final Consumer<Boolean> callback;
 
-	public TogglePaletteOverride(JCheckBox checkbox, Sprite sprite)
+	public TogglePaletteOverride(JCheckBox checkbox, Sprite sprite, Consumer<Boolean> callback)
 	{
 		super("Toggle Palette Override");
 
@@ -21,6 +24,7 @@ public class TogglePaletteOverride extends AbstractCommand
 
 		this.next = checkbox.isSelected();
 		this.prev = !next;
+		this.callback = callback;
 	}
 
 	@Override
@@ -41,6 +45,7 @@ public class TogglePaletteOverride extends AbstractCommand
 		super.exec();
 		sprite.usingOverridePalette = next;
 		checkbox.setSelected(next);
+		callback.accept(next);
 	}
 
 	@Override
@@ -49,5 +54,6 @@ public class TogglePaletteOverride extends AbstractCommand
 		super.undo();
 		sprite.usingOverridePalette = prev;
 		checkbox.setSelected(prev);
+		callback.accept(prev);
 	}
 }

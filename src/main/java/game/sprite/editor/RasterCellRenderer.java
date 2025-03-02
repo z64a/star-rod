@@ -3,6 +3,7 @@ package game.sprite.editor;
 import static javax.swing.SwingConstants.CENTER;
 import static javax.swing.SwingConstants.LEFT;
 
+import java.awt.Color;
 import java.awt.Component;
 
 import javax.swing.BorderFactory;
@@ -11,6 +12,7 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.ListCellRenderer;
 
+import app.SwingUtils;
 import game.sprite.SpriteRaster;
 import net.miginfocom.swing.MigLayout;
 
@@ -18,6 +20,11 @@ public class RasterCellRenderer extends JPanel implements ListCellRenderer<Sprit
 {
 	private JLabel iconLabel;
 	private JLabel nameLabel;
+
+	// for two-sided sprites
+	private JPanel iconPairPanel;
+	private JLabel frontLabel;
+	private JLabel backLabel;
 
 	public RasterCellRenderer()
 	{
@@ -28,9 +35,18 @@ public class RasterCellRenderer extends JPanel implements ListCellRenderer<Sprit
 		nameLabel.setVerticalAlignment(CENTER);
 		nameLabel.setVerticalTextPosition(CENTER);
 
+		iconPairPanel = new JPanel(new MigLayout("fill, ins 0, hidemode 3"));
+		iconPairPanel.setOpaque(false);
+
+		frontLabel = new JLabel();
+		backLabel = new JLabel();
+		iconPairPanel.add(frontLabel, "growx");
+		iconPairPanel.add(backLabel, "growx");
+
 		setLayout(new MigLayout("fill, ins 0, hidemode 3"));
 		setOpaque(true);
 
+		add(iconPairPanel, "sgy x, w 48!");
 		add(iconLabel, "sgy x, w 20!");
 		add(nameLabel, "sgy x, gapleft 8");
 		add(new JLabel(), "growx, pushx");
@@ -55,18 +71,53 @@ public class RasterCellRenderer extends JPanel implements ListCellRenderer<Sprit
 
 		setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
 
+		Color textColor = null;
+
 		if (value == null) {
 			iconLabel.setIcon(null);
 			nameLabel.setText("none");
+			return this;
 		}
-		else if (value.front.asset == null) {
-			iconLabel.setIcon(null);
-			nameLabel.setText(value.toString());
+
+		if (value.parentSprite.hasBack) {
+			iconPairPanel.setVisible(true);
+			iconLabel.setVisible(false);
+
+			if (value.front.asset == null) {
+				frontLabel.setIcon(null);
+				textColor = SwingUtils.getRedTextColor();
+			}
+			else {
+				frontLabel.setIcon(value.front.asset.tiny);
+			}
+
+			backLabel.setVisible(value.independentBack);
+
+			if (value.independentBack) {
+				if (value.back.asset == null) {
+					backLabel.setIcon(null);
+					textColor = SwingUtils.getRedTextColor();
+				}
+				else {
+					backLabel.setIcon(value.back.asset.tiny);
+				}
+			}
 		}
 		else {
-			iconLabel.setIcon(value.front.asset.tiny);
-			nameLabel.setText(value.toString());
+			iconPairPanel.setVisible(false);
+			iconLabel.setVisible(true);
+
+			if (value.front.asset == null) {
+				iconLabel.setIcon(null); //TODO error icon?
+				textColor = SwingUtils.getRedTextColor();
+			}
+			else {
+				iconLabel.setIcon(value.front.asset.tiny);
+			}
 		}
+
+		nameLabel.setForeground(textColor);
+		nameLabel.setText(value.toString());
 
 		return this;
 	}

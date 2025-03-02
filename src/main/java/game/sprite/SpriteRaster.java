@@ -4,10 +4,12 @@ import game.sprite.editor.SpriteAssetCollection;
 
 public class SpriteRaster
 {
-	private final Sprite spr;
+	public final Sprite parentSprite;
 
 	public final ImgRef front;
 	public final ImgRef back;
+
+	public boolean independentBack;
 
 	// keep track of these, but do not expose them to users
 	public int specialWidth;
@@ -22,32 +24,26 @@ public class SpriteRaster
 
 	public SpriteRaster(Sprite spr)
 	{
-		this.spr = spr;
-		front = new ImgRef();
-		back = new ImgRef();
+		this.parentSprite = spr;
+		front = new ImgRef(this);
+		back = new ImgRef(this);
 	}
 
 	public SpriteRaster(SpriteRaster original)
 	{
-		this(original.spr);
+		this(original.parentSprite);
 		name = original.name;
-		front.copy(original.front);
-		back.copy(original.back);
+		front.setAll(original.front);
+		back.setAll(original.back);
+		this.independentBack = original.independentBack;
 
 		specialWidth = original.specialWidth;
 		specialHeight = original.specialHeight;
-
-		loadEditorImages();
 	}
 
 	public SpriteRaster copy()
 	{
 		return new SpriteRaster(this);
-	}
-
-	public Sprite getSprite()
-	{
-		return spr;
 	}
 
 	public ImgAsset getFront()
@@ -66,7 +62,7 @@ public class SpriteRaster
 		back.lookup(imgAssets);
 	}
 
-	public void loadEditorImages()
+	public void reloadEditorImages()
 	{
 		if (front.asset != null)
 			front.asset.loadEditorImages();
@@ -83,7 +79,7 @@ public class SpriteRaster
 			boolean conflict = false;
 
 			// compare to all other names
-			for (SpriteRaster other : spr.rasters) {
+			for (SpriteRaster other : parentSprite.rasters) {
 				if (other != this && other.name.equals(name)) {
 					conflict = true;
 					break;
@@ -97,7 +93,6 @@ public class SpriteRaster
 			else {
 				// try next iteration
 				name = baseName + "_" + iteration;
-				iteration++;
 			}
 		}
 
@@ -114,10 +109,5 @@ public class SpriteRaster
 	public int getIndex()
 	{
 		return listIndex;
-	}
-
-	public boolean hasMissing()
-	{
-		return !(front.resolved && back.resolved);
 	}
 }

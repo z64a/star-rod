@@ -217,7 +217,6 @@ public class SpriteEditor extends BaseEditor
 	private SpriteAnimation currentAnim;
 	private SpriteComponent currentComp;
 
-	private ImgAsset selectedImgAsset;
 	private ImgAsset highlightedImgAsset;
 
 	private SpriteComponent dragComp;
@@ -414,6 +413,20 @@ public class SpriteEditor extends BaseEditor
 					componentDragUpdate();
 
 				handleInput(deltaTime);
+				break;
+		}
+	}
+
+	@Override
+	protected void resizeViews()
+	{
+		switch (editorMode) {
+			case Animation:
+				break;
+			case Rasters:
+			case Palettes:
+				if (sprite != null)
+					sprite.centerAtlas(sheetCamera, glCanvasWidth(), glCanvasHeight());
 				break;
 		}
 	}
@@ -636,7 +649,6 @@ public class SpriteEditor extends BaseEditor
 		if (curMetadata == newMetadata && !forceReload)
 			return;
 
-		selectedImgAsset = null;
 		highlightedImgAsset = null;
 
 		unloadSprite = sprite;
@@ -681,8 +693,8 @@ public class SpriteEditor extends BaseEditor
 			sprite.loadEditorImages();
 			loadSprite = sprite;
 
-			rastersTab.setSpriteEDT(sprite);
-			palettesTab.setSpriteEDT(sprite);
+			rastersTab.setSprite(sprite);
+			palettesTab.setSprite(sprite);
 
 			animList.setModel(sprite.animations);
 
@@ -708,7 +720,7 @@ public class SpriteEditor extends BaseEditor
 
 			paletteComboBox.setModel(new ListAdapterComboboxModel<>(sprite.palettes));
 			paletteComboBox.setSelectedItem(sprite.overridePalette);
-			paletteComboBox.setEnabled(true);
+			paletteComboBox.setEnabled(sprite.usingOverridePalette);
 
 			cbOverridePalette.setSelected(sprite.usingOverridePalette);
 
@@ -849,11 +861,6 @@ public class SpriteEditor extends BaseEditor
 		return currentComp;
 	}
 
-	public ImgAsset getSelectedImage()
-	{
-		return selectedImgAsset;
-	}
-
 	private void checkPalettesForChanges()
 	{
 		for (PalAsset asset : sprite.palAssets) {
@@ -941,11 +948,17 @@ public class SpriteEditor extends BaseEditor
 		if (sprite == null)
 			return;
 
-		if (editorMode == EditorMode.Palettes && sprite.selectedPalAsset != null)
-			sprite.renderAtlas(selectedImgAsset, highlightedImgAsset, sprite.selectedPalAsset.pal, useFiltering);
-		else
-			sprite.renderAtlas(selectedImgAsset, highlightedImgAsset, null, useFiltering);
+		ImgAsset highlight = highlightedImgAsset;
 
+		ImgAsset selected = null;
+		if (editorMode == EditorMode.Rasters)
+			selected = sprite.selectedImgAsset;
+
+		Palette overridePal = null;
+		if (editorMode == EditorMode.Palettes && sprite.selectedPalAsset != null)
+			overridePal = sprite.selectedPalAsset.pal;
+
+		sprite.renderAtlas(selected, highlight, overridePal, useFiltering);
 	}
 
 	private void renderAnim()
@@ -1338,11 +1351,6 @@ public class SpriteEditor extends BaseEditor
 		menu.add(itemHighlightCmd);
 	}
 
-	protected void selectRasterEDT(SpriteRaster sr)
-	{
-		rastersTab.setRasterEDT(sr);
-	}
-
 	private JPanel getPlaybackPanel()
 	{
 		final Insets buttonInsets = new Insets(0, 2, 0, 2);
@@ -1633,7 +1641,9 @@ public class SpriteEditor extends BaseEditor
 		cbOverridePalette.setSelected(false);
 		cbOverridePalette.addActionListener((e) -> {
 			if (!suppressCommands && sprite != null)
-				execute(new TogglePaletteOverride(cbOverridePalette, sprite));
+				execute(new TogglePaletteOverride(cbOverridePalette, sprite, (b) -> {
+					paletteComboBox.setEnabled(b);
+				}));
 		});
 
 		JButton btnAddAnim = new JButton(ThemedIcon.ADD_16);
@@ -1806,16 +1816,9 @@ public class SpriteEditor extends BaseEditor
 		switch (editorMode) {
 			case Rasters:
 				ImgAsset picked = sprite.tryAtlasPick(trace);
-				if (picked != null) {
-					SwingUtilities.invokeLater(() -> {
-						for (SpriteRaster sr : sprite.rasters) {
-							if (sr.getFront() == picked || sr.getBack() == picked) {
-								rastersTab.selectRaster(sr);
-								break;
-							}
-						}
-					});
-				}
+				SwingUtilities.invokeLater(() -> {
+					rastersTab.selectAsset(picked);
+				});
 				break;
 			case Palettes:
 				break;
@@ -1827,19 +1830,6 @@ public class SpriteEditor extends BaseEditor
 				currentAnim.setComponentSelected(selected);
 				if (selected >= 0)
 					setComponentByID(selected);
-				break;
-		}
-	}
-
-	@Override
-	public void clickRMB()
-	{
-		switch (editorMode) {
-			case Rasters:
-			case Palettes:
-				selectedImgAsset = sprite.tryAtlasPick(trace);
-				break;
-			case Animation:
 				break;
 		}
 	}

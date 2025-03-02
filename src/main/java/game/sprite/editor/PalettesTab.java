@@ -99,7 +99,7 @@ public class PalettesTab extends JPanel
 		SwingUtils.setFontSize(variationsSpinner, 12);
 		SwingUtils.centerSpinnerText(variationsSpinner);
 
-		palAssetList = new AssetList<PalAsset>();
+		palAssetList = new AssetList<>();
 		palAssetList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		palAssetList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		palAssetList.setCellRenderer(new PalAssetSlicesRenderer());
@@ -114,6 +114,64 @@ public class PalettesTab extends JPanel
 		});
 
 		paletteList = new PalettesList(editor, this);
+
+		JButton btnRefreshAssets = new JButton(ThemedIcon.REFRESH_16);
+		btnRefreshAssets.setToolTipText("Reload assets");
+		btnRefreshAssets.addActionListener((e) -> {
+			if (sprite == null) {
+				return;
+			}
+
+			editor.invokeLater(() -> {
+				palAssetList.ignoreSelectionChange = true;
+
+				// clear current selection
+				palAssetList.setSelectedValue(null, true);
+				sprite.lastSelectedPalAsset = -1;
+
+				sprite.reloadPaletteAssets();
+
+				// prepare new selection for setSprite
+				if (sprite.palAssets.size() > 0)
+					sprite.lastSelectedPalAsset = 0;
+
+				palAssetList.ignoreSelectionChange = false;
+
+				SpriteEditor.instance().flushUndoRedo();
+
+				SwingUtilities.invokeLater(() -> {
+					SpriteEditor.instance().setSprite(sprite.metadata, true);
+					setSprite(sprite);
+				});
+			});
+		});
+
+		JButton btnAddPalette = new JButton(ThemedIcon.ADD_16);
+		btnAddPalette.setToolTipText("Add new palette");
+		btnAddPalette.addActionListener((e) -> {
+			if (sprite == null) {
+				return;
+			}
+
+			SpritePalette pal = new SpritePalette(sprite);
+			String newName = pal.createUniqueName(String.format("Pal_%X", sprite.palettes.size()));
+
+			if (newName == null) {
+				Logger.logError("Could not generate valid name for new palette!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			PalAsset asset = palAssetList.getSelectedValue();
+			if (asset != null)
+				pal.assignAsset(asset);
+
+			pal.name = newName;
+			CommandBatch batch = new CommandBatch("Add Palette");
+			batch.addCommand(new CreatePalette("Add Palette", sprite, pal));
+			batch.addCommand(new SelectPalette(paletteList, sprite, pal, this::setPalette));
+			SpriteEditor.execute(batch);
+		});
 
 		JButton btnOpen = new JButton("Open Folder");
 		btnOpen.addActionListener((evt) -> {
@@ -180,56 +238,12 @@ public class PalettesTab extends JPanel
 		});
 		SwingUtils.addBorderPadding(btnClear);
 
-		JButton btnRefreshAssets = new JButton(ThemedIcon.REFRESH_16);
-		btnRefreshAssets.setToolTipText("Reload assets");
-		btnRefreshAssets.addActionListener((e) -> {
-			if (sprite == null) {
-				return;
-			}
+		buildColorPanel();
 
-			editor.invokeLater(() -> {
-				sprite.reloadPaletteAssets();
-				SpriteEditor.instance().flushUndoRedo();
-
-				SwingUtilities.invokeLater(() -> {
-					setSpriteEDT(sprite);
-				});
-			});
-		});
-
-		JButton btnAddPalette = new JButton(ThemedIcon.ADD_16);
-		btnAddPalette.setToolTipText("Add new palette");
-		btnAddPalette.addActionListener((e) -> {
-			if (sprite == null) {
-				return;
-			}
-
-			SpritePalette pal = new SpritePalette(sprite);
-			String newName = pal.createUniqueName(String.format("Pal_%X", sprite.palettes.size()));
-
-			if (newName == null) {
-				Logger.logError("Could not generate valid name for new palette!");
-				Toolkit.getDefaultToolkit().beep();
-				return;
-			}
-
-			PalAsset asset = palAssetList.getSelectedValue();
-			if (asset != null)
-				pal.assignAsset(asset);
-
-			pal.name = newName;
-			CommandBatch batch = new CommandBatch("Add Palette");
-			batch.addCommand(new CreatePalette("Add Palette", sprite, pal));
-			batch.addCommand(new SelectPalette(paletteList, sprite, pal, this::setPalette));
-			SpriteEditor.execute(batch);
-		});
-
-		createColorPanel();
-
-		JScrollPane animScrollPane = new JScrollPane(palAssetList);
-		animScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		JScrollPane compScrollPane = new JScrollPane(paletteList);
-		compScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		JScrollPane assetScrollPane = new JScrollPane(palAssetList);
+		assetScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		JScrollPane paletteScrollPane = new JScrollPane(paletteList);
+		paletteScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
 		JPanel listsPanel = new JPanel(new MigLayout("fill, ins 0, wrap 2", "[grow, sg col][grow, sg col]"));
 
@@ -242,8 +256,8 @@ public class PalettesTab extends JPanel
 		listsPanel.add(new JLabel("Variations: "));
 		listsPanel.add(variationsSpinner, "w 80!");
 
-		listsPanel.add(animScrollPane, "grow, push, sg list");
-		listsPanel.add(compScrollPane, "grow, push, sg list");
+		listsPanel.add(assetScrollPane, "grow, push, sg list");
+		listsPanel.add(paletteScrollPane, "grow, push, sg list");
 
 		listsPanel.add(btnSave, "split 2, growx, sg btn");
 		// listsPanel.add(cbPreviewPalette, "growx, sg btn, align center");
@@ -252,12 +266,12 @@ public class PalettesTab extends JPanel
 		listsPanel.add(btnBind, "split 2, growx, sg btn");
 		listsPanel.add(btnClear, "growx, sg btn");
 
-		setLayout(new MigLayout("fill, ins 16, wrap, hidemode 0"));
+		setLayout(new MigLayout("fill, ins 16 16 32 16, wrap, hidemode 0"));
 		add(listsPanel, "grow, push");
 		add(paletteInfoPanel, "growx, span, wrap, gaptop 16");
 	}
 
-	private void createColorPanel()
+	private void buildColorPanel()
 	{
 		rgbButton = new JRadioButton(ColorModel.RGB.toString());
 		rgbButton.setSelected(true);
@@ -411,7 +425,7 @@ public class PalettesTab extends JPanel
 		paletteInfoPanel.add(rightPanel, "gapleft 24, gaptop 8");
 	}
 
-	public void setSpriteEDT(Sprite sprite)
+	public void setSprite(Sprite sprite)
 	{
 		assert (SwingUtilities.isEventDispatchThread());
 		assert (sprite != null);
@@ -834,6 +848,8 @@ public class PalettesTab extends JPanel
 			asset.pal.setColor(index, next);
 			asset.savedColors[index] = next;
 
+			sprite.loadEditorImages(asset);
+
 			swatchesPanel.swatches[index].setForeground(next);
 
 			if (ignoreFirstExec)
@@ -853,6 +869,8 @@ public class PalettesTab extends JPanel
 		{
 			asset.pal.setColor(index, prev);
 			asset.savedColors[index] = prev;
+
+			sprite.loadEditorImages(asset);
 
 			swatchesPanel.swatches[index].setForeground(prev);
 

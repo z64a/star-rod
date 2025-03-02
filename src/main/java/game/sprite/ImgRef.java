@@ -3,16 +3,21 @@ package game.sprite;
 import org.apache.commons.io.FilenameUtils;
 
 import game.sprite.editor.SpriteAssetCollection;
+import util.Logger;
 
 public class ImgRef
 {
+	public final SpriteRaster parentRaster;
+
 	public String filename;
 	public ImgAsset asset;
 	public SpritePalette pal;
 	public boolean resolved;
 
-	public ImgRef()
+	public ImgRef(SpriteRaster parentRaster)
 	{
+		this.parentRaster = parentRaster;
+
 		filename = "";
 		asset = null;
 		pal = null;
@@ -29,7 +34,7 @@ public class ImgRef
 		}
 	}
 
-	public void copy(ImgRef other)
+	public void setAll(ImgRef other)
 	{
 		this.filename = other.filename;
 		this.asset = other.asset;
@@ -46,12 +51,16 @@ public class ImgRef
 		else {
 			asset = imgAssets.get(filename);
 			resolved = (asset != null);
+			if (!resolved)
+				Logger.logWarning("Can't find raster: " + filename);
 		}
 	}
 
-	public void assignImg(ImgAsset img)
+	public void assignAsset(ImgAsset img)
 	{
 		asset = img;
+		resolved = true;
+
 		if (img == null) {
 			filename = "";
 		}

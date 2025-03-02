@@ -19,7 +19,7 @@ public class ReorderRaster extends AbstractCommand
 
 		this.list = list;
 		this.img = img;
-		this.sprite = img.getSprite();
+		this.sprite = img.parentSprite;
 		this.prev = sprite.rasters.indexOf(img);
 		this.next = pos;
 	}

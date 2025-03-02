@@ -81,6 +81,16 @@ public class ImgAsset
 		tiny = new ImageIcon(getScaledToFit(previewImg, 20));
 	}
 
+	public void loadEditorImages(PalAsset filter)
+	{
+		if (boundPal == null || boundPal.asset != filter)
+			return;
+
+		previewImg = ImageConverter.getIndexedImage(img, getPalette());
+		icon = new ImageIcon(getScaledToFit(previewImg, 80));
+		tiny = new ImageIcon(getScaledToFit(previewImg, 20));
+	}
+
 	private static Image getScaledToFit(BufferedImage in, int maxSize)
 	{
 		if (in.getHeight() > in.getWidth()) {

@@ -61,6 +61,8 @@ public class Sprite implements XmlSerializable
 	public transient boolean hasError;
 
 	// rasters tab state to restore when this sprite is selected
+	public transient int lastSelectedImgAsset = -1;
+	public transient ImgAsset selectedImgAsset = null;
 	public transient int lastSelectedRaster = -1;
 	public transient SpriteRaster selectedRaster = null;
 	// palettes tab state to restore when this sprite is selected
@@ -78,6 +80,11 @@ public class Sprite implements XmlSerializable
 	{
 		if (readyForEditor)
 			return;
+
+		if (imgAssets.size() > 0) {
+			selectedImgAsset = imgAssets.get(0);
+			lastSelectedImgAsset = 0;
+		}
 
 		if (palAssets.size() > 0) {
 			selectedPalAsset = palAssets.get(0);
@@ -346,11 +353,13 @@ public class Sprite implements XmlSerializable
 			if (hasBack) {
 				if (xmr.hasAttribute(rasterElem, ATTR_BACK)) {
 					sr.back.filename = xmr.getAttribute(rasterElem, ATTR_BACK);
+					sr.independentBack = true;
 				}
 				else if (xmr.hasAttribute(rasterElem, ATTR_SPECIAL_SIZE)) {
 					int[] size = xmr.readHexArray(rasterElem, ATTR_SPECIAL_SIZE, 2);
 					sr.specialWidth = size[0];
 					sr.specialHeight = size[1];
+					sr.independentBack = false;
 				}
 				else {
 					throw new InputFileException(source, "Raster requires 'back' or 'special' for sprite supporting back-facing");
@@ -395,6 +404,38 @@ public class Sprite implements XmlSerializable
 		}
 	}
 
+	public void reloadRasterAssets()
+	{
+		for (ImgAsset ia : imgAssets) {
+			ia.glDelete();
+		}
+
+		try {
+			if (metadata.isPlayer) {
+				imgAssets.set(SpriteLoader.loadSpriteImages(AssetManager.getPlayerSpriteRasters()));
+			}
+			else {
+				imgAssets.set(SpriteLoader.loadSpriteImages(AssetManager.getNpcSpriteRasters(name)));
+			}
+
+			Logger.log("Loaded " + imgAssets.size() + " assets");
+		}
+		catch (IOException e) {
+			Logger.logError("IOException while reloading palettes: " + e.getMessage());
+			Toolkit.getDefaultToolkit().beep();
+		}
+
+		for (ImgAsset ia : imgAssets) {
+			ia.glLoad();
+		}
+
+		// assign new ImgAssets to SpriteRasters
+		bindRasters();
+
+		assignRasterPalettes();
+		loadEditorImages();
+	}
+
 	public void reloadPaletteAssets()
 	{
 		for (PalAsset pa : palAssets) {
@@ -420,6 +461,7 @@ public class Sprite implements XmlSerializable
 			pa.pal.glLoad();
 		}
 
+		// assign new PalAssets to SpritePalettes
 		bindPalettes();
 	}
 
@@ -538,7 +580,7 @@ public class Sprite implements XmlSerializable
 			xmw.addAttribute(rasterTag, ATTR_SOURCE, sr.front.filename);
 
 			if (hasBack) {
-				if (!sr.back.filename.isBlank()) {
+				if (sr.independentBack) {
 					xmw.addAttribute(rasterTag, ATTR_BACK, sr.back.filename);
 				}
 				else {
@@ -546,7 +588,7 @@ public class Sprite implements XmlSerializable
 				}
 
 				if (sr.back.pal != sr.front.pal) {
-					xmw.addHex(rasterTag, ATTR_PALETTE, sr.back.pal.getIndex());
+					xmw.addHex(rasterTag, ATTR_BACK_PAL, sr.back.pal.getIndex());
 				}
 			}
 
@@ -633,11 +675,24 @@ public class Sprite implements XmlSerializable
 		texturesLoaded = true;
 	}
 
+	/**
+	 * Generate editor images for all ImgAssets
+	 */
 	public void loadEditorImages()
 	{
-		for (int i = 0; i < rasters.size(); i++) {
-			SpriteRaster sr = rasters.get(i);
-			sr.loadEditorImages();
+		for (ImgAsset asset : imgAssets) {
+			asset.loadEditorImages();
+		}
+	}
+
+	/**
+	 * Generate editor images for all ImgAssets which use a particular PalAsset
+	 * @param filter
+	 */
+	public void loadEditorImages(PalAsset filter)
+	{
+		for (ImgAsset asset : imgAssets) {
+			asset.loadEditorImages(filter);
 		}
 	}
 

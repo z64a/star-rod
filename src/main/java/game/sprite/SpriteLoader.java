@@ -238,7 +238,7 @@ public class SpriteLoader
 	}
 
 	// load all raster assets in parallel
-	private static LinkedHashMap<String, ImgAsset> loadSpriteImages(Map<String, AssetHandle> assets)
+	public static LinkedHashMap<String, ImgAsset> loadSpriteImages(Map<String, AssetHandle> assets)
 	{
 		ConcurrentHashMap<String, ImgAsset> imgAssets = new ConcurrentHashMap<>();
 		List<CompletableFuture<Void>> futures = new ArrayList<>();

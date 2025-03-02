@@ -522,7 +522,6 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 			else {
 				// try next iteration
 				name = baseName + "_" + iteration;
-				iteration++;
 			}
 		}
 

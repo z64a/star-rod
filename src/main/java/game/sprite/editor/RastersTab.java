@@ -1,309 +1,231 @@
 package game.sprite.editor;
 
 import java.awt.Toolkit;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.function.Consumer;
 
-import javax.swing.DefaultListModel;
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.ListSelectionModel;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 
-import app.SwingUtils;
+import common.commands.CommandBatch;
 import game.sprite.ImgAsset;
+import game.sprite.ImgRef;
 import game.sprite.Sprite;
-import game.sprite.SpritePalette;
 import game.sprite.SpriteRaster;
+import game.sprite.editor.commands.BindImgAsset;
+import game.sprite.editor.commands.CreateRaster;
+import game.sprite.editor.commands.SelectImgAsset;
+import game.sprite.editor.commands.SelectRaster;
 import net.miginfocom.swing.MigLayout;
-import util.ui.ListAdapterComboboxModel;
+import util.Logger;
+import util.ui.ThemedIcon;
 
 public class RastersTab extends JPanel
 {
-	// currently featured SpriteRaster
-	private SpriteRaster sr = null;
+	private Sprite sprite = null;
 
-	private final ListPanel<SpriteRaster> rasterList;
+	private AssetList<ImgAsset> imgAssetList;
+	private RastersList rasterList;
 
-	private final JPanel rasterInfoPanel;
-	private final JPanel backPalettePanel;
-	private final ImageInfoPanel frontImgPanel;
-	private final ImageInfoPanel backImgPanel;
-
-	private final JComboBox<SpritePalette> defaultPaletteBox;
-	private final JComboBox<SpritePalette> backPaletteBox;
-
-	private boolean ignoreChanges = false;
+	private ImageRefPanel frontImgPanel;
+	private ImageRefPanel backImgPanel;
 
 	public RastersTab(SpriteEditor editor)
 	{
 		// create raster list
 
-		rasterList = new ListPanel<>() {
-			@Override
-			public void onSelectEDT(SpriteRaster selected)
-			{
-				if (ignoreChanges)
-					return;
+		imgAssetList = new AssetList<>();
+		imgAssetList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+		imgAssetList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		imgAssetList.setCellRenderer(new ImgAssetCellRenderer());
 
-				setRasterEDT(selected);
-			}
-
-			@Override
-			public void onDelete(SpriteRaster raster)
-			{
-				raster.deleted = true;
-			}
-
-			@Override
-			public void rename(int index, String newName)
-			{
-				DefaultListModel<SpriteRaster> listModel = getListModel();
-				SpriteRaster sr = listModel.get(index);
-				if (!sr.name.equals(newName)) {
-					sr.name = makeUniqueName(sr, newName);
-					// beep if the chosen name had to be changed to become unique
-					if (!sr.name.equals(newName)) {
-						Toolkit.getDefaultToolkit().beep();
-					}
-				}
-			}
-		};
-
-		rasterList.list.setCellRenderer(new RasterCellRenderer());
-
-		// create buttons
-
-		JButton addButton = new JButton("Add New Raster");
-		addButton.addActionListener((e) -> {
-			SpriteRaster newRaster = new SpriteRaster(sr.getSprite());
-			newRaster.name = makeUniqueName(newRaster, "NewRaster");
-			DefaultListModel<SpriteRaster> listModel = rasterList.getListModel();
-			listModel.addElement(newRaster);
-			selectRaster(newRaster);
-		});
-		SwingUtils.addBorderPadding(addButton);
-
-		JButton dupeButton = new JButton("Duplicate Selected");
-		dupeButton.addActionListener((e) -> {
-			SpriteRaster original = rasterList.list.getSelectedValue();
-			if (original == null)
+		imgAssetList.addListSelectionListener((e) -> {
+			if (e.getValueIsAdjusting())
 				return;
 
-			SpriteRaster sr = new SpriteRaster(original);
-			sr.name = makeUniqueName(sr, original.name);
-			DefaultListModel<SpriteRaster> listModel = rasterList.getListModel();
-			listModel.addElement(sr);
-			selectRaster(sr);
-		});
-		SwingUtils.addBorderPadding(dupeButton);
-
-		JButton renameButton = new JButton("Rename Selected");
-		renameButton.addActionListener((e) -> {
-			int index = rasterList.list.getSelectedIndex();
-			if (index >= 0) {
-				String oldName = rasterList.list.getSelectedValue().name;
-				rasterList.promptRenameAt(index, oldName);
-				rasterList.list.repaint();
-			}
-		});
-		SwingUtils.addBorderPadding(renameButton);
-
-		// create info panel
-
-		rasterInfoPanel = new JPanel(new MigLayout("fill, ins 0, wrap, hidemode 0"));
-
-		frontImgPanel = new ImageInfoPanel(false);
-		backImgPanel = new ImageInfoPanel(true);
-
-		frontImgPanel.addMouseListener(new MouseAdapter() {
-			@Override
-			public void mouseClicked(MouseEvent e)
-			{
-				if (SwingUtilities.isLeftMouseButton(e)) {
-					ImgAsset img = editor.getSelectedImage();
-					sr.front.assignImg(img);
-					sr.loadEditorImages();
-					frontImgPanel.setImageEDT(sr.front);
-					rasterList.list.repaint();
-				}
-			}
+			if (!imgAssetList.ignoreSelectionChange)
+				SpriteEditor.execute(new SelectImgAsset(imgAssetList, editor.getSprite(),
+					imgAssetList.getSelectedValue(), this::setImgAsset));
 		});
 
-		backImgPanel.addMouseListener(new MouseAdapter() {
-			@Override
-			public void mouseClicked(MouseEvent e)
-			{
-				if (SwingUtilities.isLeftMouseButton(e)) {
-					ImgAsset img = editor.getSelectedImage();
-					sr.back.assignImg(img);
-					sr.loadEditorImages();
-					backImgPanel.setImageEDT(sr.front);
-					rasterList.list.repaint();
-				}
-			}
-		});
+		rasterList = new RastersList(editor, this);
 
-		defaultPaletteBox = new JComboBox<>();
-		SwingUtils.setFontSize(defaultPaletteBox, 14);
-		defaultPaletteBox.setMaximumRowCount(24);
-		defaultPaletteBox.setRenderer(new ThickPaletteSlicesRenderer());
-		defaultPaletteBox.addActionListener((e) -> {
-			if (ignoreChanges)
+		JButton btnRefreshAssets = new JButton(ThemedIcon.REFRESH_16);
+		btnRefreshAssets.setToolTipText("Reload assets");
+		btnRefreshAssets.addActionListener((e) -> {
+			if (sprite == null) {
 				return;
-			SpritePalette selectedPal = (SpritePalette) defaultPaletteBox.getSelectedItem();
-			if (selectedPal != null && selectedPal != sr.front.pal) {
-				sr.front.assignPal(selectedPal);
-				sr.loadEditorImages();
-				rasterInfoPanel.repaint();
-				rasterList.list.repaint();
 			}
+
+			editor.invokeLater(() -> {
+				imgAssetList.ignoreSelectionChange = true;
+
+				// clear current selection
+				imgAssetList.setSelectedValue(null, true);
+				sprite.lastSelectedImgAsset = -1;
+
+				sprite.reloadRasterAssets();
+
+				// prepare new selection for setSprite
+				if (sprite.imgAssets.size() > 0)
+					sprite.lastSelectedImgAsset = 0;
+
+				imgAssetList.ignoreSelectionChange = false;
+
+				SpriteEditor.instance().flushUndoRedo();
+
+				SwingUtilities.invokeLater(() -> {
+					SpriteEditor.instance().setSprite(sprite.metadata, true);
+					setSprite(sprite);
+				});
+			});
 		});
 
-		backPaletteBox = new JComboBox<>();
-		SwingUtils.setFontSize(backPaletteBox, 14);
-		backPaletteBox.setMaximumRowCount(24);
-		backPaletteBox.setRenderer(new ThickPaletteSlicesRenderer());
-		backPaletteBox.addActionListener((e) -> {
-			if (ignoreChanges)
+		JButton btnAddRaster = new JButton(ThemedIcon.ADD_16);
+		btnAddRaster.setToolTipText("Add new raster");
+		btnAddRaster.addActionListener((e) -> {
+			if (sprite == null) {
 				return;
-			SpritePalette selectedPal = (SpritePalette) backPaletteBox.getSelectedItem();
-			if (selectedPal != null && selectedPal != sr.back.pal) {
-				sr.back.assignPal(selectedPal);
-				sr.loadEditorImages();
-				rasterInfoPanel.repaint();
-				rasterList.list.repaint();
 			}
+
+			SpriteRaster img = new SpriteRaster(sprite);
+			String newName = img.createUniqueName(String.format("Img_%X", sprite.palettes.size()));
+
+			if (newName == null) {
+				Logger.logError("Could not generate valid name for new raster!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			ImgAsset asset = imgAssetList.getSelectedValue();
+			if (asset != null) {
+				img.front.assignAsset(asset);
+				// assign a palette for the new raster
+				if (sprite.selectedPalette != null)
+					img.front.assignPal(sprite.selectedPalette);
+				else if (sprite.palettes.size() > 0)
+					img.front.assignPal(sprite.palettes.get(0));
+				//FIXME
+			}
+
+			img.name = newName;
+			CommandBatch batch = new CommandBatch("Add Raster");
+			batch.addCommand(new CreateRaster("Add Raster", sprite, img));
+			batch.addCommand(new SelectRaster(rasterList, sprite, img, this::setRaster));
+			SpriteEditor.execute(batch);
 		});
 
-		backPalettePanel = new JPanel(new MigLayout("fill, ins 0, wrap"));
-		backPalettePanel.add(SwingUtils.getLabel("Back Palette:", 12));
-		backPalettePanel.add(backPaletteBox, "w 60%::");
+		frontImgPanel = new ImageRefPanel(this, false);
+		backImgPanel = new ImageRefPanel(this, true);
 
-		// assemble info panel
+		JScrollPane assetScrollPane = new JScrollPane(imgAssetList);
+		assetScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		JScrollPane rasterScrollPane = new JScrollPane(rasterList);
+		rasterScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
-		rasterInfoPanel.add(frontImgPanel, "sg img, split 2");
-		rasterInfoPanel.add(backImgPanel, "sg img");
-		rasterInfoPanel.add(SwingUtils.getLabel("Palette:", 12));
-		rasterInfoPanel.add(defaultPaletteBox, "w 60%::");
-		rasterInfoPanel.add(backPalettePanel, "grow");
+		JPanel listsPanel = new JPanel(new MigLayout("fill, ins 0, wrap 2", "[grow, sg col][grow, sg col]"));
 
-		// assemble tab
+		listsPanel.add(btnRefreshAssets, "split 2");
+		listsPanel.add(new JLabel("Assets"), "growx");
 
-		setLayout(new MigLayout("fill, ins 16, wrap, hidemode 0"));
-		add(rasterList, "grow, pushy");
-		add(addButton, "sg but, growx, split 3");
-		add(dupeButton, "sg but, growx");
-		add(renameButton, "sg but, growx");
-		add(rasterInfoPanel, "pushx, grow, top");
+		listsPanel.add(btnAddRaster, "split 2");
+		listsPanel.add(new JLabel("Rasters"), "growx");
+
+		listsPanel.add(assetScrollPane, "grow, push, sg list");
+		listsPanel.add(rasterScrollPane, "grow, push, sg list");
+
+		listsPanel.add(frontImgPanel, "grow");
+		listsPanel.add(backImgPanel, "grow");
+
+		setLayout(new MigLayout("fill, ins 16 16 32 16, wrap, hidemode 0"));
+		add(listsPanel, "grow, push");
 	}
 
-	private static boolean isNameUsed(SpriteRaster sr, String name)
+	public void tryBindAsset(ImgRef ref, Consumer<ImgRef> callback)
 	{
-		for (SpriteRaster other : sr.getSprite().rasters) {
-			if (sr != other && other.name.equals(name))
-				return true;
-		}
-		return false;
+		ImgAsset asset = imgAssetList.getSelectedValue();
+
+		// null asset is allowed here
+		SpriteEditor.execute(new BindImgAsset(this, ref, asset, callback));
 	}
 
-	private static String makeUniqueName(SpriteRaster sr, String name)
+	public void trySelectAsset(ImgRef ref)
 	{
-		if (!isNameUsed(sr, name))
-			return name;
-
-		int i = 1;
-		Matcher m = Pattern.compile("(\\D+)(\\d+)").matcher(name);
-
-		if (m.matches() && m.group(2) != null) {
-			name = m.group(1);
-			i = Integer.parseInt(m.group(2)) + 1;
+		if (ref.asset == null) {
+			Logger.logError("No asset is bound for " + ref.parentRaster.name + "!");
+			Toolkit.getDefaultToolkit().beep();
+			return;
 		}
 
-		while (true) {
-			String newName = String.format("%s%d", name, i);
-			if (!isNameUsed(sr, newName))
-				return newName;
-			// try the next name
-			i++;
+		if (!sprite.imgAssets.contains(ref.asset)) {
+			Logger.logError("Asset for " + ref.parentRaster.name + " is missing!");
+			Toolkit.getDefaultToolkit().beep();
+			return;
 		}
+
+		SpriteEditor.execute(new SelectImgAsset(imgAssetList, SpriteEditor.instance().getSprite(),
+			ref.asset, this::setImgAsset));
 	}
 
-	public void setSpriteEDT(Sprite sprite)
+	public void setSprite(Sprite sprite)
 	{
 		assert (SwingUtilities.isEventDispatchThread());
+		assert (sprite != null);
 
-		defaultPaletteBox.setModel(new ListAdapterComboboxModel<>(sprite.palettes));
-		backPaletteBox.setModel(new ListAdapterComboboxModel<>(sprite.palettes));
+		this.sprite = sprite;
 
-		rasterList.list.setModel(sprite.rasters);
+		frontImgPanel.setSprite(sprite);
+		backImgPanel.setSprite(sprite);
 
-		SpriteRaster selected = null;
+		imgAssetList.ignoreSelectionChange = true;
+		imgAssetList.setModel(sprite.imgAssets.getListModel());
+		imgAssetList.setSelectedValue(sprite.selectedImgAsset, true);
+		imgAssetList.ignoreSelectionChange = false;
 
-		if (sprite.rasters.size() > 0) {
-			selected = sprite.rasters.get(0);
-		}
+		setImgAsset(sprite.selectedImgAsset);
 
-		backImgPanel.setVisible(sprite.hasBack);
-		backPalettePanel.setVisible(sprite.hasBack);
+		rasterList.ignoreSelectionChange = true;
+		rasterList.setModel(sprite.rasters);
+		rasterList.setSelectedValue(sprite.selectedRaster, true);
+		rasterList.ignoreSelectionChange = false;
 
-		selectRaster(selected);
+		setRaster(sprite.selectedRaster);
 	}
 
-	public void setRaster(SpriteRaster img)
-	{
-		setRasterEDT(img); //TODO
-	}
-
-	public void selectRaster(SpriteRaster sr)
-	{
-		rasterList.list.setSelectedValue(sr, true);
-	}
-
-	public void setRasterEDT(SpriteRaster sr)
+	public void setRaster(SpriteRaster sr)
 	{
 		assert (SwingUtilities.isEventDispatchThread());
-
-		this.sr = sr;
-
-		ignoreChanges = true;
 
 		if (sr != null) {
-			boolean hasBack = sr.getSprite().hasBack;
+			frontImgPanel.setRaster(sr);
+			backImgPanel.setRaster(sr);
 
-			frontImgPanel.setImageEDT(sr.front);
-
-			defaultPaletteBox.setSelectedItem(sr.front.pal);
-			defaultPaletteBox.setEnabled(true);
-
-			if (hasBack) {
-				backImgPanel.setImageEDT(sr.back);
-				backPaletteBox.setEnabled(true);
-			}
-			else {
-				backImgPanel.setImageEDT(null);
-				backPaletteBox.setEnabled(false);
-			}
-
-			backPaletteBox.setSelectedItem(sr.back.pal);
-
-			rasterInfoPanel.setVisible(true);
+			frontImgPanel.setVisible(true);
+			backImgPanel.setVisible(sprite.hasBack);
 		}
 		else {
-			frontImgPanel.setImageEDT(null);
-			backImgPanel.setImageEDT(null);
+			frontImgPanel.setRaster(null);
+			backImgPanel.setRaster(null);
 
-			defaultPaletteBox.setSelectedItem(null);
-			defaultPaletteBox.setEnabled(false);
-
-			backPaletteBox.setSelectedItem(null);
-			backPaletteBox.setEnabled(false);
-
-			rasterInfoPanel.setVisible(false);
+			frontImgPanel.setVisible(false);
+			backImgPanel.setVisible(false);
 		}
+	}
 
-		ignoreChanges = false;
+	public void setImgAsset(ImgAsset asset)
+	{
+		assert (SwingUtilities.isEventDispatchThread());
+	}
+
+	public void selectAsset(ImgAsset asset)
+	{
+		assert (SwingUtilities.isEventDispatchThread());
+
+		imgAssetList.setSelectedValue(asset, true);
 	}
 }

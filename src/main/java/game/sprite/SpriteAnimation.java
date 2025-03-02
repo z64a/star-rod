@@ -102,7 +102,6 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 			else {
 				// try next iteration
 				name = baseName + "_" + iteration;
-				iteration++;
 			}
 		}
 

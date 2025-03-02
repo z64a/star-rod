@@ -15,7 +15,7 @@ public class BindPalAsset extends AbstractCommand
 
 	public BindPalAsset(Component ui, SpritePalette pal, PalAsset asset)
 	{
-		super("Rename Palette");
+		super("Bind Palette");
 
 		this.ui = ui;
 		this.pal = pal;

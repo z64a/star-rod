@@ -19,7 +19,7 @@ public class ReorderPalette extends AbstractCommand
 
 		this.list = list;
 		this.pal = pal;
-		this.sprite = pal.getSprite();
+		this.sprite = pal.parentSprite;
 		this.prev = sprite.palettes.indexOf(pal);
 		this.next = pos;
 	}
