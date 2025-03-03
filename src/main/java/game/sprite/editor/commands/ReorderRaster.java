@@ -35,11 +35,11 @@ public class ReorderRaster extends AbstractCommand
 	{
 		super.exec();
 
-		list.ignoreSelectionChange = true;
+		list.ignoreChanges.increment();
 		sprite.rasters.removeElement(img);
 		sprite.rasters.insertElementAt(img, next);
 		list.setSelectedValue(img, true);
-		list.ignoreSelectionChange = false;
+		list.ignoreChanges.decrement();
 
 		sprite.revalidate();
 	}
@@ -49,11 +49,11 @@ public class ReorderRaster extends AbstractCommand
 	{
 		super.undo();
 
-		list.ignoreSelectionChange = true;
+		list.ignoreChanges.increment();
 		sprite.rasters.removeElement(img);
 		sprite.rasters.insertElementAt(img, prev);
 		list.setSelectedValue(img, true);
-		list.ignoreSelectionChange = false;
+		list.ignoreChanges.decrement();
 
 		sprite.revalidate();
 	}

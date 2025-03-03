@@ -39,9 +39,9 @@ public class SelectComponent extends AbstractCommand
 		super.exec();
 
 		// force list selection to update, but suppress generating a new command
-		list.ignoreSelectionChange = true;
+		list.ignoreChanges.increment();
 		list.setSelectedValue(next, true);
-		list.ignoreSelectionChange = false;
+		list.ignoreChanges.decrement();
 
 		SpriteEditor editor = SpriteEditor.instance();
 		editor.setComponent(next);
@@ -53,9 +53,9 @@ public class SelectComponent extends AbstractCommand
 		super.undo();
 
 		// force list selection to update, but suppress generating a new command
-		list.ignoreSelectionChange = true;
+		list.ignoreChanges.increment();
 		list.setSelectedValue(prev, true);
-		list.ignoreSelectionChange = false;
+		list.ignoreChanges.decrement();
 
 		SpriteEditor editor = SpriteEditor.instance();
 		editor.setComponent(prev);

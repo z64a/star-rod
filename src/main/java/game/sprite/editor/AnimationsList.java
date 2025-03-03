@@ -32,6 +32,7 @@ import game.sprite.editor.commands.RenameAnimation;
 import game.sprite.editor.commands.ReorderAnimation;
 import game.sprite.editor.commands.SelectAnimation;
 import net.miginfocom.swing.MigLayout;
+import util.EnableCounter;
 import util.Logger;
 import util.ui.DragReorderList;
 import util.ui.DragReorderTransferHandle;
@@ -41,7 +42,7 @@ public class AnimationsList extends DragReorderList<SpriteAnimation>
 	private final SpriteEditor editor;
 	private SpriteAnimation animClipboard = null;
 
-	public boolean ignoreSelectionChange = false;
+	public EnableCounter ignoreChanges = new EnableCounter();
 
 	public AnimationsList(SpriteEditor editor)
 	{
@@ -59,7 +60,7 @@ public class AnimationsList extends DragReorderList<SpriteAnimation>
 				return;
 
 			AnimationsList list = AnimationsList.this;
-			if (!ignoreSelectionChange)
+			if (ignoreChanges.disabled())
 				SpriteEditor.execute(new SelectAnimation(list, list.getSelectedValue()));
 		});
 

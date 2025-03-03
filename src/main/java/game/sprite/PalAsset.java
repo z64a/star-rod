@@ -12,7 +12,7 @@ import assets.AssetManager;
 import game.texture.Palette;
 import game.texture.Tile;
 
-public class PalAsset
+public class PalAsset implements GLResource
 {
 	private AssetHandle source;
 	private final Tile sourceImg;
@@ -54,5 +54,17 @@ public class PalAsset
 	public String toString()
 	{
 		return FilenameUtils.removeExtension(source.getName());
+	}
+
+	@Override
+	public void glLoad()
+	{
+		pal.glLoad();
+	}
+
+	@Override
+	public void glDelete()
+	{
+		pal.glDelete();
 	}
 }

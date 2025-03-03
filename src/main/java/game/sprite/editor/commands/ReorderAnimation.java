@@ -35,11 +35,11 @@ public class ReorderAnimation extends AbstractCommand
 	{
 		super.exec();
 
-		list.ignoreSelectionChange = true;
+		list.ignoreChanges.increment();
 		sprite.animations.removeElement(anim);
 		sprite.animations.insertElementAt(anim, next);
 		list.setSelectedValue(anim, true);
-		list.ignoreSelectionChange = false;
+		list.ignoreChanges.decrement();
 
 		sprite.revalidate();
 	}
@@ -49,11 +49,11 @@ public class ReorderAnimation extends AbstractCommand
 	{
 		super.undo();
 
-		list.ignoreSelectionChange = true;
+		list.ignoreChanges.increment();
 		sprite.animations.removeElement(anim);
 		sprite.animations.insertElementAt(anim, prev);
 		list.setSelectedValue(anim, true);
-		list.ignoreSelectionChange = false;
+		list.ignoreChanges.decrement();
 
 		sprite.revalidate();
 	}

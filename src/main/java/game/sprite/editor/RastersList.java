@@ -25,6 +25,7 @@ import game.sprite.editor.commands.DeleteRaster;
 import game.sprite.editor.commands.RenameRaster;
 import game.sprite.editor.commands.ReorderRaster;
 import game.sprite.editor.commands.SelectRaster;
+import util.EnableCounter;
 import util.Logger;
 import util.ui.DragReorderList;
 import util.ui.DragReorderTransferHandle;
@@ -34,7 +35,7 @@ public class RastersList extends DragReorderList<SpriteRaster>
 	private final SpriteEditor editor;
 	private SpriteRaster clipboard = null;
 
-	public boolean ignoreSelectionChange = false;
+	public EnableCounter ignoreChanges = new EnableCounter();
 
 	public RastersList(SpriteEditor editor, RastersTab tab)
 	{
@@ -51,7 +52,7 @@ public class RastersList extends DragReorderList<SpriteRaster>
 				return;
 
 			RastersList list = RastersList.this;
-			if (!ignoreSelectionChange)
+			if (ignoreChanges.disabled())
 				SpriteEditor.execute(new SelectRaster(list, editor.getSprite(), list.getSelectedValue(), tab::setRaster));
 		});
 

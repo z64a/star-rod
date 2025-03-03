@@ -37,15 +37,13 @@ public class SpriteRasterFace
 			return FilenameUtils.removeExtension(filename);
 	}
 
-	public void setAll(SpriteRasterFace other)
+	public void set(SpriteRasterFace other)
 	{
 		this.filename = other.filename;
 		this.asset = other.asset;
 		this.pal = other.pal;
 		this.resolved = other.resolved;
-
-		//TODO copy?
-		this.preview = other.preview;
+		preview.set(other.preview);
 	}
 
 	public void loadEditorImages()

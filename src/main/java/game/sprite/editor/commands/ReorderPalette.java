@@ -35,11 +35,11 @@ public class ReorderPalette extends AbstractCommand
 	{
 		super.exec();
 
-		list.ignoreSelectionChange = true;
+		list.ignoreChanges.increment();
 		sprite.palettes.removeElement(pal);
 		sprite.palettes.insertElementAt(pal, next);
 		list.setSelectedValue(pal, true);
-		list.ignoreSelectionChange = false;
+		list.ignoreChanges.decrement();
 
 		sprite.revalidate();
 	}
@@ -49,11 +49,11 @@ public class ReorderPalette extends AbstractCommand
 	{
 		super.undo();
 
-		list.ignoreSelectionChange = true;
+		list.ignoreChanges.increment();
 		sprite.palettes.removeElement(pal);
 		sprite.palettes.insertElementAt(pal, prev);
 		list.setSelectedValue(pal, true);
-		list.ignoreSelectionChange = false;
+		list.ignoreChanges.decrement();
 
 		sprite.revalidate();
 	}

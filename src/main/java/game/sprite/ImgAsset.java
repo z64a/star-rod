@@ -13,7 +13,7 @@ import game.sprite.editor.ImgPreview;
 import game.texture.Palette;
 import game.texture.Tile;
 
-public class ImgAsset
+public class ImgAsset implements GLResource
 {
 	// source is not final because it updates upon saving
 	private AssetHandle source;
@@ -21,7 +21,7 @@ public class ImgAsset
 	public final Tile img;
 	public final ImgPreview preview;
 
-	// members used to lay out the editor sprite atlas
+	// members used to lay out the rasters tab sprite atlas
 	public transient int atlasRow, atlasX, atlasY;
 	public transient boolean inUse;
 
@@ -39,7 +39,7 @@ public class ImgAsset
 		img.savePNG(source.getAbsolutePath());
 	}
 
-	public String getFileName()
+	public String getFilename()
 	{
 		return source.getName();
 	}
@@ -66,6 +66,7 @@ public class ImgAsset
 		preview.load(img, img.palette);
 	}
 
+	@Override
 	public void glLoad()
 	{
 		if (img != null) {
@@ -74,6 +75,7 @@ public class ImgAsset
 		}
 	}
 
+	@Override
 	public void glDelete()
 	{
 		if (img != null) {

@@ -29,6 +29,14 @@ public class ImgPreview
 		tiny = new ImageIcon(getScaledToFit(previewImg, 20));
 	}
 
+	public void set(ImgPreview other)
+	{
+		// shallow copy OK because these are not mutated
+		previewImg = other.previewImg;
+		icon = other.icon;
+		tiny = other.tiny;
+	}
+
 	private static Image getScaledToFit(BufferedImage in, int maxSize)
 	{
 		if (in.getHeight() > in.getWidth()) {

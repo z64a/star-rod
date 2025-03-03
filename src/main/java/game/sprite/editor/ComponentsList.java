@@ -36,6 +36,7 @@ import game.sprite.editor.commands.ReorderComponent;
 import game.sprite.editor.commands.SelectComponent;
 import game.sprite.editor.commands.ToggleComponentHidden;
 import net.miginfocom.swing.MigLayout;
+import util.EnableCounter;
 import util.Logger;
 import util.ui.DragReorderList;
 import util.ui.DragReorderTransferHandle;
@@ -48,7 +49,7 @@ public class ComponentsList extends DragReorderList<SpriteComponent>
 	private final SpriteEditor editor;
 	private SpriteComponent compClipboard = null;
 
-	public boolean ignoreSelectionChange = false;
+	public EnableCounter ignoreChanges = new EnableCounter();
 
 	public ComponentsList(SpriteEditor editor)
 	{
@@ -121,7 +122,7 @@ public class ComponentsList extends DragReorderList<SpriteComponent>
 				return;
 
 			ComponentsList list = ComponentsList.this;
-			if (!ignoreSelectionChange)
+			if (ignoreChanges.disabled())
 				SpriteEditor.execute(new SelectComponent(list, list.getSelectedValue()));
 		});
 

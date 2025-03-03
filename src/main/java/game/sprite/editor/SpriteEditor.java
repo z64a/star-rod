@@ -15,6 +15,7 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -54,6 +55,7 @@ import common.commands.CommandBatch;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
 import game.map.shape.TransformMatrix;
+import game.sprite.GLResource;
 import game.sprite.ImgAsset;
 import game.sprite.PalAsset;
 import game.sprite.Sprite;
@@ -129,6 +131,7 @@ public class SpriteEditor extends BaseEditor
 	private ComponentsList compList;
 
 	private JPanel componentPanel;
+	private JPanel relativePosPanel;
 
 	private JCheckBox cbOverridePalette;
 	private JCheckBox cbShowOnlySelectedComponent;
@@ -175,8 +178,10 @@ public class SpriteEditor extends BaseEditor
 	private int playbackRate = 1;
 	private int playbackCounter = playbackRate;
 
+	private final SpriteCamera rasterCamera;
+	private final SpriteCamera paletteCamera;
 	private final SpriteCamera animCamera;
-	private final SpriteCamera sheetCamera;
+
 	private BasicTraceRay trace;
 
 	// sprite sheet tab
@@ -223,15 +228,18 @@ public class SpriteEditor extends BaseEditor
 	private float dragStartX;
 	private float dragStartY;
 
-	private Sprite unloadSprite = null;
-	private Sprite loadSprite = null;
-
 	private SpriteMetadata curMetadata = null;
 
 	public volatile boolean suppressCommands = false;
 
 	// handles comnmand execution and undo/redo
 	private SpriteCommandManager commandManager;
+
+	private Sprite unloadSprite = null;
+	private Sprite loadSprite = null;
+
+	private ArrayList<GLResource> pendingLoadResources = new ArrayList<>();
+	private ArrayList<GLResource> pendingDeleteResources = new ArrayList<>();
 
 	public static void main(String[] args) throws IOException
 	{
@@ -250,15 +258,20 @@ public class SpriteEditor extends BaseEditor
 
 		instance = this;
 
+		rasterCamera = new SpriteCamera(
+			0.0f, 0.0f, 0.7f,
+			1.0f, 0.125f, 2.0f,
+			true, true);
+
+		paletteCamera = new SpriteCamera(
+			0.0f, 0.0f, 0.7f,
+			1.0f, 0.125f, 2.0f,
+			true, true);
+
 		animCamera = new SpriteCamera(
 			0.0f, 64.0f, 0.7f,
 			0.5f, 0.125f, 2.0f,
 			true, false);
-
-		sheetCamera = new SpriteCamera(
-			0.0f, 0.0f, 0.7f,
-			1.0f, 0.125f, 2.0f,
-			true, true);
 
 		assetWatcher = new SpriteAssetWatcher();
 
@@ -386,14 +399,17 @@ public class SpriteEditor extends BaseEditor
 
 		switch (editorMode) {
 			case Rasters:
-			case Palettes:
-				trace = sheetCamera.getTraceRay(mouse.getPosX(), mouse.getPosY());
+				trace = rasterCamera.getTraceRay(mouse.getPosX(), mouse.getPosY());
 
 				if (sprite != null) {
-					checkPalettesForChanges();
-					highlightedImgAsset = sprite.tryAtlasPick(trace);
+					//TODO	checkPalettesForChanges();
+					highlightedImgAsset = sprite.tryImgAtlasPick(trace);
 				}
 
+				handleInput(deltaTime);
+				break;
+
+			case Palettes:
 				handleInput(deltaTime);
 				break;
 
@@ -425,10 +441,42 @@ public class SpriteEditor extends BaseEditor
 			case Animation:
 				break;
 			case Rasters:
+				if (sprite != null)
+					resetAtlasCamera();
+				break;
 			case Palettes:
 				if (sprite != null)
-					sprite.centerAtlas(sheetCamera, glCanvasWidth(), glCanvasHeight());
+					resetAtlasCamera();
 				break;
+		}
+	}
+
+	public void queueLoadResource(GLResource res)
+	{
+		pendingLoadResources.add(res);
+	}
+
+	public void queueDeleteResource(GLResource res)
+	{
+		pendingDeleteResources.add(res);
+	}
+
+	private void processResourceQueues()
+	{
+		// process all pending glDelete
+		if (pendingDeleteResources.size() > 0) {
+			for (GLResource res : pendingDeleteResources) {
+				res.glDelete();
+			}
+			pendingDeleteResources.clear();
+		}
+
+		// process all pending glLoad
+		if (pendingLoadResources.size() > 0) {
+			for (GLResource res : pendingLoadResources) {
+				res.glLoad();
+			}
+			pendingLoadResources.clear();
 		}
 	}
 
@@ -436,6 +484,8 @@ public class SpriteEditor extends BaseEditor
 	public void glDraw()
 	{
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+		processResourceQueues();
 
 		if (unloadSprite != null) {
 			unloadSprite.unloadTextures();
@@ -449,8 +499,10 @@ public class SpriteEditor extends BaseEditor
 
 		switch (editorMode) {
 			case Rasters:
+				renderImgAtlas();
+				break;
 			case Palettes:
-				renderSpriteSheet();
+				renderRasterAtlas();
 				break;
 			case Animation:
 				renderAnim();
@@ -614,6 +666,9 @@ public class SpriteEditor extends BaseEditor
 	{
 		modeTabIndex = tabIndex;
 		editorMode = EditorMode.values()[tabIndex];
+
+		if (tabIndex == 1)
+			sprite.makeRasterAtlas();
 	}
 
 	public int getModesTab()
@@ -641,6 +696,14 @@ public class SpriteEditor extends BaseEditor
 	public int getSpriteTab()
 	{
 		return spriteTabIndex;
+	}
+
+	public void resetAtlasCamera()
+	{
+		assert (sprite != null);
+		//TODO separate these?
+		sprite.centerImgAtlas(rasterCamera, glCanvasWidth(), glCanvasHeight());
+		sprite.centerImgAtlas(paletteCamera, glCanvasWidth(), glCanvasHeight());
 	}
 
 	public void setSprite(SpriteMetadata newMetadata, boolean forceReload)
@@ -673,7 +736,7 @@ public class SpriteEditor extends BaseEditor
 		sprite = spriteLoader.getSprite(curMetadata, forceReload);
 
 		// suppress selection events from setSelectedIndex and setModel operations on animList
-		animList.ignoreSelectionChange = true;
+		animList.ignoreChanges.increment();
 
 		if (sprite != null) {
 			editorModeTabs.setVisible(true);
@@ -685,8 +748,9 @@ public class SpriteEditor extends BaseEditor
 			CommandAnimatorEditor.setModels(sprite);
 			KeyframeAnimatorEditor.setModels(sprite);
 
-			sprite.makeAtlas();
-			sprite.centerAtlas(sheetCamera, glCanvasWidth(), glCanvasHeight());
+			sprite.makeImgAtlas();
+			sprite.makeRasterAtlas();
+			resetAtlasCamera();
 
 			sprite.bindPalettes();
 			sprite.bindRasters();
@@ -737,7 +801,7 @@ public class SpriteEditor extends BaseEditor
 		}
 
 		// re-enable selection events from animList
-		animList.ignoreSelectionChange = false;
+		animList.ignoreChanges.decrement();
 	}
 
 	public Sprite getSprite()
@@ -762,7 +826,7 @@ public class SpriteEditor extends BaseEditor
 		currentAnim = animation;
 
 		// suppress selection events from setSelectedIndex and setModel operations on compList
-		compList.ignoreSelectionChange = true;
+		compList.ignoreChanges.increment();
 
 		if (currentAnim != null) {
 			compList.setModel(currentAnim.components);
@@ -797,7 +861,7 @@ public class SpriteEditor extends BaseEditor
 		}
 
 		// re-enable selection events from compList
-		compList.ignoreSelectionChange = false;
+		compList.ignoreChanges.decrement();
 
 		playerEventQueue.add(PlayerEvent.Reset);
 		return true;
@@ -833,6 +897,7 @@ public class SpriteEditor extends BaseEditor
 		if (currentComp == null) {
 			Logger.logDetail("Set component: NULL");
 			componentPanel.setVisible(false);
+			relativePosPanel.setVisible(false);
 
 			if (currentAnim != null)
 				currentAnim.setComponentSelected(-1);
@@ -840,6 +905,7 @@ public class SpriteEditor extends BaseEditor
 		else {
 			Logger.logDetail("Set component: " + currentComp.name);
 			componentPanel.setVisible(true);
+			relativePosPanel.setVisible(true);
 
 			if (currentAnim != null)
 				currentAnim.setComponentSelected(currentComp.listIndex);
@@ -862,6 +928,7 @@ public class SpriteEditor extends BaseEditor
 		return currentComp;
 	}
 
+	//TODO
 	private void checkPalettesForChanges()
 	{
 		for (PalAsset asset : sprite.palAssets) {
@@ -875,18 +942,20 @@ public class SpriteEditor extends BaseEditor
 	private void handleInput(double deltaTime)
 	{
 		switch (editorMode) {
-			case Animation: {
+			case Animation:
 				animCamera.handleInput(keyboard, mouse, deltaTime, glCanvasWidth(), glCanvasHeight());
 				if (keyboard.isKeyDown(KeyEvent.VK_SPACE))
 					animCamera.reset();
-			}
 				break;
 			case Rasters:
-			case Palettes: {
-				sheetCamera.handleInput(keyboard, mouse, deltaTime, glCanvasWidth(), glCanvasHeight());
+				rasterCamera.handleInput(keyboard, mouse, deltaTime, glCanvasWidth(), glCanvasHeight());
 				if (keyboard.isKeyDown(KeyEvent.VK_SPACE))
-					sprite.centerAtlas(sheetCamera, glCanvasWidth(), glCanvasHeight());
-			}
+					resetAtlasCamera();
+				break;
+			case Palettes:
+				paletteCamera.handleInput(keyboard, mouse, deltaTime, glCanvasWidth(), glCanvasHeight());
+				if (keyboard.isKeyDown(KeyEvent.VK_SPACE))
+					resetAtlasCamera();
 				break;
 			default:
 				throw new IllegalStateException("Invalid editor mode in handleInput().");
@@ -933,33 +1002,45 @@ public class SpriteEditor extends BaseEditor
 		});
 	}
 
-	private void renderSpriteSheet()
+	private void renderImgAtlas()
 	{
-		sheetCamera.glSetViewport(0, 0, glCanvasWidth(), glCanvasHeight());
+		rasterCamera.glSetViewport(0, 0, glCanvasWidth(), glCanvasHeight());
 
 		if (showBackground)
-			sheetCamera.drawBackground();
+			rasterCamera.drawBackground();
 
-		sheetCamera.setOrthoView();
-		sheetCamera.glLoadTransform();
+		rasterCamera.setOrthoView();
+		rasterCamera.glLoadTransform();
 		RenderState.setModelMatrix(null);
-
-		//	drawAxes(1.0f);
 
 		if (sprite == null)
 			return;
 
 		ImgAsset highlight = highlightedImgAsset;
+		ImgAsset selected = sprite.selectedImgAsset;
 
-		ImgAsset selected = null;
-		if (editorMode == EditorMode.Rasters)
-			selected = sprite.selectedImgAsset;
+		sprite.renderImgAtlas(selected, highlight, useFiltering);
+	}
+
+	private void renderRasterAtlas()
+	{
+		paletteCamera.glSetViewport(0, 0, glCanvasWidth(), glCanvasHeight());
+
+		if (showBackground)
+			paletteCamera.drawBackground();
+
+		paletteCamera.setOrthoView();
+		paletteCamera.glLoadTransform();
+		RenderState.setModelMatrix(null);
+
+		if (sprite == null)
+			return;
 
 		Palette overridePal = null;
-		if (editorMode == EditorMode.Palettes && sprite.selectedPalAsset != null)
+		if (sprite.selectedPalAsset != null)
 			overridePal = sprite.selectedPalAsset.pal;
 
-		sprite.renderAtlas(selected, highlight, overridePal, useFiltering);
+		sprite.renderRasterAtlas(overridePal, useFiltering);
 	}
 
 	private void renderAnim()
@@ -1176,12 +1257,12 @@ public class SpriteEditor extends BaseEditor
 				try {
 					int id = SpriteLoader.getMaximumID(spriteSet) + 1;
 					SpriteLoader.create(spriteSet, id);
-
+		
 					if(spriteSet == SpriteSet.Npc)
 						useNpcFiles(id);
 					else
 						usePlayerFiles(id);
-
+		
 				} catch (Throwable t) {
 					Logger.logError("Failed to create new sprite.");
 					incrementDialogsOpen();
@@ -1191,7 +1272,7 @@ public class SpriteEditor extends BaseEditor
 			});
 		});
 		menu.add(item);
-
+		
 		menu.addSeparator();
 		 */
 
@@ -1502,8 +1583,8 @@ public class SpriteEditor extends BaseEditor
 		SwingUtils.centerSpinnerText(compzSpinner);
 		SwingUtils.addBorderPadding(compzSpinner);
 
-		JPanel relativePosPanel = new JPanel(new MigLayout("fill, ins 0, wrap", "[pref]8[sg spin]4[sg spin]4[sg spin]"));
-		relativePosPanel.add(SwingUtils.getLabel("Pos offset", 12), "pushx");
+		JPanel relativePosPanel = new JPanel(new MigLayout("fill, ins 0, wrap", "[grow]8[sg spin]4[sg spin]4[sg spin]"));
+		relativePosPanel.add(SwingUtils.getLabel("Pos offset", SwingConstants.CENTER, 12), "growx");
 		relativePosPanel.add(compxSpinner, "w 72!");
 		relativePosPanel.add(compySpinner, "w 72!");
 		relativePosPanel.add(compzSpinner, "w 72!");
@@ -1602,15 +1683,10 @@ public class SpriteEditor extends BaseEditor
 
 	private JPanel getComponentPanel()
 	{
-		JPanel relativePosPanel = getComponentOffsetsPanel();
-
 		commandListPanel = new JPanel(new MigLayout("ins 0, fill"));
 		commandEditPanel = new JPanel(new MigLayout("ins 0, fill"));
 
 		componentPanel = new JPanel(new MigLayout("fill, ins 0, gapy 8", "[sg half]32[sg half]"));
-		componentPanel.add(SwingUtils.getLabel("Component Properties", 14), "span, grow");
-
-		componentPanel.add(relativePosPanel, "grow, wrap");
 		componentPanel.add(commandListPanel, "grow, pushy");
 		componentPanel.add(commandEditPanel, "grow, pushy");
 
@@ -1638,7 +1714,7 @@ public class SpriteEditor extends BaseEditor
 				execute(new SetOverridePalette(paletteComboBox, sprite));
 		});
 
-		cbOverridePalette = new JCheckBox(" Override palette");
+		cbOverridePalette = new JCheckBox(" Override");
 		cbOverridePalette.setSelected(false);
 		cbOverridePalette.addActionListener((e) -> {
 			if (!suppressCommands && sprite != null)
@@ -1711,6 +1787,8 @@ public class SpriteEditor extends BaseEditor
 		JScrollPane compScrollPane = new JScrollPane(compList);
 		compScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
+		relativePosPanel = getComponentOffsetsPanel();
+
 		JPanel listsPanel = new JPanel(new MigLayout("fill, ins 0, wrap 2", "[grow, sg col][grow, sg col]"));
 
 		listsPanel.add(btnAddAnim, "split 2");
@@ -1723,19 +1801,20 @@ public class SpriteEditor extends BaseEditor
 		listsPanel.add(animScrollPane, "pushy, grow, sg list");
 		listsPanel.add(compScrollPane, "pushy, grow, sg list");
 
+		listsPanel.add(cbOverridePalette, "split 2, gapright 8, aligny center");
+		listsPanel.add(paletteComboBox, "growx");
+
+		listsPanel.add(relativePosPanel, "growx");
+
 		JPanel playbackPanel = getPlaybackPanel();
 
 		componentPanel = getComponentPanel();
-
-		JPanel animTab = new JPanel(new MigLayout("fill, wrap, ins 16 16 0 16, gapy 8"));
-		animTab.add(listsPanel, "grow, h 25%");
-
-		animTab.add(cbOverridePalette, "span, split 2, gapright 8, aligny center");
-		animTab.add(paletteComboBox, "growx");
-		animTab.add(playbackPanel, "span, growx, gaptop 8");
-		animTab.add(componentPanel, "span, grow, pushy");
-
 		componentPanel.setVisible(false);
+
+		JPanel animTab = new JPanel(new MigLayout("fill, wrap, ins 16 16 0 16, gapy 8", "", "[]16[]8[]"));
+		animTab.add(listsPanel, "grow, h 33%");
+		animTab.add(playbackPanel, "span, growx");
+		animTab.add(componentPanel, "span, grow, pushy");
 
 		return animTab;
 	}
@@ -1816,7 +1895,7 @@ public class SpriteEditor extends BaseEditor
 	{
 		switch (editorMode) {
 			case Rasters:
-				ImgAsset picked = sprite.tryAtlasPick(trace);
+				ImgAsset picked = sprite.tryImgAtlasPick(trace);
 				SwingUtilities.invokeLater(() -> {
 					rastersTab.selectAsset(picked);
 				});

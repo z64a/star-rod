@@ -36,11 +36,11 @@ public class ReorderComponent extends AbstractCommand
 	{
 		super.exec();
 
-		list.ignoreSelectionChange = true;
+		list.ignoreChanges.increment();
 		model.removeElement(comp);
 		model.insertElementAt(comp, next);
 		list.setSelectedValue(comp, true);
-		list.ignoreSelectionChange = false;
+		list.ignoreChanges.decrement();
 
 		comp.parentAnimation.parentSprite.revalidate();
 	}
@@ -50,11 +50,11 @@ public class ReorderComponent extends AbstractCommand
 	{
 		super.undo();
 
-		list.ignoreSelectionChange = true;
+		list.ignoreChanges.increment();
 		model.removeElement(comp);
 		model.insertElementAt(comp, prev);
 		list.setSelectedValue(comp, true);
-		list.ignoreSelectionChange = false;
+		list.ignoreChanges.decrement();
 
 		comp.parentAnimation.parentSprite.revalidate();
 	}

@@ -10,6 +10,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
+import javax.swing.SwingUtilities;
+
 import org.apache.commons.io.FilenameUtils;
 import org.w3c.dom.Element;
 
@@ -24,6 +26,7 @@ import game.sprite.editor.SpriteAssetCollection;
 import game.sprite.editor.SpriteCamera;
 import game.sprite.editor.SpriteCamera.BasicTraceHit;
 import game.sprite.editor.SpriteCamera.BasicTraceRay;
+import game.sprite.editor.SpriteEditor;
 import game.texture.Palette;
 import renderer.shaders.ShaderManager;
 import renderer.shaders.scene.SpriteShader;
@@ -42,6 +45,9 @@ public class Sprite implements XmlSerializable
 
 	public static final int MAX_ANIMATIONS = 255;
 	public static final int MAX_COMPONENTS = 255;
+
+	private static final int ATLAS_TILE_PADDING = 8;
+	private static final int ATLAS_SELECT_PADDING = 1;
 
 	public final SpriteMetadata metadata;
 
@@ -171,7 +177,8 @@ public class Sprite implements XmlSerializable
 	public int numVariations;
 	public int maxComponents;
 
-	private int atlasH, atlasW;
+	private int imgAtlasH, imgAtlasW;
+	private int rasterAtlasH, rasterAtlasW;
 
 	public transient BoundingBox aabb = new BoundingBox();
 
@@ -406,8 +413,10 @@ public class Sprite implements XmlSerializable
 
 	public void reloadRasterAssets()
 	{
-		for (ImgAsset ia : imgAssets) {
-			ia.glDelete();
+		assert (SwingUtilities.isEventDispatchThread());
+
+		for (ImgAsset img : imgAssets) {
+			SpriteEditor.instance().queueDeleteResource(img);
 		}
 
 		try {
@@ -425,8 +434,8 @@ public class Sprite implements XmlSerializable
 			Toolkit.getDefaultToolkit().beep();
 		}
 
-		for (ImgAsset ia : imgAssets) {
-			ia.glLoad();
+		for (ImgAsset img : imgAssets) {
+			SpriteEditor.instance().queueLoadResource(img);
 		}
 
 		// assign new ImgAssets to SpriteRasters
@@ -437,8 +446,10 @@ public class Sprite implements XmlSerializable
 
 	public void reloadPaletteAssets()
 	{
-		for (PalAsset pa : palAssets) {
-			pa.pal.glDelete();
+		assert (SwingUtilities.isEventDispatchThread());
+
+		for (PalAsset pal : palAssets) {
+			SpriteEditor.instance().queueDeleteResource(pal);
 		}
 
 		try {
@@ -456,12 +467,16 @@ public class Sprite implements XmlSerializable
 			Toolkit.getDefaultToolkit().beep();
 		}
 
-		for (PalAsset pa : palAssets) {
-			pa.pal.glLoad();
+		for (PalAsset pal : palAssets) {
+			SpriteEditor.instance().queueLoadResource(pal);
 		}
 
 		// assign new PalAssets to SpritePalettes
 		bindPalettes();
+
+		for (SpriteRaster raster : rasters) {
+			raster.loadEditorImages();
+		}
 	}
 
 	/**
@@ -786,10 +801,7 @@ public class Sprite implements XmlSerializable
 		comp.addCorners(aabb);
 	}
 
-	private static final int ATLAS_TILE_PADDING = 8;
-	private static final int ATLAS_SELECT_PADDING = 1;
-
-	public void makeAtlas()
+	public void makeImgAtlas()
 	{
 		int totalWidth = ATLAS_TILE_PADDING;
 		int totalHeight = ATLAS_TILE_PADDING;
@@ -842,8 +854,8 @@ public class Sprite implements XmlSerializable
 		rowPosY.add(currentY);
 		currentY -= ATLAS_TILE_PADDING;
 
-		atlasW = maxWidth;
-		atlasH = currentY;
+		imgAtlasW = maxWidth;
+		imgAtlasH = currentY;
 
 		for (ImgAsset ia : imgAssets) {
 			ia.atlasY = rowPosY.get(ia.atlasRow) + ia.img.height;
@@ -851,21 +863,21 @@ public class Sprite implements XmlSerializable
 
 		// center the atlas
 		for (ImgAsset ia : imgAssets) {
-			ia.atlasX -= atlasW / 2.0f;
-			ia.atlasY -= atlasH / 2.0f;
+			ia.atlasX -= imgAtlasW / 2.0f;
+			ia.atlasY -= imgAtlasH / 2.0f;
 		}
 
 		// negative -> positive
-		atlasH = Math.abs(atlasH);
+		imgAtlasH = Math.abs(imgAtlasH);
 	}
 
-	public void centerAtlas(SpriteCamera sheetCamera, int canvasW, int canvasH)
+	public void centerImgAtlas(SpriteCamera sheetCamera, int canvasW, int canvasH)
 	{
-		sheetCamera.centerOn(canvasW, canvasH, 0, 0, 0, atlasW, atlasH, 0);
-		sheetCamera.setMaxPos(Math.round(atlasW / 2.0f), Math.round(atlasH / 2.0f));
+		sheetCamera.centerOn(canvasW, canvasH, 0, 0, 0, imgAtlasW, imgAtlasH, 0);
+		sheetCamera.setMaxPos(Math.round(imgAtlasW / 2.0f), Math.round(imgAtlasH / 2.0f));
 	}
 
-	public ImgAsset tryAtlasPick(BasicTraceRay trace)
+	public ImgAsset tryImgAtlasPick(BasicTraceRay trace)
 	{
 		for (ImgAsset ia : imgAssets) {
 			Vector3f min = new Vector3f(
@@ -887,7 +899,7 @@ public class Sprite implements XmlSerializable
 		return null;
 	}
 
-	public void renderAtlas(ImgAsset selected, ImgAsset highlighted, Palette overridePalette, boolean useFiltering)
+	public void renderImgAtlas(ImgAsset selected, ImgAsset highlighted, boolean useFiltering)
 	{
 		for (ImgAsset ia : imgAssets) {
 			ia.inUse = false;
@@ -908,31 +920,14 @@ public class Sprite implements XmlSerializable
 		SpriteShader shader = ShaderManager.use(SpriteShader.class);
 		shader.useFiltering.set(useFiltering);
 
-		//	if(enableStencilBuffer)
-		//	{
-		//		glEnable(GL_STENCIL_TEST);
-		//		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-		//	}
-
 		for (ImgAsset ia : imgAssets) {
-			//		if(enableStencilBuffer)
-			//			glStencilFunc(GL_ALWAYS, i + 1, 0xFF);
-
 			shader.selected.set(ia == selected);
 			shader.highlighted.set(ia == highlighted);
 
 			shader.alpha.set(ia.inUse ? 1.0f : 0.4f);
 
-			Palette renderPalette;
-			if (overridePalette != null) {
-				renderPalette = overridePalette;
-			}
-			else {
-				renderPalette = ia.getPalette();
-			}
-
 			ia.img.glBind(shader.texture);
-			renderPalette.glBind(shader.palette);
+			ia.getPalette().glBind(shader.palette);
 
 			float x1 = ia.atlasX;
 			float y1 = ia.atlasY;
@@ -942,9 +937,131 @@ public class Sprite implements XmlSerializable
 			shader.setXYQuadCoords(x1, y2, x2, y1, 0); //TODO upside down?
 			shader.renderQuad();
 		}
+	}
 
-		//	if(enableStencilBuffer)
-		//		glDisable(GL_STENCIL_TEST);
+	public void makeRasterAtlas()
+	{
+		int totalWidth = ATLAS_TILE_PADDING;
+		int totalHeight = ATLAS_TILE_PADDING;
+		int validRasterCount = 0;
+
+		for (SpriteRaster sr : rasters) {
+			if (sr.front.asset == null)
+				continue;
+
+			totalWidth += ATLAS_TILE_PADDING + sr.front.asset.img.width;
+			totalHeight += ATLAS_TILE_PADDING + sr.front.asset.img.height;
+			validRasterCount++;
+		}
+
+		float aspectRatio = 1.0f; // H/W
+		int maxWidth = (int) Math.sqrt(totalWidth * totalHeight / (aspectRatio * validRasterCount));
+		maxWidth = (maxWidth + 7) & 0xFFFFFFF8; // pad to multiple of 8
+
+		int currentX = ATLAS_TILE_PADDING;
+		int currentY = -ATLAS_TILE_PADDING;
+
+		ArrayList<Integer> rowPosY = new ArrayList<>();
+		ArrayList<Integer> rowTallest = new ArrayList<>();
+		int currentRow = 0;
+		rowTallest.add(0);
+
+		for (SpriteRaster sr : rasters) {
+			if (sr.front.asset == null)
+				continue;
+
+			int width = sr.front.asset.img.width;
+			int height = sr.front.asset.img.height;
+
+			if (currentX + width + ATLAS_TILE_PADDING > maxWidth) {
+				// start new row
+				currentY -= rowTallest.get(currentRow);
+				rowPosY.add(currentY);
+				rowTallest.add(0);
+
+				// next row
+				currentX = ATLAS_TILE_PADDING;
+				currentY -= ATLAS_TILE_PADDING;
+				currentRow++;
+			}
+
+			sr.atlasX = currentX;
+			sr.atlasRow = currentRow;
+
+			// move forward for next in the row
+			currentX += width;
+			currentX += ATLAS_TILE_PADDING;
+
+			if (height > rowTallest.get(currentRow))
+				rowTallest.set(currentRow, height);
+		}
+
+		// finish row
+		currentY -= rowTallest.get(currentRow);
+		rowPosY.add(currentY);
+		currentY -= ATLAS_TILE_PADDING;
+
+		rasterAtlasW = maxWidth;
+		rasterAtlasH = currentY;
+
+		for (SpriteRaster sr : rasters) {
+			if (sr.front.asset == null)
+				continue;
+
+			sr.atlasY = rowPosY.get(sr.atlasRow) + sr.front.asset.img.height;
+		}
+
+		// center the atlas
+		for (SpriteRaster sr : rasters) {
+			sr.atlasX -= rasterAtlasW / 2.0f;
+			sr.atlasY -= rasterAtlasH / 2.0f;
+		}
+
+		// negative -> positive
+		rasterAtlasH = Math.abs(rasterAtlasH);
+	}
+
+	public void centerRasterAtlas(SpriteCamera sheetCamera, int canvasW, int canvasH)
+	{
+		sheetCamera.centerOn(canvasW, canvasH, 0, 0, 0, rasterAtlasW, rasterAtlasH, 0);
+		sheetCamera.setMaxPos(Math.round(rasterAtlasW / 2.0f), Math.round(rasterAtlasH / 2.0f));
+	}
+
+	public void renderRasterAtlas(Palette overridePalette, boolean useFiltering)
+	{
+		SpriteShader shader = ShaderManager.use(SpriteShader.class);
+		shader.useFiltering.set(useFiltering);
+
+		for (SpriteRaster sr : rasters) {
+			if (sr.front.asset == null)
+				continue;
+
+			ImgAsset ia = sr.front.asset;
+			Palette renderPalette;
+			if (overridePalette != null) {
+				// use fixed palette if provided
+				renderPalette = overridePalette;
+			}
+			else if (sr.front.pal != null) {
+				// use palette asssigned to this face
+				renderPalette = sr.front.pal.getPal();
+			}
+			else {
+				// fallback to default palette of asset
+				renderPalette = ia.getPalette();
+			}
+
+			ia.img.glBind(shader.texture);
+			renderPalette.glBind(shader.palette);
+
+			float x1 = sr.atlasX;
+			float y1 = sr.atlasY;
+			float x2 = sr.atlasX + ia.img.width;
+			float y2 = sr.atlasY - ia.img.height;
+
+			shader.setXYQuadCoords(x1, y2, x2, y1, 0); //TODO upside down?
+			shader.renderQuad();
+		}
 	}
 
 	public static void validate(Sprite spr)

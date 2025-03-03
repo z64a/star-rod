@@ -45,9 +45,9 @@ public class SelectRaster extends AbstractCommand
 		super.exec();
 
 		// force list selection to update, but suppress generating a new command
-		list.ignoreSelectionChange = true;
+		list.ignoreChanges.increment();
 		list.setSelectedValue(next, true);
-		list.ignoreSelectionChange = false;
+		list.ignoreChanges.decrement();
 
 		sprite.selectedRaster = next;
 		callback.accept(next);
@@ -59,9 +59,9 @@ public class SelectRaster extends AbstractCommand
 		super.undo();
 
 		// force list selection to update, but suppress generating a new command
-		list.ignoreSelectionChange = true;
+		list.ignoreChanges.increment();
 		list.setSelectedValue(prev, true);
-		list.ignoreSelectionChange = false;
+		list.ignoreChanges.decrement();
 
 		sprite.selectedRaster = prev;
 		callback.accept(prev);

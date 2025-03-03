@@ -108,7 +108,7 @@ public class PalettesTab extends JPanel
 			if (e.getValueIsAdjusting())
 				return;
 
-			if (!palAssetList.ignoreSelectionChange)
+			if (palAssetList.ignoreChanges.disabled())
 				SpriteEditor.execute(new SelectPalAsset(palAssetList, editor.getSprite(),
 					palAssetList.getSelectedValue(), this::setPalAsset));
 		});
@@ -122,28 +122,38 @@ public class PalettesTab extends JPanel
 				return;
 			}
 
-			editor.invokeLater(() -> {
-				palAssetList.ignoreSelectionChange = true;
+			palAssetList.ignoreChanges.increment();
 
-				// clear current selection
-				palAssetList.setSelectedValue(null, true);
-				sprite.lastSelectedPalAsset = -1;
+			// remember name of currently selected, so we can try reselecting after refreshing
+			PalAsset selected = palAssetList.getSelectedValue();
+			String selectedName = (selected == null) ? null : selected.getFilename();
 
-				sprite.reloadPaletteAssets();
+			// clear current selection
+			palAssetList.setSelectedValue(null, true);
+			sprite.lastSelectedPalAsset = -1;
+			setPalAsset(null);
 
-				// prepare new selection for setSprite
-				if (sprite.palAssets.size() > 0)
-					sprite.lastSelectedPalAsset = 0;
+			// reload the assets
+			sprite.reloadPaletteAssets();
 
-				palAssetList.ignoreSelectionChange = false;
+			// prepare new selection for setSprite
+			if (sprite.palAssets.size() > 0)
+				sprite.lastSelectedPalAsset = 0;
 
-				SpriteEditor.instance().flushUndoRedo();
+			// refresh this tab
+			setSprite(sprite);
+			PalettesTab.this.repaint();
 
-				SwingUtilities.invokeLater(() -> {
-					SpriteEditor.instance().setSprite(sprite.metadata, true);
-					setSprite(sprite);
-				});
-			});
+			// try reselecting asset with name matching previous selection
+			for (PalAsset newAsset : sprite.palAssets) {
+				if (newAsset.getFilename().equals(selectedName)) {
+					palAssetList.setSelectedValue(newAsset, true);
+				}
+			}
+
+			SpriteEditor.instance().flushUndoRedo();
+
+			palAssetList.ignoreChanges.decrement();
 		});
 
 		JButton btnAddPalette = new JButton(ThemedIcon.ADD_16);
@@ -432,17 +442,17 @@ public class PalettesTab extends JPanel
 
 		this.sprite = sprite;
 
-		palAssetList.ignoreSelectionChange = true;
+		palAssetList.ignoreChanges.increment();
 		palAssetList.setModel(sprite.palAssets.getListModel());
 		palAssetList.setSelectedValue(sprite.selectedPalAsset, true);
-		palAssetList.ignoreSelectionChange = false;
+		palAssetList.ignoreChanges.decrement();
 
 		setPalAsset(sprite.selectedPalAsset);
 
-		paletteList.ignoreSelectionChange = true;
+		paletteList.ignoreChanges.increment();
 		paletteList.setModel(sprite.palettes);
 		paletteList.setSelectedValue(sprite.selectedPalette, true);
-		paletteList.ignoreSelectionChange = false;
+		paletteList.ignoreChanges.decrement();
 
 		setPalette(sprite.selectedPalette);
 

@@ -25,6 +25,7 @@ import game.sprite.editor.commands.DeletePalette;
 import game.sprite.editor.commands.RenamePalette;
 import game.sprite.editor.commands.ReorderPalette;
 import game.sprite.editor.commands.SelectPalette;
+import util.EnableCounter;
 import util.Logger;
 import util.ui.DragReorderList;
 import util.ui.DragReorderTransferHandle;
@@ -34,7 +35,7 @@ public class PalettesList extends DragReorderList<SpritePalette>
 	private final SpriteEditor editor;
 	private SpritePalette clipboard = null;
 
-	public boolean ignoreSelectionChange = false;
+	public EnableCounter ignoreChanges = new EnableCounter();
 
 	public PalettesList(SpriteEditor editor, PalettesTab tab)
 	{
@@ -51,7 +52,7 @@ public class PalettesList extends DragReorderList<SpritePalette>
 				return;
 
 			PalettesList list = PalettesList.this;
-			if (!ignoreSelectionChange)
+			if (ignoreChanges.disabled())
 				SpriteEditor.execute(new SelectPalette(list, editor.getSprite(), list.getSelectedValue(), tab::setPalette));
 		});
 

@@ -37,8 +37,6 @@ public class RastersTab extends JPanel
 
 	public RastersTab(SpriteEditor editor)
 	{
-		// create raster list
-
 		imgAssetList = new AssetList<>();
 		imgAssetList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		imgAssetList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -48,7 +46,7 @@ public class RastersTab extends JPanel
 			if (e.getValueIsAdjusting())
 				return;
 
-			if (!imgAssetList.ignoreSelectionChange)
+			if (imgAssetList.ignoreChanges.disabled())
 				SpriteEditor.execute(new SelectImgAsset(imgAssetList, editor.getSprite(),
 					imgAssetList.getSelectedValue(), this::setImgAsset));
 		});
@@ -62,28 +60,42 @@ public class RastersTab extends JPanel
 				return;
 			}
 
-			editor.invokeLater(() -> {
-				imgAssetList.ignoreSelectionChange = true;
+			imgAssetList.ignoreChanges.increment();
 
-				// clear current selection
-				imgAssetList.setSelectedValue(null, true);
-				sprite.lastSelectedImgAsset = -1;
+			// remember name of currently selected, so we can try reselecting after refreshing
+			ImgAsset selected = imgAssetList.getSelectedValue();
+			String selectedName = (selected == null) ? null : selected.getFilename();
 
-				sprite.reloadRasterAssets();
+			// clear current selection
+			imgAssetList.setSelectedValue(null, true);
+			sprite.lastSelectedImgAsset = -1;
+			setImgAsset(null);
 
-				// prepare new selection for setSprite
-				if (sprite.imgAssets.size() > 0)
-					sprite.lastSelectedImgAsset = 0;
+			// reload the assets
+			sprite.reloadRasterAssets();
 
-				imgAssetList.ignoreSelectionChange = false;
+			// recreate the atlas
+			sprite.makeImgAtlas();
+			editor.resetAtlasCamera();
 
-				SpriteEditor.instance().flushUndoRedo();
+			// prepare new selection for setSprite
+			if (sprite.imgAssets.size() > 0)
+				sprite.lastSelectedImgAsset = 0;
 
-				SwingUtilities.invokeLater(() -> {
-					SpriteEditor.instance().setSprite(sprite.metadata, true);
-					setSprite(sprite);
-				});
-			});
+			// refresh this tab
+			setSprite(sprite);
+			RastersTab.this.repaint();
+
+			// try reselecting asset with name matching previous selection
+			for (ImgAsset newAsset : sprite.imgAssets) {
+				if (newAsset.getFilename().equals(selectedName)) {
+					imgAssetList.setSelectedValue(newAsset, true);
+				}
+			}
+
+			editor.flushUndoRedo();
+
+			imgAssetList.ignoreChanges.decrement();
 		});
 
 		JButton btnAddRaster = new JButton(ThemedIcon.ADD_16);
@@ -111,6 +123,8 @@ public class RastersTab extends JPanel
 				else if (sprite.palettes.size() > 0)
 					img.front.assignPal(sprite.palettes.get(0));
 			}
+
+			img.loadEditorImages();
 
 			img.name = newName;
 			CommandBatch batch = new CommandBatch("Add Raster");
@@ -181,17 +195,17 @@ public class RastersTab extends JPanel
 		frontImgPanel.setSprite(sprite);
 		backImgPanel.setSprite(sprite);
 
-		imgAssetList.ignoreSelectionChange = true;
+		imgAssetList.ignoreChanges.increment();
 		imgAssetList.setModel(sprite.imgAssets.getListModel());
 		imgAssetList.setSelectedValue(sprite.selectedImgAsset, true);
-		imgAssetList.ignoreSelectionChange = false;
+		imgAssetList.ignoreChanges.decrement();
 
 		setImgAsset(sprite.selectedImgAsset);
 
-		rasterList.ignoreSelectionChange = true;
+		rasterList.ignoreChanges.increment();
 		rasterList.setModel(sprite.rasters);
 		rasterList.setSelectedValue(sprite.selectedRaster, true);
-		rasterList.ignoreSelectionChange = false;
+		rasterList.ignoreChanges.decrement();
 
 		setRaster(sprite.selectedRaster);
 	}

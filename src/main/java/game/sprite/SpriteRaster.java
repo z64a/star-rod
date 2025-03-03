@@ -22,6 +22,9 @@ public class SpriteRaster
 	public transient boolean deleted;
 	public transient boolean hasError;
 
+	// members used to lay out the palettes tab sprite atlas
+	public transient int atlasRow, atlasX, atlasY;
+
 	public SpriteRaster(Sprite spr)
 	{
 		this.parentSprite = spr;
@@ -33,8 +36,8 @@ public class SpriteRaster
 	{
 		this(original.parentSprite);
 		name = original.name;
-		front.setAll(original.front);
-		back.setAll(original.back);
+		front.set(original.front);
+		back.set(original.back);
 		this.hasIndependentBack = original.hasIndependentBack;
 
 		specialWidth = original.specialWidth;
