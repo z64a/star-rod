@@ -1,7 +1,5 @@
 package game.sprite;
 
-import java.io.File;
-
 import game.sprite.SpriteLoader.Indexable;
 import game.texture.Palette;
 
@@ -105,11 +103,5 @@ public final class SpritePalette implements Indexable<SpritePalette>
 	public Palette getPal()
 	{
 		return (asset == null) ? null : asset.pal;
-	}
-
-	public void saveAs(File out)
-	{
-		//TODO
-		System.out.println(out.getAbsolutePath());
 	}
 }

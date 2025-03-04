@@ -118,7 +118,6 @@ public class AssetManager
 		return getAssetMap(AssetSubdir.NPC_SPRITE, spriteName + "/palettes/", EXT_PNG);
 	}
 
-
 	public static AssetHandle getPlayerSprite(String spriteName)
 	{
 		return get(AssetSubdir.PLR_SPRITE, spriteName + EXT_SPRITE);

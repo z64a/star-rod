@@ -487,6 +487,13 @@ public class SpriteEditor extends BaseEditor
 
 		processResourceQueues();
 
+		for (PalAsset asset : sprite.palAssets) {
+			if (asset.dirty) {
+				asset.pal.glReload();
+				asset.dirty = false;
+			}
+		}
+
 		if (unloadSprite != null) {
 			unloadSprite.unloadTextures();
 			unloadSprite = null;
@@ -703,7 +710,7 @@ public class SpriteEditor extends BaseEditor
 		assert (sprite != null);
 		//TODO separate these?
 		sprite.centerImgAtlas(rasterCamera, glCanvasWidth(), glCanvasHeight());
-		sprite.centerImgAtlas(paletteCamera, glCanvasWidth(), glCanvasHeight());
+		sprite.centerRasterAtlas(paletteCamera, glCanvasWidth(), glCanvasHeight());
 	}
 
 	public void setSprite(SpriteMetadata newMetadata, boolean forceReload)
@@ -926,17 +933,6 @@ public class SpriteEditor extends BaseEditor
 	public SpriteComponent getComponent()
 	{
 		return currentComp;
-	}
-
-	//TODO
-	private void checkPalettesForChanges()
-	{
-		for (PalAsset asset : sprite.palAssets) {
-			if (asset.dirty) {
-				asset.pal.glReload();
-				asset.dirty = false;
-			}
-		}
 	}
 
 	private void handleInput(double deltaTime)
@@ -1257,12 +1253,12 @@ public class SpriteEditor extends BaseEditor
 				try {
 					int id = SpriteLoader.getMaximumID(spriteSet) + 1;
 					SpriteLoader.create(spriteSet, id);
-		
+
 					if(spriteSet == SpriteSet.Npc)
 						useNpcFiles(id);
 					else
 						usePlayerFiles(id);
-		
+
 				} catch (Throwable t) {
 					Logger.logError("Failed to create new sprite.");
 					incrementDialogsOpen();
@@ -1272,7 +1268,7 @@ public class SpriteEditor extends BaseEditor
 			});
 		});
 		menu.add(item);
-		
+
 		menu.addSeparator();
 		 */
 
@@ -1811,7 +1807,7 @@ public class SpriteEditor extends BaseEditor
 		componentPanel = getComponentPanel();
 		componentPanel.setVisible(false);
 
-		JPanel animTab = new JPanel(new MigLayout("fill, wrap, ins 16 16 0 16, gapy 8", "", "[]16[]8[]"));
+		JPanel animTab = new JPanel(new MigLayout("fill, wrap, ins 16 16 0 16, gapy 8", "", "[]16[]16[]"));
 		animTab.add(listsPanel, "grow, h 33%");
 		animTab.add(playbackPanel, "span, growx");
 		animTab.add(componentPanel, "span, grow, pushy");

@@ -38,7 +38,7 @@ public class SpriteRasterRenderer extends JLabel implements ListCellRenderer<Spr
 
 		setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
 		if (img != null) {
-			setIcon(img.front.preview.icon);
+			setIcon(img.front.preview.getFullIcon());
 			setText(img.toString());
 		}
 		else {

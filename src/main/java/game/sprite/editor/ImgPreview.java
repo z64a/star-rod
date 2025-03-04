@@ -13,28 +13,61 @@ import game.texture.Tile;
 
 public class ImgPreview
 {
-	public BufferedImage previewImg;
-	public ImageIcon icon;
-	public ImageIcon tiny;
+	private static final int TINY_SIZE = 20;
+
+	private static final BufferedImage BLANK_IMG = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+	private static final ImageIcon BLANK_ICON = new ImageIcon(BLANK_IMG);
+	private static final ImageIcon BLANK_TINY = new ImageIcon(getScaledToFit(BLANK_IMG, TINY_SIZE));
+
+	private BufferedImage image;
+	private ImageIcon icon;
+	private ImageIcon tiny;
 
 	public void load(ImgAsset imgAsset, PalAsset palAsset)
 	{
 		load(imgAsset.img, palAsset.pal);
 	}
 
-	public void load(Tile img, Palette pal)
+	public void load(ImgAsset imgAsset)
 	{
-		previewImg = ImageConverter.getIndexedImage(img, pal);
-		icon = new ImageIcon(getScaledToFit(previewImg, 80));
-		tiny = new ImageIcon(getScaledToFit(previewImg, 20));
+		load(imgAsset.img, imgAsset.img.palette);
+	}
+
+	private void load(Tile img, Palette pal)
+	{
+		image = ImageConverter.getIndexedImage(img, pal);
+		icon = new ImageIcon(getScaledToFit(image, 80));
+		tiny = new ImageIcon(getScaledToFit(image, TINY_SIZE));
+	}
+
+	public void loadMissing()
+	{
+		image = BLANK_IMG;
+		icon = BLANK_ICON;
+		tiny = BLANK_TINY;
 	}
 
 	public void set(ImgPreview other)
 	{
 		// shallow copy OK because these are not mutated
-		previewImg = other.previewImg;
+		image = other.image;
 		icon = other.icon;
 		tiny = other.tiny;
+	}
+
+	public BufferedImage getImage()
+	{
+		return image;
+	}
+
+	public ImageIcon getFullIcon()
+	{
+		return icon;
+	}
+
+	public ImageIcon getTinyIcon()
+	{
+		return tiny;
 	}
 
 	private static Image getScaledToFit(BufferedImage in, int maxSize)
@@ -54,4 +87,5 @@ public class ImgPreview
 
 		return in.getScaledInstance(in.getWidth(), in.getHeight(), java.awt.Image.SCALE_DEFAULT);
 	}
+
 }

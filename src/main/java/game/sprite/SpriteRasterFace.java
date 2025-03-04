@@ -50,13 +50,16 @@ public class SpriteRasterFace
 	{
 		if (asset != null && pal != null)
 			preview.load(asset, pal.asset);
+		else
+			preview.loadMissing();
 	}
 
 	public void loadEditorImages(PalAsset filter)
 	{
-		//TODO load placeholder or error image when these conditions fail?
 		if (asset != null && pal != null && pal.asset == filter)
 			preview.load(asset, filter);
+		else
+			preview.loadMissing();
 	}
 
 	public void resolve(SpriteAssetCollection<ImgAsset> imgAssets)

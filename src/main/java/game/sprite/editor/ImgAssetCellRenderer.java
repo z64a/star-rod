@@ -60,7 +60,7 @@ public class ImgAssetCellRenderer extends JPanel implements ListCellRenderer<Img
 			nameLabel.setText("NULL");
 		}
 		else {
-			iconLabel.setIcon(value.preview.tiny);
+			iconLabel.setIcon(value.preview.getTinyIcon());
 			nameLabel.setText(value.toString());
 		}
 

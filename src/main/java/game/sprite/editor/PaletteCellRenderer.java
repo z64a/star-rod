@@ -22,9 +22,17 @@ public class PaletteCellRenderer extends JPanel implements ListCellRenderer<Spri
 	private JLabel nameLabel;
 	private SwatchPanel[] swatches;
 	private JPanel swatchesPanel;
+	private String nullString;
 
 	public PaletteCellRenderer()
 	{
+		this("none");
+	}
+
+	public PaletteCellRenderer(String nullString)
+	{
+		this.nullString = nullString;
+
 		nameLabel = new JLabel();
 		swatches = new SwatchPanel[16];
 		nameLabel.setHorizontalAlignment(LEFT);
@@ -68,7 +76,7 @@ public class PaletteCellRenderer extends JPanel implements ListCellRenderer<Spri
 		setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 0));
 		if (value == null) {
 			swatchesPanel.setVisible(false);
-			nameLabel.setText("none");
+			nameLabel.setText(nullString);
 			for (SwatchPanel panel : swatches)
 				panel.setForeground(Color.gray);
 		}

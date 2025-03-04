@@ -69,7 +69,7 @@ public class RasterFacePanel extends JPanel
 					drawSide = face.parentRaster.front;
 
 				if (drawSide != null && drawSide.asset != null) {
-					SwingUtils.centerAndFitImage(drawSide.preview.previewImg, this, g2);
+					SwingUtils.centerAndFitImage(drawSide.preview.getImage(), this, g2);
 				}
 			}
 		};

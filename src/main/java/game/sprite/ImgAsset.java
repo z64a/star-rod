@@ -63,7 +63,7 @@ public class ImgAsset implements GLResource
 
 	public void loadEditorImages()
 	{
-		preview.load(img, img.palette);
+		preview.load(this);
 	}
 
 	@Override

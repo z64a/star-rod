@@ -40,7 +40,7 @@ import game.sprite.SpriteAnimation;
 import game.sprite.SpriteComponent;
 import game.sprite.SpritePalette;
 import game.sprite.SpriteRaster;
-import game.sprite.editor.IndexableComboBoxRenderer;
+import game.sprite.editor.PaletteCellRenderer;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.CommandAnimator.AnimCommand;
 import game.sprite.editor.animators.CommandAnimator.Goto;
@@ -820,7 +820,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 			paletteComboBox = new JComboBox<>();
 			SwingUtils.setFontSize(paletteComboBox, 14);
 			paletteComboBox.setMaximumRowCount(24);
-			paletteComboBox.setRenderer(new IndexableComboBoxRenderer("Use Default"));
+			paletteComboBox.setRenderer(new PaletteCellRenderer("Use Raster Default"));
 			paletteComboBox.addActionListener((e) -> {
 				if (ignoreChanges || cmd == null)
 					return;
@@ -912,7 +912,6 @@ public class CommandAnimatorEditor extends AnimationEditor
 			componentComboBox = new JComboBox<>();
 			SwingUtils.setFontSize(componentComboBox, 14);
 			componentComboBox.setMaximumRowCount(24);
-			componentComboBox.setRenderer(new IndexableComboBoxRenderer("None"));
 			componentComboBox.addActionListener((e) -> {
 				if (ignoreChanges)
 					return;
