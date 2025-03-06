@@ -14,6 +14,7 @@ import game.sprite.RawAnimation;
 import game.sprite.SpriteComponent;
 import game.sprite.SpritePalette;
 import game.sprite.SpriteRaster;
+import game.sprite.editor.Editable;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.KeyframeAnimatorEditor.GotoPanel;
 import game.sprite.editor.animators.KeyframeAnimatorEditor.KeyframePanel;
@@ -489,7 +490,7 @@ public class KeyframeAnimator implements ComponentAnimator
 		@Override
 		public Color getTextColor()
 		{
-			if (target == null || !keyframeListModel.contains(target))
+			if (hasError())
 				return SwingUtils.getRedTextColor();
 			else
 				return SwingUtils.getBlueTextColor();
@@ -511,6 +512,15 @@ public class KeyframeAnimator implements ComponentAnimator
 		{
 			GotoPanel.instance().set(this, keyframeListModel);
 			return GotoPanel.instance();
+		}
+
+		@Override
+		public String checkErrorMsg()
+		{
+			if (target == null || !keyframeListModel.contains(target))
+				return "Goto Keyframe: missing label";
+
+			return null;
 		}
 	}
 
@@ -560,7 +570,7 @@ public class KeyframeAnimator implements ComponentAnimator
 		@Override
 		public Color getTextColor()
 		{
-			if (target == null || !keyframeListModel.contains(target))
+			if (hasError())
 				return SwingUtils.getRedTextColor();
 			else
 				return SwingUtils.getBlueTextColor();
@@ -600,6 +610,15 @@ public class KeyframeAnimator implements ComponentAnimator
 			LoopPanel.instance().set(this, keyframeListModel);
 			return LoopPanel.instance();
 		}
+
+		@Override
+		public String checkErrorMsg()
+		{
+			if (target == null || !keyframeListModel.contains(target))
+				return "Goto Keyframe: missing label";
+
+			return null;
+		}
 	}
 
 	public class Keyframe extends AnimKeyframe
@@ -634,21 +653,22 @@ public class KeyframeAnimator implements ComponentAnimator
 			return clone;
 		}
 
-		String name = "";
 		int listPos = -1;
+
+		public String name = "";
 
 		public int duration;
 
-		boolean setNotify = false;
+		public boolean setNotify = false;
 		public int notifyValue;
 
-		boolean setParent = false;
+		public boolean setParent = false;
 		public SpriteComponent parentComp;
 
-		boolean setImage = false;
+		public boolean setImage = false;
 		public SpriteRaster img = null;
 
-		boolean setPalette = false;
+		public boolean setPalette = false;
 		public SpritePalette pal = null;
 
 		public boolean unknown;
@@ -795,7 +815,7 @@ public class KeyframeAnimator implements ComponentAnimator
 		// 3VVV XXXX YYYY ZZZZ
 		public int setPosition(Queue<Short> cmdQueue)
 		{
-			//XXX flag doesnt seem to do anything?
+			//NOTE: this flag does nothing
 			unknown = (cmdQueue.poll() & 0xFFF) == 1;
 			dx = cmdQueue.poll();
 			dy = cmdQueue.poll();
@@ -876,8 +896,10 @@ public class KeyframeAnimator implements ComponentAnimator
 		@Override
 		public Color getTextColor()
 		{
-			if (duration == 0)
+			if (hasError())
 				return SwingUtils.getRedTextColor();
+			else if (duration % 2 == 1)
+				return SwingUtils.getYellowTextColor();
 			else
 				return null;
 		}
@@ -903,6 +925,37 @@ public class KeyframeAnimator implements ComponentAnimator
 		{
 			KeyframePanel.instance().set(this);
 			return KeyframePanel.instance();
+		}
+
+		@Override
+		public String checkErrorMsg()
+		{
+			if (duration == 0)
+				return "Keyframe: invalid duration";
+
+			if (setPalette && (pal == null))
+				return "Keyframe: undefined palette";
+
+			if (setParent && (parentComp == null))
+				return "Keyframe: undefined parent";
+
+			if (setParent && (parentComp == ownerComp))
+				return "Keyframe: parented to itself";
+
+			return null;
+		}
+
+		@Override
+		public void addEditableDownstream(List<Editable> downstream)
+		{
+			if (setImage && img != null)
+				downstream.add(img);
+
+			if (setPalette && pal != null)
+				downstream.add(pal);
+
+			if (setParent && parentComp != null)
+				downstream.add(parentComp);
 		}
 	}
 }

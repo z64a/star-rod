@@ -70,18 +70,11 @@ public class SimpleItem
 			}
 		}
 
-		//ArrayList<SimpleItem> items = new ArrayList<>();
-
-		//FIXME doing this is parallel will drastically improve startup time
-		//for (SimpleItemTemplate template : templates) {
-		//	items.add(new SimpleItem(template));
-		//}
-
+		// load all SimpleItems in parallel; otherwise this is a performance bottleneck during startup
 		List<CompletableFuture<SimpleItem>> futures = templates.stream()
 			.map(template -> CompletableFuture.supplyAsync(() -> new SimpleItem(template), Environment.getExecutor()))
 			.toList();
 
-		// Wait for all tasks to complete and collect results
 		List<SimpleItem> items = futures.stream()
 			.map(CompletableFuture::join)
 			.toList();

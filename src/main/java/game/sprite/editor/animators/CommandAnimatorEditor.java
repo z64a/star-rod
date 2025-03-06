@@ -293,7 +293,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 
 				// need to delay the command so we dont call setText while document is still processing events
 				SwingUtilities.invokeLater(() -> {
-					SpriteEditor.execute(new SetLabelNameCommand(cmd, labelNameField.getText()));
+					SpriteEditor.execute(new SetCommandLabelName(cmd, labelNameField.getText()));
 				});
 			});
 
@@ -316,13 +316,13 @@ public class CommandAnimatorEditor extends AnimationEditor
 			ignoreChanges = false;
 		}
 
-		public class SetLabelNameCommand extends AbstractCommand
+		public class SetCommandLabelName extends AbstractCommand
 		{
 			private final Label cmd;
 			private final String next;
 			private final String prev;
 
-			public SetLabelNameCommand(Label cmd, String next)
+			public SetCommandLabelName(Label cmd, String next)
 			{
 				super("Set Label Name");
 
@@ -342,7 +342,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				labelNameField.setText(next);
 				ignoreChanges = false;
 
-				cmd.ownerComp.incrementModified();
+				cmd.incrementModified();
 				repaintCommandList();
 			}
 
@@ -357,7 +357,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				labelNameField.setText(prev);
 				ignoreChanges = false;
 
-				cmd.ownerComp.decrementModified();
+				cmd.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -390,7 +390,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 					return;
 
 				Label label = (Label) labelComboBox.getSelectedItem();
-				SpriteEditor.execute(new SetGotoLabelCommand(cmd, label));
+				SpriteEditor.execute(new SetCommandGotoLabel(cmd, label));
 			});
 
 			add(SwingUtils.getLabel("Goto Label", 14), "gapbottom 4");
@@ -408,13 +408,13 @@ public class CommandAnimatorEditor extends AnimationEditor
 			ignoreChanges = false;
 		}
 
-		public class SetGotoLabelCommand extends AbstractCommand
+		public class SetCommandGotoLabel extends AbstractCommand
 		{
 			private final Goto cmd;
 			private final Label next;
 			private final Label prev;
 
-			public SetGotoLabelCommand(Goto cmd, Label next)
+			public SetCommandGotoLabel(Goto cmd, Label next)
 			{
 				super("Set Goto Label");
 
@@ -434,7 +434,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				labelComboBox.setSelectedItem(next);
 				ignoreChanges = false;
 
-				cmd.ownerComp.incrementModified();
+				cmd.incrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -450,7 +450,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				labelComboBox.setSelectedItem(prev);
 				ignoreChanges = false;
 
-				cmd.ownerComp.decrementModified();
+				cmd.decrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -485,7 +485,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 					return;
 
 				Label label = (Label) labelComboBox.getSelectedItem();
-				SpriteEditor.execute(new SetLoopLabelCommand(cmd, label));
+				SpriteEditor.execute(new SetCommandLoopLabel(cmd, label));
 			});
 
 			countSpinner = new JSpinner();
@@ -495,7 +495,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 					return;
 
 				int loopCount = (int) countSpinner.getValue();
-				SpriteEditor.execute(new SetLoopCountCommand(cmd, loopCount));
+				SpriteEditor.execute(new SetCommandLoopCount(cmd, loopCount));
 			});
 
 			SwingUtils.setFontSize(countSpinner, 12);
@@ -521,13 +521,13 @@ public class CommandAnimatorEditor extends AnimationEditor
 			countSpinner.setValue(cmd.count);
 		}
 
-		public class SetLoopCountCommand extends AbstractCommand
+		public class SetCommandLoopCount extends AbstractCommand
 		{
 			private final Loop cmd;
 			private final int next;
 			private final int prev;
 
-			public SetLoopCountCommand(Loop cmd, int next)
+			public SetCommandLoopCount(Loop cmd, int next)
 			{
 				super("Set Loop Count");
 
@@ -547,7 +547,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				countSpinner.setValue(next);
 				ignoreChanges = false;
 
-				cmd.ownerComp.incrementModified();
+				cmd.incrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -563,19 +563,19 @@ public class CommandAnimatorEditor extends AnimationEditor
 				countSpinner.setValue(prev);
 				ignoreChanges = false;
 
-				cmd.ownerComp.decrementModified();
+				cmd.decrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
 		}
 
-		public class SetLoopLabelCommand extends AbstractCommand
+		public class SetCommandLoopLabel extends AbstractCommand
 		{
 			private final Loop cmd;
 			private final Label next;
 			private final Label prev;
 
-			public SetLoopLabelCommand(Loop cmd, Label next)
+			public SetCommandLoopLabel(Loop cmd, Label next)
 			{
 				super("Set Loop Label");
 
@@ -595,7 +595,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				labelComboBox.setSelectedItem(next);
 				ignoreChanges = false;
 
-				cmd.ownerComp.incrementModified();
+				cmd.incrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -611,7 +611,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				labelComboBox.setSelectedItem(prev);
 				ignoreChanges = false;
 
-				cmd.ownerComp.decrementModified();
+				cmd.decrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -643,7 +643,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				if (ignoreChanges)
 					return;
 
-				SpriteEditor.execute(new SetDelayCommand(cmd, (int) countSpinner.getValue()));
+				SpriteEditor.execute(new SetCommandWaitDelay(cmd, (int) countSpinner.getValue()));
 			});
 
 			SwingUtils.setFontSize(countSpinner, 12);
@@ -664,13 +664,13 @@ public class CommandAnimatorEditor extends AnimationEditor
 			ignoreChanges = false;
 		}
 
-		public class SetDelayCommand extends AbstractCommand
+		public class SetCommandWaitDelay extends AbstractCommand
 		{
 			private final Wait cmd;
 			private final int next;
 			private final int prev;
 
-			public SetDelayCommand(Wait cmd, int next)
+			public SetCommandWaitDelay(Wait cmd, int next)
 			{
 				super("Set Wait Delay");
 
@@ -690,7 +690,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				countSpinner.setValue(next);
 				ignoreChanges = false;
 
-				cmd.ownerComp.incrementModified();
+				cmd.incrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -706,7 +706,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				countSpinner.setValue(prev);
 				ignoreChanges = false;
 
-				cmd.ownerComp.decrementModified();
+				cmd.decrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -745,7 +745,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 					return;
 
 				SpriteRaster img = (SpriteRaster) imageComboBox.getSelectedItem();
-				SpriteEditor.execute(new SetImageCommand(cmd, img));
+				SpriteEditor.execute(new SetCommandImage(cmd, img));
 			});
 
 			JButton btnChoose = new JButton("Select");
@@ -755,14 +755,14 @@ public class CommandAnimatorEditor extends AnimationEditor
 				Sprite sprite = cmd.ownerComp.parentAnimation.parentSprite;
 				SpriteRaster raster = SpriteEditor.instance().promptForRaster(sprite);
 				if (raster != null)
-					SpriteEditor.execute(new SetImageCommand(cmd, raster));
+					SpriteEditor.execute(new SetCommandImage(cmd, raster));
 			});
 
 			JButton btnClear = new JButton("Clear");
 			SwingUtils.addBorderPadding(btnClear);
 
 			btnClear.addActionListener((e) -> {
-				SpriteEditor.execute(new SetImageCommand(cmd, null));
+				SpriteEditor.execute(new SetCommandImage(cmd, null));
 			});
 
 			add(SwingUtils.getLabel("Set Raster", 14), "gapbottom 4");
@@ -787,13 +787,13 @@ public class CommandAnimatorEditor extends AnimationEditor
 			ignoreChanges = false;
 		}
 
-		public class SetImageCommand extends AbstractCommand
+		public class SetCommandImage extends AbstractCommand
 		{
 			private final SetImage cmd;
 			private final SpriteRaster next;
 			private final SpriteRaster prev;
 
-			public SetImageCommand(SetImage cmd, SpriteRaster next)
+			public SetCommandImage(SetImage cmd, SpriteRaster next)
 			{
 				super("Set Raster");
 
@@ -813,7 +813,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				imageComboBox.setSelectedItem(next);
 				ignoreChanges = false;
 
-				cmd.ownerComp.incrementModified();
+				cmd.incrementModified();
 				repaintCommandList();
 			}
 
@@ -828,7 +828,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				imageComboBox.setSelectedItem(prev);
 				ignoreChanges = false;
 
-				cmd.ownerComp.decrementModified();
+				cmd.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -862,7 +862,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 					return;
 
 				SpritePalette pal = (SpritePalette) paletteComboBox.getSelectedItem();
-				SpriteEditor.execute(new SetPaletteCommand(cmd, pal));
+				SpriteEditor.execute(new SetCommandPalette(cmd, pal));
 			});
 
 			add(SwingUtils.getLabel("Set Palette", 14), "gapbottom 4");
@@ -885,13 +885,13 @@ public class CommandAnimatorEditor extends AnimationEditor
 			ignoreChanges = false;
 		}
 
-		public class SetPaletteCommand extends AbstractCommand
+		public class SetCommandPalette extends AbstractCommand
 		{
 			private final SetPalette cmd;
 			private final SpritePalette next;
 			private final SpritePalette prev;
 
-			public SetPaletteCommand(SetPalette cmd, SpritePalette next)
+			public SetCommandPalette(SetPalette cmd, SpritePalette next)
 			{
 				super("Set Palette");
 
@@ -911,7 +911,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				paletteComboBox.setSelectedItem(next);
 				ignoreChanges = false;
 
-				cmd.ownerComp.incrementModified();
+				cmd.incrementModified();
 				repaintCommandList();
 			}
 
@@ -926,7 +926,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				paletteComboBox.setSelectedItem(prev);
 				ignoreChanges = false;
 
-				cmd.ownerComp.decrementModified();
+				cmd.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -959,7 +959,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 					return;
 
 				SpriteComponent comp = (SpriteComponent) componentComboBox.getSelectedItem();
-				SpriteEditor.execute(new SetParentCommand(cmd, comp));
+				SpriteEditor.execute(new SetCommandParent(cmd, comp));
 
 				cmd.comp = (SpriteComponent) componentComboBox.getSelectedItem();
 				repaintCommandList();
@@ -980,13 +980,13 @@ public class CommandAnimatorEditor extends AnimationEditor
 			ignoreChanges = false;
 		}
 
-		public class SetParentCommand extends AbstractCommand
+		public class SetCommandParent extends AbstractCommand
 		{
 			private final SetParent cmd;
 			private final SpriteComponent next;
 			private final SpriteComponent prev;
 
-			public SetParentCommand(SetParent cmd, SpriteComponent next)
+			public SetCommandParent(SetParent cmd, SpriteComponent next)
 			{
 				super("Set Parent");
 
@@ -1006,7 +1006,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				componentComboBox.setSelectedItem(next);
 				ignoreChanges = false;
 
-				cmd.ownerComp.incrementModified();
+				cmd.incrementModified();
 				repaintCommandList();
 			}
 
@@ -1021,7 +1021,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				componentComboBox.setSelectedItem(prev);
 				ignoreChanges = false;
 
-				cmd.ownerComp.decrementModified();
+				cmd.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -1052,7 +1052,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				if (ignoreChanges)
 					return;
 
-				SpriteEditor.execute(new SetNotifyCommand(cmd, (int) valueSpinner.getValue()));
+				SpriteEditor.execute(new SetCommandNotify(cmd, (int) valueSpinner.getValue()));
 			});
 
 			SwingUtils.setFontSize(valueSpinner, 12);
@@ -1072,13 +1072,13 @@ public class CommandAnimatorEditor extends AnimationEditor
 			ignoreChanges = false;
 		}
 
-		public class SetNotifyCommand extends AbstractCommand
+		public class SetCommandNotify extends AbstractCommand
 		{
 			private final SetNotify cmd;
 			private final int next;
 			private final int prev;
 
-			public SetNotifyCommand(SetNotify cmd, int next)
+			public SetCommandNotify(SetNotify cmd, int next)
 			{
 				super("Set Notify");
 
@@ -1098,7 +1098,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				valueSpinner.setValue(next);
 				ignoreChanges = false;
 
-				cmd.ownerComp.incrementModified();
+				cmd.incrementModified();
 				repaintCommandList();
 			}
 
@@ -1113,7 +1113,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				valueSpinner.setValue(prev);
 				ignoreChanges = false;
 
-				cmd.ownerComp.decrementModified();
+				cmd.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -1144,7 +1144,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				if (ignoreChanges)
 					return;
 
-				SpriteEditor.execute(new SetUnknownCommand(cmd, (int) valueSpinner.getValue()));
+				SpriteEditor.execute(new SetCommandUnknown(cmd, (int) valueSpinner.getValue()));
 			});
 
 			SwingUtils.setFontSize(valueSpinner, 12);
@@ -1164,13 +1164,13 @@ public class CommandAnimatorEditor extends AnimationEditor
 			ignoreChanges = false;
 		}
 
-		public class SetUnknownCommand extends AbstractCommand
+		public class SetCommandUnknown extends AbstractCommand
 		{
 			private final SetUnknown cmd;
 			private final int next;
 			private final int prev;
 
-			public SetUnknownCommand(SetUnknown cmd, int next)
+			public SetCommandUnknown(SetUnknown cmd, int next)
 			{
 				super("Set Unknown");
 
@@ -1190,7 +1190,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				valueSpinner.setValue(next);
 				ignoreChanges = false;
 
-				cmd.ownerComp.incrementModified();
+				cmd.incrementModified();
 				repaintCommandList();
 			}
 
@@ -1205,7 +1205,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				valueSpinner.setValue(prev);
 				ignoreChanges = false;
 
-				cmd.ownerComp.decrementModified();
+				cmd.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -1235,7 +1235,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 			xSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
-				SpriteEditor.execute(new SetPositionCommand(cmd, 0, (int) xSpinner.getValue()));
+				SpriteEditor.execute(new SetCommandPosition(cmd, 0, (int) xSpinner.getValue()));
 			});
 
 			SwingUtils.setFontSize(xSpinner, 12);
@@ -1247,7 +1247,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 			ySpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
-				SpriteEditor.execute(new SetPositionCommand(cmd, 1, (int) ySpinner.getValue()));
+				SpriteEditor.execute(new SetCommandPosition(cmd, 1, (int) ySpinner.getValue()));
 			});
 
 			SwingUtils.setFontSize(ySpinner, 12);
@@ -1259,7 +1259,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 			zSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
-				SpriteEditor.execute(new SetPositionCommand(cmd, 2, (int) zSpinner.getValue()));
+				SpriteEditor.execute(new SetCommandPosition(cmd, 2, (int) zSpinner.getValue()));
 			});
 
 			SwingUtils.setFontSize(zSpinner, 12);
@@ -1286,14 +1286,14 @@ public class CommandAnimatorEditor extends AnimationEditor
 			ignoreChanges = false;
 		}
 
-		public class SetPositionCommand extends AbstractCommand
+		public class SetCommandPosition extends AbstractCommand
 		{
 			private final SetPosition cmd;
 			private final int coord;
 			private final int next;
 			private final int prev;
 
-			public SetPositionCommand(SetPosition cmd, int coord, int next)
+			public SetCommandPosition(SetPosition cmd, int coord, int next)
 			{
 				super("Set Position");
 
@@ -1345,7 +1345,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				}
 				ignoreChanges = false;
 
-				cmd.ownerComp.incrementModified();
+				cmd.incrementModified();
 				repaintCommandList();
 			}
 
@@ -1380,7 +1380,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				}
 				ignoreChanges = false;
 
-				cmd.ownerComp.decrementModified();
+				cmd.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -1410,7 +1410,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 			xSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
-				SpriteEditor.execute(new SetRotationCommand(cmd, 0, (int) xSpinner.getValue()));
+				SpriteEditor.execute(new SetCommandRotation(cmd, 0, (int) xSpinner.getValue()));
 			});
 
 			SwingUtils.setFontSize(xSpinner, 12);
@@ -1422,7 +1422,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 			ySpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
-				SpriteEditor.execute(new SetRotationCommand(cmd, 1, (int) ySpinner.getValue()));
+				SpriteEditor.execute(new SetCommandRotation(cmd, 1, (int) ySpinner.getValue()));
 			});
 
 			SwingUtils.setFontSize(ySpinner, 12);
@@ -1434,7 +1434,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 			zSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
-				SpriteEditor.execute(new SetRotationCommand(cmd, 2, (int) zSpinner.getValue()));
+				SpriteEditor.execute(new SetCommandRotation(cmd, 2, (int) zSpinner.getValue()));
 			});
 
 			SwingUtils.setFontSize(zSpinner, 12);
@@ -1461,14 +1461,14 @@ public class CommandAnimatorEditor extends AnimationEditor
 			ignoreChanges = false;
 		}
 
-		public class SetRotationCommand extends AbstractCommand
+		public class SetCommandRotation extends AbstractCommand
 		{
 			private final SetRotation cmd;
 			private final int coord;
 			private final int next;
 			private final int prev;
 
-			public SetRotationCommand(SetRotation cmd, int coord, int next)
+			public SetCommandRotation(SetRotation cmd, int coord, int next)
 			{
 				super("Set Rotation");
 
@@ -1520,7 +1520,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				}
 				ignoreChanges = false;
 
-				cmd.ownerComp.incrementModified();
+				cmd.incrementModified();
 				repaintCommandList();
 			}
 
@@ -1555,7 +1555,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				}
 				ignoreChanges = false;
 
-				cmd.ownerComp.decrementModified();
+				cmd.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -1586,7 +1586,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 			scaleSpinner.addChangeListener((e) -> {
 				if (ignoreChanges)
 					return;
-				SpriteEditor.execute(new SetScalePercentCommand(cmd, (int) scaleSpinner.getValue()));
+				SpriteEditor.execute(new SetCommandScalePercent(cmd, (int) scaleSpinner.getValue()));
 			});
 
 			SwingUtils.setFontSize(scaleSpinner, 12);
@@ -1600,7 +1600,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				for (Enumeration<AbstractButton> buttons = scaleButtons.getElements(); buttons.hasMoreElements(); i++) {
 					AbstractButton button = buttons.nextElement();
 					if (button.isSelected())
-						SpriteEditor.execute(new SetScaleTypeCommand(cmd, i));
+						SpriteEditor.execute(new SetCommandScaleType(cmd, i));
 				}
 			};
 
@@ -1651,13 +1651,13 @@ public class CommandAnimatorEditor extends AnimationEditor
 			ignoreChanges = false;
 		}
 
-		public class SetScalePercentCommand extends AbstractCommand
+		public class SetCommandScalePercent extends AbstractCommand
 		{
 			private final SetScale cmd;
 			private final int next;
 			private final int prev;
 
-			public SetScalePercentCommand(SetScale cmd, int next)
+			public SetCommandScalePercent(SetScale cmd, int next)
 			{
 				super("Set Scale Percent");
 
@@ -1677,7 +1677,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				scaleSpinner.setValue(next);
 				ignoreChanges = false;
 
-				cmd.ownerComp.incrementModified();
+				cmd.incrementModified();
 				repaintCommandList();
 			}
 
@@ -1692,18 +1692,18 @@ public class CommandAnimatorEditor extends AnimationEditor
 				scaleSpinner.setValue(prev);
 				ignoreChanges = false;
 
-				cmd.ownerComp.decrementModified();
+				cmd.decrementModified();
 				repaintCommandList();
 			}
 		}
 
-		public class SetScaleTypeCommand extends AbstractCommand
+		public class SetCommandScaleType extends AbstractCommand
 		{
 			private final SetScale cmd;
 			private final int next;
 			private final int prev;
 
-			public SetScaleTypeCommand(SetScale cmd, int next)
+			public SetCommandScaleType(SetScale cmd, int next)
 			{
 				super("Set Scale Type");
 
@@ -1736,7 +1736,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				}
 				ignoreChanges = false;
 
-				cmd.ownerComp.incrementModified();
+				cmd.incrementModified();
 				repaintCommandList();
 			}
 
@@ -1764,7 +1764,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				}
 				ignoreChanges = false;
 
-				cmd.ownerComp.decrementModified();
+				cmd.decrementModified();
 				repaintCommandList();
 			}
 		}

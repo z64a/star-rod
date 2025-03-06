@@ -12,6 +12,7 @@ import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
@@ -34,9 +35,23 @@ import game.sprite.editor.animators.KeyframeAnimator.Goto;
 import game.sprite.editor.animators.KeyframeAnimator.Keyframe;
 import game.sprite.editor.animators.KeyframeAnimator.Loop;
 import game.sprite.editor.commands.CreateCommand;
+import game.sprite.editor.commands.keyframe.SetKeyframeDuration;
+import game.sprite.editor.commands.keyframe.SetKeyframeEnableNotify;
+import game.sprite.editor.commands.keyframe.SetKeyframeEnablePalette;
+import game.sprite.editor.commands.keyframe.SetKeyframeEnableParent;
+import game.sprite.editor.commands.keyframe.SetKeyframeEnableRaster;
+import game.sprite.editor.commands.keyframe.SetKeyframeName;
+import game.sprite.editor.commands.keyframe.SetKeyframeNotify;
+import game.sprite.editor.commands.keyframe.SetKeyframePalette;
+import game.sprite.editor.commands.keyframe.SetKeyframeParent;
+import game.sprite.editor.commands.keyframe.SetKeyframePosition;
+import game.sprite.editor.commands.keyframe.SetKeyframeRaster;
+import game.sprite.editor.commands.keyframe.SetKeyframeRotation;
+import game.sprite.editor.commands.keyframe.SetKeyframeScale;
 import net.miginfocom.swing.MigLayout;
 import util.ui.EvenSpinner;
 import util.ui.ListAdapterComboboxModel;
+import util.ui.NameTextField;
 
 public class KeyframeAnimatorEditor extends AnimationEditor
 {
@@ -341,6 +356,8 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 
 		private boolean ignoreChanges = false;
 
+		private NameTextField nameField;
+
 		private JSpinner timeSpinner;
 
 		private JCheckBox cbEnableImg, cbEnablePal, cbEnableParent, cbEnableNotify;
@@ -364,15 +381,28 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			return instance;
 		}
 
+		private void editCallback()
+		{
+			set(cmd);
+			repaint();
+		}
+
 		private KeyframePanel()
 		{
+			nameField = new NameTextField((newValue) -> {
+				if (!ignoreChanges)
+					SpriteEditor.execute(new SetKeyframeName(cmd, newValue, this::editCallback));
+			});
+			SwingUtils.addBorderPadding(nameField);
+
 			timeSpinner = new EvenSpinner();
 			SwingUtils.setFontSize(timeSpinner, 12);
 			timeSpinner.setModel(new SpinnerNumberModel(1, 0, 300, 1));
 			timeSpinner.addChangeListener((e) -> {
-				if (ignoreChanges)
-					return;
-				cmd.duration = (int) timeSpinner.getValue();
+				if (!ignoreChanges) {
+					int newValue = (int) timeSpinner.getValue();
+					SpriteEditor.execute(new SetKeyframeDuration(cmd, newValue, this::editCallback));
+				}
 			});
 			SwingUtils.centerSpinnerText(timeSpinner);
 			SwingUtils.addBorderPadding(timeSpinner);
@@ -385,9 +415,10 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			imageComboBox.setRenderer(renderer);
 			imageComboBox.setMaximumRowCount(5);
 			imageComboBox.addActionListener((e) -> {
-				if (ignoreChanges || cmd == null)
-					return;
-				cmd.img = (SpriteRaster) imageComboBox.getSelectedItem();
+				if (!ignoreChanges) {
+					SpriteRaster newValue = (SpriteRaster) imageComboBox.getSelectedItem();
+					SpriteEditor.execute(new SetKeyframeRaster(cmd, newValue, this::editCallback));
+				}
 			});
 
 			btnChoose = new JButton("Select");
@@ -396,37 +427,21 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			btnChoose.addActionListener((e) -> {
 				Sprite sprite = cmd.ownerComp.parentAnimation.parentSprite;
 				SpriteRaster raster = SpriteEditor.instance().promptForRaster(sprite);
-				if (raster != null) {
-					cmd.img = raster;
-
-					ignoreChanges = true;
-					imageComboBox.setSelectedItem(cmd.img);
-					ignoreChanges = false;
-				}
+				if (raster != null)
+					SpriteEditor.execute(new SetKeyframeRaster(cmd, raster, this::editCallback));
 			});
 
 			btnClear = new JButton("Clear");
 			SwingUtils.addBorderPadding(btnClear);
 
 			btnClear.addActionListener((e) -> {
-				cmd.img = null;
-
-				ignoreChanges = true;
-				imageComboBox.setSelectedItem(cmd.img);
-				ignoreChanges = false;
-
-				repaintCommandList();
+				SpriteEditor.execute(new SetKeyframeRaster(cmd, null, this::editCallback));
 			});
 
 			cbEnableImg = new JCheckBox(" Raster");
 			cbEnableImg.addActionListener((e) -> {
-				if (ignoreChanges)
-					return;
 				boolean value = cbEnableImg.isSelected();
-				cmd.setImage = value;
-				imageComboBox.setEnabled(value);
-				btnChoose.setEnabled(value);
-				btnClear.setEnabled(value);
+				SpriteEditor.execute(new SetKeyframeEnableRaster(cmd, value, this::editCallback));
 			});
 
 			paletteComboBox = new JComboBox<>();
@@ -434,67 +449,60 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			paletteComboBox.setMaximumRowCount(24);
 			paletteComboBox.setRenderer(new PaletteCellRenderer("Use Raster Default"));
 			paletteComboBox.addActionListener((e) -> {
-				if (ignoreChanges || cmd == null)
-					return;
-				cmd.pal = (SpritePalette) paletteComboBox.getSelectedItem();
+				if (!ignoreChanges) {
+					SpritePalette newValue = (SpritePalette) paletteComboBox.getSelectedItem();
+					SpriteEditor.execute(new SetKeyframePalette(cmd, newValue, this::editCallback));
+				}
 			});
 
 			cbEnablePal = new JCheckBox(" Palette");
 			cbEnablePal.addActionListener((e) -> {
-				if (ignoreChanges)
-					return;
 				boolean value = cbEnablePal.isSelected();
-				cmd.setPalette = value;
-				paletteComboBox.setEnabled(value);
+				SpriteEditor.execute(new SetKeyframeEnablePalette(cmd, value, this::editCallback));
 			});
 
 			componentComboBox = new JComboBox<>();
 			SwingUtils.setFontSize(componentComboBox, 14);
 			componentComboBox.setMaximumRowCount(24);
 			componentComboBox.addActionListener((e) -> {
-				if (ignoreChanges)
-					return;
-				cmd.parentComp = (SpriteComponent) componentComboBox.getSelectedItem();
+				if (!ignoreChanges) {
+					SpriteComponent newValue = (SpriteComponent) componentComboBox.getSelectedItem();
+					SpriteEditor.execute(new SetKeyframeParent(cmd, newValue, this::editCallback));
+				}
 			});
 
 			cbEnableParent = new JCheckBox(" Parent");
 			cbEnableParent.addActionListener((e) -> {
-				if (ignoreChanges)
-					return;
 				boolean value = cbEnableParent.isSelected();
-				cmd.setParent = value;
-
-				componentComboBox.setEnabled(cmd.setParent);
+				SpriteEditor.execute(new SetKeyframeEnableParent(cmd, value, this::editCallback));
 			});
 
 			notifySpinner = new JSpinner();
 			SwingUtils.setFontSize(notifySpinner, 12);
 			notifySpinner.setModel(new SpinnerNumberModel(0, 0, 255, 1));
 			notifySpinner.addChangeListener((e) -> {
-				if (ignoreChanges)
-					return;
-				cmd.notifyValue = (int) notifySpinner.getValue();
+				if (!ignoreChanges) {
+					int value = (int) notifySpinner.getValue();
+					SpriteEditor.execute(new SetKeyframeNotify(cmd, value, this::editCallback));
+				}
 			});
 			SwingUtils.centerSpinnerText(notifySpinner);
 			SwingUtils.addBorderPadding(notifySpinner);
 
 			cbEnableNotify = new JCheckBox(" Notify");
 			cbEnableNotify.addActionListener((e) -> {
-				if (ignoreChanges)
-					return;
 				boolean value = cbEnableNotify.isSelected();
-				cmd.setNotify = value;
-
-				notifySpinner.setEnabled(cmd.setNotify);
+				SpriteEditor.execute(new SetKeyframeEnableNotify(cmd, value, this::editCallback));
 			});
 
 			dxSpinner = new JSpinner();
 			SwingUtils.setFontSize(dxSpinner, 12);
 			dxSpinner.setModel(new SpinnerNumberModel(0, -256, 256, 1));
 			dxSpinner.addChangeListener((e) -> {
-				if (ignoreChanges)
-					return;
-				cmd.dx = (int) dxSpinner.getValue();
+				if (!ignoreChanges) {
+					int value = (int) dxSpinner.getValue();
+					SpriteEditor.execute(new SetKeyframePosition(cmd, 0, value, this::editCallback));
+				}
 			});
 			SwingUtils.centerSpinnerText(dxSpinner);
 			SwingUtils.addBorderPadding(dxSpinner);
@@ -503,9 +511,10 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			SwingUtils.setFontSize(dySpinner, 12);
 			dySpinner.setModel(new SpinnerNumberModel(0, -256, 256, 1));
 			dySpinner.addChangeListener((e) -> {
-				if (ignoreChanges)
-					return;
-				cmd.dy = (int) dySpinner.getValue();
+				if (!ignoreChanges) {
+					int value = (int) dySpinner.getValue();
+					SpriteEditor.execute(new SetKeyframePosition(cmd, 1, value, this::editCallback));
+				}
 			});
 			SwingUtils.centerSpinnerText(dySpinner);
 			SwingUtils.addBorderPadding(dySpinner);
@@ -514,9 +523,10 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			SwingUtils.setFontSize(dzSpinner, 12);
 			dzSpinner.setModel(new SpinnerNumberModel(0, -256, 256, 1));
 			dzSpinner.addChangeListener((e) -> {
-				if (ignoreChanges)
-					return;
-				cmd.dz = (int) dzSpinner.getValue();
+				if (!ignoreChanges) {
+					int value = (int) dzSpinner.getValue();
+					SpriteEditor.execute(new SetKeyframePosition(cmd, 2, value, this::editCallback));
+				}
 			});
 			SwingUtils.centerSpinnerText(dzSpinner);
 			SwingUtils.addBorderPadding(dzSpinner);
@@ -525,9 +535,10 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			SwingUtils.setFontSize(rxSpinner, 12);
 			rxSpinner.setModel(new SpinnerNumberModel(0, -180, 180, 1));
 			rxSpinner.addChangeListener((e) -> {
-				if (ignoreChanges)
-					return;
-				cmd.rx = (int) rxSpinner.getValue();
+				if (!ignoreChanges) {
+					int value = (int) rxSpinner.getValue();
+					SpriteEditor.execute(new SetKeyframeRotation(cmd, 0, value, this::editCallback));
+				}
 			});
 			SwingUtils.centerSpinnerText(rxSpinner);
 			SwingUtils.addBorderPadding(rxSpinner);
@@ -536,9 +547,10 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			SwingUtils.setFontSize(rySpinner, 12);
 			rySpinner.setModel(new SpinnerNumberModel(0, -180, 180, 1));
 			rySpinner.addChangeListener((e) -> {
-				if (ignoreChanges)
-					return;
-				cmd.ry = (int) rySpinner.getValue();
+				if (!ignoreChanges) {
+					int value = (int) rySpinner.getValue();
+					SpriteEditor.execute(new SetKeyframeRotation(cmd, 1, value, this::editCallback));
+				}
 			});
 			SwingUtils.centerSpinnerText(rySpinner);
 			SwingUtils.addBorderPadding(rySpinner);
@@ -547,9 +559,10 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			SwingUtils.setFontSize(rzSpinner, 12);
 			rzSpinner.setModel(new SpinnerNumberModel(0, -180, 180, 1));
 			rzSpinner.addChangeListener((e) -> {
-				if (ignoreChanges)
-					return;
-				cmd.rz = (int) rzSpinner.getValue();
+				if (!ignoreChanges) {
+					int value = (int) rzSpinner.getValue();
+					SpriteEditor.execute(new SetKeyframeRotation(cmd, 2, value, this::editCallback));
+				}
 			});
 			SwingUtils.centerSpinnerText(rzSpinner);
 			SwingUtils.addBorderPadding(rzSpinner);
@@ -558,9 +571,10 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			SwingUtils.setFontSize(sxSpinner, 12);
 			sxSpinner.setModel(new SpinnerNumberModel(1, 0, 500, 1));
 			sxSpinner.addChangeListener((e) -> {
-				if (ignoreChanges)
-					return;
-				cmd.sx = (int) sxSpinner.getValue();
+				if (!ignoreChanges) {
+					int value = (int) sxSpinner.getValue();
+					SpriteEditor.execute(new SetKeyframeScale(cmd, 0, value, this::editCallback));
+				}
 			});
 			SwingUtils.centerSpinnerText(sxSpinner);
 			SwingUtils.addBorderPadding(sxSpinner);
@@ -569,9 +583,10 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			SwingUtils.setFontSize(sySpinner, 12);
 			sySpinner.setModel(new SpinnerNumberModel(1, 0, 500, 1));
 			sySpinner.addChangeListener((e) -> {
-				if (ignoreChanges)
-					return;
-				cmd.sy = (int) sySpinner.getValue();
+				if (!ignoreChanges) {
+					int value = (int) sySpinner.getValue();
+					SpriteEditor.execute(new SetKeyframeScale(cmd, 1, value, this::editCallback));
+				}
 			});
 			SwingUtils.centerSpinnerText(sySpinner);
 			SwingUtils.addBorderPadding(sySpinner);
@@ -580,18 +595,15 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			SwingUtils.setFontSize(szSpinner, 12);
 			szSpinner.setModel(new SpinnerNumberModel(1, 0, 500, 1));
 			szSpinner.addChangeListener((e) -> {
-				if (ignoreChanges)
-					return;
-				cmd.sz = (int) szSpinner.getValue();
+				if (!ignoreChanges) {
+					int value = (int) szSpinner.getValue();
+					SpriteEditor.execute(new SetKeyframeScale(cmd, 2, value, this::editCallback));
+				}
 			});
 			SwingUtils.centerSpinnerText(szSpinner);
 			SwingUtils.addBorderPadding(szSpinner);
 
-			setLayout(new MigLayout("ins 0, wrap 2", "[grow]8[grow]", "[]12"));
-
-			add(SwingUtils.getLabel("Keyframe Properties", 14), "gapbottom 4, span, wrap");
-
-			JPanel spinPanel = new JPanel(new MigLayout("fillx, ins 0, wrap 4", "[]8[sg spin]6[sg spin]6[sg spin]", "[]8[]8[]14[]4"));
+			JPanel spinPanel = new JPanel(new MigLayout("fillx, ins 0, wrap 4", "[]8[sg spin]6[sg spin]6[sg spin]", "[]8[]8[]"));
 			String spinnerConstraints = "w 75!";
 
 			spinPanel.add(SwingUtils.getLabel("Pos", 12), "pushx, growx");
@@ -609,11 +621,14 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			spinPanel.add(sySpinner, spinnerConstraints);
 			spinPanel.add(szSpinner, spinnerConstraints);
 
-			spinPanel.add(SwingUtils.getLabel("Time", 12), "pushx, growx");
-			spinPanel.add(timeSpinner, spinnerConstraints);
-			spinPanel.add(SwingUtils.getLabel("frames", 12), "span, gapleft 4");
+			setLayout(new MigLayout("ins 0, wrap 2", "[grow]8[grow]", "[]8"));
 
-			add(spinPanel, "growx, span");
+			add(SwingUtils.getLabel("Keyframe Properties", 14), "gapbottom 4, span, wrap");
+			add(new JLabel("Name"));
+			add(nameField, "growx");
+			add(new JLabel("Duration"));
+			add(timeSpinner, "w 75!, split 2");
+			add(SwingUtils.getLabel("frames", 12), "gapleft 8");
 
 			JPanel rasterPanel = new JPanel(new MigLayout("fillx, ins 0, wrap 2", "[sg but][sg but]"));
 
@@ -632,6 +647,8 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 
 			add(cbEnableNotify, "sg lbl, gaptop 2, top");
 			add(notifySpinner, "w 25%");
+
+			add(spinPanel, "growx, span, gaptop 8");
 		}
 
 		protected void set(Keyframe cmd)
@@ -639,6 +656,8 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			this.cmd = cmd;
 
 			ignoreChanges = true;
+
+			nameField.setText(cmd.name);
 
 			timeSpinner.setValue(cmd.duration);
 
@@ -655,7 +674,6 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			SpriteAnimation anim = cmd.ownerComp.parentAnimation;
 
 			DefaultComboBoxModel<SpriteComponent> componentModel = new DefaultComboBoxModel<>();
-			componentModel.addElement(null);
 			for (int i = 0; i < anim.components.size(); i++) {
 				SpriteComponent comp = anim.components.get(i);
 				componentModel.addElement(comp);

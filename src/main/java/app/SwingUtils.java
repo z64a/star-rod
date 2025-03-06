@@ -582,6 +582,15 @@ public class SwingUtils
 			return new Color(255, 100, 100);
 	}
 
+	public static Color getYellowTextColor()
+	{
+		int lum = getBackgroundLuminance();
+		if (lum > 110)
+			return new Color(140, 128, 0);
+		else
+			return new Color(220, 200, 70);
+	}
+
 	public static Color getGreenTextColor()
 	{
 		int lum = getBackgroundLuminance();
@@ -616,7 +625,7 @@ public class SwingUtils
 
 	public static enum TextColor
 	{
-		NORMAL, RED, GREEN, BLUE
+		NORMAL, RED, YELLOW, GREEN, BLUE
 	}
 
 	public static void setTextAndColor(JLabel label, TextColor color, String text)
@@ -628,6 +637,9 @@ public class SwingUtils
 				break;
 			case RED:
 				label.setForeground(getRedTextColor());
+				break;
+			case YELLOW:
+				label.setForeground(getYellowTextColor());
 				break;
 			case GREEN:
 				label.setForeground(getGreenTextColor());

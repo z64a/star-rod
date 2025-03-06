@@ -20,22 +20,6 @@ import util.Logger;
 
 public class AssetManager
 {
-	public static void main(String[] args) throws IOException
-	{
-		Environment.initialize();
-
-		long t0 = System.nanoTime();
-
-		Collection<AssetHandle> assets = getMessages();
-
-		long t1 = System.nanoTime();
-		System.out.println("Took " + ((t1 - t0) / 1e6) + " ms");
-
-		System.out.println(assets.size());
-
-		Environment.exit();
-	}
-
 	public static File getTopLevelAssetDir()
 	{
 		return Environment.assetDirectories.get(0);

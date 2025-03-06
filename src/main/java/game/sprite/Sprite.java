@@ -595,13 +595,13 @@ public class Sprite implements XmlSerializable, Editable
 		xmw.closeTag(root);
 	}
 
-	public void saveChanges()
+	public void generateRawAnim()
 	{
 		for (int i = 0; i < animations.size(); i++) {
 			SpriteAnimation anim = animations.get(i);
 			for (int j = 0; j < anim.components.size(); j++) {
 				SpriteComponent comp = anim.components.get(j);
-				comp.saveChanges();
+				comp.generateRawAnim();
 			}
 		}
 	}
@@ -1100,7 +1100,7 @@ public class Sprite implements XmlSerializable, Editable
 							assert (extra < pos); // this goto always jumps backwards
 							break;
 						case 0x3: // set pos
-							assert (extra == 0 || extra == 1); //TODO absolute/relative position flag -- seems to do nothing...
+							assert (extra == 0 || extra == 1); // this flag does nothing
 							//		if(extra == 0)
 							//			System.out.printf("<> %04X%n" , s);
 							short dx = cmdQueue.poll();
@@ -1207,7 +1207,7 @@ public class Sprite implements XmlSerializable, Editable
 							assert (extra < pos); // this goto always jumps backwards
 							break;
 						case 0x3: // set pos
-							assert (extra == 0 || extra == 1); //TODO absolute/relative position flag?
+							assert (extra == 0 || extra == 1); // this flag does nothing
 							//		if(extra == 0)
 							//			System.out.printf("<> %04X%n" , s);
 							short dx = cmdQueue.poll();

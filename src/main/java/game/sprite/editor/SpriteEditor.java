@@ -124,7 +124,7 @@ public class SpriteEditor extends BaseEditor
 
 	private SpriteLoader spriteLoader;
 
-	private IdentityHashSet<Sprite> modifiedSprites = new IdentityHashSet<>();
+	private IdentityHashSet<Sprite> dirtyModifiedSprites = new IdentityHashSet<>();
 	private IdentityHashSet<DragReorderList<?>> dragLists = new IdentityHashSet<>();
 
 	private SpriteList playerSpriteList;
@@ -431,9 +431,8 @@ public class SpriteEditor extends BaseEditor
 				break;
 		}
 
-		// takes less than 0.1 ms on a budget of 16.6, and typically less than 0.02 ms
-		// its more efficient to do this on state changes of course, but we can simply
-		// do it every frame for now
+		// takes less than 0.1 ms on a budget of 16.6 (~0.5%), and typically less than 0.02 ms
+		// its more efficient to only do this on state changes, but easier to just do it every frame
 		if (sprite != null) {
 			sprite.checkErrors(checkCount);
 			sprite.checkModified(checkCount);
@@ -1282,7 +1281,7 @@ public class SpriteEditor extends BaseEditor
 
 			// remove sprite from 'modified' list
 			sprite.clearModified();
-			modifiedSprites.remove(sprite);
+			dirtyModifiedSprites.remove(sprite);
 
 			// trigger a full reload of the sprite, bypassing the cache
 			setSprite(curMetadata, true);
@@ -1872,17 +1871,17 @@ public class SpriteEditor extends BaseEditor
 	{
 		if (sprite != null) {
 			saveSprite(sprite);
-			modifiedSprites.remove(sprite);
+			dirtyModifiedSprites.remove(sprite);
 		}
 	}
 
 	private void saveAllChanges()
 	{
-		for (Sprite spr : modifiedSprites) {
+		for (Sprite spr : dirtyModifiedSprites) {
 			if (spr.isModified())
 				saveSprite(spr);
 		}
-		modifiedSprites.clear();
+		dirtyModifiedSprites.clear();
 	}
 
 	private void saveSprite(Sprite spr)
@@ -1891,18 +1890,15 @@ public class SpriteEditor extends BaseEditor
 		ah = AssetManager.getTopLevel(ah);
 
 		sprite.reindex();
-		sprite.saveChanges();
+		sprite.generateRawAnim();
 
 		try (XmlWriter xmw = new XmlWriter(ah)) {
 			sprite.savePalettes();
 			sprite.toXML(xmw);
 			xmw.save();
 
-			// clear 'modified' status for sprite
 			sprite.clearModified();
 
-			// force a reload
-			setSprite(curMetadata, true);
 			Logger.log("Saved sprite " + spr.name);
 		}
 		catch (Throwable t) {
@@ -1911,17 +1907,18 @@ public class SpriteEditor extends BaseEditor
 		}
 	}
 
-	//TODO remove this?
+	// any modification of the Sprite flags it as potentially modified until
+	// either the app is closed or Save All operation is performed
 	public void notifyModified()
 	{
 		if (sprite != null)
-			modifiedSprites.add(sprite);
+			dirtyModifiedSprites.add(sprite);
 	}
 
 	@Override
 	protected boolean isModified()
 	{
-		for (Sprite spr : modifiedSprites) {
+		for (Sprite spr : dirtyModifiedSprites) {
 			if (spr.isModified())
 				return true;
 		}

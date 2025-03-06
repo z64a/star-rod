@@ -2,10 +2,13 @@ package game.sprite.editor.animators;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.util.List;
 
+import app.SwingUtils;
 import game.sprite.SpriteComponent;
+import game.sprite.editor.Editable;
 
-public abstract class AnimElement
+public abstract class AnimElement implements Editable
 {
 	public final SpriteComponent ownerComp;
 	protected boolean highlighted = false;
@@ -24,17 +27,34 @@ public abstract class AnimElement
 
 	public Color getTextColor()
 	{
-		return null;
+		// highlight invalid values as errors
+		if (hasError())
+			return SwingUtils.getRedTextColor();
+		else
+			return null;
 	}
-
-	//TODO
-	//	public abstract boolean hasError();
-
-	//TODO
-	//	public abstract String getErrorMessage();
 
 	// returns TRUE if the next keyframe should be executed
 	public abstract boolean advance();
 
 	public abstract Component getPanel();
+
+	private final EditableData editableData = new EditableData(this);
+
+	@Override
+	public EditableData getEditableData()
+	{
+		return editableData;
+	}
+
+	@Override
+	public void addEditableDownstream(List<Editable> downstream)
+	{}
+
+	@Override
+	public String checkErrorMsg()
+	{
+		// override to add error reporting
+		return null;
+	}
 }

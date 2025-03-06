@@ -21,6 +21,7 @@ import game.map.shape.TransformMatrix;
 import game.sprite.SpriteLoader.Indexable;
 import game.sprite.editor.Editable;
 import game.sprite.editor.SpriteEditor;
+import game.sprite.editor.animators.AnimElement;
 import game.sprite.editor.animators.CommandAnimator;
 import game.sprite.editor.animators.ComponentAnimator;
 import game.sprite.editor.animators.KeyframeAnimator;
@@ -408,7 +409,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		}
 	}
 
-	public void saveChanges()
+	public void generateRawAnim()
 	{
 		rawAnim = animator.getCommandList();
 	}
@@ -663,7 +664,14 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	@Override
 	public void addEditableDownstream(List<Editable> downstream)
 	{
-		//FIXME add commands so we can detect errors there
+		if (usesKeyframes) {
+			for (AnimElement e : keyframeAnimator.keyframeListModel)
+				downstream.add(e);
+		}
+		else {
+			for (AnimElement e : cmdAnimator.commandListModel)
+				downstream.add(e);
+		}
 	}
 
 	@Override

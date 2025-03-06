@@ -17,6 +17,7 @@ import game.sprite.RawAnimation;
 import game.sprite.SpriteComponent;
 import game.sprite.SpritePalette;
 import game.sprite.SpriteRaster;
+import game.sprite.editor.Editable;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.CommandAnimatorEditor.GotoPanel;
 import game.sprite.editor.animators.CommandAnimatorEditor.LabelPanel;
@@ -588,9 +589,10 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Color getTextColor()
 		{
-			// highlight invalid values as errors
-			if (count == 0 || count % 2 == 1)
+			if (hasError())
 				return SwingUtils.getRedTextColor();
+			else if (count % 2 == 1)
+				return SwingUtils.getYellowTextColor();
 			else
 				return null;
 		}
@@ -621,6 +623,15 @@ public class CommandAnimator implements ComponentAnimator
 		public void addTo(List<Short> seq)
 		{
 			seq.add((short) (0x0000 | (count & 0xFFF)));
+		}
+
+		@Override
+		public String checkErrorMsg()
+		{
+			if (count == 0)
+				return "Wait Command: invalid duration";
+
+			return null;
 		}
 	}
 
@@ -668,16 +679,6 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
-		public Color getTextColor()
-		{
-			// highlight invalid values as errors
-			if (img != null && img.deleted)
-				return SwingUtils.getRedTextColor();
-			else
-				return null;
-		}
-
-		@Override
 		public String toString()
 		{
 			if (img == null)
@@ -706,6 +707,13 @@ public class CommandAnimator implements ComponentAnimator
 		{
 			int id = (img == null) ? -1 : img.getIndex();
 			seq.add((short) (0x1000 | (id & 0xFFF)));
+		}
+
+		@Override
+		public void addEditableDownstream(List<Editable> downstream)
+		{
+			if (img != null)
+				downstream.add(img);
 		}
 	}
 
@@ -755,7 +763,7 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Color getTextColor()
 		{
-			if (label == null || findCommand(label) < 0)
+			if (hasError())
 				return SwingUtils.getRedTextColor();
 			else
 				return SwingUtils.getBlueTextColor();
@@ -803,6 +811,15 @@ public class CommandAnimator implements ComponentAnimator
 			}
 
 			seq.add((short) (0x2000 | (pos & 0xFFF)));
+		}
+
+		@Override
+		public String checkErrorMsg()
+		{
+			if (label == null || findCommand(label) < 0)
+				return "Goto Command: missing label";
+
+			return null;
 		}
 	}
 
@@ -1085,16 +1102,6 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
-		public Color getTextColor()
-		{
-			// highlight invalid values as errors
-			if (pal != null && pal.deleted)
-				return SwingUtils.getRedTextColor();
-			else
-				return null;
-		}
-
-		@Override
 		public String toString()
 		{
 			if (pal == null)
@@ -1123,6 +1130,13 @@ public class CommandAnimator implements ComponentAnimator
 		{
 			int id = (pal == null) ? -1 : pal.getIndex();
 			seq.add((short) (0x6000 | (id & 0xFFF)));
+		}
+
+		@Override
+		public void addEditableDownstream(List<Editable> downstream)
+		{
+			if (pal != null)
+				downstream.add(pal);
 		}
 	}
 
@@ -1176,7 +1190,7 @@ public class CommandAnimator implements ComponentAnimator
 		@Override
 		public Color getTextColor()
 		{
-			if (label == null || findCommand(label) < 0)
+			if (hasError())
 				return SwingUtils.getRedTextColor();
 			else
 				return SwingUtils.getBlueTextColor();
@@ -1221,6 +1235,15 @@ public class CommandAnimator implements ComponentAnimator
 
 			seq.add((short) (0x7000 | (pos & 0xFFF)));
 			seq.add((short) count);
+		}
+
+		@Override
+		public String checkErrorMsg()
+		{
+			if (label == null || findCommand(label) < 0)
+				return "Loop Command: missing label";
+
+			return null;
 		}
 	}
 
@@ -1324,16 +1347,6 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		@Override
-		public Color getTextColor()
-		{
-			// highlight invalid values as errors
-			if (comp == null || comp.deleted)
-				return SwingUtils.getRedTextColor();
-			else
-				return null;
-		}
-
-		@Override
 		public String toString()
 		{
 			if (comp == null)
@@ -1366,6 +1379,25 @@ public class CommandAnimator implements ComponentAnimator
 				Logger.logError("No parent selected for SetParent in " + ownerComp);
 				seq.add((short) (0x8100));
 			}
+		}
+
+		@Override
+		public void addEditableDownstream(List<Editable> downstream)
+		{
+			if (comp != null)
+				downstream.add(comp);
+		}
+
+		@Override
+		public String checkErrorMsg()
+		{
+			if (comp == null)
+				return "SetParent Command: undefined parent";
+
+			if (comp == ownerComp)
+				return "SetParent Command: parented to itself";
+
+			return null;
 		}
 	}
 
