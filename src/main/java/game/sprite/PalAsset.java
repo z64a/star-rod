@@ -4,15 +4,17 @@ import static game.texture.TileFormat.CI_4;
 
 import java.awt.Color;
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.commons.io.FilenameUtils;
 
 import assets.AssetHandle;
 import assets.AssetManager;
+import game.sprite.editor.Editable;
 import game.texture.Palette;
 import game.texture.Tile;
 
-public class PalAsset implements GLResource
+public class PalAsset implements GLResource, Editable
 {
 	private AssetHandle source;
 	private final Tile sourceImg;
@@ -23,7 +25,6 @@ public class PalAsset implements GLResource
 	public final Color[] savedColors = new Color[16];
 
 	public transient boolean dirty; // needs reupload to GPU
-	public transient boolean modified;
 
 	public PalAsset(AssetHandle ah) throws IOException
 	{
@@ -66,5 +67,24 @@ public class PalAsset implements GLResource
 	public void glDelete()
 	{
 		pal.glDelete();
+	}
+
+	private final EditableData editableData = new EditableData(this);
+
+	@Override
+	public EditableData getEditableData()
+	{
+		return editableData;
+	}
+
+	@Override
+	public void addEditableDownstream(List<Editable> downstream)
+	{}
+
+	@Override
+	public String checkErrorMsg()
+	{
+		// no errors here, could add support for detecting assets which have been deleted
+		return null;
 	}
 }

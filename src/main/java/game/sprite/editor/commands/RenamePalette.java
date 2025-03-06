@@ -28,6 +28,8 @@ public class RenamePalette extends AbstractCommand
 		super.exec();
 
 		pal.name = newName;
+		pal.incrementModified();
+
 		ui.repaint();
 	}
 
@@ -37,6 +39,8 @@ public class RenamePalette extends AbstractCommand
 		super.undo();
 
 		pal.name = oldName;
+		pal.decrementModified();
+
 		ui.repaint();
 	}
 }

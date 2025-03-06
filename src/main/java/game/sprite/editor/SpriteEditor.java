@@ -13,10 +13,11 @@ import java.awt.Toolkit;
 import java.awt.event.ActionListener;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
 
@@ -40,6 +41,7 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.ToolTipManager;
 
 import app.Environment;
 import app.StarRodException;
@@ -47,6 +49,8 @@ import app.SwingUtils;
 import app.config.Config;
 import app.config.Options;
 import app.config.Options.Scope;
+import assets.AssetHandle;
+import assets.AssetManager;
 import common.BaseEditor;
 import common.BaseEditorSettings;
 import common.KeyboardInput.KeyInputEvent;
@@ -91,6 +95,7 @@ import util.Logger;
 import util.identity.IdentityHashSet;
 import util.ui.DragReorderList;
 import util.ui.EvenSpinner;
+import util.ui.FadingLabel;
 import util.ui.IntTextField;
 import util.ui.ListAdapterComboboxModel;
 import util.ui.ThemedIcon;
@@ -138,13 +143,10 @@ public class SpriteEditor extends BaseEditor
 
 	private JSpinner compxSpinner, compySpinner, compzSpinner;
 
-	// this is implemented but unused
-	// doesn't work for mounted WSL file systems while running in Windows
-	private SpriteAssetWatcher assetWatcher;
-
 	private JTabbedPane editorModeTabs;
 	private Container commandListPanel;
 	private Container commandEditPanel;
+	private FadingLabel errorLabel;
 
 	// DONT INITIALIZE THESE HERE!
 	// gui is initialized before instance variable initialization!
@@ -241,6 +243,8 @@ public class SpriteEditor extends BaseEditor
 	private ArrayList<GLResource> pendingLoadResources = new ArrayList<>();
 	private ArrayList<GLResource> pendingDeleteResources = new ArrayList<>();
 
+	private long checkCount = 0L;
+
 	public static void main(String[] args) throws IOException
 	{
 		Environment.initialize();
@@ -272,8 +276,6 @@ public class SpriteEditor extends BaseEditor
 			0.0f, 64.0f, 0.7f,
 			0.5f, 0.125f, 2.0f,
 			true, false);
-
-		assetWatcher = new SpriteAssetWatcher();
 
 		setup();
 
@@ -395,16 +397,12 @@ public class SpriteEditor extends BaseEditor
 	@Override
 	protected void update(double deltaTime)
 	{
-		assetWatcher.process();
-
 		switch (editorMode) {
 			case Rasters:
 				trace = rasterCamera.getTraceRay(mouse.getPosX(), mouse.getPosY());
 
-				if (sprite != null) {
-					//TODO	checkPalettesForChanges();
+				if (sprite != null)
 					highlightedImgAsset = sprite.tryImgAtlasPick(trace);
-				}
 
 				handleInput(deltaTime);
 				break;
@@ -431,6 +429,26 @@ public class SpriteEditor extends BaseEditor
 
 				handleInput(deltaTime);
 				break;
+		}
+
+		// takes less than 0.1 ms on a budget of 16.6, and typically less than 0.02 ms
+		// its more efficient to do this on state changes of course, but we can simply
+		// do it every frame for now
+		if (sprite != null) {
+			sprite.checkErrors(checkCount);
+			sprite.checkModified(checkCount);
+			checkCount++;
+		}
+
+		errorLabel.update(deltaTime);
+
+		// process the editor UI updates in the EDT, locking out commands while we do so
+		if (!editableChangedSet.isEmpty()) {
+			SwingUtilities.invokeLater(() -> {
+				synchronized (this.modifyLock) {
+					flushEditableUpdates();
+				}
+			});
 		}
 	}
 
@@ -487,10 +505,12 @@ public class SpriteEditor extends BaseEditor
 
 		processResourceQueues();
 
-		for (PalAsset asset : sprite.palAssets) {
-			if (asset.dirty) {
-				asset.pal.glReload();
-				asset.dirty = false;
+		if (sprite != null) {
+			for (PalAsset asset : sprite.palAssets) {
+				if (asset.dirty) {
+					asset.pal.glReload();
+					asset.dirty = false;
+				}
 			}
 		}
 
@@ -724,8 +744,6 @@ public class SpriteEditor extends BaseEditor
 
 		unloadSprite = sprite;
 
-		assetWatcher.release();
-
 		curMetadata = newMetadata;
 		Logger.logDetail("Set sprite: " + curMetadata);
 
@@ -747,8 +765,6 @@ public class SpriteEditor extends BaseEditor
 
 		if (sprite != null) {
 			editorModeTabs.setVisible(true);
-
-			assetWatcher.acquire(sprite);
 
 			sprite.prepareForEditor();
 			sprite.enableStencilBuffer = true;
@@ -1130,6 +1146,9 @@ public class SpriteEditor extends BaseEditor
 	@Override
 	protected void createGui(JPanel toolPanel, Canvas glCanvas, JMenuBar menuBar, JLabel infoLabel, ActionListener openLogAction)
 	{
+		// make tooltips appear faster than the default setting
+		ToolTipManager.sharedInstance().setInitialDelay(300);
+
 		rastersTab = new RastersTab(this);
 		palettesTab = new PalettesTab(this);
 
@@ -1148,6 +1167,8 @@ public class SpriteEditor extends BaseEditor
 			if (!suppressCommands)
 				execute(new SelectModesTab(tabs, index));
 		});
+
+		errorLabel = new FadingLabel(false, SwingConstants.RIGHT, 4.0f, 0.5f);
 
 		JPanel playerSpriteListPanel = new JPanel(new MigLayout("fill, ins 0"));
 		playerSpriteListPanel.add(playerSpriteList, "growy, pushy, gaptop 16, gapleft 8, gapright 8");
@@ -1171,7 +1192,8 @@ public class SpriteEditor extends BaseEditor
 		toolPanel.add(glCanvas, "grow, push, gapleft 8, gapright 8");
 		toolPanel.add(editorModeTabs, "grow, wrap, w " + RIGHT_PANEL_WIDTH + "!");
 
-		toolPanel.add(infoLabel, "h 16!, growx, span");
+		toolPanel.add(infoLabel, "h 16!, growx, span 2");
+		toolPanel.add(errorLabel, "h 16!, growx");
 
 		addOptionsMenu(menuBar, openLogAction);
 		addEditorMenu(menuBar);
@@ -1226,10 +1248,48 @@ public class SpriteEditor extends BaseEditor
 	private void addEditorMenu(JMenuBar menuBar)
 	{
 		JMenuItem item;
+		KeyStroke awtKeyStroke;
 
 		JMenu menu = new JMenu(MENU_BAR_SPACING + "Editor" + MENU_BAR_SPACING);
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
+
+		item = new JMenuItem("Save All Changes");
+		item.addActionListener((e) -> {
+			saveAllChanges();
+		});
+		menu.add(item);
+
+		item = new JMenuItem("Save Changes");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
+		item.addActionListener((e) -> {
+			if (sprite == null) {
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			saveSprite(sprite);
+		});
+		menu.add(item);
+
+		item = new JMenuItem("Reload Current Sprite");
+		item.addActionListener((e) -> {
+			if (sprite == null) {
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			// remove sprite from 'modified' list
+			sprite.clearModified();
+			modifiedSprites.remove(sprite);
+
+			// trigger a full reload of the sprite, bypassing the cache
+			setSprite(curMetadata, true);
+		});
+		menu.add(item);
+
+		menu.addSeparator();
 
 		item = new JMenuItem("View Shortcuts");
 		item.addActionListener((e) -> {
@@ -1245,32 +1305,6 @@ public class SpriteEditor extends BaseEditor
 		JMenu menu = new JMenu(MENU_BAR_SPACING + "Options" + MENU_BAR_SPACING);
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
-
-		/*
-		item = new JMenuItem("Create New Sprite");
-		item.addActionListener((e)-> {
-			invokeLater(() -> {
-				try {
-					int id = SpriteLoader.getMaximumID(spriteSet) + 1;
-					SpriteLoader.create(spriteSet, id);
-
-					if(spriteSet == SpriteSet.Npc)
-						useNpcFiles(id);
-					else
-						usePlayerFiles(id);
-
-				} catch (Throwable t) {
-					Logger.logError("Failed to create new sprite.");
-					incrementDialogsOpen();
-					StarRodDev.displayStackTrace(t);
-					decrementDialogsOpen();
-				}
-			});
-		});
-		menu.add(item);
-
-		menu.addSeparator();
-		 */
 
 		item = new JMenuItem("Open Log");
 		item.addActionListener(openLogAction);
@@ -1296,39 +1330,36 @@ public class SpriteEditor extends BaseEditor
 	private void addSpriteMenu(JMenuBar menuBar)
 	{
 		JMenuItem item;
-		KeyStroke awtKeyStroke;
 
 		JMenu menu = new JMenu(MENU_BAR_SPACING + "Sprite" + MENU_BAR_SPACING);
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
 
-		item = new JMenuItem("Save Changes");
-		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK);
-		item.setAccelerator(awtKeyStroke);
-		item.addActionListener((e) -> {
-			saveSprite();
-		});
-		menu.add(item);
-
-		item = new JMenuItem("Reload Current Sprite");
-		item.addActionListener((e) -> {
-			// remove sprite from 'modified' list
-			sprite.modified = false;
-			modifiedSprites.remove(sprite);
-
-			setSprite(curMetadata, true);
-		});
-		menu.add(item);
-
-		item = new JMenuItem("Open Content Folder");
+		item = new JMenuItem("Open Mod Content Folder");
 		item.addActionListener((evt) -> {
-			if (sprite == null)
-				return;
-			try {
-				Desktop.getDesktop().open(new File(sprite.getDirectoryName()));
+			if (sprite != null) {
+				try {
+					AssetHandle ah = sprite.getModAssetDir();
+					ah.mkdirs();
+					Desktop.getDesktop().open(ah);
+				}
+				catch (IOException e) {
+					Logger.logError(e.getMessage());
+				}
 			}
-			catch (IOException e) {
-				Logger.printStackTrace(e);
+		});
+		menu.add(item);
+
+		item = new JMenuItem("Open Base Content Folder");
+		item.addActionListener((evt) -> {
+			if (sprite != null) {
+				try {
+					AssetHandle ah = sprite.getBaseAssetDir();
+					Desktop.getDesktop().open(ah);
+				}
+				catch (IOException e) {
+					Logger.printStackTrace(e);
+				}
 			}
 		});
 		menu.add(item);
@@ -1619,6 +1650,8 @@ public class SpriteEditor extends BaseEditor
 		@Override
 		public void exec()
 		{
+			super.exec();
+
 			switch (coord) {
 				case 0:
 					comp.posx = next;
@@ -1644,11 +1677,15 @@ public class SpriteEditor extends BaseEditor
 					break;
 			}
 			suppressCommands = false;
+
+			comp.incrementModified();
 		}
 
 		@Override
 		public void undo()
 		{
+			super.undo();
+
 			switch (coord) {
 				case 0:
 					comp.posx = prev;
@@ -1674,6 +1711,8 @@ public class SpriteEditor extends BaseEditor
 					break;
 			}
 			suppressCommands = false;
+
+			comp.decrementModified();
 		}
 	}
 
@@ -1704,13 +1743,13 @@ public class SpriteEditor extends BaseEditor
 		paletteComboBox = new JComboBox<>();
 		SwingUtils.setFontSize(paletteComboBox, 14);
 		paletteComboBox.setMaximumRowCount(24);
-		//XXX	paletteComboBox.setRenderer(new IndexableComboBoxRenderer());
 		paletteComboBox.addActionListener((e) -> {
 			if (!suppressCommands && sprite != null)
 				execute(new SetOverridePalette(paletteComboBox, sprite));
 		});
 
-		cbOverridePalette = new JCheckBox(" Override");
+		cbOverridePalette = new JCheckBox(" Palette");
+		cbOverridePalette.setToolTipText("Override the default palette for rasters with selection");
 		cbOverridePalette.setSelected(false);
 		cbOverridePalette.addActionListener((e) -> {
 			if (!suppressCommands && sprite != null)
@@ -1829,61 +1868,70 @@ public class SpriteEditor extends BaseEditor
 		decrementDialogsOpen();
 	}
 
-	private void saveSprite()
+	private void saveCurrent()
 	{
-		if (sprite == null)
-			return;
-
-		File xmlFile = sprite.source;
-		if (!xmlFile.exists()) {
-			super.showErrorDialog(
-				"Missing XML File",
-				"Could not find XML file:",
-				xmlFile.getAbsolutePath());
-			return;
+		if (sprite != null) {
+			saveSprite(sprite);
+			modifiedSprites.remove(sprite);
 		}
+	}
 
-		sprite.revalidate();
+	private void saveAllChanges()
+	{
+		for (Sprite spr : modifiedSprites) {
+			if (spr.isModified())
+				saveSprite(spr);
+		}
+		modifiedSprites.clear();
+	}
+
+	private void saveSprite(Sprite spr)
+	{
+		AssetHandle ah = spr.getAsset();
+		ah = AssetManager.getTopLevel(ah);
+
+		sprite.reindex();
 		sprite.saveChanges();
-		assert (sprite.source.getParentFile().isDirectory());
 
-		try (XmlWriter xmw = new XmlWriter(xmlFile)) {
+		try (XmlWriter xmw = new XmlWriter(ah)) {
 			sprite.savePalettes();
 			sprite.toXML(xmw);
 			xmw.save();
 
 			// clear 'modified' status for sprite
-			sprite.modified = false;
-			modifiedSprites.remove(sprite);
+			sprite.clearModified();
 
 			// force a reload
 			setSprite(curMetadata, true);
-			Logger.log("Saved sprite to /" + xmlFile.getParentFile().getName() + "/");
+			Logger.log("Saved sprite " + spr.name);
 		}
 		catch (Throwable t) {
-			Logger.logError("Failed to save sprite /" + xmlFile.getParentFile().getName() + "/");
+			Logger.logError("Failed to save " + spr.name);
 			super.showStackTrace(t);
 		}
 	}
 
+	//TODO remove this?
 	public void notifyModified()
 	{
-		if (sprite != null) {
-			sprite.modified = true;
+		if (sprite != null)
 			modifiedSprites.add(sprite);
-		}
 	}
 
 	@Override
 	protected boolean isModified()
 	{
-		return !modifiedSprites.isEmpty();
+		for (Sprite spr : modifiedSprites) {
+			if (spr.isModified())
+				return true;
+		}
+		return false;
 	}
 
 	@Override
 	protected void saveChanges()
 	{
-		saveSprite();
+		saveAllChanges();
 	}
 
 	@Override
@@ -2001,5 +2049,57 @@ public class SpriteEditor extends BaseEditor
 		RasterSelectDialog dialog = new RasterSelectDialog(s.rasters);
 		showModalDialog(dialog, "Choose Raster");
 		return dialog.getSelected();
+	}
+
+	private HashSet<Class<? extends Editable>> editableChangedSet = new HashSet<>();
+	private HashMap<Class<? extends Editable>, ArrayList<Runnable>> editableListeners = new HashMap<>();
+
+	/**
+	 *
+	 * @param c
+	 */
+	public void notifyEditableChanged(Class<? extends Editable> c)
+	{
+		editableChangedSet.add(c);
+	}
+
+	/**
+	 * Registers code to run when a change has been detected within a certain class of Editable objects
+	 * @param c
+	 * @param runnable
+	 */
+	public void registerEditableListener(Class<? extends Editable> c, Runnable runnable)
+	{
+		ArrayList<Runnable> listeners = editableListeners.get(c);
+
+		if (listeners == null) {
+			listeners = new ArrayList<>();
+			editableListeners.put(c, listeners);
+		}
+
+		listeners.add(runnable);
+	}
+
+	public void flushEditableUpdates()
+	{
+		if (editableChangedSet.isEmpty())
+			return;
+
+		for (Class<?> c : editableChangedSet) {
+			ArrayList<Runnable> listeners = editableListeners.get(c);
+			if (listeners != null) {
+				for (Runnable listener : listeners)
+					listener.run();
+			}
+		}
+
+		editableChangedSet.clear();
+	}
+
+	// post the error message when an editable is selected or a new error is detected
+	public void postEditableError(Editable e)
+	{
+		if (e != null && e.hasError())
+			errorLabel.setMessage(e.getErrorMsg(), SwingUtils.getRedTextColor());
 	}
 }

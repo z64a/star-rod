@@ -59,7 +59,7 @@ public class PaletteCellRenderer extends JPanel implements ListCellRenderer<Spri
 	@Override
 	public Component getListCellRendererComponent(
 		JList<? extends SpritePalette> list,
-		SpritePalette value,
+		SpritePalette pal,
 		int index,
 		boolean isSelected,
 		boolean cellHasFocus)
@@ -74,26 +74,35 @@ public class PaletteCellRenderer extends JPanel implements ListCellRenderer<Spri
 		}
 
 		setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 0));
-		if (value == null) {
+		if (pal == null) {
 			swatchesPanel.setVisible(false);
 			nameLabel.setText(nullString);
-			for (SwatchPanel panel : swatches)
-				panel.setForeground(Color.gray);
+
+			for (int i = 0; i < swatches.length; i++)
+				swatches[i].setForeground(Color.gray);
 		}
-		else if (!value.hasPal()) {
+		else if (!pal.hasPal()) {
 			swatchesPanel.setVisible(false);
-			nameLabel.setText(value.toString() + " (missing)");
+			nameLabel.setText(pal.name + " (missing)");
 			nameLabel.setForeground(SwingUtils.getRedTextColor());
-			for (SwatchPanel panel : swatches)
-				panel.setForeground(Color.gray);
+
+			for (int i = 0; i < swatches.length; i++)
+				swatches[i].setForeground(Color.gray);
 		}
 		else {
 			swatchesPanel.setVisible(true);
 
-			nameLabel.setText(value.toString());
-			nameLabel.setForeground(null);
+			if (pal.isModified())
+				nameLabel.setText(pal.name + " *");
+			else
+				nameLabel.setText(pal.name);
 
-			Color[] colors = value.getPal().getColors();
+			if (pal.hasError())
+				nameLabel.setForeground(SwingUtils.getRedTextColor());
+			else
+				nameLabel.setForeground(null);
+
+			Color[] colors = pal.getPal().getColors();
 			for (int i = 0; i < swatches.length; i++)
 				swatches[i].setForeground(colors[i]);
 		}

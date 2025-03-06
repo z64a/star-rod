@@ -38,6 +38,10 @@ public class SpriteLoader
 		public int getIndex();
 	}
 
+	/**
+	 * Represent entries in the sprite list files npc.xml and player.xml
+	 * These associate sprite IDs with directories and hold a reference to the loaded sprites.
+	 */
 	public static class SpriteMetadata implements Indexable<String>
 	{
 		public final int id;
@@ -45,6 +49,8 @@ public class SpriteLoader
 		public final boolean isPlayer;
 		public final boolean hasBack;
 		private final File xml;
+
+		public transient Sprite loadedSprite;
 
 		private SpriteMetadata(int id, String name, File xml, boolean isPlayer, boolean hasBack)
 		{
@@ -71,6 +77,16 @@ public class SpriteLoader
 		{
 			return xml.lastModified();
 		}
+
+		@Override
+		public int hashCode()
+		{
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + id;
+			result = prime * result + (isPlayer ? 1231 : 1237);
+			return result;
+		}
 	}
 
 	public static enum SpriteSet
@@ -83,8 +99,8 @@ public class SpriteLoader
 	private static TreeMap<Integer, SpriteMetadata> playerSpriteData = null;
 	private static TreeMap<Integer, SpriteMetadata> npcSpriteData = null;
 
-	private HashMap<Integer, Sprite> playerSpriteCache = new HashMap<>();
-	private HashMap<Integer, Sprite> npcSpriteCache = new HashMap<>();
+	private HashMap<SpriteMetadata, Sprite> playerSpriteCache = new HashMap<>();
+	private HashMap<SpriteMetadata, Sprite> npcSpriteCache = new HashMap<>();
 
 	private boolean loadedPlayerAssets = false;
 	private final SpriteAssetCollection<ImgAsset> playerImgAssets = new SpriteAssetCollection<>();
@@ -114,57 +130,52 @@ public class SpriteLoader
 		throw new IllegalArgumentException("Unknown sprite set: " + set);
 	}
 
+	private SpriteMetadata getMetadata(SpriteSet set, int id)
+	{
+		return getMap(set).get(id);
+	}
+
 	public static Collection<SpriteMetadata> getValidSprites(SpriteSet set)
 	{
 		if (!loaded)
 			throw new IllegalStateException("getValidSprites invoked before initializing SpriteLoader!");
 
-		TreeMap<Integer, SpriteMetadata> spriteMap = getMap(set);
-		return spriteMap.values();
-	}
-
-	public Sprite getSprite(SpriteMetadata metadata, boolean forceReload)
-	{
-		if (metadata.isPlayer)
-			return getSprite(SpriteSet.Player, metadata.id, forceReload);
-		else
-			return getSprite(SpriteSet.Npc, metadata.id, forceReload);
+		return getMap(set).values();
 	}
 
 	public Sprite getSprite(SpriteSet set, int id)
 	{
-		return getSprite(set, id, false);
+		SpriteMetadata metadata = getMetadata(set, id);
+		if (metadata == null) {
+			Logger.logfError("Unknown sprite: %s %02X", set, id);
+			return null;
+		}
+
+		return getSprite(metadata, false);
 	}
 
-	public Sprite getSprite(SpriteSet set, int id, boolean forceReload)
+	public Sprite getSprite(SpriteMetadata metadata, boolean forceReload)
 	{
 		if (!loaded)
 			throw new IllegalStateException("getSprite invoked before initializing SpriteLoader!");
 
 		Sprite spr = null;
-		switch (set) {
-			case Npc:
-				spr = getNpcSprite(id, forceReload);
-				break;
-			case Player:
-				spr = getPlayerSprite(id, forceReload);
-				break;
-			default:
-				throw new IllegalArgumentException("Unknown sprite set: " + set);
-		}
+
+		if (metadata.isPlayer)
+			spr = getPlayerSprite(metadata, forceReload);
+		else
+			spr = getNpcSprite(metadata, forceReload);
+
+		metadata.loadedSprite = spr;
 
 		return spr;
 	}
 
-	private Sprite getNpcSprite(int id, boolean forceReload)
+	private Sprite getNpcSprite(SpriteMetadata md, boolean forceReload)
 	{
-		if (!forceReload && npcSpriteCache.containsKey(id))
-			return npcSpriteCache.get(id);
+		if (!forceReload && npcSpriteCache.containsKey(md))
+			return npcSpriteCache.get(md);
 
-		if (!npcSpriteData.containsKey(id))
-			return null;
-
-		SpriteMetadata md = npcSpriteData.get(id);
 		File xmlFile = md.xml;
 		Sprite npcSprite = null;
 
@@ -175,8 +186,8 @@ public class SpriteLoader
 
 			npcSprite.bindPalettes();
 			npcSprite.bindRasters();
-			npcSprite.revalidate();
-			npcSpriteCache.put(id, npcSprite);
+			npcSprite.reindex();
+			npcSpriteCache.put(md, npcSprite);
 		}
 		catch (Throwable e) {
 			Logger.logWarning("Error while loading NPC sprite! " + e.getMessage());
@@ -187,19 +198,15 @@ public class SpriteLoader
 		return npcSprite;
 	}
 
-	private Sprite getPlayerSprite(int id, boolean forceReload)
+	private Sprite getPlayerSprite(SpriteMetadata md, boolean forceReload)
 	{
 		Sprite playerSprite = null;
 
-		if (!forceReload && playerSpriteCache.containsKey(id))
-			return playerSpriteCache.get(id);
-
-		if (!playerSpriteData.containsKey(id))
-			return null;
+		if (!forceReload && playerSpriteCache.containsKey(md))
+			return playerSpriteCache.get(md);
 
 		tryLoadingPlayerAssets(forceReload);
 
-		SpriteMetadata md = playerSpriteData.get(id);
 		File xmlFile = md.xml;
 
 		try {
@@ -208,13 +215,12 @@ public class SpriteLoader
 			playerSprite.palAssets = playerPalAssets;
 			playerSprite.bindPalettes();
 			playerSprite.bindRasters();
-			playerSprite.revalidate();
-			playerSpriteCache.put(id, playerSprite);
+			playerSprite.reindex();
+			playerSpriteCache.put(md, playerSprite);
 		}
 		catch (Throwable e) {
 			Logger.logWarning("Error while loading player sprite " + md.id + "! " + e.getMessage());
 			e.printStackTrace();
-			playerSpriteData.remove(id); // file is invalid
 		}
 
 		return playerSprite;

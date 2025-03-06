@@ -19,6 +19,7 @@ import game.map.editor.render.PresetColor;
 import game.map.shading.ShadingProfile;
 import game.map.shape.TransformMatrix;
 import game.sprite.SpriteLoader.Indexable;
+import game.sprite.editor.Editable;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.CommandAnimator;
 import game.sprite.editor.animators.ComponentAnimator;
@@ -34,7 +35,7 @@ import util.xml.XmlWrapper.XmlSerializable;
 import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
 
-public class SpriteComponent implements XmlSerializable, Indexable<SpriteComponent>
+public class SpriteComponent implements XmlSerializable, Indexable<SpriteComponent>, Editable
 {
 	public int posx, posy, posz;
 
@@ -74,7 +75,6 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	public int scaleX, scaleY, scaleZ;
 
 	public transient boolean deleted;
-	public transient boolean hasError;
 
 	// used while copying animations
 	public transient int parentID;
@@ -549,7 +549,6 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		SpriteRasterFace face = (useBack && tryBack) ? sr.back : sr.front;
 
 		// no image found, skip drawing
-		//TODO perhaps draw a 32x32 error quad instead?
 		if (face == null || face.asset == null)
 			return;
 
@@ -634,7 +633,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		TransformMatrix currentMtx = RenderState.pushModelMatrix();
 
 		RenderState.setPolygonMode(PolygonMode.FILL);
-		shader.setXYQuadCoords(x1, y2, x2, y1, 0); //TODO reversed?
+		shader.setXYQuadCoords(x1, y2, x2, y1, 0); //note: y is reversed
 		shader.renderQuad(TransformMatrix.multiply(currentMtx, mtx));
 
 		RenderState.popModelMatrix();
@@ -651,5 +650,28 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 
 			LineRenderQueue.render(true);
 		}
+	}
+
+	private final EditableData editableData = new EditableData(this);
+
+	@Override
+	public EditableData getEditableData()
+	{
+		return editableData;
+	}
+
+	@Override
+	public void addEditableDownstream(List<Editable> downstream)
+	{
+		//FIXME add commands so we can detect errors there
+	}
+
+	@Override
+	public String checkErrorMsg()
+	{
+		if (posz % 2 == 1)
+			return "Component: odd z-offsets break Actor decorations";
+
+		return null;
 	}
 }

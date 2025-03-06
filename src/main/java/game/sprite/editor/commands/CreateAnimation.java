@@ -30,15 +30,19 @@ public class CreateAnimation extends AbstractCommand
 	public void exec()
 	{
 		super.exec();
+
 		sprite.animations.add(pos, anim);
-		sprite.revalidate();
+		sprite.reindex();
+		sprite.incrementModified();
 	}
 
 	@Override
 	public void undo()
 	{
 		super.undo();
+
 		sprite.animations.remove(pos);
-		sprite.revalidate();
+		sprite.reindex();
+		sprite.decrementModified();
 	}
 }

@@ -23,17 +23,21 @@ public class DeletePalette extends AbstractCommand
 	public void exec()
 	{
 		super.exec();
+
 		sprite.palettes.remove(pos);
 		pal.deleted = true;
-		sprite.revalidate();
+		sprite.reindex();
+		sprite.incrementModified();
 	}
 
 	@Override
 	public void undo()
 	{
 		super.undo();
+
 		sprite.palettes.add(pos, pal);
 		pal.deleted = false;
-		sprite.revalidate();
+		sprite.reindex();
+		sprite.decrementModified();
 	}
 }

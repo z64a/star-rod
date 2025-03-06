@@ -363,36 +363,6 @@ public class CommandAnimator implements ComponentAnimator
 		return true;
 	}
 
-	@Override
-	public void cleanDeletedRasters()
-	{
-		for (int i = 0; i < commandListModel.size(); i++) {
-			AnimCommand cmd = commandListModel.get(i);
-			if (cmd instanceof SetImage setImg) {
-				if (setImg.img != null && setImg.img.deleted)
-					setImg.img = null;
-			}
-		}
-
-		if (comp.sr != null && comp.sr.deleted)
-			comp.sr = null;
-	}
-
-	@Override
-	public void cleanDeletedPalettes()
-	{
-		for (int i = 0; i < commandListModel.size(); i++) {
-			AnimCommand cmd = commandListModel.get(i);
-			if (cmd instanceof SetPalette setPal) {
-				if (setPal.pal != null && setPal.pal.deleted)
-					setPal.pal = null;
-			}
-		}
-
-		if (comp.sp != null && comp.sp.deleted)
-			comp.sp = null;
-	}
-
 	// gets the index of the command matching a certain position in the raw stream of shorts
 	private int getListIndex(int streamPos)
 	{

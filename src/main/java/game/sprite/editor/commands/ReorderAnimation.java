@@ -41,7 +41,8 @@ public class ReorderAnimation extends AbstractCommand
 		list.setSelectedValue(anim, true);
 		list.ignoreChanges.decrement();
 
-		sprite.revalidate();
+		sprite.incrementModified();
+		sprite.reindex();
 	}
 
 	@Override
@@ -55,6 +56,7 @@ public class ReorderAnimation extends AbstractCommand
 		list.setSelectedValue(anim, true);
 		list.ignoreChanges.decrement();
 
-		sprite.revalidate();
+		sprite.decrementModified();
+		sprite.reindex();
 	}
 }

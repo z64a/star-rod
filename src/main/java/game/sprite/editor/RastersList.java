@@ -41,6 +41,8 @@ public class RastersList extends DragReorderList<SpriteRaster>
 	{
 		this.editor = editor;
 
+		editor.registerEditableListener(SpriteRaster.class, () -> this.repaint());
+
 		setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		setCellRenderer(new RasterCellRenderer());

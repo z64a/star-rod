@@ -36,6 +36,7 @@ public class ToggleDrawCurrent extends AbstractCommand
 	public void exec()
 	{
 		super.exec();
+
 		checkbox.setSelected(next);
 	}
 
@@ -43,6 +44,7 @@ public class ToggleDrawCurrent extends AbstractCommand
 	public void undo()
 	{
 		super.undo();
+
 		checkbox.setSelected(prev);
 	}
 }

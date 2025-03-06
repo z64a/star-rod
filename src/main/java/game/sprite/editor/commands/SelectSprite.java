@@ -47,6 +47,9 @@ public class SelectSprite extends AbstractCommand
 
 		SpriteEditor editor = SpriteEditor.instance();
 		editor.setSprite(next, false);
+
+		if (next != null)
+			editor.postEditableError(next.loadedSprite);
 	}
 
 	@Override

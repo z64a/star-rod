@@ -30,15 +30,19 @@ public class CreateRaster extends AbstractCommand
 	public void exec()
 	{
 		super.exec();
+
 		sprite.rasters.add(pos, img);
-		sprite.revalidate();
+		sprite.reindex();
+		sprite.incrementModified();
 	}
 
 	@Override
 	public void undo()
 	{
 		super.undo();
+
 		sprite.rasters.remove(pos);
-		sprite.revalidate();
+		sprite.reindex();
+		sprite.decrementModified();
 	}
 }

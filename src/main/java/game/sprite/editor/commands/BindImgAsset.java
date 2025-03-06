@@ -35,6 +35,7 @@ public class BindImgAsset extends AbstractCommand
 
 		face.assignAsset(next);
 		face.loadEditorImages();
+		face.parentRaster.incrementModified();
 
 		callback.accept(face);
 		ui.repaint();
@@ -47,6 +48,7 @@ public class BindImgAsset extends AbstractCommand
 
 		face.assignAsset(prev);
 		face.loadEditorImages();
+		face.parentRaster.decrementModified();
 
 		callback.accept(face);
 		ui.repaint();

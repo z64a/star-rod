@@ -23,17 +23,21 @@ public class DeleteRaster extends AbstractCommand
 	public void exec()
 	{
 		super.exec();
+
 		sprite.rasters.remove(pos);
 		img.deleted = true;
-		sprite.revalidate();
+		sprite.reindex();
+		sprite.incrementModified();
 	}
 
 	@Override
 	public void undo()
 	{
 		super.undo();
+
 		sprite.rasters.add(pos, img);
 		img.deleted = false;
-		sprite.revalidate();
+		sprite.reindex();
+		sprite.decrementModified();
 	}
 }

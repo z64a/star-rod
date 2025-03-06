@@ -334,24 +334,30 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void exec()
 			{
+				super.exec();
+
 				cmd.labelName = next;
 
 				ignoreChanges = true;
 				labelNameField.setText(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.incrementModified();
 				repaintCommandList();
 			}
 
 			@Override
 			public void undo()
 			{
+				super.undo();
+
 				cmd.labelName = prev;
 
 				ignoreChanges = true;
 				labelNameField.setText(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -420,12 +426,15 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void exec()
 			{
+				super.exec();
+
 				cmd.label = next;
 
 				ignoreChanges = true;
 				labelComboBox.setSelectedItem(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.incrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -433,12 +442,15 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void undo()
 			{
+				super.undo();
+
 				cmd.label = prev;
 
 				ignoreChanges = true;
 				labelComboBox.setSelectedItem(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.decrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -527,12 +539,15 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void exec()
 			{
+				super.exec();
+
 				cmd.count = next;
 
 				ignoreChanges = true;
 				countSpinner.setValue(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.incrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -540,12 +555,15 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void undo()
 			{
+				super.undo();
+
 				cmd.count = prev;
 
 				ignoreChanges = true;
 				countSpinner.setValue(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.decrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -569,12 +587,15 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void exec()
 			{
+				super.exec();
+
 				cmd.label = next;
 
 				ignoreChanges = true;
 				labelComboBox.setSelectedItem(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.incrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -582,12 +603,15 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void undo()
 			{
+				super.undo();
+
 				cmd.label = prev;
 
 				ignoreChanges = true;
 				labelComboBox.setSelectedItem(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.decrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -658,12 +682,15 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void exec()
 			{
+				super.exec();
+
 				cmd.count = next;
 
 				ignoreChanges = true;
 				countSpinner.setValue(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.incrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -671,12 +698,15 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void undo()
 			{
+				super.undo();
+
 				cmd.count = prev;
 
 				ignoreChanges = true;
 				countSpinner.setValue(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.decrementModified();
 				cmd.ownerComp.calculateTiming();
 				repaintCommandList();
 			}
@@ -775,24 +805,30 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void exec()
 			{
+				super.exec();
+
 				cmd.img = next;
 
 				ignoreChanges = true;
 				imageComboBox.setSelectedItem(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.incrementModified();
 				repaintCommandList();
 			}
 
 			@Override
 			public void undo()
 			{
+				super.undo();
+
 				cmd.img = prev;
 
 				ignoreChanges = true;
 				imageComboBox.setSelectedItem(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -867,24 +903,30 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void exec()
 			{
+				super.exec();
+
 				cmd.pal = next;
 
 				ignoreChanges = true;
 				paletteComboBox.setSelectedItem(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.incrementModified();
 				repaintCommandList();
 			}
 
 			@Override
 			public void undo()
 			{
+				super.undo();
+
 				cmd.pal = prev;
 
 				ignoreChanges = true;
 				paletteComboBox.setSelectedItem(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -956,24 +998,30 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void exec()
 			{
+				super.exec();
+
 				cmd.comp = next;
 
 				ignoreChanges = true;
 				componentComboBox.setSelectedItem(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.incrementModified();
 				repaintCommandList();
 			}
 
 			@Override
 			public void undo()
 			{
+				super.undo();
+
 				cmd.comp = prev;
 
 				ignoreChanges = true;
 				componentComboBox.setSelectedItem(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -1042,24 +1090,30 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void exec()
 			{
+				super.exec();
+
 				cmd.value = next;
 
 				ignoreChanges = true;
 				valueSpinner.setValue(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.incrementModified();
 				repaintCommandList();
 			}
 
 			@Override
 			public void undo()
 			{
+				super.undo();
+
 				cmd.value = prev;
 
 				ignoreChanges = true;
 				valueSpinner.setValue(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -1128,24 +1182,30 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void exec()
 			{
+				super.exec();
+
 				cmd.value = next;
 
 				ignoreChanges = true;
 				valueSpinner.setValue(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.incrementModified();
 				repaintCommandList();
 			}
 
 			@Override
 			public void undo()
 			{
+				super.undo();
+
 				cmd.value = prev;
 
 				ignoreChanges = true;
 				valueSpinner.setValue(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -1257,6 +1317,8 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void exec()
 			{
+				super.exec();
+
 				switch (coord) {
 					case 0:
 						cmd.x = next;
@@ -1283,12 +1345,15 @@ public class CommandAnimatorEditor extends AnimationEditor
 				}
 				ignoreChanges = false;
 
+				cmd.ownerComp.incrementModified();
 				repaintCommandList();
 			}
 
 			@Override
 			public void undo()
 			{
+				super.undo();
+
 				switch (coord) {
 					case 0:
 						cmd.x = prev;
@@ -1315,6 +1380,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				}
 				ignoreChanges = false;
 
+				cmd.ownerComp.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -1426,6 +1492,8 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void exec()
 			{
+				super.exec();
+
 				switch (coord) {
 					case 0:
 						cmd.x = next;
@@ -1452,12 +1520,15 @@ public class CommandAnimatorEditor extends AnimationEditor
 				}
 				ignoreChanges = false;
 
+				cmd.ownerComp.incrementModified();
 				repaintCommandList();
 			}
 
 			@Override
 			public void undo()
 			{
+				super.undo();
+
 				switch (coord) {
 					case 0:
 						cmd.x = prev;
@@ -1484,6 +1555,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				}
 				ignoreChanges = false;
 
+				cmd.ownerComp.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -1597,24 +1669,30 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void exec()
 			{
+				super.exec();
+
 				cmd.scalePercent = next;
 
 				ignoreChanges = true;
 				scaleSpinner.setValue(next);
 				ignoreChanges = false;
 
+				cmd.ownerComp.incrementModified();
 				repaintCommandList();
 			}
 
 			@Override
 			public void undo()
 			{
+				super.undo();
+
 				cmd.scalePercent = prev;
 
 				ignoreChanges = true;
 				scaleSpinner.setValue(prev);
 				ignoreChanges = false;
 
+				cmd.ownerComp.decrementModified();
 				repaintCommandList();
 			}
 		}
@@ -1637,6 +1715,8 @@ public class CommandAnimatorEditor extends AnimationEditor
 			@Override
 			public void exec()
 			{
+				super.exec();
+
 				cmd.type = next;
 
 				ignoreChanges = true;
@@ -1656,12 +1736,15 @@ public class CommandAnimatorEditor extends AnimationEditor
 				}
 				ignoreChanges = false;
 
+				cmd.ownerComp.incrementModified();
 				repaintCommandList();
 			}
 
 			@Override
 			public void undo()
 			{
+				super.undo();
+
 				cmd.type = prev;
 
 				ignoreChanges = true;
@@ -1681,6 +1764,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				}
 				ignoreChanges = false;
 
+				cmd.ownerComp.decrementModified();
 				repaintCommandList();
 			}
 		}

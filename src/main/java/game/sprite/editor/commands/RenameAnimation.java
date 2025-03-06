@@ -28,6 +28,8 @@ public class RenameAnimation extends AbstractCommand
 		super.exec();
 
 		anim.name = newName;
+		anim.incrementModified();
+
 		ui.repaint();
 	}
 
@@ -37,6 +39,8 @@ public class RenameAnimation extends AbstractCommand
 		super.undo();
 
 		anim.name = oldName;
+		anim.decrementModified();
+
 		ui.repaint();
 	}
 }

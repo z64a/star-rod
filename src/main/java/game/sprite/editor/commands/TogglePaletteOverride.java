@@ -43,6 +43,7 @@ public class TogglePaletteOverride extends AbstractCommand
 	public void exec()
 	{
 		super.exec();
+
 		sprite.usingOverridePalette = next;
 		checkbox.setSelected(next);
 		callback.accept(next);
@@ -52,6 +53,7 @@ public class TogglePaletteOverride extends AbstractCommand
 	public void undo()
 	{
 		super.undo();
+
 		sprite.usingOverridePalette = prev;
 		checkbox.setSelected(prev);
 		callback.accept(prev);

@@ -41,6 +41,8 @@ public class PalettesList extends DragReorderList<SpritePalette>
 	{
 		this.editor = editor;
 
+		editor.registerEditableListener(SpritePalette.class, () -> this.repaint());
+
 		setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		setCellRenderer(new PaletteCellRenderer());

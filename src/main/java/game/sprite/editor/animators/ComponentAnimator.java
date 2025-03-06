@@ -17,10 +17,6 @@ public interface ComponentAnimator
 
 	public void bind(SpriteEditor editor, Container commandListContainer, Container commandEditContainer);
 
-	public void cleanDeletedRasters();
-
-	public void cleanDeletedPalettes();
-
 	public boolean surpassed(AnimElement elem);
 
 	public void calculateTiming();

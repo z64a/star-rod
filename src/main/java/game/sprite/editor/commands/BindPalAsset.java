@@ -29,6 +29,8 @@ public class BindPalAsset extends AbstractCommand
 		super.exec();
 
 		pal.assignAsset(next);
+		pal.incrementModified();
+
 		ui.repaint();
 	}
 
@@ -38,6 +40,8 @@ public class BindPalAsset extends AbstractCommand
 		super.undo();
 
 		pal.assignAsset(prev);
+		pal.decrementModified();
+
 		ui.repaint();
 	}
 }

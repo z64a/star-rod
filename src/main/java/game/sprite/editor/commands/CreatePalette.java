@@ -30,15 +30,19 @@ public class CreatePalette extends AbstractCommand
 	public void exec()
 	{
 		super.exec();
+
 		sprite.palettes.add(pos, pal);
-		sprite.revalidate();
+		sprite.reindex();
+		sprite.incrementModified();
 	}
 
 	@Override
 	public void undo()
 	{
 		super.undo();
+
 		sprite.palettes.remove(pos);
-		sprite.revalidate();
+		sprite.reindex();
+		sprite.decrementModified();
 	}
 }

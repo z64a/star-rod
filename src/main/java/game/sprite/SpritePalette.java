@@ -1,12 +1,15 @@
 package game.sprite;
 
+import java.util.List;
+
 import game.sprite.SpriteLoader.Indexable;
+import game.sprite.editor.Editable;
 import game.texture.Palette;
 
 /**
  * Represents an entry from a sprite's palette list
  */
-public final class SpritePalette implements Indexable<SpritePalette>
+public final class SpritePalette implements Indexable<SpritePalette>, Editable
 {
 	public final Sprite parentSprite;
 
@@ -21,7 +24,6 @@ public final class SpritePalette implements Indexable<SpritePalette>
 	protected transient int listIndex;
 
 	public transient boolean deleted;
-	public transient boolean hasError;
 
 	public SpritePalette(Sprite spr)
 	{
@@ -103,5 +105,32 @@ public final class SpritePalette implements Indexable<SpritePalette>
 	public Palette getPal()
 	{
 		return (asset == null) ? null : asset.pal;
+	}
+
+	private final EditableData editableData = new EditableData(this);
+
+	@Override
+	public EditableData getEditableData()
+	{
+		return editableData;
+	}
+
+	@Override
+	public void addEditableDownstream(List<Editable> downstream)
+	{
+		if (asset != null)
+			downstream.add(asset);
+	}
+
+	@Override
+	public String checkErrorMsg()
+	{
+		if (deleted)
+			return "Palette: in use while deleted";
+
+		if (!hasPal())
+			return "Palette: undefined asset";
+
+		return null;
 	}
 }

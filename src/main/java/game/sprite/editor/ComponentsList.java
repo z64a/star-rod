@@ -55,6 +55,7 @@ public class ComponentsList extends DragReorderList<SpriteComponent>
 	{
 		this.editor = editor;
 		editor.registerDragList(this);
+		editor.registerEditableListener(SpriteComponent.class, () -> this.repaint());
 
 		setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -331,12 +332,22 @@ public class ComponentsList extends DragReorderList<SpriteComponent>
 			setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
 			if (comp != null) {
 				iconLabel.setIcon(comp.hidden ? ThemedIcon.VISIBILITY_OFF_16 : ThemedIcon.VISIBILITY_ON_16);
-				nameLabel.setText(comp.name);
 				nameLabel.setFont(getFont().deriveFont(comp.hidden ? Font.ITALIC : Font.PLAIN));
+
+				if (comp.isModified())
+					nameLabel.setText(comp.name + " *");
+				else
+					nameLabel.setText(comp.name);
+
+				if (comp.hasError())
+					nameLabel.setForeground(SwingUtils.getRedTextColor());
+				else
+					nameLabel.setForeground(null);
 			}
 			else {
 				iconLabel.setIcon(null);
-				nameLabel.setText("error!");
+				nameLabel.setText("NULL");
+				nameLabel.setForeground(SwingUtils.getRedTextColor());
 			}
 
 			return this;

@@ -28,6 +28,8 @@ public class RenameRaster extends AbstractCommand
 		super.exec();
 
 		img.name = newName;
+		img.incrementModified();
+
 		ui.repaint();
 	}
 
@@ -37,6 +39,8 @@ public class RenameRaster extends AbstractCommand
 		super.undo();
 
 		img.name = oldName;
+		img.decrementModified();
+
 		ui.repaint();
 	}
 }

@@ -91,7 +91,7 @@ public class KeyframeAnimator implements ComponentAnimator
 
 		if (currentKeyframe == null) {
 			setCurrentKeyframe(keyframeListModel.firstElement());
-			currentKeyframe.exec();
+			currentKeyframe.apply();
 		}
 
 		if (comp.delayCount > 0) {
@@ -109,7 +109,7 @@ public class KeyframeAnimator implements ComponentAnimator
 			currentKeyframe.advance();
 
 			if (currentKeyframe != null) {
-				currentKeyframe.exec();
+				currentKeyframe.apply();
 			}
 			iterations++;
 		}
@@ -361,36 +361,6 @@ public class KeyframeAnimator implements ComponentAnimator
 	}
 
 	@Override
-	public void cleanDeletedRasters()
-	{
-		for (int i = 0; i < keyframeListModel.size(); i++) {
-			AnimKeyframe cmd = keyframeListModel.get(i);
-			if (cmd instanceof Keyframe kf) {
-				if (kf.img != null && kf.img.deleted)
-					kf.img = null;
-			}
-		}
-
-		if (comp.sr != null && comp.sr.deleted)
-			comp.sr = null;
-	}
-
-	@Override
-	public void cleanDeletedPalettes()
-	{
-		for (int i = 0; i < keyframeListModel.size(); i++) {
-			AnimKeyframe cmd = keyframeListModel.get(i);
-			if (cmd instanceof Keyframe kf) {
-				if (kf.pal != null && kf.pal.deleted)
-					kf.pal = null;
-			}
-		}
-
-		if (comp.sp != null && comp.sp.deleted)
-			comp.sp = null;
-	}
-
-	@Override
 	public RawAnimation getCommandList()
 	{
 		RawAnimation rawAnim = new RawAnimation();
@@ -453,7 +423,7 @@ public class KeyframeAnimator implements ComponentAnimator
 		public abstract int length();
 
 		// returns TRUE if the next keyframe should be executed
-		public abstract void exec();
+		public abstract void apply();
 
 		@Override
 		public abstract boolean advance();
@@ -477,7 +447,7 @@ public class KeyframeAnimator implements ComponentAnimator
 		}
 
 		@Override
-		public void exec()
+		public void apply()
 		{}
 
 		@Override
@@ -562,7 +532,7 @@ public class KeyframeAnimator implements ComponentAnimator
 		}
 
 		@Override
-		public void exec()
+		public void apply()
 		{}
 
 		@Override
@@ -687,7 +657,7 @@ public class KeyframeAnimator implements ComponentAnimator
 		public int sx = 100, sy = 100, sz = 100;
 
 		@Override
-		public void exec()
+		public void apply()
 		{
 			if (setImage) {
 				ownerComp.sr = img;

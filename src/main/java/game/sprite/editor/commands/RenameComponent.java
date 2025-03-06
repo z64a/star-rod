@@ -28,6 +28,8 @@ public class RenameComponent extends AbstractCommand
 		super.exec();
 
 		comp.name = newName;
+		comp.incrementModified();
+
 		ui.repaint();
 	}
 
@@ -37,6 +39,8 @@ public class RenameComponent extends AbstractCommand
 		super.undo();
 
 		comp.name = oldName;
+		comp.decrementModified();
+
 		ui.repaint();
 	}
 }

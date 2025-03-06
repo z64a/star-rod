@@ -27,15 +27,19 @@ public class DeleteCommand extends AbstractCommand
 	public void exec()
 	{
 		super.exec();
+
 		model.remove(pos);
 		cmd.ownerComp.calculateTiming();
+		cmd.ownerComp.incrementModified();
 	}
 
 	@Override
 	public void undo()
 	{
 		super.undo();
+
 		model.add(pos, cmd);
 		cmd.ownerComp.calculateTiming();
+		cmd.ownerComp.decrementModified();
 	}
 }

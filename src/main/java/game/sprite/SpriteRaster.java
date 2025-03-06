@@ -1,8 +1,11 @@
 package game.sprite;
 
+import java.util.List;
+
+import game.sprite.editor.Editable;
 import game.sprite.editor.SpriteAssetCollection;
 
-public class SpriteRaster
+public class SpriteRaster implements Editable
 {
 	public final Sprite parentSprite;
 
@@ -20,7 +23,6 @@ public class SpriteRaster
 	public transient String name = "";
 
 	public transient boolean deleted;
-	public transient boolean hasError;
 
 	// members used to lay out the palettes tab sprite atlas
 	public transient int atlasRow, atlasX, atlasY;
@@ -105,5 +107,37 @@ public class SpriteRaster
 	public int getIndex()
 	{
 		return listIndex;
+	}
+
+	private final EditableData editableData = new EditableData(this);
+
+	@Override
+	public EditableData getEditableData()
+	{
+		return editableData;
+	}
+
+	@Override
+	public void addEditableDownstream(List<Editable> downstream)
+	{
+		downstream.add(front.pal);
+
+		if (hasIndependentBack)
+			downstream.add(back.pal);
+	}
+
+	@Override
+	public String checkErrorMsg()
+	{
+		if (deleted)
+			return "Raster: in use while deleted";
+
+		if (front.asset == null)
+			return "Raster: undefined asset for front face";
+
+		if (hasIndependentBack && back.asset == null)
+			return "Raster: undefined asset for back face";
+
+		return null;
 	}
 }

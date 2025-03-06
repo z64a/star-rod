@@ -48,6 +48,7 @@ public class AnimationsList extends DragReorderList<SpriteAnimation>
 	{
 		this.editor = editor;
 		editor.registerDragList(this);
+		editor.registerEditableListener(SpriteAnimation.class, () -> this.repaint());
 
 		setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -272,11 +273,21 @@ public class AnimationsList extends DragReorderList<SpriteAnimation>
 			setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
 			if (anim != null) {
 				idLabel.setText(String.format("%02X", anim.getIndex()));
-				nameLabel.setText(anim.name);
+
+				if (anim.isModified())
+					nameLabel.setText(anim.name + " *");
+				else
+					nameLabel.setText(anim.name);
+
+				if (anim.hasError())
+					nameLabel.setForeground(SwingUtils.getRedTextColor());
+				else
+					nameLabel.setForeground(null);
 			}
 			else {
-				idLabel.setText("XXX");
-				nameLabel.setText("error!");
+				idLabel.setText("##");
+				nameLabel.setText("NULL");
+				nameLabel.setForeground(SwingUtils.getRedTextColor());
 			}
 
 			return this;

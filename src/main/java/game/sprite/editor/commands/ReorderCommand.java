@@ -44,6 +44,7 @@ public class ReorderCommand extends AbstractCommand
 		list.ignoreSelectionChange = false;
 
 		cmd.ownerComp.calculateTiming();
+		cmd.ownerComp.incrementModified();
 	}
 
 	@Override
@@ -58,5 +59,6 @@ public class ReorderCommand extends AbstractCommand
 		list.ignoreSelectionChange = false;
 
 		cmd.ownerComp.calculateTiming();
+		cmd.ownerComp.decrementModified();
 	}
 }

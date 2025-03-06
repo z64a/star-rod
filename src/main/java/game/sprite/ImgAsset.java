@@ -8,7 +8,6 @@ import java.io.IOException;
 import org.apache.commons.io.FilenameUtils;
 
 import assets.AssetHandle;
-import assets.AssetManager;
 import game.sprite.editor.ImgPreview;
 import game.texture.Palette;
 import game.texture.Tile;
@@ -32,13 +31,6 @@ public class ImgAsset implements GLResource
 		preview = new ImgPreview();
 	}
 
-	public void save() throws IOException
-	{
-		//TODO perhaps some way to check for edited palettes?
-		source = AssetManager.getTopLevel(source);
-		img.savePNG(source.getAbsolutePath());
-	}
-
 	public String getFilename()
 	{
 		return source.getName();
@@ -55,7 +47,6 @@ public class ImgAsset implements GLResource
 		return getName();
 	}
 
-	//FIXME remove?
 	public Palette getPalette()
 	{
 		return img.palette;

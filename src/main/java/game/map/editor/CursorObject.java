@@ -786,7 +786,7 @@ public class CursorObject extends EditorObject
 		}
 
 		GuideSprite primary = guides.get(0);
-		if (primary.sprite.isPlayerSprite() && primary.sprite.name.equals("Mario1")) {
+		if (primary.sprite.metadata.isPlayer && primary.sprite.name.equals("Mario1")) {
 			primary.animID = 2;
 			if (preview) {
 				switch (fallState) {

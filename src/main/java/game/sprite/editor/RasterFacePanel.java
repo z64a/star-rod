@@ -308,6 +308,7 @@ public class RasterFacePanel extends JPanel
 			super.exec();
 
 			img.hasIndependentBack = next;
+			img.incrementModified();
 			refresh();
 		}
 
@@ -317,6 +318,7 @@ public class RasterFacePanel extends JPanel
 			super.undo();
 
 			img.hasIndependentBack = prev;
+			img.decrementModified();
 			refresh();
 		}
 	}
@@ -342,6 +344,7 @@ public class RasterFacePanel extends JPanel
 			super.exec();
 
 			side.assignPal(next);
+			side.parentRaster.incrementModified();
 			side.parentRaster.loadEditorImages();
 			tab.repaint();
 		}
@@ -352,6 +355,7 @@ public class RasterFacePanel extends JPanel
 			super.undo();
 
 			side.assignPal(prev);
+			side.parentRaster.decrementModified();
 			side.parentRaster.loadEditorImages();
 			tab.repaint();
 		}

@@ -45,6 +45,10 @@ public class SelectComponent extends AbstractCommand
 
 		SpriteEditor editor = SpriteEditor.instance();
 		editor.setComponent(next);
+		editor.postEditableError(next);
+
+		if (next != null)
+			next.calculateTiming();
 	}
 
 	@Override
@@ -59,6 +63,5 @@ public class SelectComponent extends AbstractCommand
 
 		SpriteEditor editor = SpriteEditor.instance();
 		editor.setComponent(prev);
-		next.calculateTiming();
 	}
 }

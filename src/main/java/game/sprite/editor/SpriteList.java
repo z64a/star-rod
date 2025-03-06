@@ -16,6 +16,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
 import app.SwingUtils;
+import game.sprite.Sprite;
 import game.sprite.SpriteLoader.SpriteMetadata;
 import game.sprite.editor.commands.SelectSprite;
 import net.miginfocom.swing.MigLayout;
@@ -35,6 +36,8 @@ public class SpriteList extends JPanel
 	public SpriteList(SpriteEditor editor)
 	{
 		super(new MigLayout("fill, ins 0, wrap"));
+
+		editor.registerEditableListener(Sprite.class, () -> list.repaint());
 
 		list = new JList<>();
 		list.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -166,7 +169,7 @@ public class SpriteList extends JPanel
 		@Override
 		public Component getListCellRendererComponent(
 			JList<? extends SpriteMetadata> list,
-			SpriteMetadata sprite,
+			SpriteMetadata metadata,
 			int index,
 			boolean isSelected,
 			boolean cellHasFocus)
@@ -181,13 +184,30 @@ public class SpriteList extends JPanel
 			}
 
 			setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
-			if (sprite != null) {
-				idLabel.setText(String.format("%02X", sprite.id));
-				nameLabel.setText(sprite.name);
+			if (metadata != null) {
+				idLabel.setText(String.format("%02X", metadata.id));
+
+				Sprite sprite = metadata.loadedSprite;
+				if (sprite != null) {
+					if (sprite.isModified())
+						nameLabel.setText(metadata.name + " *");
+					else
+						nameLabel.setText(metadata.name);
+
+					if (sprite.hasError())
+						nameLabel.setForeground(SwingUtils.getRedTextColor());
+					else
+						nameLabel.setForeground(null);
+				}
+				else {
+					nameLabel.setText(metadata.name);
+					nameLabel.setForeground(null);
+				}
 			}
 			else {
-				idLabel.setText("XXX");
-				nameLabel.setText("error!");
+				idLabel.setText("##");
+				nameLabel.setText("NULL");
+				nameLabel.setForeground(SwingUtils.getRedTextColor());
 			}
 
 			return this;

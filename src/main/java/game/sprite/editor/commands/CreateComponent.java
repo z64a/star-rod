@@ -30,15 +30,19 @@ public class CreateComponent extends AbstractCommand
 	public void exec()
 	{
 		super.exec();
+
 		anim.components.add(pos, newComp);
-		anim.parentSprite.revalidate();
+		anim.parentSprite.reindex();
+		anim.incrementModified();
 	}
 
 	@Override
 	public void undo()
 	{
 		super.undo();
+
 		anim.components.remove(pos);
-		anim.parentSprite.revalidate();
+		anim.parentSprite.reindex();
+		anim.decrementModified();
 	}
 }

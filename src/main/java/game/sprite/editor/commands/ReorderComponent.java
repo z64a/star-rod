@@ -42,7 +42,8 @@ public class ReorderComponent extends AbstractCommand
 		list.setSelectedValue(comp, true);
 		list.ignoreChanges.decrement();
 
-		comp.parentAnimation.parentSprite.revalidate();
+		comp.parentAnimation.parentSprite.reindex();
+		comp.parentAnimation.incrementModified();
 	}
 
 	@Override
@@ -56,6 +57,7 @@ public class ReorderComponent extends AbstractCommand
 		list.setSelectedValue(comp, true);
 		list.ignoreChanges.decrement();
 
-		comp.parentAnimation.parentSprite.revalidate();
+		comp.parentAnimation.parentSprite.reindex();
+		comp.parentAnimation.decrementModified();
 	}
 }

@@ -41,7 +41,8 @@ public class ReorderPalette extends AbstractCommand
 		list.setSelectedValue(pal, true);
 		list.ignoreChanges.decrement();
 
-		sprite.revalidate();
+		sprite.reindex();
+		sprite.incrementModified();
 	}
 
 	@Override
@@ -55,6 +56,7 @@ public class ReorderPalette extends AbstractCommand
 		list.setSelectedValue(pal, true);
 		list.ignoreChanges.decrement();
 
-		sprite.revalidate();
+		sprite.reindex();
+		sprite.decrementModified();
 	}
 }

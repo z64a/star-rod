@@ -27,10 +27,16 @@ public abstract class ThemedIcon
 	}
 
 	public static final FlatSVGIcon VISIBILITY_OFF_24 = getIcon("visibility_off_24");
-	public static final FlatSVGIcon VISIBILITY_OFF_16 = VISIBILITY_OFF_24.derive(16, 16);
-
 	public static final FlatSVGIcon VISIBILITY_ON_24 = getIcon("visibility_on_24");
+
+	public static final FlatSVGIcon VISIBILITY_OFF_16 = VISIBILITY_OFF_24.derive(16, 16);
 	public static final FlatSVGIcon VISIBILITY_ON_16 = VISIBILITY_ON_24.derive(16, 16);
+
+	public static final FlatSVGIcon HELP_24 = getIcon("help_24");
+	public static final FlatSVGIcon INFO_24 = getIcon("info_24");
+
+	public static final FlatSVGIcon HELP_16 = HELP_24.derive(16, 16);
+	public static final FlatSVGIcon INFO_16 = INFO_24.derive(16, 16);
 
 	public static final FlatSVGIcon NEXT_24 = getIcon("next_24");
 	public static final FlatSVGIcon PREV_24 = getIcon("prev_24");
@@ -52,9 +58,9 @@ public abstract class ThemedIcon
 	public static final FlatSVGIcon ADD_16 = ADD_24.derive(16, 16);
 
 	public static final FlatSVGIcon CHECKBOX_EMPTY_24 = getIcon("checkbox_empty_24");
-	public static final FlatSVGIcon CHECKBOX_EMPTY_16 = CHECKBOX_EMPTY_24.derive(16, 16);
-
 	public static final FlatSVGIcon CHECKBOX_FULL_24 = getIcon("checkbox_full_24");
+
+	public static final FlatSVGIcon CHECKBOX_EMPTY_16 = CHECKBOX_EMPTY_24.derive(16, 16);
 	public static final FlatSVGIcon CHECKBOX_FULL_16 = CHECKBOX_FULL_24.derive(16, 16);
 
 	public static final FlatSVGIcon REFRESH_24 = getIcon("refresh_24");

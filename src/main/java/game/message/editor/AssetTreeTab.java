@@ -21,6 +21,7 @@ import net.miginfocom.swing.MigLayout;
 import util.Logger;
 import util.ui.FilteredListPanel;
 
+//TODO this is not ready yet
 public class AssetTreeTab extends JPanel
 {
 	private final FilteredListPanel<MessageAsset> filteredList;
@@ -70,14 +71,14 @@ public class AssetTreeTab extends JPanel
 		{
 			StringTreeNode node = nodes.pop();
 			FileMetadata nodeData = node.getUserObject();
-		
+
 			if(nodeData.getType() == FileType.Resource && nodeData.modified)
 			{
 				StringResource res = nodeData.getResource();
 				if(!editor.resourcesToSave.contains(res))
 					editor.resourcesToSave.add(res);
 			}
-		
+
 			for(int i = 0; i < node.getChildCount(); i++)
 				nodes.push(node.getChildAt(i));
 		}

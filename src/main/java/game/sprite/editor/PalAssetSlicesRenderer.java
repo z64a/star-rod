@@ -66,7 +66,7 @@ public class PalAssetSlicesRenderer extends JPanel implements ListCellRenderer<P
 
 		setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 0));
 		if (asset != null) {
-			if (asset.modified)
+			if (asset.isModified())
 				nameLabel.setText(asset.toString() + " *");
 			else
 				nameLabel.setText(asset.toString());

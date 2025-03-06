@@ -16,12 +16,14 @@ import org.apache.commons.io.FilenameUtils;
 import org.w3c.dom.Element;
 
 import app.input.InputFileException;
+import assets.AssetHandle;
 import assets.AssetManager;
+import assets.AssetSubdir;
 import common.Vector3f;
 import game.map.BoundingBox;
 import game.map.shading.ShadingProfile;
 import game.sprite.SpriteLoader.SpriteMetadata;
-import game.sprite.SpriteLoader.SpriteSet;
+import game.sprite.editor.Editable;
 import game.sprite.editor.SpriteAssetCollection;
 import game.sprite.editor.SpriteCamera;
 import game.sprite.editor.SpriteCamera.BasicTraceHit;
@@ -37,11 +39,9 @@ import util.xml.XmlWrapper.XmlSerializable;
 import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
 
-public class Sprite implements XmlSerializable
+public class Sprite implements XmlSerializable, Editable
 {
-	// const equal to (float)5/7, set at [800E1360]
-	// see component matrix located in S0 at [802DC958]
-	public static final float WORLD_SCALE = 0.714286f;
+	public static final float WORLD_SCALE = 0.714286f; // ~ 5.0f / 7.0f
 
 	public static final int MAX_ANIMATIONS = 255;
 	public static final int MAX_COMPONENTS = 255;
@@ -62,9 +62,6 @@ public class Sprite implements XmlSerializable
 	private transient boolean texturesLoaded = false;
 	private transient boolean readyForEditor = false;
 	public transient boolean enableStencilBuffer = false;
-
-	public transient boolean deleted; // unused
-	public transient boolean hasError;
 
 	// rasters tab state to restore when this sprite is selected
 	public transient int lastSelectedImgAsset = -1;
@@ -106,7 +103,7 @@ public class Sprite implements XmlSerializable
 		if (animations.size() > 0)
 			lastSelectedAnim = 0;
 
-		revalidate();
+		reindex();
 
 		readyForEditor = true;
 	}
@@ -114,47 +111,26 @@ public class Sprite implements XmlSerializable
 	/**
 	 * Computes list indices for objects which need them and recomputes hasError propagation.
 	 */
-	public void revalidate()
+	public void reindex()
 	{
-		hasError = false;
-
 		for (int i = 0; i < palettes.size(); i++) {
 			SpritePalette pal = palettes.get(i);
 			pal.listIndex = i;
-
-			//TODO check for missing asset errors
-
-			if (pal.hasError)
-				hasError = true;
 		}
 
 		for (int i = 0; i < rasters.size(); i++) {
 			SpriteRaster raster = rasters.get(i);
 			raster.listIndex = i;
-
-			//TODO check for missing asset errors
-
-			if (raster.hasError)
-				hasError = true;
 		}
 
 		for (int i = 0; i < animations.size(); i++) {
 			SpriteAnimation anim = animations.get(i);
 			anim.listIndex = i;
-			anim.hasError = false;
 
 			for (int j = 0; j < anim.components.size(); j++) {
 				SpriteComponent comp = anim.components.get(j);
 				comp.listIndex = j;
-
-				//TODO check for broken SetParent/SetRaster/SetPalette errors
-
-				if (comp.hasError)
-					anim.hasError = true;
 			}
-
-			if (anim.hasError)
-				hasError = true;
 		}
 	}
 
@@ -168,8 +144,7 @@ public class Sprite implements XmlSerializable
 		}
 	}
 
-	public File source;
-	private final boolean isPlayerSprite;
+	// duplicated in SpriteMetadata
 	public boolean hasBack;
 
 	public String name = "";
@@ -182,12 +157,9 @@ public class Sprite implements XmlSerializable
 
 	public transient BoundingBox aabb = new BoundingBox();
 
-	public transient boolean modified;
-
-	protected Sprite(SpriteMetadata metadata, SpriteSet set)
+	protected Sprite(SpriteMetadata metadata)
 	{
 		this.metadata = metadata;
-		this.isPlayerSprite = (set == SpriteSet.Player);
 	}
 
 	@Override
@@ -196,20 +168,32 @@ public class Sprite implements XmlSerializable
 		return name.isEmpty() ? "Unnamed" : name;
 	}
 
-	public String getDirectoryName()
+	public AssetHandle getAsset()
 	{
-		return source.getParentFile() + "/";
+		if (metadata.isPlayer)
+			return AssetManager.getPlayerSprite(name);
+		else
+			return AssetManager.getNpcSprite(name);
 	}
 
-	public boolean isPlayerSprite()
+	public AssetHandle getBaseAssetDir()
 	{
-		return isPlayerSprite;
+		if (metadata.isPlayer)
+			return AssetManager.getBase(AssetSubdir.PLR_SPRITE, "");
+		else
+			return AssetManager.getBase(AssetSubdir.NPC_SPRITE, name);
+	}
+
+	public AssetHandle getModAssetDir()
+	{
+		AssetHandle ah = getBaseAssetDir();
+		return AssetManager.getTopLevel(ah);
 	}
 
 	public static Sprite readNpc(SpriteMetadata metadata, File xmlFile, String name)
 	{
 		XmlReader xmr = new XmlReader(xmlFile);
-		Sprite spr = new Sprite(metadata, SpriteSet.Npc);
+		Sprite spr = new Sprite(metadata);
 		spr.name = name;
 		spr.fromXML(xmr, xmr.getRootElement());
 		return spr;
@@ -218,7 +202,7 @@ public class Sprite implements XmlSerializable
 	public static Sprite readPlayer(SpriteMetadata metadata, File xmlFile, String name)
 	{
 		XmlReader xmr = new XmlReader(xmlFile);
-		Sprite spr = new Sprite(metadata, SpriteSet.Player);
+		Sprite spr = new Sprite(metadata);
 		spr.name = name;
 		spr.fromXML(xmr, xmr.getRootElement());
 		return spr;
@@ -268,7 +252,7 @@ public class Sprite implements XmlSerializable
 	@Override
 	public void fromXML(XmlReader xmr, Element spriteElem)
 	{
-		source = xmr.getSourceFile();
+		File source = xmr.getSourceFile();
 
 		// read root attributes
 
@@ -292,7 +276,7 @@ public class Sprite implements XmlSerializable
 			variationNames = xmr.readStringList(spriteElem, ATTR_SPRITE_VARIATIONS);
 		}
 
-		if (isPlayerSprite && xmr.hasAttribute(spriteElem, ATTR_SPRITE_HAS_BACK)) {
+		if (metadata.isPlayer && xmr.hasAttribute(spriteElem, ATTR_SPRITE_HAS_BACK)) {
 			hasBack = xmr.readBoolean(spriteElem, ATTR_SPRITE_HAS_BACK);
 		}
 
@@ -511,10 +495,10 @@ public class Sprite implements XmlSerializable
 	{
 		int count = 0;
 		for (PalAsset asset : palAssets) {
-			if (asset.modified) {
+			if (asset.isModified()) {
 				try {
 					asset.save();
-					asset.modified = false;
+					asset.clearModified();
 					count++;
 				}
 				catch (IOException e) {
@@ -534,7 +518,7 @@ public class Sprite implements XmlSerializable
 	@Override
 	public void toXML(XmlWriter xmw)
 	{
-		revalidate();
+		reindex();
 
 		XmlTag root = xmw.createTag(TAG_SPRITE, false);
 		xmw.addHex(root, ATTR_SPRITE_NUM_COMPONENTS, maxComponents);
@@ -609,13 +593,6 @@ public class Sprite implements XmlSerializable
 		xmw.closeTag(animationsTag);
 
 		xmw.closeTag(root);
-	}
-
-	public void resaveRasters() throws IOException
-	{
-		for (ImgAsset ia : imgAssets) {
-			ia.save();
-		}
 	}
 
 	public void saveChanges()
@@ -754,6 +731,14 @@ public class Sprite implements XmlSerializable
 		animations.get(animationID).step();
 	}
 
+	public static class SpriteRenderingOpts
+	{
+		boolean useBack;
+		boolean enableSelectedHighlight;
+		boolean useSelectShading;
+		boolean useFiltering;
+	}
+
 	// render based on IDs -- these are used by the map editor
 	public void render(ShadingProfile spriteShading, int animationID, int paletteOverride, boolean useBack, boolean useSelectShading,
 		boolean useFiltering)
@@ -773,8 +758,10 @@ public class Sprite implements XmlSerializable
 	public void render(ShadingProfile spriteShading, SpriteAnimation anim, SpritePalette paletteOverride,
 		boolean useBack, boolean enableSelectedHighlight, boolean useSelectShading, boolean useFiltering)
 	{
-		if (!animations.contains(anim))
-			throw new IllegalArgumentException(anim + " does not belong to " + toString());
+		if (!animations.contains(anim)) {
+			Logger.logError(anim + " does not belong to " + toString());
+			return;
+		}
 
 		aabb.clear();
 
@@ -789,11 +776,15 @@ public class Sprite implements XmlSerializable
 	public void render(ShadingProfile spriteShading, SpriteAnimation anim, SpriteComponent comp, SpritePalette paletteOverride,
 		boolean useBack, boolean enableSelectedHighlight, boolean useSelectShading, boolean useFiltering)
 	{
-		if (!animations.contains(anim))
-			throw new IllegalArgumentException(anim + " does not belong to " + toString());
+		if (!animations.contains(anim)) {
+			Logger.logError(anim + " does not belong to " + toString());
+			return;
+		}
 
-		if (!anim.components.contains(comp))
-			throw new IllegalArgumentException(comp + " does not belong to " + anim);
+		if (!anim.components.contains(comp)) {
+			Logger.logError(comp + " does not belong to " + anim);
+			return;
+		}
 
 		aabb.clear();
 
@@ -1280,5 +1271,36 @@ public class Sprite implements XmlSerializable
 			}
 		}
 		System.out.println();
+	}
+
+	private final EditableData editableData = new EditableData(this);
+
+	@Override
+	public EditableData getEditableData()
+	{
+		return editableData;
+	}
+
+	@Override
+	public void addEditableDownstream(List<Editable> downstream)
+	{
+		for (PalAsset asset : palAssets)
+			downstream.add(asset);
+
+		for (SpritePalette pal : palettes)
+			downstream.add(pal);
+
+		for (SpriteRaster img : rasters)
+			downstream.add(img);
+
+		for (SpriteAnimation anim : animations)
+			downstream.add(anim);
+	}
+
+	@Override
+	public String checkErrorMsg()
+	{
+		// no errors for Sprite objects
+		return null;
 	}
 }

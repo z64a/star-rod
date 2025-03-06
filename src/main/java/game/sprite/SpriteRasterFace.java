@@ -48,18 +48,22 @@ public class SpriteRasterFace
 
 	public void loadEditorImages()
 	{
-		if (asset != null && pal != null)
-			preview.load(asset, pal.asset);
-		else
+		if (asset == null || pal == null) {
 			preview.loadMissing();
+		}
+		else {
+			preview.load(asset, pal.asset);
+		}
 	}
 
 	public void loadEditorImages(PalAsset filter)
 	{
-		if (asset != null && pal != null && pal.asset == filter)
-			preview.load(asset, filter);
-		else
+		if (asset == null || pal == null) {
 			preview.loadMissing();
+		}
+		else if (pal.asset == filter) {
+			preview.load(asset, filter);
+		}
 	}
 
 	public void resolve(SpriteAssetCollection<ImgAsset> imgAssets)

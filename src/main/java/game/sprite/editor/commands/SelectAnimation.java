@@ -45,6 +45,9 @@ public class SelectAnimation extends AbstractCommand
 
 		SpriteEditor editor = SpriteEditor.instance();
 		editor.setAnimation(next);
+
+		if (next != null)
+			editor.postEditableError(next);
 	}
 
 	@Override

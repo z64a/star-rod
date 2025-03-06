@@ -1,11 +1,14 @@
 package game.sprite;
 
+import java.util.List;
+
 import game.sprite.SpriteLoader.Indexable;
+import game.sprite.editor.Editable;
 import game.sprite.editor.animators.AnimElement;
 import game.sprite.editor.animators.ComponentAnimator;
 import util.IterableListModel;
 
-public class SpriteAnimation implements Indexable<SpriteAnimation>
+public class SpriteAnimation implements Indexable<SpriteAnimation>, Editable
 {
 	public final Sprite parentSprite;
 
@@ -18,7 +21,6 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 	public transient int animTime;
 
 	public transient boolean deleted;
-	public transient boolean hasError;
 
 	public transient int lastSelectedComp = -1;
 
@@ -197,21 +199,25 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 		}
 	}
 
-	@Deprecated
-	public void cleanDeletedRasters()
+	private final EditableData editableData = new EditableData(this);
+
+	@Override
+	public EditableData getEditableData()
 	{
-		for (int i = 0; i < components.getSize(); i++) {
-			SpriteComponent comp = components.get(i);
-			comp.animator.cleanDeletedRasters();
-		}
+		return editableData;
 	}
 
-	@Deprecated
-	public void cleanDeletedPalettes()
+	@Override
+	public void addEditableDownstream(List<Editable> downstream)
 	{
-		for (int i = 0; i < components.getSize(); i++) {
-			SpriteComponent comp = components.get(i);
-			comp.animator.cleanDeletedPalettes();
-		}
+		for (SpriteComponent comp : components)
+			downstream.add(comp);
+	}
+
+	@Override
+	public String checkErrorMsg()
+	{
+		// no errors for Animation objects
+		return null;
 	}
 }

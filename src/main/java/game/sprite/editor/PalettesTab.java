@@ -1,12 +1,9 @@
 package game.sprite.editor;
 
 import java.awt.Color;
-import java.awt.Desktop;
 import java.awt.Toolkit;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.File;
-import java.io.IOException;
 
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
@@ -46,6 +43,8 @@ public class PalettesTab extends JPanel
 {
 	private JCheckBox cbPreviewPalette;
 	private JSpinner variationsSpinner;
+
+	@Deprecated
 	private JLabel paletteGroupsLabel;
 
 	private JPanel paletteInfoPanel;
@@ -103,6 +102,8 @@ public class PalettesTab extends JPanel
 		palAssetList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		palAssetList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		palAssetList.setCellRenderer(new PalAssetSlicesRenderer());
+
+		editor.registerEditableListener(PalAsset.class, () -> palAssetList.repaint());
 
 		palAssetList.addListSelectionListener((e) -> {
 			if (e.getValueIsAdjusting())
@@ -182,19 +183,6 @@ public class PalettesTab extends JPanel
 			batch.addCommand(new SelectPalette(paletteList, sprite, pal, this::setPalette));
 			SpriteEditor.execute(batch);
 		});
-
-		JButton btnOpen = new JButton("Open Folder");
-		btnOpen.addActionListener((evt) -> {
-			if (sprite == null)
-				return;
-			try {
-				Desktop.getDesktop().open(new File(sprite.getDirectoryName() + "/palettes/"));
-			}
-			catch (IOException e) {
-				Logger.printStackTrace(e);
-			}
-		});
-		SwingUtils.addBorderPadding(btnOpen);
 
 		JButton btnSave = new JButton("Save Changes");
 		btnSave.addActionListener((e) -> {
@@ -342,7 +330,6 @@ public class PalettesTab extends JPanel
 				palAssetList.repaint();
 
 				asset.dirty = true;
-				asset.modified = true;
 			}
 
 			if (!preview)
@@ -372,7 +359,6 @@ public class PalettesTab extends JPanel
 				palAssetList.repaint();
 
 				asset.dirty = true;
-				asset.modified = true;
 			}
 
 			ignoreTextfieldUpdates = true;
@@ -491,6 +477,7 @@ public class PalettesTab extends JPanel
 			asset.stashColors();
 	}
 
+	@Deprecated
 	public void variationCountChanged()
 	{
 		if (sprite == null)
@@ -744,11 +731,15 @@ public class PalettesTab extends JPanel
 		@Override
 		public void exec()
 		{
+			super.exec();
+
 			sprite.numVariations = next;
 
 			suppressCommands = true;
 			variationsSpinner.setValue(next);
 			suppressCommands = false;
+
+			sprite.incrementModified();
 
 			variationCountChanged();
 		}
@@ -756,11 +747,15 @@ public class PalettesTab extends JPanel
 		@Override
 		public void undo()
 		{
+			super.undo();
+
 			sprite.numVariations = prev;
 
 			suppressCommands = true;
 			variationsSpinner.setValue(prev);
 			suppressCommands = false;
+
+			sprite.decrementModified();
 
 			variationCountChanged();
 		}
@@ -788,12 +783,16 @@ public class PalettesTab extends JPanel
 		@Override
 		public void exec()
 		{
+			super.exec();
+
 			setColorModel(next);
 		}
 
 		@Override
 		public void undo()
 		{
+			super.undo();
+
 			setColorModel(prev);
 		}
 	}
@@ -820,12 +819,16 @@ public class PalettesTab extends JPanel
 		@Override
 		public void exec()
 		{
+			super.exec();
+
 			setPaletteIndex(next);
 		}
 
 		@Override
 		public void undo()
 		{
+			super.undo();
+
 			setPaletteIndex(prev);
 		}
 	}
@@ -855,6 +858,8 @@ public class PalettesTab extends JPanel
 		@Override
 		public void exec()
 		{
+			super.exec();
+
 			asset.pal.setColor(index, next);
 			asset.savedColors[index] = next;
 
@@ -871,12 +876,14 @@ public class PalettesTab extends JPanel
 			palAssetList.repaint();
 
 			asset.dirty = true;
-			asset.modified = true;
+			asset.incrementModified();
 		}
 
 		@Override
 		public void undo()
 		{
+			super.undo();
+
 			asset.pal.setColor(index, prev);
 			asset.savedColors[index] = prev;
 
@@ -890,7 +897,7 @@ public class PalettesTab extends JPanel
 			palAssetList.repaint();
 
 			asset.dirty = true;
-			asset.modified = true;
+			asset.decrementModified();
 		}
 	}
 
@@ -926,6 +933,7 @@ public class PalettesTab extends JPanel
 		public void exec()
 		{
 			super.exec();
+
 			checkbox.setSelected(next);
 		}
 
@@ -933,6 +941,7 @@ public class PalettesTab extends JPanel
 		public void undo()
 		{
 			super.undo();
+
 			checkbox.setSelected(prev);
 		}
 	}
