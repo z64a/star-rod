@@ -34,13 +34,13 @@ import util.ui.DragReorderTransferHandle;
 
 public class AnimElementsList<T extends AnimElement> extends DragReorderList<T>
 {
-	private final AnimationEditor parent;
+	private final ComponentAnimationEditor parent;
 
 	private AnimElement clipboard = null;
 
 	public boolean ignoreSelectionChange = false;
 
-	public AnimElementsList(AnimationEditor parent)
+	public AnimElementsList(ComponentAnimationEditor parent)
 	{
 		this.parent = parent;
 
@@ -87,7 +87,7 @@ public class AnimElementsList<T extends AnimElement> extends DragReorderList<T>
 			public void actionPerformed(ActionEvent e)
 			{
 				int i = getSelectedIndex();
-				if (i == -1 || clipboard == null || clipboard.ownerComp != SpriteEditor.instance().getComponent()) {
+				if (i == -1 || clipboard == null || clipboard.owner != SpriteEditor.instance().getComponent()) {
 					Toolkit.getDefaultToolkit().beep();
 					return;
 				}

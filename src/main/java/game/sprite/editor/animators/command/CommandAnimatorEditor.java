@@ -1,4 +1,4 @@
-package game.sprite.editor.animators;
+package game.sprite.editor.animators.command;
 
 import java.awt.Container;
 import java.awt.Dimension;
@@ -42,25 +42,17 @@ import game.sprite.SpritePalette;
 import game.sprite.SpriteRaster;
 import game.sprite.editor.PaletteCellRenderer;
 import game.sprite.editor.SpriteEditor;
-import game.sprite.editor.animators.CommandAnimator.AnimCommand;
-import game.sprite.editor.animators.CommandAnimator.Goto;
-import game.sprite.editor.animators.CommandAnimator.Label;
-import game.sprite.editor.animators.CommandAnimator.Loop;
-import game.sprite.editor.animators.CommandAnimator.SetImage;
-import game.sprite.editor.animators.CommandAnimator.SetNotify;
-import game.sprite.editor.animators.CommandAnimator.SetPalette;
-import game.sprite.editor.animators.CommandAnimator.SetParent;
-import game.sprite.editor.animators.CommandAnimator.SetPosition;
-import game.sprite.editor.animators.CommandAnimator.SetRotation;
-import game.sprite.editor.animators.CommandAnimator.SetScale;
-import game.sprite.editor.animators.CommandAnimator.SetUnknown;
-import game.sprite.editor.animators.CommandAnimator.Wait;
+import game.sprite.editor.animators.AnimElement;
+import game.sprite.editor.animators.AnimElementsList;
+import game.sprite.editor.animators.ComponentAnimationEditor;
+import game.sprite.editor.animators.BlankArrowUI;
+import game.sprite.editor.animators.SpriteRasterRenderer;
 import game.sprite.editor.commands.CreateCommand;
 import net.miginfocom.swing.MigLayout;
 import util.ui.EvenSpinner;
 import util.ui.ListAdapterComboboxModel;
 
-public class CommandAnimatorEditor extends AnimationEditor
+public class CommandAnimatorEditor extends ComponentAnimationEditor
 {
 	private static final String PANEL_LAYOUT_PROPERTIES = "ins 0 10 0 10, wrap";
 
@@ -86,10 +78,10 @@ public class CommandAnimatorEditor extends AnimationEditor
 		commandEditContainer.removeAll();
 		commandEditContainer.add(instance().commandEditPanel, "grow");
 
-		instance().commandList.setModel(animator.commandListModel);
+		instance().commandList.setModel(animator.commands);
 
-		animator.commandListModel.removeListDataListener(instance().commandListListener);
-		animator.commandListModel.addListDataListener(instance().commandListListener);
+		animator.commands.removeListDataListener(instance().commandListListener);
+		animator.commands.addListDataListener(instance().commandListListener);
 	}
 
 	public static void setModels(Sprite sprite)
@@ -160,37 +152,37 @@ public class CommandAnimatorEditor extends AnimationEditor
 		});
 
 		JButton waitBtn = new JButton("Wait");
-		waitBtn.addActionListener((e) -> create(animator.new Wait()));
+		waitBtn.addActionListener((e) -> create(new Wait(animator)));
 
 		JButton imgBtn = new JButton("Raster");
-		imgBtn.addActionListener((e) -> create(animator.new SetImage()));
+		imgBtn.addActionListener((e) -> create(new SetImage(animator)));
 
 		JButton palBtn = new JButton("Palette");
-		palBtn.addActionListener((e) -> create(animator.new SetPalette()));
+		palBtn.addActionListener((e) -> create(new SetPalette(animator)));
 
 		JButton labelBtn = new JButton("Label");
-		labelBtn.addActionListener((e) -> create(animator.new Label()));
+		labelBtn.addActionListener((e) -> create(new Label(animator)));
 
 		JButton gotoBtn = new JButton("Goto");
-		gotoBtn.addActionListener((e) -> create(animator.new Goto()));
+		gotoBtn.addActionListener((e) -> create(new Goto(animator)));
 
 		JButton loopBtn = new JButton("Repeat");
-		loopBtn.addActionListener((e) -> create(animator.new Loop()));
+		loopBtn.addActionListener((e) -> create(new Loop(animator)));
 
 		JButton posBtn = new JButton("Position");
-		posBtn.addActionListener((e) -> create(animator.new SetPosition()));
+		posBtn.addActionListener((e) -> create(new SetPosition(animator)));
 
 		JButton rotBtn = new JButton("Rotation");
-		rotBtn.addActionListener((e) -> create(animator.new SetRotation()));
+		rotBtn.addActionListener((e) -> create(new SetRotation(animator)));
 
 		JButton scaleBtn = new JButton("Scale");
-		scaleBtn.addActionListener((e) -> create(animator.new SetScale()));
+		scaleBtn.addActionListener((e) -> create(new SetScale(animator)));
 
 		JButton parentBtn = new JButton("Parent");
-		parentBtn.addActionListener((e) -> create(animator.new SetParent()));
+		parentBtn.addActionListener((e) -> create(new SetParent(animator)));
 
 		JButton notifyBtn = new JButton("Notify");
-		notifyBtn.addActionListener((e) -> create(animator.new SetNotify()));
+		notifyBtn.addActionListener((e) -> create(new SetNotify(animator)));
 
 		JScrollPane listScrollPane = new JScrollPane(commandList);
 		listScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
@@ -435,7 +427,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				ignoreChanges = false;
 
 				cmd.incrementModified();
-				cmd.ownerComp.calculateTiming();
+				cmd.owner.calculateTiming();
 				repaintCommandList();
 			}
 
@@ -451,7 +443,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				ignoreChanges = false;
 
 				cmd.decrementModified();
-				cmd.ownerComp.calculateTiming();
+				cmd.owner.calculateTiming();
 				repaintCommandList();
 			}
 		}
@@ -548,7 +540,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				ignoreChanges = false;
 
 				cmd.incrementModified();
-				cmd.ownerComp.calculateTiming();
+				cmd.owner.calculateTiming();
 				repaintCommandList();
 			}
 
@@ -564,7 +556,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				ignoreChanges = false;
 
 				cmd.decrementModified();
-				cmd.ownerComp.calculateTiming();
+				cmd.owner.calculateTiming();
 				repaintCommandList();
 			}
 		}
@@ -596,7 +588,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				ignoreChanges = false;
 
 				cmd.incrementModified();
-				cmd.ownerComp.calculateTiming();
+				cmd.owner.calculateTiming();
 				repaintCommandList();
 			}
 
@@ -612,7 +604,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				ignoreChanges = false;
 
 				cmd.decrementModified();
-				cmd.ownerComp.calculateTiming();
+				cmd.owner.calculateTiming();
 				repaintCommandList();
 			}
 		}
@@ -691,7 +683,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				ignoreChanges = false;
 
 				cmd.incrementModified();
-				cmd.ownerComp.calculateTiming();
+				cmd.owner.calculateTiming();
 				repaintCommandList();
 			}
 
@@ -707,7 +699,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				ignoreChanges = false;
 
 				cmd.decrementModified();
-				cmd.ownerComp.calculateTiming();
+				cmd.owner.calculateTiming();
 				repaintCommandList();
 			}
 		}
@@ -752,7 +744,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 			SwingUtils.addBorderPadding(btnChoose);
 
 			btnChoose.addActionListener((e) -> {
-				Sprite sprite = cmd.ownerComp.parentAnimation.parentSprite;
+				Sprite sprite = cmd.owner.parentAnimation.parentSprite;
 				SpriteRaster raster = SpriteEditor.instance().promptForRaster(sprite);
 				if (raster != null)
 					SpriteEditor.execute(new SetCommandImage(cmd, raster));
@@ -961,7 +953,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 				SpriteComponent comp = (SpriteComponent) componentComboBox.getSelectedItem();
 				SpriteEditor.execute(new SetCommandParent(cmd, comp));
 
-				cmd.comp = (SpriteComponent) componentComboBox.getSelectedItem();
+				cmd.parent = (SpriteComponent) componentComboBox.getSelectedItem();
 				repaintCommandList();
 			});
 
@@ -972,11 +964,11 @@ public class CommandAnimatorEditor extends AnimationEditor
 		protected void bind(SetParent cmd)
 		{
 			this.cmd = cmd;
-			SpriteAnimation anim = cmd.ownerComp.parentAnimation;
+			SpriteAnimation anim = cmd.owner.parentAnimation;
 
 			ignoreChanges = true;
 			componentComboBox.setModel(new ListAdapterComboboxModel<>(anim.components));
-			componentComboBox.setSelectedItem(cmd.comp);
+			componentComboBox.setSelectedItem(cmd.parent);
 			ignoreChanges = false;
 		}
 
@@ -992,7 +984,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 
 				this.cmd = cmd;
 				this.next = next;
-				this.prev = cmd.comp;
+				this.prev = cmd.parent;
 			}
 
 			@Override
@@ -1000,7 +992,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 			{
 				super.exec();
 
-				cmd.comp = next;
+				cmd.parent = next;
 
 				ignoreChanges = true;
 				componentComboBox.setSelectedItem(next);
@@ -1015,7 +1007,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 			{
 				super.undo();
 
-				cmd.comp = prev;
+				cmd.parent = prev;
 
 				ignoreChanges = true;
 				componentComboBox.setSelectedItem(prev);
@@ -1027,7 +1019,7 @@ public class CommandAnimatorEditor extends AnimationEditor
 		}
 	}
 
-	protected static class SetNotifyPanel extends JPanel
+	public static class SetNotifyPanel extends JPanel
 	{
 		private static SetNotifyPanel instance;
 		private SetNotify cmd;

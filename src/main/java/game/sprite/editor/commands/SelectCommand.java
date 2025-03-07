@@ -3,17 +3,17 @@ package game.sprite.editor.commands;
 import common.commands.AbstractCommand;
 import game.sprite.editor.animators.AnimElement;
 import game.sprite.editor.animators.AnimElementsList;
-import game.sprite.editor.animators.AnimationEditor;
+import game.sprite.editor.animators.ComponentAnimationEditor;
 
 public class SelectCommand extends AbstractCommand
 {
-	private final AnimationEditor parent;
+	private final ComponentAnimationEditor parent;
 	private final AnimElementsList<AnimElement> list;
 	private final AnimElement prev;
 	private final AnimElement next;
 
 	@SuppressWarnings("unchecked")
-	public SelectCommand(AnimElementsList<? extends AnimElement> list, AnimationEditor parent, AnimElement cmd)
+	public SelectCommand(AnimElementsList<? extends AnimElement> list, ComponentAnimationEditor parent, AnimElement cmd)
 	{
 		super(cmd == null ? "Deselect Command" : "Select " + cmd.getName());
 

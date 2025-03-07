@@ -22,9 +22,11 @@ import game.sprite.SpriteLoader.Indexable;
 import game.sprite.editor.Editable;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.AnimElement;
-import game.sprite.editor.animators.CommandAnimator;
 import game.sprite.editor.animators.ComponentAnimator;
-import game.sprite.editor.animators.KeyframeAnimator;
+import game.sprite.editor.animators.command.AnimCommand;
+import game.sprite.editor.animators.command.CommandAnimator;
+import game.sprite.editor.animators.keyframe.AnimKeyframe;
+import game.sprite.editor.animators.keyframe.KeyframeAnimator;
 import game.texture.Palette;
 import renderer.buffers.LineRenderQueue;
 import renderer.shaders.RenderState;
@@ -63,6 +65,8 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	public SpritePalette sp = null;
 	public SpriteComponent parent = null;
 	public int parentType;
+
+	@Deprecated
 	public int keyframeCount; // how many 'keyframes' have we gone through
 	private int frameCount;
 	public boolean complete;
@@ -419,8 +423,8 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		if (usesKeyframes)
 			return;
 
-		RawAnimation rawAnim = cmdAnimator.getCommandList();
-		keyframeAnimator.generate(rawAnim);
+		List<AnimKeyframe> keyframes = cmdAnimator.toKeyframes(keyframeAnimator);
+		keyframeAnimator.useKeyframes(keyframes);
 
 		animator = keyframeAnimator;
 		usesKeyframes = true;
@@ -431,8 +435,8 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		if (!usesKeyframes)
 			return;
 
-		RawAnimation rawAnim = keyframeAnimator.getCommandList();
-		cmdAnimator.generate(rawAnim);
+		List<AnimCommand> commands = keyframeAnimator.toCommands(cmdAnimator);
+		cmdAnimator.useCommands(commands);
 
 		animator = cmdAnimator;
 		usesKeyframes = false;
@@ -446,7 +450,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	public void validateGenerators()
 	{
 		List<Short> originalCommandList = new ArrayList<>(rawAnim);
-		cmdAnimator.generate(rawAnim);
+		cmdAnimator.generateFrom(rawAnim);
 		List<Short> cmdCommands = cmdAnimator.getCommandList();
 
 		// commands should ALWAYS be faithful to the original sequence
@@ -475,7 +479,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 
 	public void generate()
 	{
-		animator.generate(rawAnim);
+		animator.generateFrom(rawAnim);
 	}
 
 	public void bind(SpriteEditor editor, Container commandListContainer, Container commandEditContainer)
@@ -665,11 +669,11 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	public void addEditableDownstream(List<Editable> downstream)
 	{
 		if (usesKeyframes) {
-			for (AnimElement e : keyframeAnimator.keyframeListModel)
+			for (AnimElement e : keyframeAnimator.keyframes)
 				downstream.add(e);
 		}
 		else {
-			for (AnimElement e : cmdAnimator.commandListModel)
+			for (AnimElement e : cmdAnimator.commands)
 				downstream.add(e);
 		}
 	}

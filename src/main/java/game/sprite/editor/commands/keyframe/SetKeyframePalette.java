@@ -2,7 +2,7 @@ package game.sprite.editor.commands.keyframe;
 
 import common.commands.AbstractCommand;
 import game.sprite.SpritePalette;
-import game.sprite.editor.animators.KeyframeAnimator.Keyframe;
+import game.sprite.editor.animators.keyframe.Keyframe;
 
 public class SetKeyframePalette extends AbstractCommand
 {

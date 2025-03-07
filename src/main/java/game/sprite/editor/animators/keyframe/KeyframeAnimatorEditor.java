@@ -1,4 +1,4 @@
-package game.sprite.editor.animators;
+package game.sprite.editor.animators.keyframe;
 
 import java.awt.Container;
 import java.awt.Dimension;
@@ -23,27 +23,24 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
 import app.SwingUtils;
+import common.commands.AbstractCommand;
 import game.sprite.Sprite;
 import game.sprite.SpriteAnimation;
 import game.sprite.SpriteComponent;
 import game.sprite.SpritePalette;
 import game.sprite.SpriteRaster;
-import game.sprite.editor.PaletteCellRenderer;
 import game.sprite.editor.SpriteEditor;
-import game.sprite.editor.animators.KeyframeAnimator.AnimKeyframe;
-import game.sprite.editor.animators.KeyframeAnimator.Goto;
-import game.sprite.editor.animators.KeyframeAnimator.Keyframe;
-import game.sprite.editor.animators.KeyframeAnimator.Loop;
+import game.sprite.editor.animators.AnimElement;
+import game.sprite.editor.animators.AnimElementsList;
+import game.sprite.editor.animators.BlankArrowUI;
+import game.sprite.editor.animators.ComponentAnimationEditor;
+import game.sprite.editor.animators.SpriteRasterRenderer;
 import game.sprite.editor.commands.CreateCommand;
 import game.sprite.editor.commands.keyframe.SetKeyframeDuration;
-import game.sprite.editor.commands.keyframe.SetKeyframeEnableNotify;
 import game.sprite.editor.commands.keyframe.SetKeyframeEnablePalette;
-import game.sprite.editor.commands.keyframe.SetKeyframeEnableParent;
 import game.sprite.editor.commands.keyframe.SetKeyframeEnableRaster;
 import game.sprite.editor.commands.keyframe.SetKeyframeName;
-import game.sprite.editor.commands.keyframe.SetKeyframeNotify;
 import game.sprite.editor.commands.keyframe.SetKeyframePalette;
-import game.sprite.editor.commands.keyframe.SetKeyframeParent;
 import game.sprite.editor.commands.keyframe.SetKeyframePosition;
 import game.sprite.editor.commands.keyframe.SetKeyframeRaster;
 import game.sprite.editor.commands.keyframe.SetKeyframeRotation;
@@ -53,7 +50,7 @@ import util.ui.EvenSpinner;
 import util.ui.ListAdapterComboboxModel;
 import util.ui.NameTextField;
 
-public class KeyframeAnimatorEditor extends AnimationEditor
+public class KeyframeAnimatorEditor extends ComponentAnimationEditor
 {
 	private static final String PANEL_LAYOUT_PROPERTIES = "ins 0 10 0 10, wrap";
 
@@ -81,10 +78,10 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 		commandEditContainer.removeAll();
 		commandEditContainer.add(instance().commandEditPanel, "grow");
 
-		instance().commandList.setModel(animator.keyframeListModel);
+		instance().commandList.setModel(animator.keyframes);
 
-		animator.keyframeListModel.removeListDataListener(instance().commandListListener);
-		animator.keyframeListModel.addListDataListener(instance().commandListListener);
+		animator.keyframes.removeListDataListener(instance().commandListListener);
+		animator.keyframes.addListDataListener(instance().commandListListener);
 	}
 
 	public static void setModels(Sprite sprite)
@@ -154,13 +151,19 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 		});
 
 		JButton newBtn = new JButton("Keyframe");
-		newBtn.addActionListener((e) -> create(animator.new Keyframe()));
+		newBtn.addActionListener((e) -> create(new Keyframe(animator)));
 
 		JButton repeatBtn = new JButton("Repeat");
-		repeatBtn.addActionListener((e) -> create(animator.new Loop(null, 3)));
+		repeatBtn.addActionListener((e) -> create(new LoopKey(animator, (Keyframe) null, 3)));
 
 		JButton gotoBtn = new JButton("Goto");
-		gotoBtn.addActionListener((e) -> create(animator.new Goto(null)));
+		gotoBtn.addActionListener((e) -> create(new GotoKey(animator, (Keyframe) null)));
+
+		JButton parentBtn = new JButton("Parent");
+		parentBtn.addActionListener((e) -> create(new ParentKey(animator, (SpriteComponent) null)));
+
+		JButton notifyBtn = new JButton("Notify");
+		notifyBtn.addActionListener((e) -> create(new NotifyKey(animator, 1)));
 
 		JScrollPane listScrollPane = new JScrollPane(commandList);
 		listScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
@@ -171,26 +174,25 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 		commandListPanel.add(newBtn, "growx");
 		commandListPanel.add(repeatBtn, "growx");
 		commandListPanel.add(gotoBtn, "growx");
+		commandListPanel.add(parentBtn, "growx");
+		commandListPanel.add(notifyBtn, "growx");
 
 		commandListListener = new ListDataListener() {
 			@Override
 			public void contentsChanged(ListDataEvent e)
 			{
-				animator.recalculateLinks();
 				animator.resetAnimation();
 			}
 
 			@Override
 			public void intervalAdded(ListDataEvent e)
 			{
-				animator.recalculateLinks();
 				animator.resetAnimation();
 			}
 
 			@Override
 			public void intervalRemoved(ListDataEvent e)
 			{
-				animator.recalculateLinks();
 				animator.resetAnimation();
 			}
 		};
@@ -234,7 +236,7 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 	protected static class GotoPanel extends JPanel
 	{
 		private static GotoPanel instance;
-		private Goto cmd;
+		private GotoKey cmd;
 
 		private JComboBox<Keyframe> keyframeComboBox;
 
@@ -265,7 +267,7 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 
 		private boolean ignoreChanges = false;
 
-		protected void set(Goto cmd, DefaultListModel<AnimKeyframe> animKeyframes)
+		protected void set(GotoKey cmd, DefaultListModel<AnimKeyframe> animKeyframes)
 		{
 			this.cmd = cmd;
 
@@ -286,7 +288,7 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 	protected static class LoopPanel extends JPanel
 	{
 		private static LoopPanel instance;
-		private Loop cmd;
+		private LoopKey cmd;
 
 		private JComboBox<Keyframe> keyframeComboBox;
 		private JSpinner countSpinner;
@@ -329,7 +331,7 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 
 		private boolean ignoreChanges = false;
 
-		protected void set(Loop cmd, DefaultListModel<AnimKeyframe> animKeyframes)
+		protected void set(LoopKey cmd, DefaultListModel<AnimKeyframe> animKeyframes)
 		{
 			this.cmd = cmd;
 
@@ -349,6 +351,193 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 		}
 	}
 
+	protected static class SetParentPanel extends JPanel
+	{
+		private static SetParentPanel instance;
+		private ParentKey cmd;
+
+		private JComboBox<SpriteComponent> componentComboBox;
+		private boolean ignoreChanges = false;
+
+		protected static SetParentPanel instance()
+		{
+			if (instance == null)
+				instance = new SetParentPanel();
+			return instance;
+		}
+
+		private SetParentPanel()
+		{
+			super(new MigLayout(PANEL_LAYOUT_PROPERTIES));
+
+			componentComboBox = new JComboBox<>();
+			SwingUtils.setFontSize(componentComboBox, 14);
+			componentComboBox.setMaximumRowCount(24);
+			componentComboBox.addActionListener((e) -> {
+				if (ignoreChanges)
+					return;
+
+				SpriteComponent comp = (SpriteComponent) componentComboBox.getSelectedItem();
+				SpriteEditor.execute(new SetKeyframeParent(cmd, comp));
+
+				cmd.parent = (SpriteComponent) componentComboBox.getSelectedItem();
+				repaintCommandList();
+			});
+
+			add(SwingUtils.getLabel("Set Parent", 14), "gapbottom 4");
+			add(componentComboBox, "growx, pushx");
+		}
+
+		protected void bind(ParentKey cmd)
+		{
+			this.cmd = cmd;
+			SpriteAnimation anim = cmd.owner.parentAnimation;
+
+			ignoreChanges = true;
+			componentComboBox.setModel(new ListAdapterComboboxModel<>(anim.components));
+			componentComboBox.setSelectedItem(cmd.parent);
+			ignoreChanges = false;
+		}
+
+		public class SetKeyframeParent extends AbstractCommand
+		{
+			private final ParentKey cmd;
+			private final SpriteComponent next;
+			private final SpriteComponent prev;
+
+			public SetKeyframeParent(ParentKey cmd, SpriteComponent next)
+			{
+				super("Set Parent");
+
+				this.cmd = cmd;
+				this.next = next;
+				this.prev = cmd.parent;
+			}
+
+			@Override
+			public void exec()
+			{
+				super.exec();
+
+				cmd.parent = next;
+
+				ignoreChanges = true;
+				componentComboBox.setSelectedItem(next);
+				ignoreChanges = false;
+
+				cmd.incrementModified();
+				repaintCommandList();
+			}
+
+			@Override
+			public void undo()
+			{
+				super.undo();
+
+				cmd.parent = prev;
+
+				ignoreChanges = true;
+				componentComboBox.setSelectedItem(prev);
+				ignoreChanges = false;
+
+				cmd.decrementModified();
+				repaintCommandList();
+			}
+		}
+	}
+
+	protected static class SetNotifyPanel extends JPanel
+	{
+		private static SetNotifyPanel instance;
+		private NotifyKey cmd;
+
+		private JSpinner valueSpinner;
+		private boolean ignoreChanges = false;
+
+		protected static SetNotifyPanel instance()
+		{
+			if (instance == null)
+				instance = new SetNotifyPanel();
+			return instance;
+		}
+
+		private SetNotifyPanel()
+		{
+			super(new MigLayout(PANEL_LAYOUT_PROPERTIES));
+
+			valueSpinner = new JSpinner();
+			valueSpinner.setModel(new SpinnerNumberModel(0, 0, 255, 1));
+			valueSpinner.addChangeListener((e) -> {
+				if (ignoreChanges)
+					return;
+
+				SpriteEditor.execute(new SetKeyframeNotify(cmd, (int) valueSpinner.getValue()));
+			});
+
+			SwingUtils.setFontSize(valueSpinner, 12);
+			SwingUtils.centerSpinnerText(valueSpinner);
+			SwingUtils.addBorderPadding(valueSpinner);
+
+			add(SwingUtils.getLabel("Set Notify", 14), "gapbottom 4");
+			add(valueSpinner, "w 30%!");
+		}
+
+		protected void bind(NotifyKey cmd)
+		{
+			this.cmd = cmd;
+
+			ignoreChanges = true;
+			valueSpinner.setValue(cmd.value);
+			ignoreChanges = false;
+		}
+
+		public class SetKeyframeNotify extends AbstractCommand
+		{
+			private final NotifyKey cmd;
+			private final int next;
+			private final int prev;
+
+			public SetKeyframeNotify(NotifyKey cmd, int next)
+			{
+				super("Set Notify");
+
+				this.cmd = cmd;
+				this.next = next;
+				this.prev = cmd.value;
+			}
+
+			@Override
+			public void exec()
+			{
+				super.exec();
+
+				cmd.value = next;
+
+				ignoreChanges = true;
+				valueSpinner.setValue(next);
+				ignoreChanges = false;
+
+				cmd.incrementModified();
+				repaintCommandList();
+			}
+
+			@Override
+			public void undo()
+			{
+				super.undo();
+
+				cmd.value = prev;
+
+				ignoreChanges = true;
+				valueSpinner.setValue(prev);
+				ignoreChanges = false;
+
+				cmd.decrementModified();
+				repaintCommandList();
+			}
+		}
+	}
+
 	protected static class KeyframePanel extends JPanel
 	{
 		private static KeyframePanel instance;
@@ -360,19 +549,15 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 
 		private JSpinner timeSpinner;
 
-		private JCheckBox cbEnableImg, cbEnablePal, cbEnableParent, cbEnableNotify;
-
-		private JButton btnChoose;
-		private JButton btnClear;
-
+		private JCheckBox cbEnableImg, cbEnablePal;
 		private JComboBox<SpriteRaster> imageComboBox;
 		private JComboBox<SpritePalette> paletteComboBox;
-		private JComboBox<SpriteComponent> componentComboBox;
+
+		private JButton btnChoose, btnClear;
 
 		private JSpinner dxSpinner, dySpinner, dzSpinner;
 		private JSpinner rxSpinner, rySpinner, rzSpinner;
 		private JSpinner sxSpinner, sySpinner, szSpinner;
-		private JSpinner notifySpinner;
 
 		protected static KeyframePanel instance()
 		{
@@ -425,7 +610,7 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			SwingUtils.addBorderPadding(btnChoose);
 
 			btnChoose.addActionListener((e) -> {
-				Sprite sprite = cmd.ownerComp.parentAnimation.parentSprite;
+				Sprite sprite = cmd.owner.parentAnimation.parentSprite;
 				SpriteRaster raster = SpriteEditor.instance().promptForRaster(sprite);
 				if (raster != null)
 					SpriteEditor.execute(new SetKeyframeRaster(cmd, raster, this::editCallback));
@@ -447,7 +632,7 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			paletteComboBox = new JComboBox<>();
 			SwingUtils.setFontSize(paletteComboBox, 14);
 			paletteComboBox.setMaximumRowCount(24);
-			paletteComboBox.setRenderer(new PaletteCellRenderer("Use Raster Default"));
+			//	paletteComboBox.setRenderer(new PaletteCellRenderer("Use Raster Default"));
 			paletteComboBox.addActionListener((e) -> {
 				if (!ignoreChanges) {
 					SpritePalette newValue = (SpritePalette) paletteComboBox.getSelectedItem();
@@ -459,40 +644,6 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			cbEnablePal.addActionListener((e) -> {
 				boolean value = cbEnablePal.isSelected();
 				SpriteEditor.execute(new SetKeyframeEnablePalette(cmd, value, this::editCallback));
-			});
-
-			componentComboBox = new JComboBox<>();
-			SwingUtils.setFontSize(componentComboBox, 14);
-			componentComboBox.setMaximumRowCount(24);
-			componentComboBox.addActionListener((e) -> {
-				if (!ignoreChanges) {
-					SpriteComponent newValue = (SpriteComponent) componentComboBox.getSelectedItem();
-					SpriteEditor.execute(new SetKeyframeParent(cmd, newValue, this::editCallback));
-				}
-			});
-
-			cbEnableParent = new JCheckBox(" Parent");
-			cbEnableParent.addActionListener((e) -> {
-				boolean value = cbEnableParent.isSelected();
-				SpriteEditor.execute(new SetKeyframeEnableParent(cmd, value, this::editCallback));
-			});
-
-			notifySpinner = new JSpinner();
-			SwingUtils.setFontSize(notifySpinner, 12);
-			notifySpinner.setModel(new SpinnerNumberModel(0, 0, 255, 1));
-			notifySpinner.addChangeListener((e) -> {
-				if (!ignoreChanges) {
-					int value = (int) notifySpinner.getValue();
-					SpriteEditor.execute(new SetKeyframeNotify(cmd, value, this::editCallback));
-				}
-			});
-			SwingUtils.centerSpinnerText(notifySpinner);
-			SwingUtils.addBorderPadding(notifySpinner);
-
-			cbEnableNotify = new JCheckBox(" Notify");
-			cbEnableNotify.addActionListener((e) -> {
-				boolean value = cbEnableNotify.isSelected();
-				SpriteEditor.execute(new SetKeyframeEnableNotify(cmd, value, this::editCallback));
 			});
 
 			dxSpinner = new JSpinner();
@@ -642,12 +793,6 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			add(cbEnablePal, "gaptop 2, top");
 			add(paletteComboBox, "growx");
 
-			add(cbEnableParent, "gaptop 2, top");
-			add(componentComboBox, "growx");
-
-			add(cbEnableNotify, "sg lbl, gaptop 2, top");
-			add(notifySpinner, "w 25%");
-
 			add(spinPanel, "growx, span, gaptop 8");
 		}
 
@@ -670,23 +815,6 @@ public class KeyframeAnimatorEditor extends AnimationEditor
 			paletteComboBox.setSelectedItem(cmd.pal);
 			paletteComboBox.setEnabled(cmd.setPalette);
 			cbEnablePal.setSelected(cmd.setPalette);
-
-			SpriteAnimation anim = cmd.ownerComp.parentAnimation;
-
-			DefaultComboBoxModel<SpriteComponent> componentModel = new DefaultComboBoxModel<>();
-			for (int i = 0; i < anim.components.size(); i++) {
-				SpriteComponent comp = anim.components.get(i);
-				componentModel.addElement(comp);
-			}
-			componentComboBox.setModel(componentModel);
-			componentComboBox.setSelectedItem(cmd.parentComp);
-
-			componentComboBox.setEnabled(cmd.setParent);
-			cbEnableParent.setSelected(cmd.setParent);
-
-			notifySpinner.setValue(cmd.notifyValue);
-			notifySpinner.setEnabled(cmd.setNotify);
-			cbEnableNotify.setSelected(cmd.setNotify);
 
 			dxSpinner.setValue(cmd.dx);
 			dySpinner.setValue(cmd.dy);

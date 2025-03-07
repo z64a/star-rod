@@ -38,8 +38,8 @@ public class CreateCommand extends AbstractCommand
 		super.exec();
 
 		model.add(pos, cmd);
-		cmd.ownerComp.calculateTiming();
-		cmd.ownerComp.incrementModified();
+		cmd.owner.calculateTiming();
+		cmd.owner.incrementModified();
 	}
 
 	@Override
@@ -48,7 +48,7 @@ public class CreateCommand extends AbstractCommand
 		super.undo();
 
 		model.remove(pos);
-		cmd.ownerComp.calculateTiming();
-		cmd.ownerComp.decrementModified();
+		cmd.owner.calculateTiming();
+		cmd.owner.decrementModified();
 	}
 }

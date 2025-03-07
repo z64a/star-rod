@@ -10,6 +10,7 @@ import game.sprite.SpriteLoader;
 import game.sprite.SpriteLoader.SpriteMetadata;
 import game.sprite.SpriteLoader.SpriteSet;
 
+@Deprecated
 public abstract class ConversionTester
 {
 	public static void main(String[] args)

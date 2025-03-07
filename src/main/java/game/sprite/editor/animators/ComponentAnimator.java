@@ -7,7 +7,7 @@ import game.sprite.editor.SpriteEditor;
 
 public interface ComponentAnimator
 {
-	public boolean generate(RawAnimation rawAnim);
+	public boolean generateFrom(RawAnimation rawAnim);
 
 	public RawAnimation getCommandList();
 

@@ -1267,7 +1267,7 @@ public class Sprite implements XmlSerializable, Editable
 				}
 				System.out.println();
 
-				comp.animator.generate(sequence);
+				comp.animator.generateFrom(sequence);
 			}
 		}
 		System.out.println();

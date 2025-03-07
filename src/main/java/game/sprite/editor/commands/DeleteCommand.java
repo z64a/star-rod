@@ -29,8 +29,8 @@ public class DeleteCommand extends AbstractCommand
 		super.exec();
 
 		model.remove(pos);
-		cmd.ownerComp.calculateTiming();
-		cmd.ownerComp.incrementModified();
+		cmd.owner.calculateTiming();
+		cmd.owner.incrementModified();
 	}
 
 	@Override
@@ -39,7 +39,7 @@ public class DeleteCommand extends AbstractCommand
 		super.undo();
 
 		model.add(pos, cmd);
-		cmd.ownerComp.calculateTiming();
-		cmd.ownerComp.decrementModified();
+		cmd.owner.calculateTiming();
+		cmd.owner.decrementModified();
 	}
 }

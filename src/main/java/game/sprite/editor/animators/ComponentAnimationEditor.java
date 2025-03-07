@@ -1,6 +1,6 @@
 package game.sprite.editor.animators;
 
-public abstract class AnimationEditor
+public abstract class ComponentAnimationEditor
 {
 	public abstract AnimElement getSelected();
 

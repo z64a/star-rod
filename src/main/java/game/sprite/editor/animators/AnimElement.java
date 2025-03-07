@@ -10,18 +10,31 @@ import game.sprite.editor.Editable;
 
 public abstract class AnimElement implements Editable
 {
-	public final SpriteComponent ownerComp;
-	protected boolean highlighted = false;
+	public static enum AdvanceResult
+	{
+		BLOCK, NEXT, JUMP
+	}
+
+	public final SpriteComponent owner;
+	public boolean highlighted = false;
 
 	// first occurance frame of this element during animation playback
 	public int animTime = -1;
 
 	public AnimElement(SpriteComponent c)
 	{
-		this.ownerComp = c;
+		this.owner = c;
 	}
 
 	public abstract AnimElement copy();
+
+	/**
+	 * Perform the action for a single command
+	 * @return AdvanceResult indicating how to handle advancing the next command
+	 */
+	public abstract AdvanceResult apply();
+
+	public abstract Component getPanel();
 
 	public abstract String getName();
 
@@ -33,11 +46,6 @@ public abstract class AnimElement implements Editable
 		else
 			return null;
 	}
-
-	// returns TRUE if the next keyframe should be executed
-	public abstract boolean advance();
-
-	public abstract Component getPanel();
 
 	private final EditableData editableData = new EditableData(this);
 
