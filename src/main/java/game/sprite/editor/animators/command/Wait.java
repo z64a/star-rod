@@ -4,9 +4,15 @@ import java.awt.Color;
 import java.awt.Component;
 import java.util.List;
 
+import javax.swing.JPanel;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
+
 import app.SwingUtils;
+import common.commands.AbstractCommand;
 import game.sprite.editor.SpriteEditor;
-import game.sprite.editor.animators.command.CommandAnimatorEditor.WaitPanel;
+import net.miginfocom.swing.MigLayout;
+import util.ui.EvenSpinner;
 
 //0VVV
 public class Wait extends AnimCommand
@@ -95,5 +101,98 @@ public class Wait extends AnimCommand
 			return "Wait Command: invalid duration";
 
 		return null;
+	}
+
+	private static class WaitPanel extends JPanel
+	{
+		private static WaitPanel instance;
+		private Wait cmd;
+
+		private JSpinner countSpinner;
+		private boolean ignoreChanges = false;
+
+		private static WaitPanel instance()
+		{
+			if (instance == null)
+				instance = new WaitPanel();
+			return instance;
+		}
+
+		private WaitPanel()
+		{
+			super(new MigLayout(CommandAnimatorEditor.PANEL_LAYOUT_PROPERTIES));
+
+			countSpinner = new EvenSpinner();
+			countSpinner.setModel(new SpinnerNumberModel(1, 0, 300, 1)); // longest used = 260
+			countSpinner.addChangeListener((e) -> {
+				if (!ignoreChanges)
+					SpriteEditor.execute(new SetCommandWaitDelay(cmd, (int) countSpinner.getValue()));
+			});
+
+			SwingUtils.setFontSize(countSpinner, 12);
+			SwingUtils.centerSpinnerText(countSpinner);
+			SwingUtils.addBorderPadding(countSpinner);
+
+			add(SwingUtils.getLabel("Wait Duration", 14), "gapbottom 4");
+			add(countSpinner, "w 30%, split 2");
+			add(SwingUtils.getLabel(" frames", 12));
+		}
+
+		private void bind(Wait cmd)
+		{
+			this.cmd = cmd;
+
+			ignoreChanges = true;
+			countSpinner.setValue(cmd.count);
+			ignoreChanges = false;
+		}
+
+		private class SetCommandWaitDelay extends AbstractCommand
+		{
+			private final Wait cmd;
+			private final int next;
+			private final int prev;
+
+			private SetCommandWaitDelay(Wait cmd, int next)
+			{
+				super("Set Wait Delay");
+
+				this.cmd = cmd;
+				this.next = next;
+				this.prev = cmd.count;
+			}
+
+			@Override
+			public void exec()
+			{
+				super.exec();
+
+				cmd.count = next;
+
+				ignoreChanges = true;
+				countSpinner.setValue(next);
+				ignoreChanges = false;
+
+				cmd.incrementModified();
+				cmd.owner.calculateTiming();
+				CommandAnimatorEditor.repaintCommandList();
+			}
+
+			@Override
+			public void undo()
+			{
+				super.undo();
+
+				cmd.count = prev;
+
+				ignoreChanges = true;
+				countSpinner.setValue(prev);
+				ignoreChanges = false;
+
+				cmd.decrementModified();
+				cmd.owner.calculateTiming();
+				CommandAnimatorEditor.repaintCommandList();
+			}
+		}
 	}
 }

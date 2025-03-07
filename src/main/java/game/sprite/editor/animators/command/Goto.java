@@ -4,9 +4,16 @@ import java.awt.Color;
 import java.awt.Component;
 import java.util.List;
 
+import javax.swing.DefaultListModel;
+import javax.swing.JComboBox;
+import javax.swing.JPanel;
+
 import app.SwingUtils;
-import game.sprite.editor.animators.command.CommandAnimatorEditor.GotoPanel;
+import common.commands.AbstractCommand;
+import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.keyframe.Keyframe;
+import net.miginfocom.swing.MigLayout;
+import util.ui.ListAdapterComboboxModel;
 
 //2VVV
 // goto -- jump to another position in the list
@@ -125,5 +132,98 @@ public class Goto extends AnimCommand
 			return "Goto Command: missing label";
 
 		return null;
+	}
+
+	private static class GotoPanel extends JPanel
+	{
+		private static GotoPanel instance;
+		private Goto cmd;
+
+		private JComboBox<Label> labelComboBox;
+		private boolean ignoreChanges = false;
+
+		private static GotoPanel instance()
+		{
+			if (instance == null)
+				instance = new GotoPanel();
+			return instance;
+		}
+
+		private GotoPanel()
+		{
+			super(new MigLayout(CommandAnimatorEditor.PANEL_LAYOUT_PROPERTIES));
+
+			labelComboBox = new JComboBox<>();
+			SwingUtils.setFontSize(labelComboBox, 14);
+			labelComboBox.setMaximumRowCount(16);
+			labelComboBox.addActionListener((e) -> {
+				if (!ignoreChanges) {
+					Label label = (Label) labelComboBox.getSelectedItem();
+					SpriteEditor.execute(new SetCommandGotoLabel(cmd, label));
+				}
+			});
+
+			add(SwingUtils.getLabel("Goto Label", 14), "gapbottom 4");
+			add(labelComboBox, "growx, pushx");
+		}
+
+		private void bind(Goto cmd, DefaultListModel<Label> labels)
+		{
+			this.cmd = cmd;
+
+			//TODO could be a problem when labels are deleted!
+			ignoreChanges = true;
+			labelComboBox.setModel(new ListAdapterComboboxModel<>(labels));
+			labelComboBox.setSelectedItem(cmd.label);
+			ignoreChanges = false;
+		}
+
+		private class SetCommandGotoLabel extends AbstractCommand
+		{
+			private final Goto cmd;
+			private final Label next;
+			private final Label prev;
+
+			private SetCommandGotoLabel(Goto cmd, Label next)
+			{
+				super("Set Goto Label");
+
+				this.cmd = cmd;
+				this.next = next;
+				this.prev = cmd.label;
+			}
+
+			@Override
+			public void exec()
+			{
+				super.exec();
+
+				cmd.label = next;
+
+				ignoreChanges = true;
+				labelComboBox.setSelectedItem(next);
+				ignoreChanges = false;
+
+				cmd.incrementModified();
+				cmd.owner.calculateTiming();
+				CommandAnimatorEditor.repaintCommandList();
+			}
+
+			@Override
+			public void undo()
+			{
+				super.undo();
+
+				cmd.label = prev;
+
+				ignoreChanges = true;
+				labelComboBox.setSelectedItem(prev);
+				ignoreChanges = false;
+
+				cmd.decrementModified();
+				cmd.owner.calculateTiming();
+				CommandAnimatorEditor.repaintCommandList();
+			}
+		}
 	}
 }

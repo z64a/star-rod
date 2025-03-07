@@ -4,8 +4,14 @@ import java.awt.Color;
 import java.awt.Component;
 import java.util.List;
 
+import javax.swing.JPanel;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
+
 import app.SwingUtils;
-import game.sprite.editor.animators.command.CommandAnimatorEditor.SetNotifyPanel;
+import common.commands.AbstractCommand;
+import game.sprite.editor.SpriteEditor;
+import net.miginfocom.swing.MigLayout;
 
 //82VV
 public class SetNotify extends AnimCommand
@@ -76,5 +82,95 @@ public class SetNotify extends AnimCommand
 	public void addTo(List<Short> seq)
 	{
 		seq.add((short) (0x8200 | (value & 0xFF)));
+	}
+
+	private static class SetNotifyPanel extends JPanel
+	{
+		private static SetNotifyPanel instance;
+		private SetNotify cmd;
+
+		private JSpinner valueSpinner;
+		private boolean ignoreChanges = false;
+
+		private static SetNotifyPanel instance()
+		{
+			if (instance == null)
+				instance = new SetNotifyPanel();
+			return instance;
+		}
+
+		private SetNotifyPanel()
+		{
+			super(new MigLayout(CommandAnimatorEditor.PANEL_LAYOUT_PROPERTIES));
+
+			valueSpinner = new JSpinner();
+			valueSpinner.setModel(new SpinnerNumberModel(0, 0, 255, 1));
+			valueSpinner.addChangeListener((e) -> {
+				if (!ignoreChanges)
+					SpriteEditor.execute(new SetCommandNotify(cmd, (int) valueSpinner.getValue()));
+			});
+
+			SwingUtils.setFontSize(valueSpinner, 12);
+			SwingUtils.centerSpinnerText(valueSpinner);
+			SwingUtils.addBorderPadding(valueSpinner);
+
+			add(SwingUtils.getLabel("Set Notify", 14), "gapbottom 4");
+			add(valueSpinner, "w 30%!");
+		}
+
+		private void bind(SetNotify cmd)
+		{
+			this.cmd = cmd;
+
+			ignoreChanges = true;
+			valueSpinner.setValue(cmd.value);
+			ignoreChanges = false;
+		}
+
+		private class SetCommandNotify extends AbstractCommand
+		{
+			private final SetNotify cmd;
+			private final int next;
+			private final int prev;
+
+			private SetCommandNotify(SetNotify cmd, int next)
+			{
+				super("Set Notify");
+
+				this.cmd = cmd;
+				this.next = next;
+				this.prev = cmd.value;
+			}
+
+			@Override
+			public void exec()
+			{
+				super.exec();
+
+				cmd.value = next;
+
+				ignoreChanges = true;
+				valueSpinner.setValue(next);
+				ignoreChanges = false;
+
+				cmd.incrementModified();
+				CommandAnimatorEditor.repaintCommandList();
+			}
+
+			@Override
+			public void undo()
+			{
+				super.undo();
+
+				cmd.value = prev;
+
+				ignoreChanges = true;
+				valueSpinner.setValue(prev);
+				ignoreChanges = false;
+
+				cmd.decrementModified();
+				CommandAnimatorEditor.repaintCommandList();
+			}
+		}
 	}
 }

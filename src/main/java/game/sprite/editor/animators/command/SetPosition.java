@@ -3,7 +3,14 @@ package game.sprite.editor.animators.command;
 import java.awt.Component;
 import java.util.List;
 
-import game.sprite.editor.animators.command.CommandAnimatorEditor.SetPositionPanel;
+import javax.swing.JPanel;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
+
+import app.SwingUtils;
+import common.commands.AbstractCommand;
+import game.sprite.editor.SpriteEditor;
+import net.miginfocom.swing.MigLayout;
 
 //3VVV XXXX YYYY ZZZZ
 // set position -- flag: doesn't do anything
@@ -79,5 +86,177 @@ public class SetPosition extends AnimCommand
 		seq.add((short) x);
 		seq.add((short) y);
 		seq.add((short) z);
+	}
+
+	private static class SetPositionPanel extends JPanel
+	{
+		private static SetPositionPanel instance;
+		private SetPosition cmd;
+
+		private boolean ignoreChanges = false;
+		private JSpinner xSpinner, ySpinner, zSpinner;
+
+		private static SetPositionPanel instance()
+		{
+			if (instance == null)
+				instance = new SetPositionPanel();
+			return instance;
+		}
+
+		private SetPositionPanel()
+		{
+			super(new MigLayout(CommandAnimatorEditor.PANEL_LAYOUT_PROPERTIES));
+
+			xSpinner = new JSpinner();
+			xSpinner.setModel(new SpinnerNumberModel(0, -256, 256, 1));
+			xSpinner.addChangeListener((e) -> {
+				if (!ignoreChanges)
+					SpriteEditor.execute(new SetCommandPosition(cmd, 0, (int) xSpinner.getValue()));
+			});
+
+			SwingUtils.setFontSize(xSpinner, 12);
+			SwingUtils.centerSpinnerText(xSpinner);
+			SwingUtils.addBorderPadding(xSpinner);
+
+			ySpinner = new JSpinner();
+			ySpinner.setModel(new SpinnerNumberModel(0, -256, 256, 1));
+			ySpinner.addChangeListener((e) -> {
+				if (!ignoreChanges)
+					SpriteEditor.execute(new SetCommandPosition(cmd, 1, (int) ySpinner.getValue()));
+			});
+
+			SwingUtils.setFontSize(ySpinner, 12);
+			SwingUtils.centerSpinnerText(ySpinner);
+			SwingUtils.addBorderPadding(ySpinner);
+
+			zSpinner = new JSpinner();
+			zSpinner.setModel(new SpinnerNumberModel(0, -256, 256, 1));
+			zSpinner.addChangeListener((e) -> {
+				if (!ignoreChanges)
+					SpriteEditor.execute(new SetCommandPosition(cmd, 2, (int) zSpinner.getValue()));
+			});
+
+			SwingUtils.setFontSize(zSpinner, 12);
+			SwingUtils.centerSpinnerText(zSpinner);
+			SwingUtils.addBorderPadding(zSpinner);
+
+			JPanel coordPanel = new JPanel(new MigLayout("fill, ins 0", "[sg spin]4[sg spin]4[sg spin]"));
+			coordPanel.add(xSpinner);
+			coordPanel.add(ySpinner);
+			coordPanel.add(zSpinner);
+
+			add(SwingUtils.getLabel("Set Position Offset", 14), "gapbottom 4");
+			add(coordPanel, "growx");
+		}
+
+		private void bind(SetPosition cmd)
+		{
+			this.cmd = cmd;
+
+			ignoreChanges = true;
+			xSpinner.setValue(cmd.x);
+			ySpinner.setValue(cmd.y);
+			zSpinner.setValue(cmd.z);
+			ignoreChanges = false;
+		}
+
+		private class SetCommandPosition extends AbstractCommand
+		{
+			private final SetPosition cmd;
+			private final int coord;
+			private final int next;
+			private final int prev;
+
+			private SetCommandPosition(SetPosition cmd, int coord, int next)
+			{
+				super("Set Position");
+
+				this.cmd = cmd;
+				this.coord = coord;
+				this.next = next;
+
+				switch (coord) {
+					case 0:
+						this.prev = cmd.x;
+						break;
+					case 1:
+						this.prev = cmd.y;
+						break;
+					default:
+						this.prev = cmd.z;
+						break;
+				}
+			}
+
+			@Override
+			public void exec()
+			{
+				super.exec();
+
+				switch (coord) {
+					case 0:
+						cmd.x = next;
+						break;
+					case 1:
+						cmd.y = next;
+						break;
+					default:
+						cmd.z = next;
+						break;
+				}
+
+				ignoreChanges = true;
+				switch (coord) {
+					case 0:
+						xSpinner.setValue(next);
+						break;
+					case 1:
+						ySpinner.setValue(next);
+						break;
+					default:
+						zSpinner.setValue(next);
+						break;
+				}
+				ignoreChanges = false;
+
+				cmd.incrementModified();
+				CommandAnimatorEditor.repaintCommandList();
+			}
+
+			@Override
+			public void undo()
+			{
+				super.undo();
+
+				switch (coord) {
+					case 0:
+						cmd.x = prev;
+						break;
+					case 1:
+						cmd.y = prev;
+						break;
+					default:
+						cmd.z = prev;
+						break;
+				}
+
+				ignoreChanges = true;
+				switch (coord) {
+					case 0:
+						xSpinner.setValue(prev);
+						break;
+					case 1:
+						ySpinner.setValue(prev);
+						break;
+					default:
+						zSpinner.setValue(prev);
+						break;
+				}
+				ignoreChanges = false;
+
+				cmd.decrementModified();
+				CommandAnimatorEditor.repaintCommandList();
+			}
+		}
 	}
 }

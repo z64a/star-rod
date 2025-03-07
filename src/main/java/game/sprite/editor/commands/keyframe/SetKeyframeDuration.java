@@ -26,6 +26,7 @@ public class SetKeyframeDuration extends AbstractCommand
 		super.exec();
 
 		kf.duration = next;
+		kf.owner.calculateTiming();
 		kf.incrementModified();
 
 		callback.run();
@@ -37,6 +38,7 @@ public class SetKeyframeDuration extends AbstractCommand
 		super.undo();
 
 		kf.duration = prev;
+		kf.owner.calculateTiming();
 		kf.incrementModified();
 
 		callback.run();

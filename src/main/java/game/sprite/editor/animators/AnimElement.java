@@ -21,6 +21,9 @@ public abstract class AnimElement implements Editable
 	// first occurance frame of this element during animation playback
 	public int animTime = -1;
 
+	// used by keyframes for decorating targets of Goto/Repeat
+	public boolean isTarget = false;
+
 	public AnimElement(SpriteComponent c)
 	{
 		this.owner = c;

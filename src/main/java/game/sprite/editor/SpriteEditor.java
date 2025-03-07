@@ -1369,6 +1369,7 @@ public class SpriteEditor extends BaseEditor
 		item.addActionListener((e) -> {
 			if (sprite != null) {
 				sprite.convertToKeyframes();
+				flushUndoRedo();
 				setComponent(currentComp);
 			}
 		});
@@ -1378,6 +1379,7 @@ public class SpriteEditor extends BaseEditor
 		item.addActionListener((e) -> {
 			if (sprite != null) {
 				sprite.convertToCommands();
+				flushUndoRedo();
 				setComponent(currentComp);
 			}
 		});

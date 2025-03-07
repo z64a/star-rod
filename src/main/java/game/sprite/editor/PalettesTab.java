@@ -117,7 +117,7 @@ public class PalettesTab extends JPanel
 		paletteList = new PalettesList(editor, this);
 
 		JButton btnRefreshAssets = new JButton(ThemedIcon.REFRESH_16);
-		btnRefreshAssets.setToolTipText("Reload assets");
+		btnRefreshAssets.setToolTipText("Reload palette assets");
 		btnRefreshAssets.addActionListener((e) -> {
 			if (sprite == null) {
 				return;

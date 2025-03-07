@@ -54,7 +54,7 @@ public class RastersTab extends JPanel
 		rasterList = new RastersList(editor, this);
 
 		JButton btnRefreshAssets = new JButton(ThemedIcon.REFRESH_16);
-		btnRefreshAssets.setToolTipText("Reload assets");
+		btnRefreshAssets.setToolTipText("Reload raster assets");
 		btnRefreshAssets.addActionListener((e) -> {
 			if (sprite == null) {
 				return;

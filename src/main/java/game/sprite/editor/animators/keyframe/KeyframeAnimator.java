@@ -200,6 +200,7 @@ public class KeyframeAnimator implements ComponentAnimator
 
 		for (AnimKeyframe cmd : keyframes) {
 			cmd.animTime = -1;
+			cmd.isTarget = false;
 		}
 
 		int pos = 0;
@@ -219,6 +220,11 @@ public class KeyframeAnimator implements ComponentAnimator
 				break;
 
 			if (cmd instanceof LoopKey l) {
+				if (l.target == null) {
+					break;
+				}
+				l.target.isTarget = true;
+
 				int i = keyframes.indexOf(l.target);
 				// label not found
 				if (i < 0)
@@ -240,6 +246,11 @@ public class KeyframeAnimator implements ComponentAnimator
 				}
 			}
 			else if (cmd instanceof GotoKey g) {
+				if (g.target == null) {
+					break;
+				}
+				g.target.isTarget = true;
+
 				int i = keyframes.indexOf(g.target);
 				// label not found
 				if (i < 0)

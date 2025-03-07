@@ -4,9 +4,19 @@ import java.awt.Color;
 import java.awt.Component;
 import java.util.List;
 
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListModel;
+import javax.swing.JComboBox;
+import javax.swing.JPanel;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
+
 import app.SwingUtils;
+import common.commands.AbstractCommand;
+import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.command.Label;
-import game.sprite.editor.animators.keyframe.KeyframeAnimatorEditor.LoopPanel;
+import net.miginfocom.swing.MigLayout;
+import util.ui.ListAdapterComboboxModel;
 
 public class LoopKey extends AnimKeyframe
 {
@@ -116,4 +126,169 @@ public class LoopKey extends AnimKeyframe
 
 		return null;
 	}
+
+	private static class LoopPanel extends JPanel
+	{
+		private static LoopPanel instance;
+		private boolean ignoreChanges = false;
+
+		private LoopKey cmd;
+
+		private JComboBox<Keyframe> keyframeComboBox;
+		private JSpinner countSpinner;
+
+		protected static LoopPanel instance()
+		{
+			if (instance == null)
+				instance = new LoopPanel();
+			return instance;
+		}
+
+		private LoopPanel()
+		{
+			super(new MigLayout(KeyframeAnimatorEditor.PANEL_LAYOUT_PROPERTIES));
+
+			keyframeComboBox = new JComboBox<>();
+			SwingUtils.setFontSize(keyframeComboBox, 14);
+			keyframeComboBox.setMaximumRowCount(16);
+			keyframeComboBox.addActionListener((e) -> {
+				if (!ignoreChanges) {
+					Keyframe target = (Keyframe) keyframeComboBox.getSelectedItem();
+					SpriteEditor.execute(new SetKeyframeLoopTarget(cmd, target));
+				}
+			});
+
+			countSpinner = new JSpinner();
+			SwingUtils.setFontSize(countSpinner, 12);
+			countSpinner.setModel(new SpinnerNumberModel(1, 0, 300, 1));
+			SwingUtils.centerSpinnerText(countSpinner);
+			countSpinner.addChangeListener((e) -> {
+				if (!ignoreChanges) {
+					int count = (int) countSpinner.getValue();
+					SpriteEditor.execute(new SetKeyframeLoopCount(cmd, count));
+				}
+			});
+
+			add(SwingUtils.getLabel("Repeat Properties", 14), "gapbottom 4");
+			add(keyframeComboBox, "w 200!");
+			add(SwingUtils.getLabel("Repetitions: ", 12), "sg lbl, split 2");
+			add(countSpinner, "sg etc, grow");
+		}
+
+		private void set(LoopKey cmd, DefaultListModel<AnimKeyframe> animKeyframes)
+		{
+			this.cmd = cmd;
+
+			DefaultComboBoxModel<Keyframe> keyframes = new DefaultComboBoxModel<>();
+			for (int i = 0; i < animKeyframes.size(); i++) {
+				AnimKeyframe animFrame = animKeyframes.getElementAt(i);
+				if (animFrame instanceof Keyframe kf)
+					keyframes.addElement(kf);
+			}
+
+			ignoreChanges = true;
+			keyframeComboBox.setModel(new ListAdapterComboboxModel<>(keyframes));
+			keyframeComboBox.setSelectedItem(cmd.target);
+			ignoreChanges = false;
+
+			countSpinner.setValue(cmd.count);
+		}
+
+		private class SetKeyframeLoopTarget extends AbstractCommand
+		{
+			private final LoopKey cmd;
+			private final Keyframe next;
+			private final Keyframe prev;
+
+			private SetKeyframeLoopTarget(LoopKey cmd, Keyframe next)
+			{
+				super("Set Loop Target");
+
+				this.cmd = cmd;
+				this.next = next;
+				this.prev = cmd.target;
+			}
+
+			@Override
+			public void exec()
+			{
+				super.exec();
+
+				cmd.target = next;
+
+				ignoreChanges = true;
+				keyframeComboBox.setSelectedItem(next);
+				ignoreChanges = false;
+
+				cmd.owner.calculateTiming();
+				cmd.incrementModified();
+				KeyframeAnimatorEditor.repaintCommandList();
+			}
+
+			@Override
+			public void undo()
+			{
+				super.undo();
+
+				cmd.target = prev;
+
+				ignoreChanges = true;
+				keyframeComboBox.setSelectedItem(prev);
+				ignoreChanges = false;
+
+				cmd.owner.calculateTiming();
+				cmd.decrementModified();
+				KeyframeAnimatorEditor.repaintCommandList();
+			}
+		}
+
+		private class SetKeyframeLoopCount extends AbstractCommand
+		{
+			private final LoopKey cmd;
+			private final int next;
+			private final int prev;
+
+			private SetKeyframeLoopCount(LoopKey cmd, int next)
+			{
+				super("Set Loop Count");
+
+				this.cmd = cmd;
+				this.next = next;
+				this.prev = cmd.count;
+			}
+
+			@Override
+			public void exec()
+			{
+				super.exec();
+
+				cmd.count = next;
+
+				ignoreChanges = true;
+				countSpinner.setValue(next);
+				ignoreChanges = false;
+
+				cmd.owner.calculateTiming();
+				cmd.incrementModified();
+				KeyframeAnimatorEditor.repaintCommandList();
+			}
+
+			@Override
+			public void undo()
+			{
+				super.undo();
+
+				cmd.count = prev;
+
+				ignoreChanges = true;
+				countSpinner.setValue(prev);
+				ignoreChanges = false;
+
+				cmd.owner.calculateTiming();
+				cmd.decrementModified();
+				KeyframeAnimatorEditor.repaintCommandList();
+			}
+		}
+	}
+
 }
