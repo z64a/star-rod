@@ -52,7 +52,7 @@ public class GotoKey extends AnimKeyframe
 
 		// goto: self infinite loops add a 1 frame delay
 		if (animator.findKeyframe(target) < animator.findKeyframe(this))
-			owner.complete = (owner.keyframeCount < 2);
+			owner.complete = (owner.gotoTime == 0);
 
 		animator.gotoKeyframe(target);
 		return AdvanceResult.JUMP;

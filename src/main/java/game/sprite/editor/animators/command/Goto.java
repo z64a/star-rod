@@ -60,7 +60,7 @@ public class Goto extends AnimCommand
 
 		// goto: self infinite loops add a 1 frame delay
 		if (animator.findCommand(label) < animator.findCommand(this))
-			owner.complete = (owner.keyframeCount < 2);
+			owner.complete = (owner.gotoTime == 0);
 
 		animator.gotoLabel(label);
 		return AdvanceResult.JUMP;

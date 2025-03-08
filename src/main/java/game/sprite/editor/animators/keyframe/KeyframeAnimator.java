@@ -73,7 +73,7 @@ public class KeyframeAnimator implements ComponentAnimator
 		comp.scaleZ = 100;
 
 		comp.complete = false;
-		comp.keyframeCount = 0;
+		comp.gotoTime = 0;
 	}
 
 	@Override
@@ -136,7 +136,7 @@ public class KeyframeAnimator implements ComponentAnimator
 		int i = findKeyframe(kf);
 		if (i >= 0) {
 			setListPosition(i);
-			comp.keyframeCount = 0;
+			comp.gotoTime = 0;
 		}
 		return (i >= 0);
 	}

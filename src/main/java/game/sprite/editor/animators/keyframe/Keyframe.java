@@ -114,6 +114,9 @@ public class Keyframe extends AnimKeyframe
 		}
 
 		owner.delayCount = duration;
+		if (duration > 0) {
+			owner.gotoTime += duration;
+		}
 
 		return (duration > 0) ? AdvanceResult.BLOCK : AdvanceResult.NEXT;
 	}

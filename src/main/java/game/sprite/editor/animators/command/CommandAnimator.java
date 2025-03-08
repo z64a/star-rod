@@ -122,7 +122,7 @@ public class CommandAnimator implements ComponentAnimator
 		comp.scaleZ = 100;
 
 		comp.complete = false;
-		comp.keyframeCount = 0;
+		comp.gotoTime = 0;
 	}
 
 	@Override
@@ -185,7 +185,7 @@ public class CommandAnimator implements ComponentAnimator
 		int i = findCommand(label);
 		if (i >= 0) {
 			setListPosition(i);
-			comp.keyframeCount = 0;
+			comp.gotoTime = 0;
 		}
 		return (i >= 0);
 	}

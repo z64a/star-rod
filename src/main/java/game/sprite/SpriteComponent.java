@@ -40,14 +40,15 @@ import util.xml.XmlWrapper.XmlWriter;
 
 public class SpriteComponent implements XmlSerializable, Indexable<SpriteComponent>, Editable
 {
-	public int posx, posy, posz;
-
 	public final SpriteAnimation parentAnimation;
 
-	public boolean usesKeyframes = false;
-	public CommandAnimator cmdAnimator;
-	private KeyframeAnimator keyframeAnimator;
+	/** overall position offset */
+	public int posx, posy, posz;
 
+	public boolean usesKeyframes = false;
+
+	private CommandAnimator cmdAnimator;
+	private KeyframeAnimator keyframeAnimator;
 	protected ComponentAnimator animator;
 
 	public RawAnimation rawAnim = new RawAnimation();
@@ -60,16 +61,17 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	public transient boolean selected;
 	public transient boolean hidden;
 
+	/** Time since last goto, used to detect goto:self infinite loops and break out */
+	public int gotoTime;
+
+	/** Has the animation reached a point where it cannot continue? */
+	public boolean complete;
+
 	// animation state
 	public SpriteRaster sr = null;
 	public SpritePalette sp = null;
 	public SpriteComponent parent = null;
 	public int parentType;
-
-	@Deprecated
-	public int keyframeCount; // how many 'keyframes' have we gone through
-	private int frameCount;
-	public boolean complete;
 
 	public int delayCount;
 	public int repeatCount;
@@ -161,13 +163,11 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		corners[1] = new Vector3f(0, 0, 0);
 		corners[2] = new Vector3f(0, 0, 0);
 		corners[3] = new Vector3f(0, 0, 0);
-		frameCount = 0;
 	}
 
 	public void step()
 	{
 		animator.step();
-		frameCount += 2;
 	}
 
 	public int getX()

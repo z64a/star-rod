@@ -44,7 +44,7 @@ public class Wait extends AnimCommand
 	{
 		animator.comp.delayCount = count;
 		if (count > 0)
-			owner.keyframeCount++;
+			owner.gotoTime += count;
 
 		return (count > 0) ? AdvanceResult.BLOCK : AdvanceResult.NEXT;
 	}
