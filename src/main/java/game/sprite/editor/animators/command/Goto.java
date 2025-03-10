@@ -1,33 +1,47 @@
 package game.sprite.editor.animators.command;
 
+import static game.sprite.SpriteKey.*;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.util.List;
 
-import javax.swing.DefaultListModel;
+import javax.swing.ComboBoxModel;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JPanel;
+
+import org.w3c.dom.Element;
 
 import app.SwingUtils;
 import common.commands.AbstractCommand;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.keyframe.Keyframe;
 import net.miginfocom.swing.MigLayout;
-import util.ui.ListAdapterComboboxModel;
+import util.xml.XmlWrapper.XmlReader;
+import util.xml.XmlWrapper.XmlTag;
+import util.xml.XmlWrapper.XmlWriter;
 
 //2VVV
 // goto -- jump to another position in the list
 public class Goto extends AnimCommand
 {
+	public static final int NO_FIXED_POS = -1;
+
 	public Label label;
-	public transient int fixedPos; // only used for generating commands
+
+	// only used for generating commands from raw bytes
+	public transient int fixedPos = NO_FIXED_POS;
+
+	// used during deserialization
+	public transient String labelName;
 
 	// used during conversion from Keyframes
 	public transient Keyframe target;
 
 	public Goto(CommandAnimator animator)
 	{
-		this(animator, null, -1);
+		this(animator, null, NO_FIXED_POS);
 	}
 
 	// used during conversion from Keyframes
@@ -44,6 +58,25 @@ public class Goto extends AnimCommand
 
 		this.label = label;
 		this.fixedPos = fixedPos;
+	}
+
+	@Override
+	public void toXML(XmlWriter xmw)
+	{
+		XmlTag tag = xmw.createTag(TAG_CMD_GOTO, true);
+		if (label != null)
+			xmw.addAttribute(tag, ATTR_DEST, label.name);
+		xmw.printTag(tag);
+	}
+
+	@Override
+	public void fromXML(XmlReader xmr, Element elem)
+	{
+		if (xmr.hasAttribute(elem, ATTR_POS))
+			fixedPos = xmr.readInt(elem, ATTR_POS);
+
+		if (xmr.hasAttribute(elem, ATTR_DEST))
+			labelName = xmr.getAttribute(elem, ATTR_DEST);
 	}
 
 	@Override
@@ -87,9 +120,9 @@ public class Goto extends AnimCommand
 		if (label == null)
 			return "Goto: (missing)";
 		else if (animator.findCommand(label) < 0)
-			return "<html>Goto: <i>" + label.labelName + "</i>  (missing)</html>";
+			return "<html>Goto: <i>" + label.name + "</i>  (missing)</html>";
 		else
-			return "<html>Goto: <i>" + label.labelName + "</i></html>";
+			return "<html>Goto: <i>" + label.name + "</i></html>";
 	}
 
 	@Override
@@ -101,11 +134,19 @@ public class Goto extends AnimCommand
 	@Override
 	public Component getPanel()
 	{
+		animator.findAllLabels();
+
+		DefaultComboBoxModel<Label> comboBoxModel = new DefaultComboBoxModel<>();
+
 		// if the label is missing from the command, add it
 		if (!animator.labels.contains(label))
-			animator.labels.addElement(label);
+			comboBoxModel.addElement(label);
 
-		GotoPanel.instance().bind(this, animator.labels);
+		// add all the labels for this animator
+		for (Label lbl : animator.labels)
+			comboBoxModel.addElement(lbl);
+
+		GotoPanel.instance().bind(this, comboBoxModel);
 		return GotoPanel.instance();
 	}
 
@@ -114,12 +155,12 @@ public class Goto extends AnimCommand
 	{
 		int pos = 0;
 
-		if (label.labelName.startsWith("#"))
-			pos = Integer.parseInt(label.labelName.substring(1), 16);
+		if (label.name.startsWith("#"))
+			pos = Integer.parseInt(label.name.substring(1), 16);
 		else {
 			pos = animator.getCommandOffset(label);
 			if (pos < 0)
-				throw new RuntimeException("Goto is missing label: " + label.labelName);
+				throw new RuntimeException("Goto is missing label: " + label.name);
 		}
 
 		seq.add((short) (0x2000 | (pos & 0xFFF)));
@@ -167,13 +208,12 @@ public class Goto extends AnimCommand
 			add(labelComboBox, "growx, pushx");
 		}
 
-		private void bind(Goto cmd, DefaultListModel<Label> labels)
+		private void bind(Goto cmd, ComboBoxModel<Label> labels)
 		{
 			this.cmd = cmd;
 
-			//TODO could be a problem when labels are deleted!
 			ignoreChanges = true;
-			labelComboBox.setModel(new ListAdapterComboboxModel<>(labels));
+			labelComboBox.setModel(labels);
 			labelComboBox.setSelectedItem(cmd.label);
 			ignoreChanges = false;
 		}

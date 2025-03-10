@@ -1,7 +1,9 @@
 package app;
 
+import java.awt.Desktop;
 import java.awt.Frame;
 import java.awt.Image;
+import java.awt.Toolkit;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -317,10 +319,27 @@ public abstract class Environment
 				if (!latestVersion.equals("v" + versionString)) {
 					Logger.log("Detected newer remote version: " + latestVersion);
 
-					SwingUtils.getWarningDialog()
+					int result = SwingUtils.getWarningDialog()
 						.setTitle("Update Available")
 						.setMessage("A newer version is available!", "Please visit the GitHub repo to download it.")
-						.show();
+						.setOptions("Yes", "No", "Don't Remind Me")
+						.choose();
+
+					if (result == 0) {
+						try {
+							Desktop desktop = Desktop.getDesktop();
+							URI uri = new URI("https://github.com/z64a/star-rod/releases");
+							desktop.browse(uri);
+							exit();
+						}
+						catch (IOException | URISyntaxException e) {
+							Toolkit.getDefaultToolkit().beep();
+							Logger.printStackTrace(e);
+						}
+					}
+					else if (result == 2) {
+						mainConfig.setBoolean(Options.CheckForUpdates, false);
+					}
 				}
 			}
 			else {

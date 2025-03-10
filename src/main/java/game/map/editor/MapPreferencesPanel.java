@@ -1,4 +1,4 @@
-package app.config;
+package game.map.editor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,10 +6,15 @@ import java.util.List;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
+import app.config.Config;
+import app.config.ConfigCheckBox;
+import app.config.ConfigFloatSpinner;
+import app.config.ConfigIntSpinner;
+import app.config.Options;
 import app.config.Options.ConfigOptionEditor;
 import net.miginfocom.swing.MigLayout;
 
-public class PreferencesPanel extends JPanel
+public class MapPreferencesPanel extends JPanel
 {
 	private final List<ConfigOptionEditor> optEditors;
 
@@ -25,7 +30,7 @@ public class PreferencesPanel extends JPanel
 			editor.write(cfg);
 	}
 
-	public PreferencesPanel()
+	public MapPreferencesPanel()
 	{
 		ConfigIntSpinner is;
 		ConfigFloatSpinner fs;
@@ -34,9 +39,9 @@ public class PreferencesPanel extends JPanel
 
 		setLayout(new MigLayout("wrap 2", "[fill,grow]8[fill,grow]"));
 
-		is = new ConfigIntSpinner(Options.UndoLimit);
+		is = new ConfigIntSpinner(Options.MapUndoLimit);
 		optEditors.add(is);
-		add(new JLabel(Options.UndoLimit.guiName));
+		add(new JLabel(Options.MapUndoLimit.guiName));
 		add(is);
 
 		is = new ConfigIntSpinner(Options.BackupInterval);

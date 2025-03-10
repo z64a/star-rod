@@ -1,5 +1,8 @@
 package game.sprite.editor.animators.command;
 
+import static game.sprite.SpriteKey.ATTR_XYZ;
+import static game.sprite.SpriteKey.TAG_CMD_SET_ROT;
+
 import java.awt.Component;
 import java.util.List;
 
@@ -7,10 +10,15 @@ import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 
+import org.w3c.dom.Element;
+
 import app.SwingUtils;
 import common.commands.AbstractCommand;
 import game.sprite.editor.SpriteEditor;
 import net.miginfocom.swing.MigLayout;
+import util.xml.XmlWrapper.XmlReader;
+import util.xml.XmlWrapper.XmlTag;
+import util.xml.XmlWrapper.XmlWriter;
 
 //4xxx yyyy zzzz
 // set rotation (euler angles)
@@ -31,6 +39,25 @@ public class SetRotation extends AnimCommand
 		x = ((s0 << 20) >> 20);
 		y = s1;
 		z = s2;
+	}
+
+	@Override
+	public void toXML(XmlWriter xmw)
+	{
+		XmlTag tag = xmw.createTag(TAG_CMD_SET_ROT, true);
+		xmw.addIntArray(tag, ATTR_XYZ, x, y, z);
+		xmw.printTag(tag);
+	}
+
+	@Override
+	public void fromXML(XmlReader xmr, Element elem)
+	{
+		if (xmr.hasAttribute(elem, ATTR_XYZ)) {
+			int[] pos = xmr.readIntArray(elem, ATTR_XYZ, 3);
+			x = pos[0];
+			y = pos[1];
+			z = pos[2];
+		}
 	}
 
 	@Override

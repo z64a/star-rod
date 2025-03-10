@@ -144,7 +144,7 @@ public class ComponentsList extends DragReorderList<SpriteComponent>
 					Toolkit.getDefaultToolkit().beep();
 					return;
 				}
-				compClipboard = cur.copy();
+				compClipboard = new SpriteComponent(cur.parentAnimation, cur);
 			}
 		});
 
@@ -215,7 +215,7 @@ public class ComponentsList extends DragReorderList<SpriteComponent>
 				}
 
 				int i = getSelectedIndex();
-				SpriteComponent copy = cur.copy();
+				SpriteComponent copy = new SpriteComponent(curAnim, cur);
 				String newName = copy.createUniqueName(copy.name);
 
 				if (newName == null) {

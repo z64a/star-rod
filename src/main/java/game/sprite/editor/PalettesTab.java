@@ -123,34 +123,18 @@ public class PalettesTab extends JPanel
 				return;
 			}
 
-			palAssetList.ignoreChanges.increment();
+			if (editor.promptCannotUndo("Reload palette assets"))
+				refreshPalAssets();
+		});
 
-			// remember name of currently selected, so we can try reselecting after refreshing
-			PalAsset selected = palAssetList.getSelectedValue();
-			String selectedName = (selected == null) ? null : selected.getFilename();
-
-			// clear current selection
-			palAssetList.setSelectedValue(null, true);
-			sprite.lastSelectedPalAsset = -1;
-			setPalAsset(null);
-
-			// reload the assets
-			sprite.reloadPaletteAssets();
-
-			// prepare new selection for setSprite
-			if (sprite.palAssets.size() > 0)
-				sprite.lastSelectedPalAsset = 0;
-
-			// refresh this tab
-			setSprite(sprite);
-			PalettesTab.this.repaint();
-
-			// try reselecting asset with name matching previous selection
-			for (PalAsset newAsset : sprite.palAssets) {
-				if (newAsset.getFilename().equals(selectedName)) {
-					palAssetList.setSelectedValue(newAsset, true);
-				}
+		JButton btnImportAssets = new JButton(ThemedIcon.DOWNLOAD_16);
+		btnImportAssets.setToolTipText("Import palette assets");
+		btnImportAssets.addActionListener((e) -> {
+			if (sprite == null) {
+				return;
 			}
+
+			palAssetList.ignoreChanges.increment();
 
 			SpriteEditor.instance().flushUndoRedo();
 
@@ -245,7 +229,8 @@ public class PalettesTab extends JPanel
 
 		JPanel listsPanel = new JPanel(new MigLayout("fill, ins 0, wrap 2", "[grow, sg col][grow, sg col]"));
 
-		listsPanel.add(btnRefreshAssets, "split 2");
+		listsPanel.add(btnRefreshAssets, "split 3");
+		listsPanel.add(btnImportAssets);
 		listsPanel.add(new JLabel("Assets"), "growx");
 
 		listsPanel.add(btnAddPalette, "split 5");
@@ -258,8 +243,8 @@ public class PalettesTab extends JPanel
 		listsPanel.add(paletteScrollPane, "grow, push, sg list");
 
 		listsPanel.add(btnSave, "split 2, growx, sg btn");
-		// listsPanel.add(cbPreviewPalette, "growx, sg btn, align center");
-		listsPanel.add(new JPanel(), "growx, sg btn"); // cell dummy
+		listsPanel.add(cbPreviewPalette, "growx, sg btn, align center");
+		//	listsPanel.add(new JPanel(), "growx, sg btn"); // cell dummy
 
 		listsPanel.add(btnBind, "split 2, growx, sg btn");
 		listsPanel.add(btnClear, "growx, sg btn");
@@ -475,6 +460,47 @@ public class PalettesTab extends JPanel
 
 		if (asset != null)
 			asset.stashColors();
+	}
+
+	public boolean shouldPreviewPalette()
+	{
+		return cbPreviewPalette.isSelected();
+	}
+
+	private void refreshPalAssets()
+	{
+		palAssetList.ignoreChanges.increment();
+
+		// remember name of currently selected, so we can try reselecting after refreshing
+		PalAsset selected = palAssetList.getSelectedValue();
+		String selectedName = (selected == null) ? null : selected.getFilename();
+
+		// clear current selection
+		palAssetList.setSelectedValue(null, true);
+		sprite.lastSelectedPalAsset = -1;
+		setPalAsset(null);
+
+		// reload the assets
+		sprite.reloadPaletteAssets();
+
+		// prepare new selection for setSprite
+		if (sprite.palAssets.size() > 0)
+			sprite.lastSelectedPalAsset = 0;
+
+		// refresh this tab
+		setSprite(sprite);
+		PalettesTab.this.repaint();
+
+		// try reselecting asset with name matching previous selection
+		for (PalAsset newAsset : sprite.palAssets) {
+			if (newAsset.getFilename().equals(selectedName)) {
+				palAssetList.setSelectedValue(newAsset, true);
+			}
+		}
+
+		SpriteEditor.instance().flushUndoRedo();
+
+		palAssetList.ignoreChanges.decrement();
 	}
 
 	@Deprecated

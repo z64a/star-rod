@@ -1,11 +1,15 @@
 package game.sprite.editor.animators.command;
 
+import static game.sprite.SpriteKey.*;
+
 import java.awt.Component;
 import java.util.List;
 
 import javax.swing.ComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JPanel;
+
+import org.w3c.dom.Element;
 
 import app.SwingUtils;
 import common.commands.AbstractCommand;
@@ -14,12 +18,19 @@ import game.sprite.editor.Editable;
 import game.sprite.editor.PaletteCellRenderer;
 import game.sprite.editor.SpriteEditor;
 import net.miginfocom.swing.MigLayout;
+import util.xml.XmlWrapper.XmlReader;
+import util.xml.XmlWrapper.XmlTag;
+import util.xml.XmlWrapper.XmlWriter;
 
 //6VVV
 // use palette
 public class SetPalette extends AnimCommand
 {
 	public SpritePalette pal;
+
+	// used during deserialization
+	public transient String palName = null;
+	public transient int palIndex = -1;
 
 	public SetPalette(CommandAnimator animator)
 	{
@@ -40,6 +51,36 @@ public class SetPalette extends AnimCommand
 		super(animator);
 
 		this.pal = pal;
+	}
+
+	@Override
+	public void toXML(XmlWriter xmw)
+	{
+		XmlTag tag = xmw.createTag(TAG_CMD_SET_PAL, true);
+
+		if (SpriteEditor.instance().optOutputNames) {
+			if (pal == null)
+				xmw.addAttribute(tag, ATTR_NAME, "");
+			else
+				xmw.addAttribute(tag, ATTR_NAME, pal.name);
+		}
+		else {
+			if (pal == null)
+				xmw.addHex(tag, ATTR_INDEX, -1);
+			else
+				xmw.addHex(tag, ATTR_INDEX, pal.getIndex());
+		}
+
+		xmw.printTag(tag);
+	}
+
+	@Override
+	public void fromXML(XmlReader xmr, Element elem)
+	{
+		if (xmr.hasAttribute(elem, ATTR_NAME))
+			palName = xmr.getAttribute(elem, ATTR_NAME);
+		else if (xmr.hasAttribute(elem, ATTR_INDEX))
+			palIndex = xmr.readHex(elem, ATTR_INDEX);
 	}
 
 	@Override

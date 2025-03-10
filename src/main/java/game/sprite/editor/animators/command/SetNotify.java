@@ -1,5 +1,8 @@
 package game.sprite.editor.animators.command;
 
+import static game.sprite.SpriteKey.ATTR_VALUE;
+import static game.sprite.SpriteKey.TAG_CMD_SET_NOTIFY;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.util.List;
@@ -8,10 +11,15 @@ import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 
+import org.w3c.dom.Element;
+
 import app.SwingUtils;
 import common.commands.AbstractCommand;
 import game.sprite.editor.SpriteEditor;
 import net.miginfocom.swing.MigLayout;
+import util.xml.XmlWrapper.XmlReader;
+import util.xml.XmlWrapper.XmlTag;
+import util.xml.XmlWrapper.XmlWriter;
 
 //82VV
 public class SetNotify extends AnimCommand
@@ -28,6 +36,21 @@ public class SetNotify extends AnimCommand
 		super(animator);
 
 		value = (s0 & 0xFF);
+	}
+
+	@Override
+	public void toXML(XmlWriter xmw)
+	{
+		XmlTag tag = xmw.createTag(TAG_CMD_SET_NOTIFY, true);
+		xmw.addInt(tag, ATTR_VALUE, value);
+		xmw.printTag(tag);
+	}
+
+	@Override
+	public void fromXML(XmlReader xmr, Element elem)
+	{
+		if (xmr.hasAttribute(elem, ATTR_VALUE))
+			value = xmr.readInt(elem, ATTR_VALUE);
 	}
 
 	@Override

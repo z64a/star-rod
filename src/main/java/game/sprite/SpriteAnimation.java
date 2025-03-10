@@ -39,14 +39,8 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>, Editable
 			components.addElement(new SpriteComponent(this, comp));
 		}
 
-		for (int i = 0; i < components.size(); i++) {
-			SpriteComponent comp = components.elementAt(i);
-			if (comp.parentID == -1) {
-				comp.parent = null;
-			}
-			else {
-				comp.parent = components.getElementAt(comp.parentID);
-			}
+		for (SpriteComponent comp : components) {
+			comp.popParents();
 		}
 	}
 

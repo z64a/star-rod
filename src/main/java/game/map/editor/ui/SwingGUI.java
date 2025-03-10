@@ -51,7 +51,6 @@ import app.Environment;
 import app.StarRodFrame;
 import app.SwingUtils;
 import app.SwingUtils.OpenDialogCounter;
-import app.config.PreferencesPanel;
 import assets.AssetHandle;
 import assets.AssetManager;
 import assets.ui.SelectBackgroundDialog;
@@ -68,6 +67,7 @@ import game.map.MapObject;
 import game.map.MapObject.MapObjectType;
 import game.map.editor.EditorShortcut;
 import game.map.editor.MapEditor;
+import game.map.editor.MapPreferencesPanel;
 import game.map.editor.MapEditor.EditorMode;
 import game.map.editor.MapEditor.IShutdownListener;
 import game.map.editor.PaintManager;
@@ -1698,7 +1698,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		if (editor.editorConfig == null)
 			return;
 
-		PreferencesPanel preferences = new PreferencesPanel();
+		MapPreferencesPanel preferences = new MapPreferencesPanel();
 		preferences.setValues(editor.editorConfig);
 
 		int choice = SwingUtils.getConfirmDialog()

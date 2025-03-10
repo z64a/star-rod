@@ -7,8 +7,9 @@ import java.util.List;
 import app.SwingUtils;
 import game.sprite.SpriteComponent;
 import game.sprite.editor.Editable;
+import util.xml.XmlWrapper.XmlSerializable;
 
-public abstract class AnimElement implements Editable
+public abstract class AnimElement implements Editable, XmlSerializable
 {
 	public static enum AdvanceResult
 	{

@@ -1,6 +1,8 @@
 package game.sprite.editor.animators.command;
 
 import java.awt.Container;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -10,8 +12,14 @@ import java.util.TreeMap;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+
 import game.sprite.RawAnimation;
+import game.sprite.Sprite;
 import game.sprite.SpriteComponent;
+import game.sprite.SpritePalette;
+import game.sprite.SpriteRaster;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.AnimElement;
 import game.sprite.editor.animators.AnimElement.AdvanceResult;
@@ -20,6 +28,9 @@ import game.sprite.editor.animators.ToKeyframesConverter;
 import game.sprite.editor.animators.keyframe.AnimKeyframe;
 import game.sprite.editor.animators.keyframe.KeyframeAnimator;
 import util.IterableListModel;
+import util.Logger;
+import util.xml.XmlWrapper.XmlReader;
+import util.xml.XmlWrapper.XmlWriter;
 
 public class CommandAnimator implements ComponentAnimator
 {
@@ -72,7 +83,23 @@ public class CommandAnimator implements ComponentAnimator
 		});
 	}
 
-	private void findAllLabels()
+	/**
+	 * Creates a copy of another CommandAnimator, along with all commands
+	 * Updates references within commands to point to corresponding (copied) commands/components
+	 * @param comp SpriteComponent which this new animator belongs to
+	 * @param other CommandAnimator to copy commands from
+	 */
+	public CommandAnimator(SpriteComponent comp, CommandAnimator other)
+	{
+		this(comp);
+
+		// easier to compile to bytes and reconstruct a copy than to deal with the web of
+		// object references that would need to be properly updated in the new list
+		RawAnimation raw = other.getCommandList();
+		generateFrom(raw);
+	}
+
+	public void findAllLabels()
 	{
 		labels.clear();
 		for (AnimCommand other : commands) {
@@ -89,9 +116,20 @@ public class CommandAnimator implements ComponentAnimator
 
 		ignoreListDataChanges = true;
 		CommandAnimatorEditor.bind(editor, this, commandListContainer, commandEditContainer);
+
+		if (comp != null)
+			CommandAnimatorEditor.instance().restoreSelection(comp.lastSelectedCommand);
+
 		ignoreListDataChanges = false;
 
 		findAllLabels();
+	}
+
+	@Override
+	public void unbind()
+	{
+		if (comp != null)
+			comp.lastSelectedCommand = CommandAnimatorEditor.instance().getSelection();
 	}
 
 	public void resetAnimation()
@@ -151,7 +189,7 @@ public class CommandAnimator implements ComponentAnimator
 
 		for (int iterations = 0; iterations < MAX_ITERATIONS; iterations++) {
 			// safety check: out of range list position
-			if (listPosition < 0 || listPosition > commands.size())
+			if (listPosition < 0 || listPosition >= commands.size())
 				return;
 
 			AnimElement cmd = commands.get(listPosition);
@@ -314,6 +352,35 @@ public class CommandAnimator implements ComponentAnimator
 	}
 
 	@Override
+	public RawAnimation getCommandList()
+	{
+		RawAnimation rawAnim = new RawAnimation();
+
+		for (int i = 0; i < commands.size(); i++) {
+			AnimCommand cmd = commands.get(i);
+			if (cmd instanceof Label)
+				continue;
+			cmd.addTo(rawAnim);
+		}
+
+		rawAnim.setLabel(0, "Start");
+
+		int j = 0;
+		for (int i = 0; i < commands.size(); i++) {
+			AnimCommand cmd = commands.get(i);
+			if (cmd instanceof Label lbl) {
+				lbl.listPos = j;
+
+				if (j > 0 || !lbl.name.equals("Start"))
+					rawAnim.setLabel(lbl.listPos, lbl.name);
+			}
+			j += cmd.length();
+		}
+
+		return rawAnim;
+	}
+
+	@Override
 	public boolean generateFrom(RawAnimation rawAnim)
 	{
 		ignoreListDataChanges = true;
@@ -392,7 +459,7 @@ public class CommandAnimator implements ComponentAnimator
 				commands.add(listPos, lbl);
 			}
 			else {
-				lbl.labelName = String.format("#%X", streamPos);
+				lbl.name = String.format("#%X", streamPos);
 				commands.add(getFloorListIndex(streamPos), lbl);
 			}
 		}
@@ -444,31 +511,204 @@ public class CommandAnimator implements ComponentAnimator
 	}
 
 	@Override
-	public RawAnimation getCommandList()
+	public void toXML(XmlWriter xmw)
 	{
-		RawAnimation rawAnim = new RawAnimation();
+		for (AnimCommand cmd : commands)
+			cmd.toXML(xmw);
+	}
 
-		for (int i = 0; i < commands.size(); i++) {
-			AnimCommand cmd = commands.get(i);
-			if (cmd instanceof Label)
-				continue;
-			cmd.addTo(rawAnim);
-		}
-
-		rawAnim.setLabel(0, "Start");
-
-		int j = 0;
-		for (int i = 0; i < commands.size(); i++) {
-			AnimCommand cmd = commands.get(i);
-			if (cmd instanceof Label lbl) {
-				lbl.listPos = j;
-
-				if (j > 0 || !lbl.labelName.equals("Start"))
-					rawAnim.setLabel(lbl.listPos, lbl.labelName);
+	@Override
+	public void fromXML(XmlReader xmr, Element compElem)
+	{
+		for (Node child = compElem.getFirstChild(); child != null; child = child.getNextSibling()) {
+			if (child instanceof Element elem) {
+				switch (elem.getNodeName()) {
+					case "Label":
+						Label lbl = new Label(this);
+						lbl.fromXML(xmr, elem);
+						commands.addElement(lbl);
+						break;
+					case "Goto":
+						Goto go2 = new Goto(this);
+						go2.fromXML(xmr, elem);
+						commands.addElement(go2);
+						break;
+					case "Loop":
+						Loop loop = new Loop(this);
+						loop.fromXML(xmr, elem);
+						commands.addElement(loop);
+						break;
+					case "Wait":
+						Wait wait = new Wait(this);
+						wait.fromXML(xmr, elem);
+						commands.addElement(wait);
+						break;
+					case "SetRaster":
+						SetImage setImg = new SetImage(this);
+						setImg.fromXML(xmr, elem);
+						commands.addElement(setImg);
+						break;
+					case "SetPalette":
+						SetPalette setPal = new SetPalette(this);
+						setPal.fromXML(xmr, elem);
+						commands.addElement(setPal);
+						break;
+					case "SetParent":
+						SetParent setPar = new SetParent(this);
+						setPar.fromXML(xmr, elem);
+						commands.addElement(setPar);
+						break;
+					case "SetPos":
+						SetPosition setPos = new SetPosition(this);
+						setPos.fromXML(xmr, elem);
+						commands.addElement(setPos);
+						break;
+					case "SetRot":
+						SetRotation setRot = new SetRotation(this);
+						setRot.fromXML(xmr, elem);
+						commands.addElement(setRot);
+						break;
+					case "SetScale":
+						SetScale setScale = new SetScale(this);
+						setScale.fromXML(xmr, elem);
+						commands.addElement(setScale);
+						break;
+					case "SetNotify":
+						SetNotify setNotify = new SetNotify(this);
+						setNotify.fromXML(xmr, elem);
+						commands.addElement(setNotify);
+						break;
+					case "SetUnknown":
+						SetUnknown setUnknown = new SetUnknown(this);
+						setUnknown.fromXML(xmr, elem);
+						commands.addElement(setUnknown);
+						break;
+				}
 			}
-			j += cmd.length();
+		}
+	}
+
+	@Override
+	public void updateReferences(
+		HashMap<String, SpriteRaster> imgMap,
+		HashMap<String, SpritePalette> palMap,
+		HashMap<String, SpriteComponent> compMap)
+	{
+		Sprite spr = comp.parentAnimation.parentSprite;
+
+		// create hashmaps for lookup-by-name
+		HashMap<String, Label> labelMap = new HashMap<>();
+
+		for (AnimCommand cmd : commands) {
+			if (cmd instanceof Label lbl) {
+				if (lbl.name != null && !lbl.name.isBlank())
+					labelMap.putIfAbsent(lbl.name, lbl);
+			}
 		}
 
-		return rawAnim;
+		// determine position of each command in the stream
+		TreeMap<Integer, AnimCommand> posMap = new TreeMap<>();
+		int pos = 0;
+		for (AnimCommand cmd : commands) {
+			posMap.put(pos, cmd);
+			pos += cmd.length();
+		}
+
+		// create a copy of the command list we can iterate over so we can safely modify the original during iteration
+		ArrayList<AnimCommand> listCopy = new ArrayList<>(commands.size());
+		for (AnimCommand cmd : commands)
+			listCopy.add(cmd);
+
+		// iterate through commands and replace temporary stringy references with object references
+		for (AnimCommand cmd : listCopy) {
+			if (cmd instanceof Goto go2) {
+				if (go2.fixedPos != Goto.NO_FIXED_POS) {
+					Entry<Integer, AnimCommand> e = posMap.floorEntry(go2.fixedPos);
+					if (e != null) {
+						AnimCommand target = e.getValue();
+						if (target instanceof Label lbl) {
+							go2.label = lbl;
+						}
+						else {
+							int targetIndex = commands.indexOf(target);
+
+							Label lbl = new Label(this);
+							lbl.name = String.format("#%X", go2.fixedPos);
+							commands.add(targetIndex, lbl);
+
+							go2.label = lbl;
+						}
+					}
+				}
+				else {
+					go2.label = labelMap.get(go2.labelName);
+				}
+			}
+			else if (cmd instanceof Loop loop) {
+				if (loop.fixedPos != Loop.NO_FIXED_POS) {
+					Entry<Integer, AnimCommand> e = posMap.floorEntry(loop.fixedPos);
+					if (e != null) {
+						AnimCommand target = e.getValue();
+						if (target instanceof Label lbl) {
+							loop.label = lbl;
+						}
+						else {
+							int targetIndex = commands.indexOf(target);
+
+							Label lbl = new Label(this);
+							lbl.name = String.format("#%X", loop.fixedPos);
+							commands.add(targetIndex, lbl);
+
+							loop.label = lbl;
+						}
+					}
+				}
+				else {
+					loop.label = labelMap.get(loop.labelName);
+				}
+			}
+			else if (cmd instanceof SetImage setImg) {
+				if (setImg.imgName != null) {
+					setImg.img = imgMap.get(setImg.imgName);
+				}
+				else if (setImg.imgIndex == -1) {
+					setImg.img = null;
+				}
+				else if (setImg.imgIndex >= 0 && setImg.imgIndex < spr.rasters.size()) {
+					setImg.img = spr.rasters.get(setImg.imgIndex);
+				}
+				else {
+					Logger.logfWarning("SetRaster command references out of bounds index: %02X", setImg.imgIndex);
+				}
+			}
+			else if (cmd instanceof SetPalette setPal) {
+				if (setPal.palName != null) {
+					setPal.pal = palMap.get(setPal.palName);
+				}
+				else if (setPal.palIndex == -1) {
+					setPal.pal = null;
+				}
+				else if (setPal.palIndex >= 0 && setPal.palIndex < spr.palettes.size()) {
+					setPal.pal = spr.palettes.get(setPal.palIndex);
+				}
+				else {
+					Logger.logfWarning("SetPalette command references out of bounds index: %02X", setPal.palIndex);
+				}
+			}
+			else if (cmd instanceof SetParent setParent) {
+				if (setParent.parName != null) {
+					setParent.parent = compMap.get(setParent.parName);
+				}
+				else if (setParent.parIndex == -1) {
+					setParent.parent = null;
+				}
+				else if (setParent.parIndex >= 0 && setParent.parIndex < comp.parentAnimation.components.size()) {
+					setParent.parent = comp.parentAnimation.components.get(setParent.parIndex);
+				}
+				else {
+					Logger.logfWarning("SetParent command references out of bounds index: %02X", setParent.parIndex);
+				}
+			}
+		}
 	}
 }

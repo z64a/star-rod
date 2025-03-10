@@ -6,7 +6,7 @@ import game.sprite.editor.animators.AnimElement;
 
 public abstract class AnimKeyframe extends AnimElement
 {
-	public final KeyframeAnimator animator;
+	protected final KeyframeAnimator animator;
 
 	protected AnimKeyframe(KeyframeAnimator animator)
 	{

@@ -1,5 +1,7 @@
 package game.sprite.editor.animators.command;
 
+import static game.sprite.SpriteKey.*;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.util.List;
@@ -10,33 +12,45 @@ import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 
+import org.w3c.dom.Element;
+
 import app.SwingUtils;
 import common.commands.AbstractCommand;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.keyframe.Keyframe;
 import net.miginfocom.swing.MigLayout;
 import util.ui.ListAdapterComboboxModel;
+import util.xml.XmlWrapper.XmlReader;
+import util.xml.XmlWrapper.XmlTag;
+import util.xml.XmlWrapper.XmlWriter;
 
 //7VVV UUUU
 // loop
 public class Loop extends AnimCommand
 {
+	public static final int NO_FIXED_POS = -1;
+
 	public Label label;
-	public transient int fixedPos; // only used for generating commands
 	public int count;
+
+	// only used for generating commands from raw bytes
+	public transient int fixedPos = NO_FIXED_POS;
+
+	// used during deserialization
+	public transient String labelName;
 
 	// used during conversion from Keyframes
 	public transient Keyframe target;
 
 	public Loop(CommandAnimator animator)
 	{
-		this(animator, null, -1, (short) 3);
+		this(animator, null, NO_FIXED_POS, (short) 3);
 	}
 
 	// used during conversion from Keyframes
 	public Loop(CommandAnimator animator, Keyframe target, int count)
 	{
-		this(animator, null, -1, (short) count);
+		this(animator, null, NO_FIXED_POS, (short) count);
 
 		this.target = target;
 	}
@@ -51,9 +65,32 @@ public class Loop extends AnimCommand
 	}
 
 	@Override
+	public void toXML(XmlWriter xmw)
+	{
+		XmlTag tag = xmw.createTag(TAG_CMD_LOOP, true);
+		if (label != null)
+			xmw.addAttribute(tag, ATTR_DEST, label.name);
+		xmw.addInt(tag, ATTR_COUNT, count);
+		xmw.printTag(tag);
+	}
+
+	@Override
+	public void fromXML(XmlReader xmr, Element elem)
+	{
+		if (xmr.hasAttribute(elem, ATTR_DEST))
+			labelName = xmr.getAttribute(elem, ATTR_DEST);
+
+		if (xmr.hasAttribute(elem, ATTR_POS))
+			fixedPos = xmr.readInt(elem, ATTR_POS);
+
+		if (xmr.hasAttribute(elem, ATTR_COUNT))
+			count = xmr.readInt(elem, ATTR_COUNT);
+	}
+
+	@Override
 	public Loop copy()
 	{
-		return new Loop(animator, label, -1, (short) count);
+		return new Loop(animator, label, NO_FIXED_POS, (short) count);
 	}
 
 	@Override
@@ -95,9 +132,9 @@ public class Loop extends AnimCommand
 		if (label == null)
 			return "Repeat: (missing) (x" + count + ")";
 		else if (animator.findCommand(label) < 0)
-			return "<html>Repeat: <i>" + label.labelName + "</i>  (missing) (x" + count + ")</html>";
+			return "<html>Repeat: <i>" + label.name + "</i>  (missing) (x" + count + ")</html>";
 		else
-			return "<html>Repeat: <i>" + label.labelName + "</i>  (x" + count + ")</html>";
+			return "<html>Repeat: <i>" + label.name + "</i>  (x" + count + ")</html>";
 	}
 
 	@Override
@@ -118,12 +155,12 @@ public class Loop extends AnimCommand
 	{
 		int pos = 0;
 
-		if (label.labelName.startsWith("#"))
-			pos = Integer.parseInt(label.labelName.substring(1), 16);
+		if (label.name.startsWith("#"))
+			pos = Integer.parseInt(label.name.substring(1), 16);
 		else {
 			pos = animator.getCommandOffset(label);
 			if (pos < 0)
-				throw new RuntimeException("Repeat is missing label: " + label.labelName);
+				throw new RuntimeException("Repeat is missing label: " + label.name);
 		}
 
 		seq.add((short) (0x7000 | (pos & 0xFFF)));

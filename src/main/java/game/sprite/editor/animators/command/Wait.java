@@ -1,5 +1,8 @@
 package game.sprite.editor.animators.command;
 
+import static game.sprite.SpriteKey.ATTR_DURATION;
+import static game.sprite.SpriteKey.TAG_CMD_WAIT;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.util.List;
@@ -8,11 +11,16 @@ import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 
+import org.w3c.dom.Element;
+
 import app.SwingUtils;
 import common.commands.AbstractCommand;
 import game.sprite.editor.SpriteEditor;
 import net.miginfocom.swing.MigLayout;
 import util.ui.EvenSpinner;
+import util.xml.XmlWrapper.XmlReader;
+import util.xml.XmlWrapper.XmlTag;
+import util.xml.XmlWrapper.XmlWriter;
 
 //0VVV
 public class Wait extends AnimCommand
@@ -31,6 +39,21 @@ public class Wait extends AnimCommand
 		count = (s0 & 0xFFF);
 		if (count == 0)
 			count = 4095;
+	}
+
+	@Override
+	public void toXML(XmlWriter xmw)
+	{
+		XmlTag tag = xmw.createTag(TAG_CMD_WAIT, true);
+		xmw.addInt(tag, ATTR_DURATION, count);
+		xmw.printTag(tag);
+	}
+
+	@Override
+	public void fromXML(XmlReader xmr, Element elem)
+	{
+		if (xmr.hasAttribute(elem, ATTR_DURATION))
+			count = xmr.readInt(elem, ATTR_DURATION);
 	}
 
 	@Override
@@ -99,6 +122,9 @@ public class Wait extends AnimCommand
 	{
 		if (count == 0)
 			return "Wait Command: invalid duration";
+
+		if (count % 2 == 1 && SpriteEditor.instance().optStrictErrorChecking)
+			return "Wait duration should be even";
 
 		return null;
 	}

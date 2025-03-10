@@ -1,5 +1,7 @@
 package game.sprite.editor.animators.command;
 
+import static game.sprite.SpriteKey.*;
+
 import java.awt.Component;
 import java.awt.Dimension;
 import java.util.List;
@@ -8,6 +10,8 @@ import javax.swing.ComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JPanel;
+
+import org.w3c.dom.Element;
 
 import app.SwingUtils;
 import common.commands.AbstractCommand;
@@ -18,12 +22,19 @@ import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.BlankArrowUI;
 import game.sprite.editor.animators.SpriteRasterRenderer;
 import net.miginfocom.swing.MigLayout;
+import util.xml.XmlWrapper.XmlReader;
+import util.xml.XmlWrapper.XmlTag;
+import util.xml.XmlWrapper.XmlWriter;
 
 //1VVV
 // set image -- FFF is valid value for "no image" (may actually need to be < 100`)
 public class SetImage extends AnimCommand
 {
 	public SpriteRaster img;
+
+	// used during deserialization
+	public transient String imgName = null;
+	public transient int imgIndex = -1;
 
 	public SetImage(CommandAnimator animator)
 	{
@@ -49,6 +60,36 @@ public class SetImage extends AnimCommand
 		super(animator);
 
 		this.img = img;
+	}
+
+	@Override
+	public void toXML(XmlWriter xmw)
+	{
+		XmlTag tag = xmw.createTag(TAG_CMD_SET_IMG, true);
+
+		if (SpriteEditor.instance().optOutputNames) {
+			if (img == null)
+				xmw.addAttribute(tag, ATTR_NAME, "");
+			else
+				xmw.addAttribute(tag, ATTR_NAME, img.name);
+		}
+		else {
+			if (img == null)
+				xmw.addHex(tag, ATTR_INDEX, -1);
+			else
+				xmw.addHex(tag, ATTR_INDEX, img.getIndex());
+		}
+
+		xmw.printTag(tag);
+	}
+
+	@Override
+	public void fromXML(XmlReader xmr, Element elem)
+	{
+		if (xmr.hasAttribute(elem, ATTR_NAME))
+			imgName = xmr.getAttribute(elem, ATTR_NAME);
+		else if (xmr.hasAttribute(elem, ATTR_INDEX))
+			imgIndex = xmr.readHex(elem, ATTR_INDEX);
 	}
 
 	@Override

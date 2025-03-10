@@ -160,6 +160,9 @@ public class SpriteEditor extends BaseEditor
 	private boolean useFiltering;
 	public boolean highlightCommand;
 	private boolean highlightComponent;
+	private boolean optWarnIrreversible;
+	public boolean optStrictErrorChecking;
+	public boolean optOutputNames;
 
 	// animation player controls
 	private enum PlayerEvent
@@ -329,6 +332,19 @@ public class SpriteEditor extends BaseEditor
 	@Override
 	public void beforeCreateGui()
 	{
+		loadPreferences();
+
+		playerSpriteList = new SpriteList(this);
+		npcSpriteList = new SpriteList(this);
+
+		spriteLoader = new SpriteLoader();
+		spriteLoader.tryLoadingPlayerAssets(false);
+
+		commandManager = new SpriteCommandManager(this, UNDO_LIMIT);
+	}
+
+	private void loadPreferences()
+	{
 		Config cfg = getConfig();
 		if (cfg != null) {
 			useFiltering = cfg.getBoolean(Options.SprUseFiltering);
@@ -339,15 +355,10 @@ public class SpriteEditor extends BaseEditor
 			showGuide = cfg.getBoolean(Options.SprShowScaleReference);
 			flipHorizontal = cfg.getBoolean(Options.SprFlipHorizontal);
 			useBackFacing = cfg.getBoolean(Options.SprBackFacing);
+			optWarnIrreversible = cfg.getBoolean(Options.SprWarnIrreversible);
+			optStrictErrorChecking = cfg.getBoolean(Options.SprStrictErrorChecking);
+			optOutputNames = cfg.getBoolean(Options.SprOutputNames);
 		}
-
-		playerSpriteList = new SpriteList(this);
-		npcSpriteList = new SpriteList(this);
-
-		spriteLoader = new SpriteLoader();
-		spriteLoader.tryLoadingPlayerAssets(false);
-
-		commandManager = new SpriteCommandManager(this, UNDO_LIMIT);
 	}
 
 	@Override
@@ -914,6 +925,10 @@ public class SpriteEditor extends BaseEditor
 	{
 		assert (SwingUtilities.isEventDispatchThread());
 
+		// save current component selection for old animation
+		if (currentComp != null)
+			currentComp.unbind();
+
 		currentComp = component;
 
 		if (currentComp == null) {
@@ -1048,7 +1063,7 @@ public class SpriteEditor extends BaseEditor
 			return;
 
 		Palette overridePal = null;
-		if (sprite.selectedPalAsset != null)
+		if (sprite.selectedPalAsset != null && palettesTab.shouldPreviewPalette())
 			overridePal = sprite.selectedPalAsset.pal;
 
 		sprite.renderRasterAtlas(overridePal, useFiltering);
@@ -1151,8 +1166,8 @@ public class SpriteEditor extends BaseEditor
 		rastersTab = new RastersTab(this);
 		palettesTab = new PalettesTab(this);
 
-		CommandAnimatorEditor.init();
-		KeyframeAnimatorEditor.init();
+		CommandAnimatorEditor.instance();
+		KeyframeAnimatorEditor.instance();
 
 		editorModeTabs = new JTabbedPane();
 		editorModeTabs.addTab(EditorMode.Rasters.tabName, rastersTab);
@@ -1295,6 +1310,12 @@ public class SpriteEditor extends BaseEditor
 			showControls();
 		});
 		menu.add(item);
+
+		item = new JMenuItem("Preferences");
+		item.addActionListener((e) -> {
+			showPreferences();
+		});
+		menu.add(item);
 	}
 
 	private void addOptionsMenu(JMenuBar menuBar, ActionListener openLogAction)
@@ -1368,9 +1389,17 @@ public class SpriteEditor extends BaseEditor
 		item = new JMenuItem("Convert to Keyframes");
 		item.addActionListener((e) -> {
 			if (sprite != null) {
-				sprite.convertToKeyframes();
-				flushUndoRedo();
-				setComponent(currentComp);
+				if (sprite.usesKeyframes) {
+					Toolkit.getDefaultToolkit().beep();
+					Logger.logWarning("Sprite is already using keyframes!");
+					return;
+				}
+				if (promptCannotUndo("Convert to keyframes")) {
+					sprite.convertToKeyframes();
+					flushUndoRedo();
+					setComponent(currentComp);
+					sprite.usesKeyframes = true;
+				}
 			}
 		});
 		menu.add(item);
@@ -1378,9 +1407,17 @@ public class SpriteEditor extends BaseEditor
 		item = new JMenuItem("Convert to Commands");
 		item.addActionListener((e) -> {
 			if (sprite != null) {
-				sprite.convertToCommands();
-				flushUndoRedo();
-				setComponent(currentComp);
+				if (!sprite.usesKeyframes) {
+					Toolkit.getDefaultToolkit().beep();
+					Logger.logWarning("Sprite is already using commands!");
+					return;
+				}
+				if (promptCannotUndo("Convert to commands")) {
+					sprite.convertToCommands();
+					flushUndoRedo();
+					setComponent(currentComp);
+					sprite.usesKeyframes = false;
+				}
 			}
 		});
 		menu.add(item);
@@ -1892,7 +1929,6 @@ public class SpriteEditor extends BaseEditor
 		ah = AssetManager.getTopLevel(ah);
 
 		sprite.reindex();
-		sprite.generateRawAnim();
 
 		try (XmlWriter xmw = new XmlWriter(ah)) {
 			sprite.savePalettes();
@@ -2048,6 +2084,63 @@ public class SpriteEditor extends BaseEditor
 		RasterSelectDialog dialog = new RasterSelectDialog(s.rasters);
 		showModalDialog(dialog, "Choose Raster");
 		return dialog.getSelected();
+	}
+
+	public boolean promptCannotUndo()
+	{
+		return promptCannotUndo("The following action");
+	}
+
+	/**
+	 * Try to show a warning that the following action cannot be undone.
+	 * Show this before anything that will flush the undo/redo stack.
+	 * @return true if user assents or the warnings are disabled, false otherwise
+	 */
+	public boolean promptCannotUndo(String actionName)
+	{
+		if (!optWarnIrreversible)
+			return true;
+
+		int result = SwingUtils.getWarningDialog()
+			.setTitle("Irreversible Action")
+			.setMessage(actionName + " cannot be undone.", "Proceed anyway?")
+			.setOptions("Yes", "No", "Don't Remind Me")
+			.choose();
+
+		if (result == 0) {
+			return true;
+		}
+		else if (result == 2) {
+			Config cfg = getConfig();
+			if (cfg != null)
+				cfg.setBoolean(Options.SprWarnIrreversible, false);
+			optWarnIrreversible = false;
+			return true;
+		}
+
+		return false;
+	}
+
+	private void showPreferences()
+	{
+		Config cfg = getConfig();
+		if (cfg == null)
+			return;
+
+		SpritePreferencesPanel preferences = new SpritePreferencesPanel();
+		preferences.setValues(cfg);
+
+		int choice = super.getConfirmDialog("Editor Preferences", preferences)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose();
+
+		if (choice == JOptionPane.OK_OPTION) {
+			preferences.getValues(cfg);
+			loadPreferences();
+			cfg.saveConfigFile();
+			Logger.log("Saved preferences to " + cfg.getFile().getName());
+		}
 	}
 
 	private HashSet<Class<? extends Editable>> editableChangedSet = new HashSet<>();

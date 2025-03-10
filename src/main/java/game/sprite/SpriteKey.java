@@ -46,6 +46,20 @@ public enum SpriteKey implements XmlKey
 	ATTR_NAME			("name"),
 	ATTR_POS			("pos"),
 
+	TAG_CMD_LABEL		("Label"),
+	TAG_CMD_WAIT		("Wait"),
+	TAG_CMD_GOTO		("Goto"),
+	TAG_CMD_LOOP		("Loop"),
+	TAG_CMD_SET_IMG		("SetRaster"),
+	TAG_CMD_SET_PAL		("SetPalette"),
+	TAG_CMD_SET_PAR		("SetParent"),
+	TAG_CMD_SET_POS		("SetPos"),
+	TAG_CMD_SET_ROT		("SetRot"),
+	TAG_CMD_SET_SCALE	("SetScale"),
+	TAG_CMD_SET_NOTIFY	("SetNotify"),
+	TAG_CMD_SET_UNK		("SetUnknown"),
+	TAG_CMD_KEYFRAME	("Keyframe"),
+
 	// attributes for decomp-style command tags
 	ATTR_DURATION		("duration"),
 	ATTR_DEST			("dest"),
@@ -57,7 +71,12 @@ public enum SpriteKey implements XmlKey
 	ATTR_VALUE			("value"),
 	ATTR_INDEX			("index"),
 
-	ATTR_KEYFRAMES		("keyframes");
+	ATTR_KEYFRAMES		("keyframes"),
+	ATTR_KF_IMG			("img"),
+	ATTR_KF_PAL			("pal"),
+	ATTR_KF_POS			("pos"),
+	ATTR_KF_ROT			("rot"),
+	ATTR_KF_SCALE		("scale");
 	// @formatter:on
 
 	private final String key;

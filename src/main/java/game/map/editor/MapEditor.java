@@ -4675,7 +4675,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		uvScale = editorConfig.getFloat(Options.uvScale);
 		normalsLength = editorConfig.getFloat(Options.NormalsLength);
 
-		int undoLimit = editorConfig.getInteger(Options.UndoLimit);
+		int undoLimit = editorConfig.getInteger(Options.MapUndoLimit);
 		commandManager.setUndoLimit(undoLimit);
 
 		rotationSnapIncrement = editorConfig.getFloat(Options.AngleSnap);

@@ -32,6 +32,9 @@ public abstract class ThemedIcon
 	public static final FlatSVGIcon VISIBILITY_OFF_16 = VISIBILITY_OFF_24.derive(16, 16);
 	public static final FlatSVGIcon VISIBILITY_ON_16 = VISIBILITY_ON_24.derive(16, 16);
 
+	public static final FlatSVGIcon DOWNLOAD_24 = getIcon("download_24");
+	public static final FlatSVGIcon DOWNLOAD_16 = DOWNLOAD_24.derive(16, 16);
+
 	public static final FlatSVGIcon HELP_24 = getIcon("help_24");
 	public static final FlatSVGIcon INFO_24 = getIcon("info_24");
 

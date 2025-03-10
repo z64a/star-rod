@@ -60,42 +60,8 @@ public class RastersTab extends JPanel
 				return;
 			}
 
-			imgAssetList.ignoreChanges.increment();
-
-			// remember name of currently selected, so we can try reselecting after refreshing
-			ImgAsset selected = imgAssetList.getSelectedValue();
-			String selectedName = (selected == null) ? null : selected.getFilename();
-
-			// clear current selection
-			imgAssetList.setSelectedValue(null, true);
-			sprite.lastSelectedImgAsset = -1;
-			setImgAsset(null);
-
-			// reload the assets
-			sprite.reloadRasterAssets();
-
-			// recreate the atlas
-			sprite.makeImgAtlas();
-			editor.resetAtlasCamera();
-
-			// prepare new selection for setSprite
-			if (sprite.imgAssets.size() > 0)
-				sprite.lastSelectedImgAsset = 0;
-
-			// refresh this tab
-			setSprite(sprite);
-			RastersTab.this.repaint();
-
-			// try reselecting asset with name matching previous selection
-			for (ImgAsset newAsset : sprite.imgAssets) {
-				if (newAsset.getFilename().equals(selectedName)) {
-					imgAssetList.setSelectedValue(newAsset, true);
-				}
-			}
-
-			editor.flushUndoRedo();
-
-			imgAssetList.ignoreChanges.decrement();
+			if (editor.promptCannotUndo("Reload raster assets"))
+				refreshImgAssets();
 		});
 
 		JButton btnAddRaster = new JButton(ThemedIcon.ADD_16);
@@ -240,5 +206,47 @@ public class RastersTab extends JPanel
 		assert (SwingUtilities.isEventDispatchThread());
 
 		imgAssetList.setSelectedValue(asset, true);
+	}
+
+	private void refreshImgAssets()
+	{
+		SpriteEditor editor = SpriteEditor.instance();
+
+		imgAssetList.ignoreChanges.increment();
+
+		// remember name of currently selected, so we can try reselecting after refreshing
+		ImgAsset selected = imgAssetList.getSelectedValue();
+		String selectedName = (selected == null) ? null : selected.getFilename();
+
+		// clear current selection
+		imgAssetList.setSelectedValue(null, true);
+		sprite.lastSelectedImgAsset = -1;
+		setImgAsset(null);
+
+		// reload the assets
+		sprite.reloadRasterAssets();
+
+		// recreate the atlas
+		sprite.makeImgAtlas();
+		editor.resetAtlasCamera();
+
+		// prepare new selection for setSprite
+		if (sprite.imgAssets.size() > 0)
+			sprite.lastSelectedImgAsset = 0;
+
+		// refresh this tab
+		setSprite(sprite);
+		RastersTab.this.repaint();
+
+		// try reselecting asset with name matching previous selection
+		for (ImgAsset newAsset : sprite.imgAssets) {
+			if (newAsset.getFilename().equals(selectedName)) {
+				imgAssetList.setSelectedValue(newAsset, true);
+			}
+		}
+
+		editor.flushUndoRedo();
+
+		imgAssetList.ignoreChanges.decrement();
 	}
 }

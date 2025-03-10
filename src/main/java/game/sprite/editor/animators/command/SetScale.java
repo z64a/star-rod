@@ -1,5 +1,7 @@
 package game.sprite.editor.animators.command;
 
+import static game.sprite.SpriteKey.*;
+
 import java.awt.Component;
 import java.awt.event.ActionListener;
 import java.util.Enumeration;
@@ -12,17 +14,23 @@ import javax.swing.JRadioButton;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 
+import org.w3c.dom.Element;
+
 import app.SwingUtils;
 import common.commands.AbstractCommand;
 import game.sprite.editor.SpriteEditor;
+import game.sprite.editor.animators.ScaleMode;
 import net.miginfocom.swing.MigLayout;
+import util.xml.XmlWrapper.XmlReader;
+import util.xml.XmlWrapper.XmlTag;
+import util.xml.XmlWrapper.XmlWriter;
 
 //5VVV UUUU
 // set scale (%)
 public class SetScale extends AnimCommand
 {
-	public int type;
-	public int scalePercent;
+	public ScaleMode mode;
+	public int percent;
 
 	public SetScale(CommandAnimator animator)
 	{
@@ -33,35 +41,52 @@ public class SetScale extends AnimCommand
 	{
 		super(animator);
 
-		type = (s0 & 0xFFF);
-		scalePercent = s1;
+		mode = ScaleMode.get(s0 & 0xFFF);
+		percent = s1;
+	}
+
+	@Override
+	public void toXML(XmlWriter xmw)
+	{
+		XmlTag tag = xmw.createTag(TAG_CMD_SET_SCALE, true);
+		xmw.addAttribute(tag, ATTR_MODE, mode.name);
+		xmw.addInt(tag, ATTR_PERCENT, percent);
+		xmw.printTag(tag);
+	}
+
+	@Override
+	public void fromXML(XmlReader xmr, Element elem)
+	{
+		if (xmr.hasAttribute(elem, ATTR_MODE))
+			mode = ScaleMode.get(xmr.getAttribute(elem, ATTR_MODE));
+
+		if (xmr.hasAttribute(elem, ATTR_PERCENT))
+			percent = xmr.readInt(elem, ATTR_PERCENT);
 	}
 
 	@Override
 	public SetScale copy()
 	{
-		return new SetScale(animator, (short) type, (short) scalePercent);
+		return new SetScale(animator, (short) mode.value, (short) percent);
 	}
 
 	@Override
 	public AdvanceResult apply()
 	{
-		switch (type) {
-			case 0:
-				owner.scaleX = scalePercent;
-				owner.scaleY = scalePercent;
-				owner.scaleZ = scalePercent;
+		switch (mode) {
+			case UNIFORM:
+				owner.scaleX = percent;
+				owner.scaleY = percent;
+				owner.scaleZ = percent;
 				break;
-			case 1:
-				owner.scaleX = scalePercent;
+			case X:
+				owner.scaleX = percent;
 				break;
-			case 2:
-				owner.scaleY = scalePercent;
-			case 3:
-				owner.scaleZ = scalePercent;
+			case Y:
+				owner.scaleY = percent;
+			case Z:
+				owner.scaleZ = percent;
 				break;
-			default:
-				throw new RuntimeException(String.format("Invalid scale command type: %X", type));
 		}
 		return AdvanceResult.NEXT;
 	}
@@ -75,23 +100,21 @@ public class SetScale extends AnimCommand
 	@Override
 	public String toString()
 	{
-		String typeName;
-		switch (type) {
-			case 0:
+		String typeName = "error";
+		switch (mode) {
+			case UNIFORM:
 				typeName = "All";
 				break;
-			case 1:
+			case X:
 				typeName = "X";
 				break;
-			case 2:
+			case Y:
 				typeName = "Y";
-			case 3:
+			case Z:
 				typeName = "Z";
 				break;
-			default:
-				throw new RuntimeException(String.format("Invalid scale command type: %X", type));
 		}
-		return "Scale " + typeName + ": " + scalePercent + "%";
+		return "Scale " + typeName + ": " + percent + "%";
 	}
 
 	@Override
@@ -110,8 +133,8 @@ public class SetScale extends AnimCommand
 	@Override
 	public void addTo(List<Short> seq)
 	{
-		seq.add((short) (0x5000 | (type & 0xFFF)));
-		seq.add((short) scalePercent);
+		seq.add((short) (0x5000 | (mode.value & 0xFFF)));
+		seq.add((short) percent);
 	}
 
 	private static class SetScalePanel extends JPanel
@@ -152,7 +175,7 @@ public class SetScale extends AnimCommand
 				for (Enumeration<AbstractButton> buttons = scaleButtons.getElements(); buttons.hasMoreElements(); i++) {
 					AbstractButton button = buttons.nextElement();
 					if (button.isSelected())
-						SpriteEditor.execute(new SetCommandScaleType(cmd, i));
+						SpriteEditor.execute(new SetCommandScaleType(cmd, ScaleMode.get(i)));
 				}
 			};
 
@@ -184,19 +207,19 @@ public class SetScale extends AnimCommand
 			this.cmd = cmd;
 
 			ignoreChanges = true;
-			scaleSpinner.setValue(cmd.scalePercent);
+			scaleSpinner.setValue(cmd.percent);
 
-			switch (cmd.type) {
-				case 0:
+			switch (cmd.mode) {
+				case UNIFORM:
 					allButton.setSelected(true);
 					break;
-				case 1:
+				case X:
 					xButton.setSelected(true);
 					break;
-				case 2:
+				case Y:
 					yButton.setSelected(true);
 					break;
-				case 3:
+				case Z:
 					zButton.setSelected(true);
 					break;
 			}
@@ -215,7 +238,7 @@ public class SetScale extends AnimCommand
 
 				this.cmd = cmd;
 				this.next = next;
-				this.prev = cmd.scalePercent;
+				this.prev = cmd.percent;
 			}
 
 			@Override
@@ -223,7 +246,7 @@ public class SetScale extends AnimCommand
 			{
 				super.exec();
 
-				cmd.scalePercent = next;
+				cmd.percent = next;
 
 				ignoreChanges = true;
 				scaleSpinner.setValue(next);
@@ -238,7 +261,7 @@ public class SetScale extends AnimCommand
 			{
 				super.undo();
 
-				cmd.scalePercent = prev;
+				cmd.percent = prev;
 
 				ignoreChanges = true;
 				scaleSpinner.setValue(prev);
@@ -252,16 +275,16 @@ public class SetScale extends AnimCommand
 		private class SetCommandScaleType extends AbstractCommand
 		{
 			private final SetScale cmd;
-			private final int next;
-			private final int prev;
+			private final ScaleMode next;
+			private final ScaleMode prev;
 
-			private SetCommandScaleType(SetScale cmd, int next)
+			private SetCommandScaleType(SetScale cmd, ScaleMode next)
 			{
 				super("Set Scale Type");
 
 				this.cmd = cmd;
 				this.next = next;
-				this.prev = cmd.type;
+				this.prev = cmd.mode;
 			}
 
 			@Override
@@ -269,20 +292,20 @@ public class SetScale extends AnimCommand
 			{
 				super.exec();
 
-				cmd.type = next;
+				cmd.mode = next;
 
 				ignoreChanges = true;
-				switch (cmd.type) {
-					case 0:
+				switch (cmd.mode) {
+					case UNIFORM:
 						allButton.setSelected(true);
 						break;
-					case 1:
+					case X:
 						xButton.setSelected(true);
 						break;
-					case 2:
+					case Y:
 						yButton.setSelected(true);
 						break;
-					case 3:
+					case Z:
 						zButton.setSelected(true);
 						break;
 				}
@@ -297,20 +320,20 @@ public class SetScale extends AnimCommand
 			{
 				super.undo();
 
-				cmd.type = prev;
+				cmd.mode = prev;
 
 				ignoreChanges = true;
-				switch (cmd.type) {
-					case 0:
+				switch (cmd.mode) {
+					case UNIFORM:
 						allButton.setSelected(true);
 						break;
-					case 1:
+					case X:
 						xButton.setSelected(true);
 						break;
-					case 2:
+					case Y:
 						yButton.setSelected(true);
 						break;
-					case 3:
+					case Z:
 						zButton.setSelected(true);
 						break;
 				}

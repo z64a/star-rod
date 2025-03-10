@@ -27,6 +27,7 @@ import game.sprite.editor.animators.ComponentAnimationEditor;
 import game.sprite.editor.animators.keyframe.Keyframe.KeyframePanel;
 import game.sprite.editor.commands.CreateCommand;
 import net.miginfocom.swing.MigLayout;
+import util.Logger;
 
 public class KeyframeAnimatorEditor extends ComponentAnimationEditor
 {
@@ -81,17 +82,11 @@ public class KeyframeAnimatorEditor extends ComponentAnimationEditor
 		KeyframePanel.instance().setModel(rasterModel, paletteModel);
 	}
 
-	private static KeyframeAnimatorEditor instance()
+	public static KeyframeAnimatorEditor instance()
 	{
 		if (instance == null)
 			instance = new KeyframeAnimatorEditor();
 		return instance;
-	}
-
-	public static void init()
-	{
-		// allow SpriteEditor to pre-load at startup
-		instance();
 	}
 
 	protected static void repaintCommandList()
@@ -195,6 +190,40 @@ public class KeyframeAnimatorEditor extends ComponentAnimationEditor
 			commandEditPanel.add(elem.getPanel(), "grow, pushy");
 		commandEditPanel.revalidate();
 		commandEditPanel.repaint();
+	}
+
+	@Override
+	public void restoreSelection(int lastSelectedIndex)
+	{
+		commandList.ignoreSelectionChange = true;
+
+		// restore component selection (if valid) for new animation
+		int old = lastSelectedIndex;
+		if (old >= -1 && old < commandList.getModel().getSize()) {
+			// note: -1 is a valid index corresponding to no selection
+			commandList.setSelectedIndex(old);
+			setSelected(commandList.getSelectedValue());
+		}
+		else if (commandList.getModel().getSize() > 0) {
+			// safety condition -- remove? should not be needed if undo/redo state intact
+			Logger.logfWarning("Reference to out of range component ID: %d", old);
+			commandList.setSelectedIndex(0);
+			setSelected(commandList.getSelectedValue());
+		}
+		else {
+			// extra safety condition -- also remove?
+			Logger.logfWarning("Reference to invalid component ID: %d", old);
+			commandList.setSelectedIndex(-1);
+			setSelected(null);
+		}
+
+		commandList.ignoreSelectionChange = false;
+	}
+
+	@Override
+	public int getSelection()
+	{
+		return commandList.getSelectedIndex();
 	}
 
 	private static void create(AnimKeyframe cmd)

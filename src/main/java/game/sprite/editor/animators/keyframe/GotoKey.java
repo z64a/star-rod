@@ -1,5 +1,8 @@
 package game.sprite.editor.animators.keyframe;
 
+import static game.sprite.SpriteKey.ATTR_DEST;
+import static game.sprite.SpriteKey.TAG_CMD_GOTO;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.util.List;
@@ -9,19 +12,33 @@ import javax.swing.DefaultListModel;
 import javax.swing.JComboBox;
 import javax.swing.JPanel;
 
+import org.w3c.dom.Element;
+
 import app.SwingUtils;
 import common.commands.AbstractCommand;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.command.Label;
 import net.miginfocom.swing.MigLayout;
 import util.ui.ListAdapterComboboxModel;
+import util.xml.XmlWrapper.XmlReader;
+import util.xml.XmlWrapper.XmlTag;
+import util.xml.XmlWrapper.XmlWriter;
 
 public class GotoKey extends AnimKeyframe
 {
 	public Keyframe target;
 
+	// used during deserialization
+	public transient String targetName;
+
 	// used during conversion from commands
 	public transient Label label;
+
+	// for XML deserialization
+	public GotoKey(KeyframeAnimator animator)
+	{
+		super(animator);
+	}
 
 	// used during conversion from commands
 	public GotoKey(KeyframeAnimator animator, Label lbl)
@@ -39,6 +56,22 @@ public class GotoKey extends AnimKeyframe
 	}
 
 	@Override
+	public void toXML(XmlWriter xmw)
+	{
+		XmlTag tag = xmw.createTag(TAG_CMD_GOTO, true);
+		if (target != null)
+			xmw.addAttribute(tag, ATTR_DEST, target.name);
+		xmw.printTag(tag);
+	}
+
+	@Override
+	public void fromXML(XmlReader xmr, Element elem)
+	{
+		if (xmr.hasAttribute(elem, ATTR_DEST))
+			targetName = xmr.getAttribute(elem, ATTR_DEST);
+	}
+
+	@Override
 	public GotoKey copy()
 	{
 		return new GotoKey(animator, target);
@@ -47,7 +80,7 @@ public class GotoKey extends AnimKeyframe
 	@Override
 	public AdvanceResult apply()
 	{
-		if (label == null)
+		if (target == null)
 			return AdvanceResult.NEXT;
 
 		// goto: self infinite loops add a 1 frame delay

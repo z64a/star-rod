@@ -1,10 +1,14 @@
 package game.sprite.editor.animators.keyframe;
 
+import static game.sprite.SpriteKey.*;
+
 import java.awt.Component;
 import java.util.List;
 
 import javax.swing.JComboBox;
 import javax.swing.JPanel;
+
+import org.w3c.dom.Element;
 
 import app.SwingUtils;
 import common.commands.AbstractCommand;
@@ -15,10 +19,17 @@ import game.sprite.editor.SpriteEditor;
 import net.miginfocom.swing.MigLayout;
 import util.Logger;
 import util.ui.ListAdapterComboboxModel;
+import util.xml.XmlWrapper.XmlReader;
+import util.xml.XmlWrapper.XmlTag;
+import util.xml.XmlWrapper.XmlWriter;
 
 public class ParentKey extends AnimKeyframe
 {
 	public SpriteComponent parent;
+
+	// used during deserialization
+	public transient String parName = null;
+	public transient int parIndex = -1;
 
 	public ParentKey(KeyframeAnimator animator)
 	{
@@ -29,9 +40,9 @@ public class ParentKey extends AnimKeyframe
 	{
 		super(animator);
 
-		int id = (s0 & 0xFF);
-		if (id < owner.parentAnimation.components.size())
-			parent = owner.parentAnimation.components.get(id);
+		parIndex = (s0 & 0xFF);
+		if (parIndex < owner.parentAnimation.components.size())
+			parent = owner.parentAnimation.components.get(parIndex);
 	}
 
 	public ParentKey(KeyframeAnimator animator, SpriteComponent parent)
@@ -39,6 +50,36 @@ public class ParentKey extends AnimKeyframe
 		super(animator);
 
 		this.parent = parent;
+	}
+
+	@Override
+	public void toXML(XmlWriter xmw)
+	{
+		XmlTag tag = xmw.createTag(TAG_CMD_SET_PAR, true);
+
+		if (SpriteEditor.instance().optOutputNames) {
+			if (parent == null)
+				xmw.addAttribute(tag, ATTR_NAME, "");
+			else
+				xmw.addAttribute(tag, ATTR_NAME, parent.name);
+		}
+		else {
+			if (parent == null)
+				xmw.addHex(tag, ATTR_INDEX, -1);
+			else
+				xmw.addHex(tag, ATTR_INDEX, parent.getIndex());
+		}
+
+		xmw.printTag(tag);
+	}
+
+	@Override
+	public void fromXML(XmlReader xmr, Element elem)
+	{
+		if (xmr.hasAttribute(elem, ATTR_NAME))
+			parName = xmr.getAttribute(elem, ATTR_NAME);
+		else if (xmr.hasAttribute(elem, ATTR_INDEX))
+			parIndex = xmr.readHex(elem, ATTR_INDEX);
 	}
 
 	@Override
@@ -110,7 +151,7 @@ public class ParentKey extends AnimKeyframe
 		if (parent == null)
 			return "SetParent: undefined parent";
 
-		if (parent == owner)
+		if (parent == owner && SpriteEditor.instance().optStrictErrorChecking)
 			return "SetParent: parented to itself";
 
 		return null;

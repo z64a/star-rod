@@ -6,7 +6,7 @@ import game.sprite.editor.animators.AnimElement;
 
 public abstract class AnimCommand extends AnimElement
 {
-	public final CommandAnimator animator;
+	protected final CommandAnimator animator;
 
 	protected AnimCommand(CommandAnimator animator)
 	{

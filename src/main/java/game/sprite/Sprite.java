@@ -6,9 +6,8 @@ import java.awt.Toolkit;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Queue;
 
 import javax.swing.SwingUtilities;
 
@@ -58,6 +57,8 @@ public class Sprite implements XmlSerializable, Editable
 	// these are 'effectively' final, but must be assigned once to the global player assets for player sprites
 	public SpriteAssetCollection<ImgAsset> imgAssets = new SpriteAssetCollection<>();
 	public SpriteAssetCollection<PalAsset> palAssets = new SpriteAssetCollection<>();
+
+	public boolean usesKeyframes = false;
 
 	private transient boolean texturesLoaded = false;
 	private transient boolean readyForEditor = false;
@@ -276,6 +277,10 @@ public class Sprite implements XmlSerializable, Editable
 			variationNames = xmr.readStringList(spriteElem, ATTR_SPRITE_VARIATIONS);
 		}
 
+		if (xmr.hasAttribute(spriteElem, ATTR_KEYFRAMES)) {
+			usesKeyframes = xmr.readBoolean(spriteElem, ATTR_KEYFRAMES);
+		}
+
 		if (metadata.isPlayer && xmr.hasAttribute(spriteElem, ATTR_SPRITE_HAS_BACK)) {
 			hasBack = xmr.readBoolean(spriteElem, ATTR_SPRITE_HAS_BACK);
 		}
@@ -377,6 +382,18 @@ public class Sprite implements XmlSerializable, Editable
 
 		// read animations list
 
+		HashMap<String, SpriteRaster> imgMap = new HashMap<>();
+		HashMap<String, SpritePalette> palMap = new HashMap<>();
+		HashMap<String, SpriteComponent> compMap = new HashMap<>();
+
+		for (SpriteRaster img : rasters) {
+			imgMap.put(img.name, img);
+		}
+
+		for (SpritePalette pal : palettes) {
+			palMap.put(pal.name, pal);
+		}
+
 		Element animationsElem = xmr.getUniqueRequiredTag(spriteElem, TAG_ANIMATION_LIST);
 		List<Element> animationElems = xmr.getTags(animationsElem, TAG_ANIMATION);
 		for (Element animationElem : animationElems) {
@@ -386,11 +403,18 @@ public class Sprite implements XmlSerializable, Editable
 			if (xmr.hasAttribute(animationElem, ATTR_NAME))
 				anim.name = xmr.getAttribute(animationElem, ATTR_NAME);
 
+			compMap.clear();
+
 			List<Element> componentElems = xmr.getRequiredTags(animationElem, TAG_COMPONENT);
 			for (Element componentElem : componentElems) {
 				SpriteComponent comp = new SpriteComponent(anim);
 				anim.components.addElement(comp);
+				compMap.put(comp.name, comp);
 				comp.fromXML(xmr, componentElem);
+			}
+
+			for (SpriteComponent comp : anim.components) {
+				comp.updateReferences(imgMap, palMap, compMap);
 			}
 		}
 	}
@@ -523,6 +547,10 @@ public class Sprite implements XmlSerializable, Editable
 		XmlTag root = xmw.createTag(TAG_SPRITE, false);
 		xmw.addHex(root, ATTR_SPRITE_NUM_COMPONENTS, maxComponents);
 		xmw.addHex(root, ATTR_SPRITE_NUM_VARIATIONS, numVariations);
+		if (usesKeyframes)
+			xmw.addBoolean(root, ATTR_KEYFRAMES, true);
+		if (metadata.isPlayer && hasBack)
+			xmw.addBoolean(root, ATTR_SPRITE_HAS_BACK, true);
 		xmw.openTag(root);
 
 		XmlTag palettesTag = xmw.createTag(TAG_PALETTE_LIST, false);
@@ -593,17 +621,6 @@ public class Sprite implements XmlSerializable, Editable
 		xmw.closeTag(animationsTag);
 
 		xmw.closeTag(root);
-	}
-
-	public void generateRawAnim()
-	{
-		for (int i = 0; i < animations.size(); i++) {
-			SpriteAnimation anim = animations.get(i);
-			for (int j = 0; j < anim.components.size(); j++) {
-				SpriteComponent comp = anim.components.get(j);
-				comp.generateRawAnim();
-			}
-		}
 	}
 
 	public void convertToKeyframes()
@@ -1053,224 +1070,6 @@ public class Sprite implements XmlSerializable, Editable
 			shader.setXYQuadCoords(x1, y2, x2, y1, 0); //TODO upside down?
 			shader.renderQuad();
 		}
-	}
-
-	public static void validate(Sprite spr)
-	{
-		for (int i = 0; i < spr.animations.size(); i++) {
-			SpriteAnimation anim = spr.animations.get(i);
-			for (int j = 0; j < anim.components.size(); j++) {
-				SpriteComponent comp = anim.components.get(j);
-
-				System.out.printf("%02X.%X : ", i, j);
-
-				Queue<Short> sequence = new LinkedList<>(comp.rawAnim);
-				Queue<Short> cmdQueue = new LinkedList<>(sequence);
-
-				List<Integer> keyFrameCmds = new ArrayList<>(16);
-
-				while (!cmdQueue.isEmpty()) {
-					int pos = sequence.size() - cmdQueue.size();
-					short s = cmdQueue.poll();
-
-					int type = (s >> 12) & 0xF;
-					int extra = (s << 20) >> 20;
-
-					keyFrameCmds.add(type);
-
-					System.out.printf("%04X ", s);
-
-					switch (type) {
-						case 0x0: // delay
-							keyFrameCmds.clear();
-							if (!cmdQueue.isEmpty())
-								System.out.print("| ");
-							assert (extra > 0);
-							assert (extra <= 260); // longest delay = 4.333... seconds
-							// assert(extra == 1 || extra % 2 == 0); false! -- delay count can be ODD! and >1
-							break;
-						case 0x1: // set image -- 1FFF sets to null (do not draw)
-							assert (extra == -1 || (extra >= 0 && extra <= spr.rasters.size()));
-							break;
-						case 0x2: // goto command
-							keyFrameCmds.clear();
-							if (!cmdQueue.isEmpty())
-								System.out.print("| ");
-							assert (extra < sequence.size());
-							assert (extra < pos); // this goto always jumps backwards
-							break;
-						case 0x3: // set pos
-							assert (extra == 0 || extra == 1); // this flag does nothing
-							//		if(extra == 0)
-							//			System.out.printf("<> %04X%n" , s);
-							short dx = cmdQueue.poll();
-							System.out.printf("%04X ", dx);
-							short dy = cmdQueue.poll();
-							System.out.printf("%04X ", dy);
-							short dz = cmdQueue.poll();
-							System.out.printf("%04X ", dz);
-							break;
-						case 0x4: // set angle
-							assert (extra >= -180 && extra <= 180);
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							assert (s >= -180 && s <= 180);
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							assert (s >= -180 && s <= 180);
-							break;
-						case 0x5: // set scale -- extra == 3 is valid, but unused
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							assert (extra == 0 || extra == 1 || extra == 2);
-							break;
-						case 0x6: // use palette -- FFF is valid, but unused
-							assert (extra >= 0 && extra < spr.getPaletteCount());
-							break;
-						case 0x7: // loop
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							keyFrameCmds.clear();
-							if (!cmdQueue.isEmpty())
-								System.out.print("| ");
-							assert (extra < sequence.size());
-							assert (extra < pos); // always jumps backwards
-							assert (s >= 0 && s < 25); // can be zero, how strange
-							break;
-						case 0x8: // set parent
-							int parentType = (extra >> 8) & 0xF;
-							int index = extra & 0xFF;
-
-							switch (parentType) {
-								case 0:
-									// found only for the black ash poofs included with certain animations (monty mole, bandit, etc)
-									assert (s == (short) 0x8000);
-									break;
-								case 1:
-									assert (pos == 0);
-									assert (index >= 0 && index < anim.components.size());
-									break;
-								case 2:
-									//assert(pos == comp.sequence.size() - 2);
-									System.out.printf("PARENT: %X%n", extra);
-									assert (index == 1 || index == 2);
-									break;
-								default:
-									assert (false);
-							}
-							break;
-						default:
-							throw new RuntimeException(String.format("Unknown animation command: %04X", s));
-					}
-				}
-				System.out.println();
-			}
-		}
-		System.out.println();
-	}
-
-	public static void validateKeyframes(Sprite spr)
-	{
-		for (int i = 0; i < spr.animations.size(); i++) {
-			SpriteAnimation anim = spr.animations.get(i);
-			for (int j = 0; j < anim.components.size(); j++) {
-				SpriteComponent comp = anim.components.get(j);
-
-				System.out.printf("%02X.%X : ", i, j);
-
-				RawAnimation sequence = comp.animator.getCommandList();
-				Queue<Short> cmdQueue = new LinkedList<>(sequence);
-
-				while (!cmdQueue.isEmpty()) {
-					int pos = sequence.size() - cmdQueue.size();
-					short s = cmdQueue.poll();
-
-					int type = (s >> 12) & 0xF;
-					int extra = (s << 20) >> 20;
-
-					System.out.printf("%04X ", s);
-
-					switch (type) {
-						case 0x0: // delay
-							if (!cmdQueue.isEmpty())
-								System.out.print("| ");
-							assert (extra > 0);
-							assert (extra <= 260); // longest delay = 4.333... seconds
-							break;
-						case 0x1: // set image -- 1FFF sets to null (do not draw)
-							assert (extra == -1 || (extra >= 0 && extra <= spr.rasters.size()));
-							break;
-						case 0x2: // goto command
-							if (!cmdQueue.isEmpty())
-								System.out.print("| ");
-							assert (extra < sequence.size());
-							assert (extra < pos); // this goto always jumps backwards
-							break;
-						case 0x3: // set pos
-							assert (extra == 0 || extra == 1); // this flag does nothing
-							//		if(extra == 0)
-							//			System.out.printf("<> %04X%n" , s);
-							short dx = cmdQueue.poll();
-							System.out.printf("%04X ", dx);
-							short dy = cmdQueue.poll();
-							System.out.printf("%04X ", dy);
-							short dz = cmdQueue.poll();
-							System.out.printf("%04X ", dz);
-							break;
-						case 0x4: // set angle
-							assert (extra >= -180 && extra <= 180);
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							assert (s >= -180 && s <= 180);
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							assert (s >= -180 && s <= 180);
-							break;
-						case 0x5: // set scale
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							assert (extra == 0 || extra == 1 || extra == 2);
-							break;
-						case 0x6: // use palette
-							assert (extra >= 0 && extra < spr.getPaletteCount());
-							break;
-						case 0x7: // loop
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							if (!cmdQueue.isEmpty())
-								System.out.print("| ");
-							assert (extra < sequence.size());
-							assert (extra < pos); // always jumps backwards
-							assert (s >= 0 && s < 25); // can be zero, how strange
-							break;
-						case 0x8: // set parent
-							int parentType = (extra >> 8) & 0xF;
-
-							switch (parentType) {
-								case 0:
-									// found only for the black ash poofs included with certain animations (monty mole, bandit, etc)
-									assert (s == (short) 0x8000);
-									break;
-								case 1:
-									assert (pos == 0);
-									break;
-								case 2:
-									//assert(pos == comp.sequence.size() - 2);
-									break;
-								default:
-									assert (false);
-							}
-							break;
-						default:
-							throw new RuntimeException(String.format("Unknown animation command: %04X", s));
-					}
-				}
-				System.out.println();
-
-				comp.animator.generateFrom(sequence);
-			}
-		}
-		System.out.println();
 	}
 
 	private final EditableData editableData = new EditableData(this);

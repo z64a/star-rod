@@ -1,5 +1,7 @@
 package game.sprite.editor.animators.keyframe;
 
+import static game.sprite.SpriteKey.*;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -16,6 +18,8 @@ import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 
+import org.w3c.dom.Element;
+
 import app.SwingUtils;
 import game.sprite.Sprite;
 import game.sprite.SpritePalette;
@@ -23,6 +27,7 @@ import game.sprite.SpriteRaster;
 import game.sprite.editor.Editable;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.BlankArrowUI;
+import game.sprite.editor.animators.ScaleMode;
 import game.sprite.editor.animators.SpriteRasterRenderer;
 import game.sprite.editor.commands.keyframe.SetKeyframeDuration;
 import game.sprite.editor.commands.keyframe.SetKeyframeEnablePalette;
@@ -36,14 +41,105 @@ import game.sprite.editor.commands.keyframe.SetKeyframeScale;
 import net.miginfocom.swing.MigLayout;
 import util.ui.EvenSpinner;
 import util.ui.NameTextField;
+import util.xml.XmlWrapper.XmlReader;
+import util.xml.XmlWrapper.XmlTag;
+import util.xml.XmlWrapper.XmlWriter;
 
 public class Keyframe extends AnimKeyframe
 {
+	int listPos = -1;
+
+	public String name = "";
+
+	public int duration;
+
+	public boolean setImage = false;
+	public SpriteRaster img = null;
+
+	public boolean setPalette = false;
+	public SpritePalette pal = null;
+
+	public boolean unknown;
+	public int dx = 0, dy = 0, dz = 0;
+	public int rx = 0, ry = 0, rz = 0;
+	public int sx = 100, sy = 100, sz = 100;
+
+	// used during deserialization
+	public transient String imgName = null;
+	public transient String palName = null;
+
+	// used during generation from RawAnimation
+	public transient int listLen = 0;
+
 	public Keyframe(KeyframeAnimator animator)
 	{
 		super(animator);
 
 		name = "New Keyframe";
+	}
+
+	@Override
+	public void toXML(XmlWriter xmw)
+	{
+		XmlTag tag = xmw.createTag(TAG_CMD_KEYFRAME, true);
+		xmw.addAttribute(tag, ATTR_NAME, name);
+		xmw.addInt(tag, ATTR_DURATION, duration);
+
+		if (setImage)
+			xmw.addAttribute(tag, ATTR_KF_IMG, img == null ? "" : img.name);
+
+		if (setPalette)
+			xmw.addAttribute(tag, ATTR_KF_PAL, pal == null ? "" : pal.name);
+
+		if (dx != 0 || dy != 0 || dz != 0)
+			xmw.addIntArray(tag, ATTR_KF_POS, dx, dy, dz);
+
+		if (rx != 0 || ry != 0 || rz != 0)
+			xmw.addIntArray(tag, ATTR_KF_ROT, rx, ry, rz);
+
+		if (sx != 100 || sy != 100 || sz != 100)
+			xmw.addIntArray(tag, ATTR_KF_SCALE, sx, sy, sz);
+
+		xmw.printTag(tag);
+	}
+
+	@Override
+	public void fromXML(XmlReader xmr, Element elem)
+	{
+		if (xmr.hasAttribute(elem, ATTR_NAME))
+			name = xmr.getAttribute(elem, ATTR_NAME);
+
+		if (xmr.hasAttribute(elem, ATTR_DURATION))
+			duration = xmr.readInt(elem, ATTR_DURATION);
+
+		setImage = xmr.hasAttribute(elem, ATTR_KF_IMG);
+		if (setImage)
+			imgName = xmr.getAttribute(elem, ATTR_KF_IMG);
+
+		setPalette = xmr.hasAttribute(elem, ATTR_KF_PAL);
+		if (setPalette)
+			palName = xmr.getAttribute(elem, ATTR_KF_PAL);
+
+		if (xmr.hasAttribute(elem, ATTR_KF_POS)) {
+			int[] pos = xmr.readIntArray(elem, ATTR_KF_POS, 3);
+			dx = pos[0];
+			dy = pos[1];
+			dz = pos[2];
+		}
+
+		if (xmr.hasAttribute(elem, ATTR_KF_ROT)) {
+			int[] rot = xmr.readIntArray(elem, ATTR_KF_ROT, 3);
+			rx = rot[0];
+			ry = rot[1];
+			rz = rot[2];
+		}
+
+		if (xmr.hasAttribute(elem, ATTR_KF_SCALE)) {
+			int[] scale = xmr.readIntArray(elem, ATTR_KF_SCALE, 3);
+			sx = scale[0];
+			sy = scale[1];
+			sz = scale[2];
+		}
 	}
 
 	@Override
@@ -68,23 +164,6 @@ public class Keyframe extends AnimKeyframe
 		clone.sz = sz;
 		return clone;
 	}
-
-	int listPos = -1;
-
-	public String name = "";
-
-	public int duration;
-
-	public boolean setImage = false;
-	public SpriteRaster img = null;
-
-	public boolean setPalette = false;
-	public SpritePalette pal = null;
-
-	public boolean unknown;
-	public int dx = 0, dy = 0, dz = 0;
-	public int rx = 0, ry = 0, rz = 0;
-	public int sx = 100, sy = 100, sz = 100;
 
 	@Override
 	public AdvanceResult apply()
@@ -227,21 +306,21 @@ public class Keyframe extends AnimKeyframe
 	// 5VVV UUUU : scale (%)
 	public int setScale(Queue<Short> cmdQueue)
 	{
-		int type = (cmdQueue.poll() & 0xFFF);
+		ScaleMode type = ScaleMode.get(cmdQueue.poll() & 0xFFF);
 		int scale = cmdQueue.poll();
 		switch (type) {
-			case 0:
+			case UNIFORM:
 				sx = scale;
 				sy = scale;
 				sz = scale;
 				break;
-			case 1:
+			case X:
 				sx = scale;
 				break;
-			case 2:
+			case Y:
 				sy = scale;
 				break;
-			case 3:
+			case Z:
 				sz = scale;
 				break;
 		}
@@ -305,6 +384,9 @@ public class Keyframe extends AnimKeyframe
 	{
 		if (duration == 0)
 			return "Keyframe: invalid duration";
+
+		if (duration % 2 == 1 && SpriteEditor.instance().optStrictErrorChecking)
+			return "Keyframe duration should be even";
 
 		if (setPalette && (pal == null))
 			return "Keyframe: undefined palette";

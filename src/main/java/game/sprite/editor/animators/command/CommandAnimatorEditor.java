@@ -27,6 +27,7 @@ import game.sprite.editor.animators.command.SetImage.SetImagePanel;
 import game.sprite.editor.animators.command.SetPalette.SetPalettePanel;
 import game.sprite.editor.commands.CreateCommand;
 import net.miginfocom.swing.MigLayout;
+import util.Logger;
 import util.ui.ListAdapterComboboxModel;
 
 public class CommandAnimatorEditor extends ComponentAnimationEditor
@@ -81,17 +82,11 @@ public class CommandAnimatorEditor extends ComponentAnimationEditor
 		SetPalettePanel.instance().setModel(new ListAdapterComboboxModel<>(paletteModel));
 	}
 
-	private static CommandAnimatorEditor instance()
+	public static CommandAnimatorEditor instance()
 	{
 		if (instance == null)
 			instance = new CommandAnimatorEditor();
 		return instance;
-	}
-
-	public static void init()
-	{
-		// allow SpriteEditor to pre-load at startup
-		instance();
 	}
 
 	protected static void repaintCommandList()
@@ -221,6 +216,40 @@ public class CommandAnimatorEditor extends ComponentAnimationEditor
 			commandEditPanel.add(elem.getPanel(), "grow, pushy");
 		commandEditPanel.revalidate();
 		commandEditPanel.repaint();
+	}
+
+	@Override
+	public void restoreSelection(int lastSelectedIndex)
+	{
+		commandList.ignoreSelectionChange = true;
+
+		// restore component selection (if valid) for new animation
+		int old = lastSelectedIndex;
+		if (old >= -1 && old < commandList.getModel().getSize()) {
+			// note: -1 is a valid index corresponding to no selection
+			commandList.setSelectedIndex(old);
+			setSelected(commandList.getSelectedValue());
+		}
+		else if (commandList.getModel().getSize() > 0) {
+			// safety condition -- remove? should not be needed if undo/redo state intact
+			Logger.logfWarning("Reference to out of range component ID: %d", old);
+			commandList.setSelectedIndex(0);
+			setSelected(commandList.getSelectedValue());
+		}
+		else {
+			// extra safety condition -- also remove?
+			Logger.logfWarning("Reference to invalid component ID: %d", old);
+			commandList.setSelectedIndex(-1);
+			setSelected(null);
+		}
+
+		commandList.ignoreSelectionChange = false;
+	}
+
+	@Override
+	public int getSelection()
+	{
+		return commandList.getSelectedIndex();
 	}
 
 	private static void create(AnimCommand cmd)

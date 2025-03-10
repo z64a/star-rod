@@ -55,7 +55,7 @@ public class ToKeyframesConverter
 		for (AnimCommand cmd : cmdAnim.commands) {
 			if (cmd instanceof Label lbl) {
 				if (current.name.isEmpty())
-					current.name = lbl.labelName;
+					current.name = lbl.name;
 				labelMap.put(lbl, current);
 			}
 			else if (cmd instanceof Wait wait) {
@@ -96,20 +96,20 @@ public class ToKeyframesConverter
 				currentEmpty = false;
 			}
 			else if (cmd instanceof SetScale setScale) {
-				switch (setScale.type) {
-					case 0:
-						current.sx = setScale.scalePercent;
-						current.sy = setScale.scalePercent;
-						current.sz = setScale.scalePercent;
+				switch (setScale.mode) {
+					case UNIFORM:
+						current.sx = setScale.percent;
+						current.sy = setScale.percent;
+						current.sz = setScale.percent;
 						break;
-					case 1:
-						current.sx = setScale.scalePercent;
+					case X:
+						current.sx = setScale.percent;
 						break;
-					case 2:
-						current.sy = setScale.scalePercent;
+					case Y:
+						current.sy = setScale.percent;
 						break;
-					case 3:
-						current.sz = setScale.scalePercent;
+					case Z:
+						current.sz = setScale.percent;
 						break;
 				}
 				currentEmpty = false;
