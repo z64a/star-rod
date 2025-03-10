@@ -13,12 +13,14 @@ import java.awt.Toolkit;
 import java.awt.event.ActionListener;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 
 import javax.swing.DefaultListCellRenderer;
@@ -58,6 +60,8 @@ import common.commands.AbstractCommand;
 import common.commands.CommandBatch;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
+import game.map.editor.ui.dialogs.ChooseDialogResult;
+import game.map.editor.ui.dialogs.MultipleFilesChooser;
 import game.map.shape.TransformMatrix;
 import game.sprite.GLResource;
 import game.sprite.ImgAsset;
@@ -147,6 +151,8 @@ public class SpriteEditor extends BaseEditor
 	private Container commandListPanel;
 	private Container commandEditPanel;
 	private FadingLabel errorLabel;
+
+	private MultipleFilesChooser importFileChooser;
 
 	// DONT INITIALIZE THESE HERE!
 	// gui is initialized before instance variable initialization!
@@ -704,8 +710,14 @@ public class SpriteEditor extends BaseEditor
 		modeTabIndex = tabIndex;
 		editorMode = EditorMode.values()[tabIndex];
 
-		if (tabIndex == 1)
+		if (tabIndex == 1) {
 			sprite.makeRasterAtlas();
+		}
+		else if (tabIndex == 2) {
+			// reset models in case rasters/palettes changed
+			CommandAnimatorEditor.setModels(sprite);
+			KeyframeAnimatorEditor.setModels(sprite);
+		}
 	}
 
 	public int getModesTab()
@@ -1163,6 +1175,8 @@ public class SpriteEditor extends BaseEditor
 		// make tooltips appear faster than the default setting
 		ToolTipManager.sharedInstance().setInitialDelay(300);
 
+		importFileChooser = new MultipleFilesChooser(Environment.getProjectDirectory(), "Import Assets", "Images", "png");
+
 		rastersTab = new RastersTab(this);
 		palettesTab = new PalettesTab(this);
 
@@ -1359,7 +1373,7 @@ public class SpriteEditor extends BaseEditor
 		item.addActionListener((evt) -> {
 			if (sprite != null) {
 				try {
-					AssetHandle ah = sprite.getModAssetDir();
+					AssetHandle ah = sprite.getAssetDir(true);
 					ah.mkdirs();
 					Desktop.getDesktop().open(ah);
 				}
@@ -1374,7 +1388,7 @@ public class SpriteEditor extends BaseEditor
 		item.addActionListener((evt) -> {
 			if (sprite != null) {
 				try {
-					AssetHandle ah = sprite.getBaseAssetDir();
+					AssetHandle ah = sprite.getAssetDir(false);
 					Desktop.getDesktop().open(ah);
 				}
 				catch (IOException e) {
@@ -2077,6 +2091,21 @@ public class SpriteEditor extends BaseEditor
 	public void registerDragList(DragReorderList<?> list)
 	{
 		dragLists.add(list);
+	}
+
+	public List<File> promptImportFiles()
+	{
+		List<File> files = new ArrayList<>();
+
+		incrementDialogsOpen();
+		if (importFileChooser.prompt() == ChooseDialogResult.APPROVE) {
+			List<File> result = importFileChooser.getSelectedFiles();
+			if (result != null)
+				files = result;
+		}
+		decrementDialogsOpen();
+
+		return files;
 	}
 
 	public SpriteRaster promptForRaster(Sprite s)

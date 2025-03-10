@@ -48,7 +48,6 @@ public class Label extends AnimCommand
 		super(animator);
 
 		this.name = name;
-		animator.labels.addElement(this);
 	}
 
 	@Override

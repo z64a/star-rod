@@ -221,7 +221,9 @@ public class SetImage extends AnimCommand
 		protected void setModel(ComboBoxModel<SpriteRaster> model)
 		{
 			ignoreChanges = true;
+			//	Object lastSelected = imageComboBox.getSelectedItem();
 			imageComboBox.setModel(model);
+			//	imageComboBox.setSelectedItem(lastSelected);
 			ignoreChanges = false;
 		}
 

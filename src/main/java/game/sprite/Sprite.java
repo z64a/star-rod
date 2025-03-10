@@ -177,18 +177,49 @@ public class Sprite implements XmlSerializable, Editable
 			return AssetManager.getNpcSprite(name);
 	}
 
-	public AssetHandle getBaseAssetDir()
+	public AssetHandle getAssetDir(boolean modDir)
 	{
+		AssetHandle ah;
+
 		if (metadata.isPlayer)
-			return AssetManager.getBase(AssetSubdir.PLR_SPRITE, "");
+			ah = AssetManager.getBase(AssetSubdir.PLR_SPRITE, "");
 		else
-			return AssetManager.getBase(AssetSubdir.NPC_SPRITE, name);
+			ah = AssetManager.getBase(AssetSubdir.NPC_SPRITE, name);
+
+		if (modDir)
+			return AssetManager.getTopLevel(ah);
+		else
+			return ah;
 	}
 
-	public AssetHandle getModAssetDir()
+	public AssetHandle getRastersDir(boolean modDir)
 	{
-		AssetHandle ah = getBaseAssetDir();
-		return AssetManager.getTopLevel(ah);
+		AssetHandle ah;
+
+		if (metadata.isPlayer)
+			ah = AssetManager.get(AssetSubdir.PLR_SPRITE_IMG, "");
+		else
+			ah = AssetManager.get(AssetSubdir.NPC_SPRITE, name + "/rasters/");
+
+		if (modDir)
+			return AssetManager.getTopLevel(ah);
+		else
+			return ah;
+	}
+
+	public AssetHandle getPalettesDir(boolean modDir)
+	{
+		AssetHandle ah;
+
+		if (metadata.isPlayer)
+			ah = AssetManager.get(AssetSubdir.PLR_SPRITE_PAL, "");
+		else
+			ah = AssetManager.get(AssetSubdir.NPC_SPRITE, name + "/palettes/");
+
+		if (modDir)
+			return AssetManager.getTopLevel(ah);
+		else
+			return ah;
 	}
 
 	public static Sprite readNpc(SpriteMetadata metadata, File xmlFile, String name)

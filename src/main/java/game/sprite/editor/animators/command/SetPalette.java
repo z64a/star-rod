@@ -188,7 +188,9 @@ public class SetPalette extends AnimCommand
 		protected void setModel(ComboBoxModel<SpritePalette> model)
 		{
 			ignoreChanges = true;
+			//	Object lastSelected = paletteComboBox.getSelectedItem();
 			paletteComboBox.setModel(model);
+			//	paletteComboBox.setSelectedItem(lastSelected);
 			ignoreChanges = false;
 		}
 

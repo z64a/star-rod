@@ -4,6 +4,9 @@ import java.awt.Color;
 import java.awt.Toolkit;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
@@ -20,6 +23,9 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EtchedBorder;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 
 import app.SwingUtils;
 import common.commands.AbstractCommand;
@@ -129,16 +135,46 @@ public class PalettesTab extends JPanel
 
 		JButton btnImportAssets = new JButton(ThemedIcon.DOWNLOAD_16);
 		btnImportAssets.setToolTipText("Import palette assets");
-		btnImportAssets.addActionListener((e) -> {
+		btnImportAssets.addActionListener((evt) -> {
 			if (sprite == null) {
 				return;
 			}
 
-			palAssetList.ignoreChanges.increment();
+			List<File> files = editor.promptImportFiles();
+			int importedCount = 0;
 
-			SpriteEditor.instance().flushUndoRedo();
+			if (!files.isEmpty()) {
+				for (File selected : files) {
+					String baseName = FilenameUtils.getBaseName(selected.getName());
+					String ext = FilenameUtils.getExtension(selected.getName());
+					String curName = baseName;
+					int iter = 0;
 
-			palAssetList.ignoreChanges.decrement();
+					File copy;
+					do {
+						copy = new File(sprite.getPalettesDir(true), curName + "." + ext);
+
+						// form the next name to try
+						iter++;
+						curName = baseName + "_" + iter;
+					}
+					while (copy.exists());
+
+					try {
+						FileUtils.copyFile(selected, copy);
+						Logger.log("Imported " + copy.getName());
+						importedCount++;
+					}
+					catch (IOException e) {
+						Logger.printStackTrace(e);
+					}
+				}
+
+				if (importedCount > 0) {
+					refreshPalAssets();
+					SpriteEditor.instance().flushUndoRedo();
+				}
+			}
 		});
 
 		JButton btnAddPalette = new JButton(ThemedIcon.ADD_16);

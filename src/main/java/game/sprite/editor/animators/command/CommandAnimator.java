@@ -9,9 +9,6 @@ import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.TreeMap;
 
-import javax.swing.event.ListDataEvent;
-import javax.swing.event.ListDataListener;
-
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
@@ -38,7 +35,6 @@ public class CommandAnimator implements ComponentAnimator
 	private static final int MAX_ITERATIONS = 1024;
 
 	public final IterableListModel<AnimCommand> commands;
-	public final IterableListModel<Label> labels;
 	public final SpriteComponent comp;
 
 	private SpriteEditor editor;
@@ -46,41 +42,10 @@ public class CommandAnimator implements ComponentAnimator
 	// command list control state
 	private int listPosition;
 
-	private boolean ignoreListDataChanges = false;
-
 	public CommandAnimator(SpriteComponent comp)
 	{
 		this.comp = comp;
-
 		commands = new IterableListModel<>();
-		labels = new IterableListModel<>();
-
-		commands.addListDataListener(new ListDataListener() {
-			@Override
-			public void intervalAdded(ListDataEvent e)
-			{
-				onListChanged(e);
-			}
-
-			@Override
-			public void intervalRemoved(ListDataEvent e)
-			{
-				onListChanged(e);
-			}
-
-			@Override
-			public void contentsChanged(ListDataEvent e)
-			{
-				onListChanged(e);
-			}
-
-			private void onListChanged(ListDataEvent e)
-			{
-				if (ignoreListDataChanges)
-					return;
-				findAllLabels();
-			}
-		});
 	}
 
 	/**
@@ -99,14 +64,17 @@ public class CommandAnimator implements ComponentAnimator
 		generateFrom(raw);
 	}
 
-	public void findAllLabels()
+	public List<Label> getLabelsList()
 	{
-		labels.clear();
+		ArrayList<Label> labels = new ArrayList<>();
+
 		for (AnimCommand other : commands) {
 			if (other instanceof Label lbl) {
-				labels.addElement(lbl);
+				labels.add(lbl);
 			}
 		}
+
+		return labels;
 	}
 
 	@Override
@@ -114,15 +82,10 @@ public class CommandAnimator implements ComponentAnimator
 	{
 		this.editor = editor;
 
-		ignoreListDataChanges = true;
 		CommandAnimatorEditor.bind(editor, this, commandListContainer, commandEditContainer);
 
 		if (comp != null)
 			CommandAnimatorEditor.instance().restoreSelection(comp.lastSelectedCommand);
-
-		ignoreListDataChanges = false;
-
-		findAllLabels();
 	}
 
 	@Override
@@ -265,7 +228,6 @@ public class CommandAnimator implements ComponentAnimator
 			commands.addElement(cmd);
 
 		reset();
-		findAllLabels();
 	}
 
 	public List<AnimKeyframe> toKeyframes(KeyframeAnimator animator)
@@ -383,7 +345,6 @@ public class CommandAnimator implements ComponentAnimator
 	@Override
 	public boolean generateFrom(RawAnimation rawAnim)
 	{
-		ignoreListDataChanges = true;
 		commands.clear();
 
 		TreeMap<Integer, Label> labels = new TreeMap<>();
@@ -465,9 +426,6 @@ public class CommandAnimator implements ComponentAnimator
 		}
 
 		reset();
-
-		ignoreListDataChanges = false;
-		findAllLabels();
 
 		return true;
 	}

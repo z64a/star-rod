@@ -62,6 +62,19 @@ public class KeyframeAnimator implements ComponentAnimator
 		generateFrom(raw);
 	}
 
+	public List<Keyframe> getKeyframesList()
+	{
+		ArrayList<Keyframe> keys = new ArrayList<>();
+
+		for (AnimKeyframe other : keyframes) {
+			if (other instanceof Keyframe kf) {
+				keys.add(kf);
+			}
+		}
+
+		return keys;
+	}
+
 	@Override
 	public void bind(SpriteEditor editor, Container commandListContainer, Container commandEditContainer)
 	{

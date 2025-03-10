@@ -6,8 +6,8 @@ import java.awt.Color;
 import java.awt.Component;
 import java.util.List;
 
+import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
-import javax.swing.DefaultListModel;
 import javax.swing.JComboBox;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
@@ -20,7 +20,6 @@ import common.commands.AbstractCommand;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.command.Label;
 import net.miginfocom.swing.MigLayout;
-import util.ui.ListAdapterComboboxModel;
 import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
@@ -150,7 +149,18 @@ public class LoopKey extends AnimKeyframe
 	@Override
 	public Component getPanel()
 	{
-		LoopPanel.instance().set(this, animator.keyframes);
+		List<Keyframe> keyframes = animator.getKeyframesList();
+
+		DefaultComboBoxModel<Keyframe> comboBoxModel = new DefaultComboBoxModel<>();
+
+		// if the target is missing from the command, add it
+		if (!keyframes.contains(target))
+			comboBoxModel.addElement(target);
+
+		// add all the keyframes for this animator
+		comboBoxModel.addAll(keyframes);
+
+		LoopPanel.instance().set(this, comboBoxModel);
 		return LoopPanel.instance();
 	}
 
@@ -211,19 +221,12 @@ public class LoopKey extends AnimKeyframe
 			add(countSpinner, "sg etc, grow");
 		}
 
-		private void set(LoopKey cmd, DefaultListModel<AnimKeyframe> animKeyframes)
+		private void set(LoopKey cmd, ComboBoxModel<Keyframe> keyframes)
 		{
 			this.cmd = cmd;
 
-			DefaultComboBoxModel<Keyframe> keyframes = new DefaultComboBoxModel<>();
-			for (int i = 0; i < animKeyframes.size(); i++) {
-				AnimKeyframe animFrame = animKeyframes.getElementAt(i);
-				if (animFrame instanceof Keyframe kf)
-					keyframes.addElement(kf);
-			}
-
 			ignoreChanges = true;
-			keyframeComboBox.setModel(new ListAdapterComboboxModel<>(keyframes));
+			keyframeComboBox.setModel(keyframes);
 			keyframeComboBox.setSelectedItem(cmd.target);
 			ignoreChanges = false;
 

@@ -6,7 +6,8 @@ import java.awt.Color;
 import java.awt.Component;
 import java.util.List;
 
-import javax.swing.DefaultListModel;
+import javax.swing.ComboBoxModel;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
@@ -19,7 +20,6 @@ import common.commands.AbstractCommand;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.keyframe.Keyframe;
 import net.miginfocom.swing.MigLayout;
-import util.ui.ListAdapterComboboxModel;
 import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
@@ -146,7 +146,18 @@ public class Loop extends AnimCommand
 	@Override
 	public Component getPanel()
 	{
-		LoopPanel.instance().bind(this, animator.labels);
+		List<Label> labels = animator.getLabelsList();
+
+		DefaultComboBoxModel<Label> comboBoxModel = new DefaultComboBoxModel<>();
+
+		// if the label is missing from the command, add it
+		if (!labels.contains(label))
+			comboBoxModel.addElement(label);
+
+		// add all the labels for this animator
+		comboBoxModel.addAll(labels);
+
+		LoopPanel.instance().bind(this, comboBoxModel);
 		return LoopPanel.instance();
 	}
 
@@ -225,13 +236,12 @@ public class Loop extends AnimCommand
 			add(countSpinner, "w 30%");
 		}
 
-		private void bind(Loop cmd, DefaultListModel<Label> labels)
+		private void bind(Loop cmd, ComboBoxModel<Label> labels)
 		{
 			this.cmd = cmd;
 
-			//TODO could be a problem when labels are deleted!
 			ignoreChanges = true;
-			labelComboBox.setModel(new ListAdapterComboboxModel<>(labels));
+			labelComboBox.setModel(labels);
 			labelComboBox.setSelectedItem(cmd.label);
 			ignoreChanges = false;
 

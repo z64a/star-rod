@@ -1,6 +1,9 @@
 package game.sprite.editor;
 
 import java.awt.Toolkit;
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
 import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
@@ -11,6 +14,9 @@ import javax.swing.JScrollPane;
 import javax.swing.ListSelectionModel;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 
 import common.commands.CommandBatch;
 import game.sprite.ImgAsset;
@@ -64,6 +70,50 @@ public class RastersTab extends JPanel
 				refreshImgAssets();
 		});
 
+		JButton btnImportAssets = new JButton(ThemedIcon.DOWNLOAD_16);
+		btnImportAssets.setToolTipText("Import raster assets");
+		btnImportAssets.addActionListener((evt) -> {
+			if (sprite == null) {
+				return;
+			}
+
+			List<File> files = editor.promptImportFiles();
+			int importedCount = 0;
+
+			if (!files.isEmpty()) {
+				for (File selected : files) {
+					String baseName = FilenameUtils.getBaseName(selected.getName());
+					String ext = FilenameUtils.getExtension(selected.getName());
+					String curName = baseName;
+					int iter = 0;
+
+					File copy;
+					do {
+						copy = new File(sprite.getRastersDir(true), curName + "." + ext);
+
+						// form the next name to try
+						iter++;
+						curName = baseName + "_" + iter;
+					}
+					while (copy.exists());
+
+					try {
+						FileUtils.copyFile(selected, copy);
+						Logger.log("Imported " + copy.getName());
+						importedCount++;
+					}
+					catch (IOException e) {
+						Logger.printStackTrace(e);
+					}
+				}
+
+				if (importedCount > 0) {
+					refreshImgAssets();
+					SpriteEditor.instance().flushUndoRedo();
+				}
+			}
+		});
+
 		JButton btnAddRaster = new JButton(ThemedIcon.ADD_16);
 		btnAddRaster.setToolTipText("Add new raster");
 		btnAddRaster.addActionListener((e) -> {
@@ -109,7 +159,8 @@ public class RastersTab extends JPanel
 
 		JPanel listsPanel = new JPanel(new MigLayout("fill, ins 0, wrap 2", "[grow, sg col][grow, sg col]"));
 
-		listsPanel.add(btnRefreshAssets, "split 2");
+		listsPanel.add(btnRefreshAssets, "split 3");
+		listsPanel.add(btnImportAssets);
 		listsPanel.add(new JLabel("Assets"), "growx");
 
 		listsPanel.add(btnAddRaster, "split 2");

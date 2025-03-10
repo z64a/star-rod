@@ -134,17 +134,16 @@ public class Goto extends AnimCommand
 	@Override
 	public Component getPanel()
 	{
-		animator.findAllLabels();
+		List<Label> labels = animator.getLabelsList();
 
 		DefaultComboBoxModel<Label> comboBoxModel = new DefaultComboBoxModel<>();
 
 		// if the label is missing from the command, add it
-		if (!animator.labels.contains(label))
+		if (!labels.contains(label))
 			comboBoxModel.addElement(label);
 
 		// add all the labels for this animator
-		for (Label lbl : animator.labels)
-			comboBoxModel.addElement(lbl);
+		comboBoxModel.addAll(labels);
 
 		GotoPanel.instance().bind(this, comboBoxModel);
 		return GotoPanel.instance();

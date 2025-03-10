@@ -168,8 +168,10 @@ public interface Editable
 
 			// check whether anything downstream was modified
 			childModified = false;
-			for (Editable editable : downstream)
-				childModified |= editable.checkModified(time);
+			for (Editable editable : downstream) {
+				if (editable != null)
+					childModified |= editable.checkModified(time);
+			}
 
 			boolean modified = isModified();
 
@@ -196,9 +198,11 @@ public interface Editable
 			// check whether any children have errors
 			childError = null;
 			for (Editable editable : downstream) {
-				String childResult = editable.checkErrors(time);
-				if (childError == null && childResult != null) {
-					childError = childResult;
+				if (editable != null) {
+					String childResult = editable.checkErrors(time);
+					if (childError == null && childResult != null) {
+						childError = childResult;
+					}
 				}
 			}
 
