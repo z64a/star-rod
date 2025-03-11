@@ -171,8 +171,8 @@ public class LoopKey extends AnimKeyframe
 		// add all the keyframes for this animator
 		comboBoxModel.addAll(keyframes);
 
-		LoopPanel.instance().set(this, comboBoxModel);
-		return LoopPanel.instance();
+		LoopKeyPanel.instance().set(this, comboBoxModel);
+		return LoopKeyPanel.instance();
 	}
 
 	@Override
@@ -184,9 +184,9 @@ public class LoopKey extends AnimKeyframe
 		return null;
 	}
 
-	private static class LoopPanel extends JPanel
+	protected static class LoopKeyPanel extends JPanel
 	{
-		private static LoopPanel instance;
+		private static LoopKeyPanel instance;
 		private boolean ignoreChanges = false;
 
 		private LoopKey cmd;
@@ -194,14 +194,14 @@ public class LoopKey extends AnimKeyframe
 		private JComboBox<Keyframe> keyframeComboBox;
 		private JSpinner countSpinner;
 
-		protected static LoopPanel instance()
+		protected static LoopKeyPanel instance()
 		{
 			if (instance == null)
-				instance = new LoopPanel();
+				instance = new LoopKeyPanel();
 			return instance;
 		}
 
-		private LoopPanel()
+		private LoopKeyPanel()
 		{
 			super(new MigLayout(KeyframeAnimatorEditor.PANEL_LAYOUT_PROPERTIES));
 

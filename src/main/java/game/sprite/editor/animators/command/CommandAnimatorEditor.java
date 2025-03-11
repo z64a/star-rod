@@ -5,7 +5,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 import javax.swing.BorderFactory;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JPanel;
@@ -16,9 +15,6 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
 import app.SwingUtils;
-import game.sprite.Sprite;
-import game.sprite.SpritePalette;
-import game.sprite.SpriteRaster;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.AnimElement;
 import game.sprite.editor.animators.AnimElementsList;
@@ -28,7 +24,6 @@ import game.sprite.editor.animators.command.SetPalette.SetPalettePanel;
 import game.sprite.editor.commands.CreateCommand;
 import net.miginfocom.swing.MigLayout;
 import util.Logger;
-import util.ui.ListAdapterComboboxModel;
 
 public class CommandAnimatorEditor extends ComponentAnimationEditor
 {
@@ -62,27 +57,17 @@ public class CommandAnimatorEditor extends ComponentAnimationEditor
 		animator.commands.addListDataListener(instance().commandListListener);
 	}
 
-	public static void setModels(Sprite sprite)
+	public static void init()
 	{
-		DefaultComboBoxModel<SpriteRaster> rasterModel = new DefaultComboBoxModel<>();
-		rasterModel.addElement(null);
-		for (int i = 0; i < sprite.rasters.size(); i++) {
-			SpriteRaster sr = sprite.rasters.get(i);
-			rasterModel.addElement(sr);
-		}
+		// pre-load the instance for this class
+		instance();
 
-		DefaultComboBoxModel<SpritePalette> paletteModel = new DefaultComboBoxModel<>();
-		paletteModel.addElement(null);
-		for (int i = 0; i < sprite.palettes.size(); i++) {
-			SpritePalette sr = sprite.palettes.get(i);
-			paletteModel.addElement(sr);
-		}
-
-		SetImagePanel.instance().setModel(new ListAdapterComboboxModel<>(rasterModel));
-		SetPalettePanel.instance().setModel(new ListAdapterComboboxModel<>(paletteModel));
+		// pre-load instances for panels which rely on callbacks
+		SetImagePanel.instance();
+		SetPalettePanel.instance();
 	}
 
-	public static CommandAnimatorEditor instance()
+	protected static CommandAnimatorEditor instance()
 	{
 		if (instance == null)
 			instance = new CommandAnimatorEditor();

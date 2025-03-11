@@ -114,7 +114,7 @@ public class SetRotation extends AnimCommand
 		seq.add((short) z);
 	}
 
-	private static class SetRotationPanel extends JPanel
+	protected static class SetRotationPanel extends JPanel
 	{
 		private static SetRotationPanel instance;
 		private SetRotation cmd;
@@ -122,7 +122,7 @@ public class SetRotation extends AnimCommand
 		private boolean ignoreChanges = false;
 		private JSpinner xSpinner, ySpinner, zSpinner;
 
-		private static SetRotationPanel instance()
+		protected static SetRotationPanel instance()
 		{
 			if (instance == null)
 				instance = new SetRotationPanel();

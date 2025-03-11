@@ -209,9 +209,6 @@ public class RastersTab extends JPanel
 
 		this.sprite = sprite;
 
-		frontImgPanel.setSprite(sprite);
-		backImgPanel.setSprite(sprite);
-
 		imgAssetList.ignoreChanges.increment();
 		imgAssetList.setModel(sprite.imgAssets.getListModel());
 		imgAssetList.setSelectedValue(sprite.selectedImgAsset, true);

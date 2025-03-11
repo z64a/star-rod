@@ -143,7 +143,7 @@ public class SetScale extends AnimCommand
 		seq.add((short) percent);
 	}
 
-	private static class SetScalePanel extends JPanel
+	protected static class SetScalePanel extends JPanel
 	{
 		private static SetScalePanel instance;
 		private SetScale cmd;
@@ -152,7 +152,7 @@ public class SetScale extends AnimCommand
 		private JSpinner scaleSpinner;
 		private JRadioButton allButton, xButton, yButton, zButton;
 
-		private static SetScalePanel instance()
+		protected static SetScalePanel instance()
 		{
 			if (instance == null)
 				instance = new SetScalePanel();

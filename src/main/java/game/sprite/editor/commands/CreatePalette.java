@@ -3,6 +3,7 @@ package game.sprite.editor.commands;
 import common.commands.AbstractCommand;
 import game.sprite.Sprite;
 import game.sprite.SpritePalette;
+import game.sprite.editor.SpriteEditor;
 
 public class CreatePalette extends AbstractCommand
 {
@@ -31,9 +32,14 @@ public class CreatePalette extends AbstractCommand
 	{
 		super.exec();
 
+		SpriteEditor.instance().palBoxRegistry.lockBoxes();
+
 		sprite.palettes.add(pos, pal);
 		sprite.reindex();
 		sprite.incrementModified();
+
+		SpriteEditor.instance().palBoxRegistry.updateModels(true);
+		SpriteEditor.instance().palBoxRegistry.unlockBoxes();
 	}
 
 	@Override
@@ -41,8 +47,13 @@ public class CreatePalette extends AbstractCommand
 	{
 		super.undo();
 
+		SpriteEditor.instance().palBoxRegistry.lockBoxes();
+
 		sprite.palettes.remove(pos);
 		sprite.reindex();
 		sprite.decrementModified();
+
+		SpriteEditor.instance().palBoxRegistry.updateModels(true);
+		SpriteEditor.instance().palBoxRegistry.unlockBoxes();
 	}
 }

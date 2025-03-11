@@ -1,6 +1,8 @@
 package game.sprite.editor.animators.keyframe;
 
 import static game.sprite.SpriteKey.*;
+import static javax.swing.SwingConstants.CENTER;
+import static javax.swing.SwingConstants.LEFT;
 
 import java.awt.Color;
 import java.awt.Component;
@@ -9,13 +11,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
-import javax.swing.ComboBoxModel;
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
+import javax.swing.ListCellRenderer;
 import javax.swing.SpinnerNumberModel;
 
 import org.w3c.dom.Element;
@@ -24,6 +27,7 @@ import app.SwingUtils;
 import game.sprite.Sprite;
 import game.sprite.SpritePalette;
 import game.sprite.SpriteRaster;
+import game.sprite.editor.CommandComboBox;
 import game.sprite.editor.Editable;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.BlankArrowUI;
@@ -390,9 +394,6 @@ public class Keyframe extends AnimKeyframe
 		if (duration % 2 == 1 && SpriteEditor.instance().optStrictErrorChecking)
 			return "Keyframe duration should be even";
 
-		if (setPalette && (pal == null))
-			return "Keyframe: undefined palette";
-
 		return null;
 	}
 
@@ -418,8 +419,8 @@ public class Keyframe extends AnimKeyframe
 		private JSpinner timeSpinner;
 
 		private JCheckBox cbEnableImg, cbEnablePal;
-		private JComboBox<SpriteRaster> imageComboBox;
-		private JComboBox<SpritePalette> paletteComboBox;
+		private CommandComboBox<SpriteRaster> imageBox;
+		private CommandComboBox<SpritePalette> paletteBox;
 
 		private JButton btnChoose, btnClear;
 
@@ -461,18 +462,23 @@ public class Keyframe extends AnimKeyframe
 			SwingUtils.centerSpinnerText(timeSpinner);
 			SwingUtils.addBorderPadding(timeSpinner);
 
-			imageComboBox = new JComboBox<>();
-			imageComboBox.setUI(new BlankArrowUI());
+			imageBox = new CommandComboBox<>();
+			imageBox.setUI(new BlankArrowUI());
 			SpriteRasterRenderer renderer = new SpriteRasterRenderer();
 			renderer.setMinimumSize(new Dimension(80, 80));
 			renderer.setPreferredSize(new Dimension(80, 80));
-			imageComboBox.setRenderer(renderer);
-			imageComboBox.setMaximumRowCount(5);
-			imageComboBox.addActionListener((e) -> {
-				if (!ignoreChanges) {
-					SpriteRaster newValue = (SpriteRaster) imageComboBox.getSelectedItem();
+			imageBox.setRenderer(renderer);
+			imageBox.setMaximumRowCount(5);
+			imageBox.addActionListener((e) -> {
+				if (!ignoreChanges && imageBox.allowChanges()) {
+					SpriteRaster newValue = (SpriteRaster) imageBox.getSelectedItem();
 					SpriteEditor.execute(new SetKeyframeRaster(cmd, newValue, this::editCallback));
 				}
+			});
+
+			SpriteEditor.instance().imgBoxRegistry.register(imageBox, true, () -> {
+				if (cmd != null)
+					imageBox.setSelectedItem(cmd.img);
 			});
 
 			btnChoose = new JButton("Select");
@@ -498,15 +504,20 @@ public class Keyframe extends AnimKeyframe
 				SpriteEditor.execute(new SetKeyframeEnableRaster(cmd, value, this::editCallback));
 			});
 
-			paletteComboBox = new JComboBox<>();
-			SwingUtils.setFontSize(paletteComboBox, 14);
-			paletteComboBox.setMaximumRowCount(24);
-			//	paletteComboBox.setRenderer(new PaletteCellRenderer("Use Raster Default"));
-			paletteComboBox.addActionListener((e) -> {
+			paletteBox = new CommandComboBox<>();
+			SwingUtils.setFontSize(paletteBox, 14);
+			paletteBox.setMaximumRowCount(24);
+			paletteBox.setRenderer(new BasicPaletteCellRenderer("Use Raster Default"));
+			paletteBox.addActionListener((e) -> {
 				if (!ignoreChanges) {
-					SpritePalette newValue = (SpritePalette) paletteComboBox.getSelectedItem();
+					SpritePalette newValue = (SpritePalette) paletteBox.getSelectedItem();
 					SpriteEditor.execute(new SetKeyframePalette(cmd, newValue, this::editCallback));
 				}
+			});
+
+			SpriteEditor.instance().palBoxRegistry.register(paletteBox, true, () -> {
+				if (cmd != null)
+					paletteBox.setSelectedItem(cmd.pal);
 			});
 
 			cbEnablePal = new JCheckBox(" Palette");
@@ -652,7 +663,7 @@ public class Keyframe extends AnimKeyframe
 
 			JPanel rasterPanel = new JPanel(new MigLayout("fillx, ins 0, wrap 2", "[sg but][sg but]"));
 
-			rasterPanel.add(imageComboBox, "growx, h 120!, span");
+			rasterPanel.add(imageBox, "growx, h 120!, span");
 			rasterPanel.add(btnChoose, "growx, sg imgbut");
 			rasterPanel.add(btnClear, "growx, sg imgbut");
 
@@ -660,7 +671,7 @@ public class Keyframe extends AnimKeyframe
 			add(rasterPanel, "grow");
 
 			add(cbEnablePal, "gaptop 2, top");
-			add(paletteComboBox, "growx");
+			add(paletteBox, "growx");
 
 			add(spinPanel, "growx, span, gaptop 8");
 		}
@@ -675,14 +686,14 @@ public class Keyframe extends AnimKeyframe
 
 			timeSpinner.setValue(cmd.duration);
 
-			imageComboBox.setSelectedItem(cmd.img);
-			imageComboBox.setEnabled(cmd.setImage);
+			imageBox.setSelectedItem(cmd.img);
+			imageBox.setEnabled(cmd.setImage);
 			btnChoose.setEnabled(cmd.setImage);
 			btnClear.setEnabled(cmd.setImage);
 			cbEnableImg.setSelected(cmd.setImage);
 
-			paletteComboBox.setSelectedItem(cmd.pal);
-			paletteComboBox.setEnabled(cmd.setPalette);
+			paletteBox.setSelectedItem(cmd.pal);
+			paletteBox.setEnabled(cmd.setPalette);
 			cbEnablePal.setSelected(cmd.setPalette);
 
 			dxSpinner.setValue(cmd.dx);
@@ -699,13 +710,67 @@ public class Keyframe extends AnimKeyframe
 
 			ignoreChanges = false;
 		}
+	}
 
-		protected void setModel(ComboBoxModel<SpriteRaster> imgModel, ComboBoxModel<SpritePalette> palModel)
+	private static class BasicPaletteCellRenderer extends JPanel implements ListCellRenderer<SpritePalette>
+	{
+		private JLabel nameLabel;
+		private String nullString;
+
+		public BasicPaletteCellRenderer(String nullString)
 		{
-			ignoreChanges = true;
-			imageComboBox.setModel(imgModel);
-			paletteComboBox.setModel(palModel);
-			ignoreChanges = false;
+			this.nullString = nullString;
+
+			nameLabel = new JLabel();
+			nameLabel.setHorizontalAlignment(LEFT);
+			nameLabel.setVerticalAlignment(CENTER);
+			nameLabel.setVerticalTextPosition(CENTER);
+
+			setLayout(new MigLayout("fill, ins 0, hidemode 3"));
+			setOpaque(true);
+
+			add(nameLabel, "sgy x, gapleft 8");
+			add(new JLabel(), "growx, pushx");
+		}
+
+		@Override
+		public Component getListCellRendererComponent(
+			JList<? extends SpritePalette> list,
+			SpritePalette pal,
+			int index,
+			boolean isSelected,
+			boolean cellHasFocus)
+		{
+			if (isSelected) {
+				setBackground(list.getSelectionBackground());
+				setForeground(list.getSelectionForeground());
+			}
+			else {
+				setBackground(list.getBackground());
+				setForeground(list.getForeground());
+			}
+
+			setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 0));
+			if (pal == null) {
+				nameLabel.setText(nullString);
+			}
+			else if (!pal.hasPal()) {
+				nameLabel.setText(pal.name + " (missing)");
+				nameLabel.setForeground(SwingUtils.getRedTextColor());
+			}
+			else {
+				if (pal.isModified())
+					nameLabel.setText(pal.name + " *");
+				else
+					nameLabel.setText(pal.name);
+
+				if (pal.hasError())
+					nameLabel.setForeground(SwingUtils.getRedTextColor());
+				else
+					nameLabel.setForeground(null);
+			}
+
+			return this;
 		}
 	}
 }

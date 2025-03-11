@@ -198,7 +198,7 @@ public class Loop extends AnimCommand
 		return null;
 	}
 
-	private static class LoopPanel extends JPanel
+	protected static class LoopPanel extends JPanel
 	{
 		private static LoopPanel instance;
 		private Loop cmd;
@@ -207,7 +207,7 @@ public class Loop extends AnimCommand
 		private JSpinner countSpinner;
 		private boolean ignoreChanges = false;
 
-		private static LoopPanel instance()
+		protected static LoopPanel instance()
 		{
 			if (instance == null)
 				instance = new LoopPanel();

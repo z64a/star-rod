@@ -5,9 +5,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 
 import javax.swing.ButtonGroup;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
@@ -16,12 +14,10 @@ import javax.swing.SwingUtilities;
 import app.SwingUtils;
 import common.commands.AbstractCommand;
 import game.map.editor.render.TextureManager;
-import game.sprite.Sprite;
 import game.sprite.SpritePalette;
 import game.sprite.SpriteRaster;
 import game.sprite.SpriteRasterFace;
 import net.miginfocom.swing.MigLayout;
-import util.ui.ListAdapterComboboxModel;
 
 public class RasterFacePanel extends JPanel
 {
@@ -39,7 +35,7 @@ public class RasterFacePanel extends JPanel
 	private final JButton btnBind;
 	private final JButton btnSelect;
 
-	private final JComboBox<SpritePalette> paletteBox;
+	private final CommandComboBox<SpritePalette> paletteBox;
 
 	private boolean ignoreChanges = false;
 
@@ -119,15 +115,20 @@ public class RasterFacePanel extends JPanel
 			buttonsPanel.add(btnSeparate, "gapleft 4, gapbottom 4");
 		}
 
-		paletteBox = new JComboBox<>();
+		paletteBox = new CommandComboBox<>();
 		SwingUtils.setFontSize(paletteBox, 14);
 		paletteBox.setMaximumRowCount(24);
 		paletteBox.setRenderer(new PaletteCellRenderer());
 		paletteBox.addActionListener((e) -> {
-			if (!ignoreChanges && face != null) {
+			if (face != null && !ignoreChanges && paletteBox.allowChanges()) {
 				SpritePalette pal = (SpritePalette) paletteBox.getSelectedItem();
 				SpriteEditor.execute(new SetFacePalette(face, pal));
 			}
+		});
+
+		SpriteEditor.instance().palBoxRegistry.register(paletteBox, false, () -> {
+			if (face != null)
+				paletteBox.setSelectedItem(face.pal);
 		});
 
 		setLayout(new MigLayout("fill, wrap"));
@@ -146,20 +147,6 @@ public class RasterFacePanel extends JPanel
 	{
 		setImage(face);
 		tab.repaint();
-	}
-
-	public void setSprite(Sprite sprite)
-	{
-		if (sprite == null) {
-			ignoreChanges = true;
-			paletteBox.setModel(new DefaultComboBoxModel<SpritePalette>());
-			ignoreChanges = false;
-		}
-		else {
-			ignoreChanges = true;
-			paletteBox.setModel(new ListAdapterComboboxModel<>(sprite.palettes));
-			ignoreChanges = false;
-		}
 	}
 
 	public void setRaster(SpriteRaster img)

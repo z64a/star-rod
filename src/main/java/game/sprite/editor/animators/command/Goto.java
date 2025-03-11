@@ -185,7 +185,7 @@ public class Goto extends AnimCommand
 		return null;
 	}
 
-	private static class GotoPanel extends JPanel
+	protected static class GotoPanel extends JPanel
 	{
 		private static GotoPanel instance;
 		private Goto cmd;
@@ -193,7 +193,7 @@ public class Goto extends AnimCommand
 		private JComboBox<Label> labelComboBox;
 		private boolean ignoreChanges = false;
 
-		private static GotoPanel instance()
+		protected static GotoPanel instance()
 		{
 			if (instance == null)
 				instance = new GotoPanel();

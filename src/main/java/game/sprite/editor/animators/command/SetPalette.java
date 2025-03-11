@@ -5,8 +5,6 @@ import static game.sprite.SpriteKey.*;
 import java.awt.Component;
 import java.util.List;
 
-import javax.swing.ComboBoxModel;
-import javax.swing.JComboBox;
 import javax.swing.JPanel;
 
 import org.w3c.dom.Element;
@@ -14,6 +12,7 @@ import org.w3c.dom.Element;
 import app.SwingUtils;
 import common.commands.AbstractCommand;
 import game.sprite.SpritePalette;
+import game.sprite.editor.CommandComboBox;
 import game.sprite.editor.Editable;
 import game.sprite.editor.PaletteCellRenderer;
 import game.sprite.editor.SpriteEditor;
@@ -153,7 +152,7 @@ public class SetPalette extends AnimCommand
 		private static SetPalettePanel instance;
 		private SetPalette cmd;
 
-		private JComboBox<SpritePalette> paletteComboBox;
+		private CommandComboBox<SpritePalette> paletteBox;
 		private boolean ignoreChanges = false;
 
 		protected static SetPalettePanel instance()
@@ -167,19 +166,24 @@ public class SetPalette extends AnimCommand
 		{
 			super(new MigLayout(CommandAnimatorEditor.PANEL_LAYOUT_PROPERTIES));
 
-			paletteComboBox = new JComboBox<>();
-			SwingUtils.setFontSize(paletteComboBox, 14);
-			paletteComboBox.setMaximumRowCount(24);
-			paletteComboBox.setRenderer(new PaletteCellRenderer("Use Raster Default"));
-			paletteComboBox.addActionListener((e) -> {
-				if (!ignoreChanges) {
-					SpritePalette pal = (SpritePalette) paletteComboBox.getSelectedItem();
+			paletteBox = new CommandComboBox<>();
+			SwingUtils.setFontSize(paletteBox, 14);
+			paletteBox.setMaximumRowCount(24);
+			paletteBox.setRenderer(new PaletteCellRenderer("Use Raster Default"));
+			paletteBox.addActionListener((e) -> {
+				if (!ignoreChanges && paletteBox.allowChanges()) {
+					SpritePalette pal = (SpritePalette) paletteBox.getSelectedItem();
 					SpriteEditor.execute(new SetCommandPalette(cmd, pal));
 				}
 			});
 
+			SpriteEditor.instance().palBoxRegistry.register(paletteBox, true, () -> {
+				if (cmd != null)
+					paletteBox.setSelectedItem(cmd.pal);
+			});
+
 			add(SwingUtils.getLabel("Set Palette", 14), "gapbottom 4");
-			add(paletteComboBox, "growx, pushx");
+			add(paletteBox, "growx, pushx");
 		}
 
 		private void bind(SetPalette cmd)
@@ -187,16 +191,7 @@ public class SetPalette extends AnimCommand
 			this.cmd = cmd;
 
 			ignoreChanges = true;
-			paletteComboBox.setSelectedItem(cmd.pal);
-			ignoreChanges = false;
-		}
-
-		protected void setModel(ComboBoxModel<SpritePalette> model)
-		{
-			ignoreChanges = true;
-			//	Object lastSelected = paletteComboBox.getSelectedItem();
-			paletteComboBox.setModel(model);
-			//	paletteComboBox.setSelectedItem(lastSelected);
+			paletteBox.setSelectedItem(cmd.pal);
 			ignoreChanges = false;
 		}
 
@@ -223,7 +218,7 @@ public class SetPalette extends AnimCommand
 				cmd.pal = next;
 
 				ignoreChanges = true;
-				paletteComboBox.setSelectedItem(next);
+				paletteBox.setSelectedItem(next);
 				ignoreChanges = false;
 
 				cmd.incrementModified();
@@ -238,7 +233,7 @@ public class SetPalette extends AnimCommand
 				cmd.pal = prev;
 
 				ignoreChanges = true;
-				paletteComboBox.setSelectedItem(prev);
+				paletteBox.setSelectedItem(prev);
 				ignoreChanges = false;
 
 				cmd.decrementModified();

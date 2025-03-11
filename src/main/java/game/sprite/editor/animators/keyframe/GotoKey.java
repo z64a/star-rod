@@ -160,8 +160,8 @@ public class GotoKey extends AnimKeyframe
 		// add all the keyframes for this animator
 		comboBoxModel.addAll(keyframes);
 
-		GotoPanel.instance().bind(this, comboBoxModel);
-		return GotoPanel.instance();
+		GotoKeyPanel.instance().bind(this, comboBoxModel);
+		return GotoKeyPanel.instance();
 	}
 
 	@Override
@@ -173,23 +173,23 @@ public class GotoKey extends AnimKeyframe
 		return null;
 	}
 
-	private static class GotoPanel extends JPanel
+	protected static class GotoKeyPanel extends JPanel
 	{
-		private static GotoPanel instance;
+		protected static GotoKeyPanel instance;
 		private boolean ignoreChanges = false;
 
 		private GotoKey cmd;
 
 		private JComboBox<Keyframe> keyframeComboBox;
 
-		private static GotoPanel instance()
+		private static GotoKeyPanel instance()
 		{
 			if (instance == null)
-				instance = new GotoPanel();
+				instance = new GotoKeyPanel();
 			return instance;
 		}
 
-		private GotoPanel()
+		private GotoKeyPanel()
 		{
 			super(new MigLayout(KeyframeAnimatorEditor.PANEL_LAYOUT_PROPERTIES));
 

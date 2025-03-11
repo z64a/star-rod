@@ -101,7 +101,6 @@ import util.ui.DragReorderList;
 import util.ui.EvenSpinner;
 import util.ui.FadingLabel;
 import util.ui.IntTextField;
-import util.ui.ListAdapterComboboxModel;
 import util.ui.ThemedIcon;
 import util.xml.XmlWrapper.XmlWriter;
 
@@ -134,7 +133,7 @@ public class SpriteEditor extends BaseEditor
 	private SpriteList playerSpriteList;
 	private SpriteList npcSpriteList;
 
-	private JComboBox<SpritePalette> paletteComboBox;
+	private CommandComboBox<SpritePalette> paletteBox;
 
 	private AnimationsList animList;
 	private ComponentsList compList;
@@ -709,14 +708,8 @@ public class SpriteEditor extends BaseEditor
 		modeTabIndex = tabIndex;
 		editorMode = EditorMode.values()[tabIndex];
 
-		if (tabIndex == 1) {
+		if (tabIndex == 1)
 			sprite.makeRasterAtlas();
-		}
-		else if (tabIndex == 2) {
-			// reset models in case rasters/palettes changed
-			CommandAnimatorEditor.setModels(sprite);
-			KeyframeAnimatorEditor.setModels(sprite);
-		}
 	}
 
 	public int getModesTab()
@@ -789,8 +782,10 @@ public class SpriteEditor extends BaseEditor
 
 			sprite.prepareForEditor();
 			sprite.enableStencilBuffer = true;
-			CommandAnimatorEditor.setModels(sprite);
-			KeyframeAnimatorEditor.setModels(sprite);
+
+			// update combo box models to match new list models
+			imgBoxRegistry.updateModels(false);
+			palBoxRegistry.updateModels(false);
 
 			sprite.makeImgAtlas();
 			sprite.makeRasterAtlas();
@@ -827,9 +822,8 @@ public class SpriteEditor extends BaseEditor
 				setAnimation(null);
 			}
 
-			paletteComboBox.setModel(new ListAdapterComboboxModel<>(sprite.palettes));
-			paletteComboBox.setSelectedItem(sprite.overridePalette);
-			paletteComboBox.setEnabled(sprite.usingOverridePalette);
+			paletteBox.setSelectedItem(sprite.overridePalette);
+			paletteBox.setEnabled(sprite.usingOverridePalette);
 
 			cbOverridePalette.setSelected(sprite.usingOverridePalette);
 
@@ -975,6 +969,20 @@ public class SpriteEditor extends BaseEditor
 	{
 		return currentComp;
 	}
+
+	public ComboBoxRegistry<SpriteRaster> imgBoxRegistry = new ComboBoxRegistry<>(() -> {
+		if (sprite == null)
+			return new ArrayList<SpriteRaster>();
+		else
+			return sprite.rasters;
+	});
+
+	public ComboBoxRegistry<SpritePalette> palBoxRegistry = new ComboBoxRegistry<>(() -> {
+		if (sprite == null)
+			return new ArrayList<SpritePalette>();
+		else
+			return sprite.palettes;
+	});
 
 	private void handleInput(double deltaTime)
 	{
@@ -1179,8 +1187,8 @@ public class SpriteEditor extends BaseEditor
 		rastersTab = new RastersTab(this);
 		palettesTab = new PalettesTab(this);
 
-		CommandAnimatorEditor.instance();
-		KeyframeAnimatorEditor.instance();
+		CommandAnimatorEditor.init();
+		KeyframeAnimatorEditor.init();
 
 		editorModeTabs = new JTabbedPane();
 		editorModeTabs.addTab(EditorMode.Rasters.tabName, rastersTab);
@@ -1820,12 +1828,17 @@ public class SpriteEditor extends BaseEditor
 				execute(new ToggleDrawCurrent(cbShowOnlySelectedComponent));
 		});
 
-		paletteComboBox = new JComboBox<>();
-		SwingUtils.setFontSize(paletteComboBox, 14);
-		paletteComboBox.setMaximumRowCount(24);
-		paletteComboBox.addActionListener((e) -> {
-			if (!suppressCommands && sprite != null)
-				execute(new SetOverridePalette(paletteComboBox, sprite));
+		paletteBox = new CommandComboBox<>();
+		SwingUtils.setFontSize(paletteBox, 14);
+		paletteBox.setMaximumRowCount(24);
+		paletteBox.addActionListener((e) -> {
+			if (sprite != null && !suppressCommands && paletteBox.allowChanges())
+				execute(new SetOverridePalette(paletteBox, sprite));
+		});
+
+		SpriteEditor.instance().palBoxRegistry.register(paletteBox, false, () -> {
+			if (sprite != null)
+				paletteBox.setSelectedItem(sprite.overridePalette);
 		});
 
 		cbOverridePalette = new JCheckBox(" Palette");
@@ -1834,7 +1847,7 @@ public class SpriteEditor extends BaseEditor
 		cbOverridePalette.addActionListener((e) -> {
 			if (!suppressCommands && sprite != null)
 				execute(new TogglePaletteOverride(cbOverridePalette, sprite, (b) -> {
-					paletteComboBox.setEnabled(b);
+					paletteBox.setEnabled(b);
 				}));
 		});
 
@@ -1917,7 +1930,7 @@ public class SpriteEditor extends BaseEditor
 		listsPanel.add(compScrollPane, "pushy, grow, sg list");
 
 		listsPanel.add(cbOverridePalette, "split 2, gapright 8, aligny center");
-		listsPanel.add(paletteComboBox, "growx");
+		listsPanel.add(paletteBox, "growx");
 
 		listsPanel.add(relativePosPanel, "growx");
 

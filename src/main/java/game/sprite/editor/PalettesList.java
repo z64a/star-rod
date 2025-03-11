@@ -170,7 +170,7 @@ public class PalettesList extends DragReorderList<SpritePalette>
 
 				PalettesList list = PalettesList.this;
 				CommandBatch batch = new CommandBatch("Delete Palette");
-				batch.addCommand(new SelectPalette(list, editor.getSprite(), list.getSelectedValue(), tab::setPalette));
+				batch.addCommand(new SelectPalette(list, editor.getSprite(), null, tab::setPalette));
 				batch.addCommand(new DeletePalette(editor.getSprite(), i));
 				SpriteEditor.execute(batch);
 			}

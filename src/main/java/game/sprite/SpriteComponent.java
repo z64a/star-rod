@@ -508,36 +508,6 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		}
 	}
 
-	private final EditableData editableData = new EditableData(this);
-
-	@Override
-	public EditableData getEditableData()
-	{
-		return editableData;
-	}
-
-	@Override
-	public void addEditableDownstream(List<Editable> downstream)
-	{
-		if (sprite.usesKeyframes) {
-			for (AnimElement e : keyframeAnimator.keyframes)
-				downstream.add(e);
-		}
-		else {
-			for (AnimElement e : cmdAnimator.commands)
-				downstream.add(e);
-		}
-	}
-
-	@Override
-	public String checkErrorMsg()
-	{
-		if (posz % 2 == 1 && SpriteEditor.instance().optStrictErrorChecking)
-			return "Component: odd z-offsets break Actor decorations";
-
-		return null;
-	}
-
 	public void addUnused(SpriteCleanup cleanup)
 	{
 		if (sprite.usesKeyframes) {
@@ -587,5 +557,35 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 				}
 			}
 		}
+	}
+
+	private final EditableData editableData = new EditableData(this);
+
+	@Override
+	public EditableData getEditableData()
+	{
+		return editableData;
+	}
+
+	@Override
+	public void addEditableDownstream(List<Editable> downstream)
+	{
+		if (sprite.usesKeyframes) {
+			for (AnimElement e : keyframeAnimator.keyframes)
+				downstream.add(e);
+		}
+		else {
+			for (AnimElement e : cmdAnimator.commands)
+				downstream.add(e);
+		}
+	}
+
+	@Override
+	public String checkErrorMsg()
+	{
+		if (posz % 2 == 1 && SpriteEditor.instance().optStrictErrorChecking)
+			return "Component: odd z-offsets break Actor decorations";
+
+		return null;
 	}
 }

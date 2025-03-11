@@ -113,7 +113,7 @@ public class SetNotify extends AnimCommand
 		seq.add((short) (0x8200 | (value & 0xFF)));
 	}
 
-	private static class SetNotifyPanel extends JPanel
+	protected static class SetNotifyPanel extends JPanel
 	{
 		private static SetNotifyPanel instance;
 		private SetNotify cmd;
@@ -121,7 +121,7 @@ public class SetNotify extends AnimCommand
 		private JSpinner valueSpinner;
 		private boolean ignoreChanges = false;
 
-		private static SetNotifyPanel instance()
+		protected static SetNotifyPanel instance()
 		{
 			if (instance == null)
 				instance = new SetNotifyPanel();

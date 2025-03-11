@@ -165,7 +165,7 @@ public class SetParent extends AnimCommand
 		return null;
 	}
 
-	private static class SetParentPanel extends JPanel
+	protected static class SetParentPanel extends JPanel
 	{
 		private static SetParentPanel instance;
 		private SetParent cmd;
@@ -173,7 +173,7 @@ public class SetParent extends AnimCommand
 		private JComboBox<SpriteComponent> componentComboBox;
 		private boolean ignoreChanges = false;
 
-		private static SetParentPanel instance()
+		protected static SetParentPanel instance()
 		{
 			if (instance == null)
 				instance = new SetParentPanel();

@@ -5,7 +5,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 import javax.swing.BorderFactory;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JPanel;
@@ -16,15 +15,13 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
 import app.SwingUtils;
-import game.sprite.Sprite;
 import game.sprite.SpriteComponent;
-import game.sprite.SpritePalette;
-import game.sprite.SpriteRaster;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.AnimElement;
 import game.sprite.editor.animators.AnimElementsList;
 import game.sprite.editor.animators.ComponentAnimationEditor;
 import game.sprite.editor.animators.keyframe.Keyframe.KeyframePanel;
+import game.sprite.editor.animators.keyframe.ParentKey.ParentKeyPanel;
 import game.sprite.editor.commands.CreateCommand;
 import net.miginfocom.swing.MigLayout;
 import util.Logger;
@@ -63,26 +60,17 @@ public class KeyframeAnimatorEditor extends ComponentAnimationEditor
 		animator.keyframes.addListDataListener(instance().commandListListener);
 	}
 
-	public static void setModels(Sprite sprite)
+	public static void init()
 	{
-		DefaultComboBoxModel<SpriteRaster> rasterModel = new DefaultComboBoxModel<>();
-		rasterModel.addElement(null);
-		for (int i = 0; i < sprite.rasters.size(); i++) {
-			SpriteRaster sr = sprite.rasters.get(i);
-			rasterModel.addElement(sr);
-		}
+		// pre-load the instance for this class
+		instance();
 
-		DefaultComboBoxModel<SpritePalette> paletteModel = new DefaultComboBoxModel<>();
-		paletteModel.addElement(null);
-		for (int i = 0; i < sprite.palettes.size(); i++) {
-			SpritePalette sr = sprite.palettes.get(i);
-			paletteModel.addElement(sr);
-		}
-
-		KeyframePanel.instance().setModel(rasterModel, paletteModel);
+		// pre-load instances for panels which rely on callbacks
+		KeyframePanel.instance();
+		ParentKeyPanel.instance();
 	}
 
-	public static KeyframeAnimatorEditor instance()
+	protected static KeyframeAnimatorEditor instance()
 	{
 		if (instance == null)
 			instance = new KeyframeAnimatorEditor();

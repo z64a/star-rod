@@ -973,7 +973,7 @@ public class Sprite implements XmlSerializable, Editable
 			float x2 = ia.atlasX + ia.img.width;
 			float y2 = ia.atlasY - ia.img.height;
 
-			shader.setXYQuadCoords(x1, y2, x2, y1, 0); //TODO upside down?
+			shader.setXYQuadCoords(x1, y2, x2, y1, 0); // NOTE: upside down
 			shader.renderQuad();
 		}
 	}
@@ -1098,7 +1098,7 @@ public class Sprite implements XmlSerializable, Editable
 			float x2 = sr.atlasX + ia.img.width;
 			float y2 = sr.atlasY - ia.img.height;
 
-			shader.setXYQuadCoords(x1, y2, x2, y1, 0); //TODO upside down?
+			shader.setXYQuadCoords(x1, y2, x2, y1, 0); // NOTE: upside down
 			shader.renderQuad();
 		}
 	}

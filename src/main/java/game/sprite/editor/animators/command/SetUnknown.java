@@ -103,7 +103,7 @@ public class SetUnknown extends AnimCommand
 		seq.add((short) (0x8000 | (value & 0xFF)));
 	}
 
-	private static class SetUnknownPanel extends JPanel
+	protected static class SetUnknownPanel extends JPanel
 	{
 		private static SetUnknownPanel instance;
 		private SetUnknown cmd;
@@ -111,7 +111,7 @@ public class SetUnknown extends AnimCommand
 		private JSpinner valueSpinner;
 		private boolean ignoreChanges = false;
 
-		private static SetUnknownPanel instance()
+		protected static SetUnknownPanel instance()
 		{
 			if (instance == null)
 				instance = new SetUnknownPanel();

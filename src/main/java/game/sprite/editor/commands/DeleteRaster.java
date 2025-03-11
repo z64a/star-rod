@@ -3,6 +3,7 @@ package game.sprite.editor.commands;
 import common.commands.AbstractCommand;
 import game.sprite.Sprite;
 import game.sprite.SpriteRaster;
+import game.sprite.editor.SpriteEditor;
 
 public class DeleteRaster extends AbstractCommand
 {
@@ -24,10 +25,15 @@ public class DeleteRaster extends AbstractCommand
 	{
 		super.exec();
 
+		SpriteEditor.instance().imgBoxRegistry.lockBoxes();
+
 		sprite.rasters.remove(pos);
 		img.deleted = true;
 		sprite.reindex();
 		sprite.incrementModified();
+
+		SpriteEditor.instance().imgBoxRegistry.updateModels(true);
+		SpriteEditor.instance().imgBoxRegistry.unlockBoxes();
 	}
 
 	@Override
@@ -35,9 +41,14 @@ public class DeleteRaster extends AbstractCommand
 	{
 		super.undo();
 
+		SpriteEditor.instance().imgBoxRegistry.lockBoxes();
+
 		sprite.rasters.add(pos, img);
 		img.deleted = false;
 		sprite.reindex();
 		sprite.decrementModified();
+
+		SpriteEditor.instance().imgBoxRegistry.updateModels(true);
+		SpriteEditor.instance().imgBoxRegistry.unlockBoxes();
 	}
 }

@@ -170,7 +170,7 @@ public class RastersList extends DragReorderList<SpriteRaster>
 
 				RastersList list = RastersList.this;
 				CommandBatch batch = new CommandBatch("Delete Raster");
-				batch.addCommand(new SelectRaster(list, editor.getSprite(), list.getSelectedValue(), tab::setRaster));
+				batch.addCommand(new SelectRaster(list, editor.getSprite(), null, tab::setRaster));
 				batch.addCommand(new DeleteRaster(editor.getSprite(), i));
 				SpriteEditor.execute(batch);
 			}

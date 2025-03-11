@@ -102,8 +102,8 @@ public class NotifyKey extends AnimKeyframe
 	@Override
 	public Component getPanel()
 	{
-		SetNotifyPanel.instance().bind(this);
-		return SetNotifyPanel.instance();
+		NotifyKeyPanel.instance().bind(this);
+		return NotifyKeyPanel.instance();
 	}
 
 	@Override
@@ -112,23 +112,23 @@ public class NotifyKey extends AnimKeyframe
 		seq.add((short) (0x8200 | (value & 0xFF)));
 	}
 
-	private static class SetNotifyPanel extends JPanel
+	protected static class NotifyKeyPanel extends JPanel
 	{
-		private static SetNotifyPanel instance;
+		private static NotifyKeyPanel instance;
 		private boolean ignoreChanges = false;
 
 		private NotifyKey cmd;
 
 		private JSpinner valueSpinner;
 
-		private static SetNotifyPanel instance()
+		protected static NotifyKeyPanel instance()
 		{
 			if (instance == null)
-				instance = new SetNotifyPanel();
+				instance = new NotifyKeyPanel();
 			return instance;
 		}
 
-		private SetNotifyPanel()
+		private NotifyKeyPanel()
 		{
 			super(new MigLayout(KeyframeAnimatorEditor.PANEL_LAYOUT_PROPERTIES));
 

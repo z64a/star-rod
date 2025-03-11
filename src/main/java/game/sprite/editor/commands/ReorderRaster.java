@@ -4,6 +4,7 @@ import common.commands.AbstractCommand;
 import game.sprite.Sprite;
 import game.sprite.SpriteRaster;
 import game.sprite.editor.RastersList;
+import game.sprite.editor.SpriteEditor;
 
 public class ReorderRaster extends AbstractCommand
 {
@@ -35,6 +36,8 @@ public class ReorderRaster extends AbstractCommand
 	{
 		super.exec();
 
+		SpriteEditor.instance().imgBoxRegistry.lockBoxes();
+
 		list.ignoreChanges.increment();
 		sprite.rasters.removeElement(img);
 		sprite.rasters.insertElementAt(img, next);
@@ -43,12 +46,17 @@ public class ReorderRaster extends AbstractCommand
 
 		sprite.reindex();
 		sprite.incrementModified();
+
+		SpriteEditor.instance().imgBoxRegistry.updateModels(true);
+		SpriteEditor.instance().imgBoxRegistry.unlockBoxes();
 	}
 
 	@Override
 	public void undo()
 	{
 		super.undo();
+
+		SpriteEditor.instance().imgBoxRegistry.lockBoxes();
 
 		list.ignoreChanges.increment();
 		sprite.rasters.removeElement(img);
@@ -58,5 +66,8 @@ public class ReorderRaster extends AbstractCommand
 
 		sprite.reindex();
 		sprite.decrementModified();
+
+		SpriteEditor.instance().imgBoxRegistry.updateModels(true);
+		SpriteEditor.instance().imgBoxRegistry.unlockBoxes();
 	}
 }

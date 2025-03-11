@@ -6,9 +6,7 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.util.List;
 
-import javax.swing.ComboBoxModel;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JPanel;
 
 import org.w3c.dom.Element;
@@ -17,6 +15,7 @@ import app.SwingUtils;
 import common.commands.AbstractCommand;
 import game.sprite.Sprite;
 import game.sprite.SpriteRaster;
+import game.sprite.editor.CommandComboBox;
 import game.sprite.editor.Editable;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.BlankArrowUI;
@@ -163,8 +162,7 @@ public class SetImage extends AnimCommand
 		private static SetImagePanel instance;
 		private SetImage cmd;
 
-		private JComboBox<SpriteRaster> imageComboBox;
-		private boolean ignoreChanges = false;
+		private CommandComboBox<SpriteRaster> imageBox;
 
 		protected static SetImagePanel instance()
 		{
@@ -177,19 +175,24 @@ public class SetImage extends AnimCommand
 		{
 			super(new MigLayout(CommandAnimatorEditor.PANEL_LAYOUT_PROPERTIES));
 
-			imageComboBox = new JComboBox<>();
-			imageComboBox.setUI(new BlankArrowUI());
+			imageBox = new CommandComboBox<>();
+			imageBox.setUI(new BlankArrowUI());
 
 			SpriteRasterRenderer renderer = new SpriteRasterRenderer();
 			renderer.setMinimumSize(new Dimension(80, 80));
 			renderer.setPreferredSize(new Dimension(80, 80));
-			imageComboBox.setRenderer(renderer);
-			imageComboBox.setMaximumRowCount(5);
-			imageComboBox.addActionListener((e) -> {
-				if (!ignoreChanges) {
-					SpriteRaster img = (SpriteRaster) imageComboBox.getSelectedItem();
+			imageBox.setRenderer(renderer);
+			imageBox.setMaximumRowCount(5);
+			imageBox.addActionListener((e) -> {
+				if (imageBox.allowChanges()) {
+					SpriteRaster img = (SpriteRaster) imageBox.getSelectedItem();
 					SpriteEditor.execute(new SetCommandImage(cmd, img));
 				}
+			});
+
+			SpriteEditor.instance().imgBoxRegistry.register(imageBox, true, () -> {
+				if (cmd != null)
+					imageBox.setSelectedItem(cmd.img);
 			});
 
 			JButton btnChoose = new JButton("Select");
@@ -210,7 +213,7 @@ public class SetImage extends AnimCommand
 			});
 
 			add(SwingUtils.getLabel("Set Raster", 14), "gapbottom 4");
-			add(imageComboBox, "w 60%, h 120!");
+			add(imageBox, "w 60%, h 120!");
 			add(btnChoose, "split 2, growx");
 			add(btnClear, "growx");
 		}
@@ -219,18 +222,9 @@ public class SetImage extends AnimCommand
 		{
 			this.cmd = cmd;
 
-			ignoreChanges = true;
-			imageComboBox.setSelectedItem(cmd.img);
-			ignoreChanges = false;
-		}
-
-		protected void setModel(ComboBoxModel<SpriteRaster> model)
-		{
-			ignoreChanges = true;
-			//	Object lastSelected = imageComboBox.getSelectedItem();
-			imageComboBox.setModel(model);
-			//	imageComboBox.setSelectedItem(lastSelected);
-			ignoreChanges = false;
+			imageBox.incrementIgnoreChanges();
+			imageBox.setSelectedItem(cmd.img);
+			imageBox.decrementIgnoreChanges();
 		}
 
 		private class SetCommandImage extends AbstractCommand
@@ -255,9 +249,9 @@ public class SetImage extends AnimCommand
 
 				cmd.img = next;
 
-				ignoreChanges = true;
-				imageComboBox.setSelectedItem(next);
-				ignoreChanges = false;
+				imageBox.incrementIgnoreChanges();
+				imageBox.setSelectedItem(next);
+				imageBox.decrementIgnoreChanges();
 
 				cmd.incrementModified();
 				CommandAnimatorEditor.repaintCommandList();
@@ -270,9 +264,9 @@ public class SetImage extends AnimCommand
 
 				cmd.img = prev;
 
-				ignoreChanges = true;
-				imageComboBox.setSelectedItem(prev);
-				ignoreChanges = false;
+				imageBox.incrementIgnoreChanges();
+				imageBox.setSelectedItem(prev);
+				imageBox.decrementIgnoreChanges();
 
 				cmd.decrementModified();
 				CommandAnimatorEditor.repaintCommandList();

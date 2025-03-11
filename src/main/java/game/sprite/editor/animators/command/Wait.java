@@ -135,7 +135,7 @@ public class Wait extends AnimCommand
 		return null;
 	}
 
-	private static class WaitPanel extends JPanel
+	protected static class WaitPanel extends JPanel
 	{
 		private static WaitPanel instance;
 		private Wait cmd;
@@ -150,7 +150,7 @@ public class Wait extends AnimCommand
 			return instance;
 		}
 
-		private WaitPanel()
+		protected WaitPanel()
 		{
 			super(new MigLayout(CommandAnimatorEditor.PANEL_LAYOUT_PROPERTIES));
 

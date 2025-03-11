@@ -121,7 +121,7 @@ public class Label extends AnimCommand
 		throw new RuntimeException("Tried to add label to command sequence.");
 	}
 
-	private static class LabelPanel extends JPanel
+	protected static class LabelPanel extends JPanel
 	{
 		private static LabelPanel instance;
 		private Label cmd;
@@ -129,7 +129,7 @@ public class Label extends AnimCommand
 		private LabelTextField labelNameField;
 		private boolean ignoreChanges = false;
 
-		private static LabelPanel instance()
+		protected static LabelPanel instance()
 		{
 			if (instance == null)
 				instance = new LabelPanel();

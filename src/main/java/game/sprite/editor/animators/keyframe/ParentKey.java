@@ -129,8 +129,8 @@ public class ParentKey extends AnimKeyframe
 	@Override
 	public Component getPanel()
 	{
-		SetParentPanel.instance().bind(this);
-		return SetParentPanel.instance();
+		ParentKeyPanel.instance().bind(this);
+		return ParentKeyPanel.instance();
 	}
 
 	@Override
@@ -163,23 +163,23 @@ public class ParentKey extends AnimKeyframe
 		return null;
 	}
 
-	private static class SetParentPanel extends JPanel
+	protected static class ParentKeyPanel extends JPanel
 	{
-		private static SetParentPanel instance;
+		private static ParentKeyPanel instance;
 		private boolean ignoreChanges = false;
 
 		private ParentKey cmd;
 
 		private JComboBox<SpriteComponent> componentComboBox;
 
-		private static SetParentPanel instance()
+		protected static ParentKeyPanel instance()
 		{
 			if (instance == null)
-				instance = new SetParentPanel();
+				instance = new ParentKeyPanel();
 			return instance;
 		}
 
-		private SetParentPanel()
+		private ParentKeyPanel()
 		{
 			super(new MigLayout(KeyframeAnimatorEditor.PANEL_LAYOUT_PROPERTIES));
 

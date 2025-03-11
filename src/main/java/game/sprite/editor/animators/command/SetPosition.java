@@ -124,7 +124,7 @@ public class SetPosition extends AnimCommand
 		seq.add((short) z);
 	}
 
-	private static class SetPositionPanel extends JPanel
+	protected static class SetPositionPanel extends JPanel
 	{
 		private static SetPositionPanel instance;
 		private SetPosition cmd;
@@ -132,7 +132,7 @@ public class SetPosition extends AnimCommand
 		private boolean ignoreChanges = false;
 		private JSpinner xSpinner, ySpinner, zSpinner;
 
-		private static SetPositionPanel instance()
+		protected static SetPositionPanel instance()
 		{
 			if (instance == null)
 				instance = new SetPositionPanel();

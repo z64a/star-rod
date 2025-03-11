@@ -4,6 +4,7 @@ import common.commands.AbstractCommand;
 import game.sprite.Sprite;
 import game.sprite.SpritePalette;
 import game.sprite.editor.PalettesList;
+import game.sprite.editor.SpriteEditor;
 
 public class ReorderPalette extends AbstractCommand
 {
@@ -35,6 +36,8 @@ public class ReorderPalette extends AbstractCommand
 	{
 		super.exec();
 
+		SpriteEditor.instance().palBoxRegistry.lockBoxes();
+
 		list.ignoreChanges.increment();
 		sprite.palettes.removeElement(pal);
 		sprite.palettes.insertElementAt(pal, next);
@@ -43,12 +46,17 @@ public class ReorderPalette extends AbstractCommand
 
 		sprite.reindex();
 		sprite.incrementModified();
+
+		SpriteEditor.instance().palBoxRegistry.updateModels(true);
+		SpriteEditor.instance().palBoxRegistry.unlockBoxes();
 	}
 
 	@Override
 	public void undo()
 	{
 		super.undo();
+
+		SpriteEditor.instance().palBoxRegistry.lockBoxes();
 
 		list.ignoreChanges.increment();
 		sprite.palettes.removeElement(pal);
@@ -58,5 +66,8 @@ public class ReorderPalette extends AbstractCommand
 
 		sprite.reindex();
 		sprite.decrementModified();
+
+		SpriteEditor.instance().palBoxRegistry.updateModels(true);
+		SpriteEditor.instance().palBoxRegistry.unlockBoxes();
 	}
 }
