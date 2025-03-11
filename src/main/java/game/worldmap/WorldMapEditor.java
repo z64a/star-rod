@@ -6,6 +6,7 @@ import java.awt.Canvas;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -223,11 +224,33 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 	private void addOptionsMenu(JMenuBar menuBar, ActionListener openLogAction)
 	{
 		JMenuItem item;
+		KeyStroke awtKeyStroke;
 
 		JMenu menu = new JMenu(String.format("  %-10s", "File"));
 		menu.setPreferredSize(new Dimension(60, 20));
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
+
+		//TODO implement commands for this editor
+		/*
+		item = new JMenuItem("Undo");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
+		item.addActionListener((e) -> {
+			undoEDT();
+		});
+		menu.add(item);
+		
+		item = new JMenuItem("Redo");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
+		item.addActionListener((e) -> {
+			redoEDT();
+		});
+		menu.add(item);
+		
+		menu.addSeparator();
+		*/
 
 		item = new JMenuItem("Reload");
 		item.addActionListener((e) -> {
@@ -237,6 +260,8 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 		menu.add(item);
 
 		item = new JMenuItem("Save");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
 		item.addActionListener((e) -> {
 			saveChanges();
 		});
@@ -388,14 +413,6 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 			case KeyEvent.VK_SPACE:
 				if (!shift && !ctrl && !alt)
 					resetCam();
-				break;
-			case KeyEvent.VK_Z:
-				if (!shift && ctrl && !alt)
-					commandManager.undo();
-				break;
-			case KeyEvent.VK_Y:
-				if (!shift && ctrl && !alt)
-					commandManager.redo();
 				break;
 			case KeyEvent.VK_G:
 				if (!shift && !ctrl && !alt) {

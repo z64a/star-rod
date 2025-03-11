@@ -25,6 +25,9 @@ public final class SpritePalette implements Indexable<SpritePalette>, Editable
 
 	public transient boolean deleted;
 
+	// used for accounting during cleanup actions
+	public transient boolean inUse;
+
 	public SpritePalette(Sprite spr)
 	{
 		this.parentSprite = spr;

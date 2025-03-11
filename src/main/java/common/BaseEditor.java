@@ -7,12 +7,10 @@ import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Frame;
-import java.awt.KeyboardFocusManager;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
@@ -191,7 +189,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	}
 
 	/**
-	 * Utility method for schedulign code to run in the EDT, or running immediately if invoked from the EDT
+	 * Schedules code to run in the EDT; runs immediately when invoked from the EDT.
 	 * @param runnable the code to execute
 	 */
 	public void runInEDT(Runnable runnable)
@@ -200,6 +198,18 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			runnable.run();
 		else
 			SwingUtilities.invokeLater(runnable);
+	}
+
+	/**
+	 * Schedules code to run in a synchronized block. Will not execute during the GL thread's
+	 * critical section.
+	 * @param runnable
+	 */
+	public void runThreadsafe(Runnable runnable)
+	{
+		synchronized (modifyLock) {
+			runnable.run();
+		}
 	}
 
 	/**
@@ -388,23 +398,6 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 					openDialogs.decrement();
 			}
 		});
-
-		KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
-		manager.addKeyEventDispatcher(e -> {
-			if (e.getID() == KeyEvent.KEY_PRESSED) {
-				switch (e.getKeyCode()) {
-					case KeyEvent.VK_Z:
-						if (e.isControlDown())
-							undoEDT();
-						break;
-					case KeyEvent.VK_Y:
-						if (e.isControlDown())
-							redoEDT();
-						break;
-				}
-			}
-			return false;
-		});
 	}
 
 	protected void undoEDT()
@@ -548,7 +541,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		return true;
 	}
 
-	protected final DialogBuilder getMessageDialog(String title, Object message)
+	public final DialogBuilder getMessageDialog(String title, Object message)
 	{
 		return SwingUtils.getMessageDialog()
 			.setParent(frame)
@@ -557,7 +550,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			.setCounter(openDialogs);
 	}
 
-	protected final DialogBuilder getConfirmDialog(String title, Object message)
+	public final DialogBuilder getConfirmDialog(String title, Object message)
 	{
 		return SwingUtils.getConfirmDialog()
 			.setParent(frame)
@@ -567,7 +560,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			.setMessageType(JOptionPane.PLAIN_MESSAGE);
 	}
 
-	protected final DialogBuilder getOptionDialog(String title, Object message)
+	public final DialogBuilder getOptionDialog(String title, Object message)
 	{
 		return SwingUtils.getOptionDialog()
 			.setParent(frame)
@@ -577,7 +570,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			.setMessageType(JOptionPane.PLAIN_MESSAGE);
 	}
 
-	protected final void showModalDialog(JDialog dialog, String title)
+	public final void showModalDialog(JDialog dialog, String title)
 	{
 		dialog.setTitle(title);
 		dialog.setIconImage(Environment.getDefaultIconImage());

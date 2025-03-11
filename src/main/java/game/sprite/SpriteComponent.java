@@ -18,13 +18,21 @@ import game.map.shading.ShadingProfile;
 import game.map.shape.TransformMatrix;
 import game.sprite.SpriteLoader.Indexable;
 import game.sprite.editor.Editable;
+import game.sprite.editor.SpriteCleanup;
+import game.sprite.editor.SpriteCleanup.UnusedLabel;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.AnimElement;
 import game.sprite.editor.animators.ComponentAnimator;
 import game.sprite.editor.animators.command.AnimCommand;
 import game.sprite.editor.animators.command.CommandAnimator;
+import game.sprite.editor.animators.command.Goto;
+import game.sprite.editor.animators.command.Label;
+import game.sprite.editor.animators.command.Loop;
+import game.sprite.editor.animators.command.SetImage;
+import game.sprite.editor.animators.command.SetPalette;
 import game.sprite.editor.animators.command.SetParent;
 import game.sprite.editor.animators.keyframe.AnimKeyframe;
+import game.sprite.editor.animators.keyframe.Keyframe;
 import game.sprite.editor.animators.keyframe.KeyframeAnimator;
 import game.sprite.editor.animators.keyframe.ParentKey;
 import game.texture.Palette;
@@ -528,5 +536,56 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 			return "Component: odd z-offsets break Actor decorations";
 
 		return null;
+	}
+
+	public void addUnused(SpriteCleanup cleanup)
+	{
+		if (sprite.usesKeyframes) {
+			for (AnimElement elem : keyframeAnimator.keyframes) {
+				if (elem instanceof Keyframe kf) {
+					if (kf.img != null)
+						kf.img.inUse = true;
+
+					if (kf.pal != null)
+						kf.pal.inUse = true;
+				}
+			}
+		}
+		else {
+			for (AnimElement elem : cmdAnimator.commands) {
+				if (elem instanceof Label lbl) {
+					lbl.inUse = false;
+				}
+			}
+
+			for (AnimElement elem : cmdAnimator.commands) {
+				if (elem instanceof Goto go2) {
+					if (go2.label != null)
+						go2.label.inUse = true;
+				}
+
+				else if (elem instanceof Loop loop) {
+					if (loop.label != null)
+						loop.label.inUse = true;
+				}
+
+				else if (elem instanceof SetImage setImg) {
+					if (setImg.img != null)
+						setImg.img.inUse = true;
+				}
+
+				else if (elem instanceof SetPalette setPal) {
+					if (setPal.pal != null)
+						setPal.pal.inUse = true;
+				}
+			}
+
+			for (int i = 0; i < cmdAnimator.commands.size(); i++) {
+				AnimElement elem = cmdAnimator.commands.get(i);
+				if (elem instanceof Label lbl && !lbl.inUse) {
+					cleanup.unusedLabels.addElement(new UnusedLabel(lbl, cmdAnimator.commands));
+				}
+			}
+		}
 	}
 }

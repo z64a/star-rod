@@ -73,6 +73,12 @@ public class SetUnknown extends AnimCommand
 	}
 
 	@Override
+	public String getFormattedText()
+	{
+		return toString();
+	}
+
+	@Override
 	public String toString()
 	{
 		return "Set Unknown: " + value;

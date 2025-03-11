@@ -115,7 +115,7 @@ public class Goto extends AnimCommand
 	}
 
 	@Override
-	public String toString()
+	public String getFormattedText()
 	{
 		if (label == null)
 			return "Goto: (missing)";
@@ -123,6 +123,17 @@ public class Goto extends AnimCommand
 			return "<html>Goto: <i>" + label.name + "</i>  (missing)</html>";
 		else
 			return "<html>Goto: <i>" + label.name + "</i></html>";
+	}
+
+	@Override
+	public String toString()
+	{
+		if (label == null)
+			return "Goto: (missing)";
+		else if (animator.findCommand(label) < 0)
+			return "Goto: " + label.name + " (missing)";
+		else
+			return "Goto: " + label.name;
 	}
 
 	@Override

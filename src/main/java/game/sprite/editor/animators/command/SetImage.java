@@ -115,6 +115,12 @@ public class SetImage extends AnimCommand
 	}
 
 	@Override
+	public String getFormattedText()
+	{
+		return toString();
+	}
+
+	@Override
 	public String toString()
 	{
 		if (img == null)

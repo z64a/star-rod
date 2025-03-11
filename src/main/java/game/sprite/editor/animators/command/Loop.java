@@ -127,7 +127,7 @@ public class Loop extends AnimCommand
 	}
 
 	@Override
-	public String toString()
+	public String getFormattedText()
 	{
 		if (label == null)
 			return "Repeat: (missing) (x" + count + ")";
@@ -135,6 +135,17 @@ public class Loop extends AnimCommand
 			return "<html>Repeat: <i>" + label.name + "</i>  (missing) (x" + count + ")</html>";
 		else
 			return "<html>Repeat: <i>" + label.name + "</i>  (x" + count + ")</html>";
+	}
+
+	@Override
+	public String toString()
+	{
+		if (label == null)
+			return "Repeat: (missing) (x" + count + ")";
+		else if (animator.findCommand(label) < 0)
+			return "Repeat: " + label.name + " (missing) (x" + count + ")";
+		else
+			return "Repeat: " + label.name + " (x" + count + ")";
 	}
 
 	@Override

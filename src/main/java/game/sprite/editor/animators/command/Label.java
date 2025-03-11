@@ -3,6 +3,7 @@ package game.sprite.editor.animators.command;
 import static game.sprite.SpriteKey.ATTR_NAME;
 import static game.sprite.SpriteKey.TAG_CMD_LABEL;
 
+import java.awt.Color;
 import java.awt.Component;
 import java.util.List;
 
@@ -84,10 +85,21 @@ public class Label extends AnimCommand
 	}
 
 	@Override
+	public Color getTextColor()
+	{
+		return SwingUtils.getGreenTextColor();
+	}
+
+	@Override
+	public String getFormattedText()
+	{
+		return "<html>Label: <i>" + name + "</i></font></html>";
+	}
+
+	@Override
 	public String toString()
 	{
-		return "<html>" + SwingUtils.makeFontTag(SwingUtils.getGreenTextColor())
-			+ "Label: <i>" + name + "</i></font></html>";
+		return "Label: " + name;
 	}
 
 	@Override

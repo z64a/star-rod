@@ -98,6 +98,12 @@ public class SetScale extends AnimCommand
 	}
 
 	@Override
+	public String getFormattedText()
+	{
+		return toString();
+	}
+
+	@Override
 	public String toString()
 	{
 		String typeName = "error";

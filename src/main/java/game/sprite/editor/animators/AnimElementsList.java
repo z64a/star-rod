@@ -195,7 +195,7 @@ public class AnimElementsList<T extends AnimElement> extends DragReorderList<T>
 					timeLabel.setText("");
 				else
 					timeLabel.setText(cmd.animTime + "");
-				textLabel.setText(cmd.toString());
+				textLabel.setText(cmd.getFormattedText());
 				textLabel.setForeground(cmd.getTextColor());
 			}
 			else {

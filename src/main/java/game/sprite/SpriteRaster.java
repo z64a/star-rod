@@ -27,6 +27,9 @@ public class SpriteRaster implements Editable
 	// members used to lay out the palettes tab sprite atlas
 	public transient int atlasRow, atlasX, atlasY;
 
+	// used for accounting during cleanup actions
+	public transient boolean inUse;
+
 	public SpriteRaster(Sprite spr)
 	{
 		this.parentSprite = spr;

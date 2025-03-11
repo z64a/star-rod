@@ -24,7 +24,11 @@ public class PalAsset implements GLResource, Editable
 	// remember colors before commands which adjust them are applied
 	public final Color[] savedColors = new Color[16];
 
-	public transient boolean dirty; // needs reupload to GPU
+	// needs reupload to GPU
+	public transient boolean dirty;
+
+	// used for accounting during cleanup actions
+	public transient boolean inUse;
 
 	public PalAsset(AssetHandle ah) throws IOException
 	{
@@ -35,15 +39,19 @@ public class PalAsset implements GLResource, Editable
 
 	public void stashColors()
 	{
-		for (int i = 0; i < 16; i++) {
+		for (int i = 0; i < 16; i++)
 			savedColors[i] = pal.getColor(i);
-		}
 	}
 
 	public void save() throws IOException
 	{
 		source = AssetManager.getTopLevel(source);
 		sourceImg.savePNG(source.getAbsolutePath());
+	}
+
+	public AssetHandle getSource()
+	{
+		return source;
 	}
 
 	public String getFilename()

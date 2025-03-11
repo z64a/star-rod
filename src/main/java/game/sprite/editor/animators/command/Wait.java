@@ -90,12 +90,18 @@ public class Wait extends AnimCommand
 	}
 
 	@Override
-	public String toString()
+	public String getFormattedText()
 	{
 		if (highlighted && SpriteEditor.instance().highlightCommand)
 			return "<html><b>Wait " + count + "</b></html>";
 		else
 			return "Wait " + count;
+	}
+
+	@Override
+	public String toString()
+	{
+		return "Wait " + count;
 	}
 
 	@Override

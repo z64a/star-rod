@@ -357,19 +357,21 @@ public class Keyframe extends AnimKeyframe
 	}
 
 	@Override
-	public String toString()
+	public String getFormattedText()
 	{
 		SpriteEditor editor = SpriteEditor.instance();
 		boolean highlight = (highlighted && editor != null && editor.highlightCommand);
 
-		StringBuilder sb = new StringBuilder("<html>");
 		if (highlight)
-			sb.append("<b>");
-		sb.append(name);
-		if (highlight)
-			sb.append("</b>");
-		sb.append("</html>");
-		return sb.toString();
+			return "<html><b>" + name + "</b></html>";
+		else
+			return name;
+	}
+
+	@Override
+	public String toString()
+	{
+		return name;
 	}
 
 	@Override

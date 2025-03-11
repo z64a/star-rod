@@ -1290,7 +1290,6 @@ public class MessageEditor extends BaseEditor
 		item = new JMenuItem("Undo");
 		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK);
 		item.setAccelerator(awtKeyStroke);
-		item.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(awtKeyStroke, "none");
 		item.addActionListener((e) -> {
 			undoEDT();
 		});
@@ -1300,7 +1299,6 @@ public class MessageEditor extends BaseEditor
 		item = new JMenuItem("Redo");
 		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK);
 		item.setAccelerator(awtKeyStroke);
-		item.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(awtKeyStroke, "none");
 		item.addActionListener((e) -> {
 			redoEDT();
 		});

@@ -91,6 +91,12 @@ public class SetPosition extends AnimCommand
 	}
 
 	@Override
+	public String getFormattedText()
+	{
+		return toString();
+	}
+
+	@Override
 	public String toString()
 	{
 		return String.format("Position: (%d, %d, %d)", x, y, z);

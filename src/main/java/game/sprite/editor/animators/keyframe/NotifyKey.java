@@ -82,6 +82,12 @@ public class NotifyKey extends AnimKeyframe
 	}
 
 	@Override
+	public String getFormattedText()
+	{
+		return toString();
+	}
+
+	@Override
 	public String toString()
 	{
 		return "Set Notify: " + value;

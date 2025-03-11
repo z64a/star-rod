@@ -14,6 +14,8 @@ import java.util.TreeMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.apache.commons.io.FileUtils;
+
 import app.Environment;
 import app.input.IOUtils;
 import util.Logger;
@@ -50,6 +52,19 @@ public class AssetManager
 	public static AssetHandle getBase(AssetSubdir subdir, String path)
 	{
 		return new AssetHandle(getBaseAssetDir(), subdir + path);
+	}
+
+	/**
+	 * Delete an asset at all levels of the asset stack
+	 * @param asset
+	 */
+	public static void deleteAll(AssetHandle asset)
+	{
+		for (File assetDir : Environment.assetDirectories) {
+			File f = new File(assetDir, asset.assetPath);
+			if (f.exists())
+				FileUtils.deleteQuietly(f);
+		}
 	}
 
 	public static AssetHandle getTextureArchive(String texName)

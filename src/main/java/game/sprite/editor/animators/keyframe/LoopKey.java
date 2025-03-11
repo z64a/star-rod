@@ -119,7 +119,7 @@ public class LoopKey extends AnimKeyframe
 	}
 
 	@Override
-	public String toString()
+	public String getFormattedText()
 	{
 		if (target == null)
 			return "Repeat: (missing) (x" + count + ")";
@@ -127,6 +127,17 @@ public class LoopKey extends AnimKeyframe
 			return "<html>Repeat: <i>" + target.name + "</i>  (missing) (x" + count + ")</html>";
 		else
 			return "<html>Repeat: <i>" + target.name + "</i>  (x" + count + ")</html>";
+	}
+
+	@Override
+	public String toString()
+	{
+		if (target == null)
+			return "Repeat: (missing) (x" + count + ")";
+		else if (!animator.keyframes.contains(target))
+			return "Repeat: " + target.name + " (missing) (x" + count + ")";
+		else
+			return "Repeat: " + target.name + " (x" + count + ")";
 	}
 
 	@Override

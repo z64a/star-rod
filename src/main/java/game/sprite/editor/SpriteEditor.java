@@ -461,11 +461,10 @@ public class SpriteEditor extends BaseEditor
 		// process the editor UI updates in the EDT, locking out commands while we do so
 		if (!editableChangedSet.isEmpty()) {
 			SwingUtilities.invokeLater(() -> {
-				synchronized (this.modifyLock) {
-					flushEditableUpdates();
-				}
+				runThreadsafe(this::flushEditableUpdates);
 			});
 		}
+
 	}
 
 	@Override
@@ -1282,7 +1281,28 @@ public class SpriteEditor extends BaseEditor
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
 
+		item = new JMenuItem("Undo");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
+		item.addActionListener((e) -> {
+			undoEDT();
+		});
+		menu.add(item);
+		//	item.setPreferredSize(menuItemDimension);
+
+		item = new JMenuItem("Redo");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
+		item.addActionListener((e) -> {
+			redoEDT();
+		});
+		menu.add(item);
+
+		menu.addSeparator();
+
 		item = new JMenuItem("Save All Changes");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
 		item.addActionListener((e) -> {
 			saveAllChanges();
 		});
@@ -1433,6 +1453,14 @@ public class SpriteEditor extends BaseEditor
 					sprite.usesKeyframes = false;
 				}
 			}
+		});
+		menu.add(item);
+
+		menu.addSeparator();
+
+		item = new JMenuItem("Cleanup");
+		item.addActionListener((e) -> {
+			showCleanupSprite();
 		});
 		menu.add(item);
 	}
@@ -2169,6 +2197,26 @@ public class SpriteEditor extends BaseEditor
 			loadPreferences();
 			cfg.saveConfigFile();
 			Logger.log("Saved preferences to " + cfg.getFile().getName());
+		}
+	}
+
+	private void showCleanupSprite()
+	{
+		if (sprite == null)
+			return;
+
+		SpriteCleanupPanel panel = new SpriteCleanupPanel(this, sprite);
+
+		int choice = super.getConfirmDialog("Cleanup Options", panel)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose();
+
+		if (choice == JOptionPane.OK_OPTION && panel.getActionsCount() > 0) {
+			if (promptCannotUndo("Cleanup sprite actions")) {
+				panel.doCleanup();
+				flushUndoRedo();
+			}
 		}
 	}
 

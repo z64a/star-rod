@@ -105,6 +105,12 @@ public class SetPalette extends AnimCommand
 	}
 
 	@Override
+	public String getFormattedText()
+	{
+		return toString();
+	}
+
+	@Override
 	public String toString()
 	{
 		if (pal == null)

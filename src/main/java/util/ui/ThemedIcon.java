@@ -35,6 +35,9 @@ public abstract class ThemedIcon
 	public static final FlatSVGIcon DOWNLOAD_24 = getIcon("download_24");
 	public static final FlatSVGIcon DOWNLOAD_16 = DOWNLOAD_24.derive(16, 16);
 
+	public static final FlatSVGIcon WARNING_24 = getIcon("warning_24");
+	public static final FlatSVGIcon WARNING_16 = WARNING_24.derive(16, 16);
+
 	public static final FlatSVGIcon HELP_24 = getIcon("help_24");
 	public static final FlatSVGIcon INFO_24 = getIcon("info_24");
 

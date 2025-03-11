@@ -31,6 +31,11 @@ public class ImgAsset implements GLResource
 		preview = new ImgPreview();
 	}
 
+	public AssetHandle getSource()
+	{
+		return source;
+	}
+
 	public String getFilename()
 	{
 		return source.getName();

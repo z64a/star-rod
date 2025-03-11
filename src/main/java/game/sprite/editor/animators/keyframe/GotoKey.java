@@ -125,7 +125,7 @@ public class GotoKey extends AnimKeyframe
 	}
 
 	@Override
-	public String toString()
+	public String getFormattedText()
 	{
 		if (target == null)
 			return "Goto: (missing)";
@@ -133,6 +133,17 @@ public class GotoKey extends AnimKeyframe
 			return "<html>Goto: <i>" + target.name + "</i>  (missing)</html>";
 		else
 			return "<html>Goto: <i>" + target.name + "</i></html>";
+	}
+
+	@Override
+	public String toString()
+	{
+		if (target == null)
+			return "Goto: (missing)";
+		else if (!animator.keyframes.contains(target))
+			return "Goto: " + target.name + " (missing)";
+		else
+			return "Goto: " + target.name;
 	}
 
 	@Override

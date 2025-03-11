@@ -106,6 +106,12 @@ public class SetParent extends AnimCommand
 	}
 
 	@Override
+	public String getFormattedText()
+	{
+		return toString();
+	}
+
+	@Override
 	public String toString()
 	{
 		if (parent == null)

@@ -104,6 +104,12 @@ public class ParentKey extends AnimKeyframe
 	}
 
 	@Override
+	public String getFormattedText()
+	{
+		return toString();
+	}
+
+	@Override
 	public String toString()
 	{
 		if (parent == null)

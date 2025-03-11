@@ -42,6 +42,8 @@ public abstract class AnimElement implements Editable, XmlSerializable
 
 	public abstract String getName();
 
+	public abstract String getFormattedText();
+
 	public Color getTextColor()
 	{
 		// highlight invalid values as errors

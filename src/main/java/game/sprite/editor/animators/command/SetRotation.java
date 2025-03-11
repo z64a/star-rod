@@ -82,6 +82,12 @@ public class SetRotation extends AnimCommand
 	}
 
 	@Override
+	public String getFormattedText()
+	{
+		return toString();
+	}
+
+	@Override
 	public String toString()
 	{
 		return String.format("Rotation: (%d, %d, %d)", x, y, z);
