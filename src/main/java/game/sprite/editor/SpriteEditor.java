@@ -167,7 +167,9 @@ public class SpriteEditor extends BaseEditor
 	private boolean highlightComponent;
 	private boolean optWarnIrreversible;
 	public boolean optStrictErrorChecking;
+	public boolean optForceKeyframes; // unused
 	public boolean optOutputNames;
+	public boolean optOutputRaw;
 
 	// animation player controls
 	private enum PlayerEvent
@@ -362,7 +364,9 @@ public class SpriteEditor extends BaseEditor
 			useBackFacing = cfg.getBoolean(Options.SprBackFacing);
 			optWarnIrreversible = cfg.getBoolean(Options.SprWarnIrreversible);
 			optStrictErrorChecking = cfg.getBoolean(Options.SprStrictErrorChecking);
+			optForceKeyframes = cfg.getBoolean(Options.SprForceKeyframes);
 			optOutputNames = cfg.getBoolean(Options.SprOutputNames);
+			optOutputRaw = cfg.getBoolean(Options.SprOutputRaw);
 		}
 	}
 
@@ -652,18 +656,11 @@ public class SpriteEditor extends BaseEditor
 		npcSpriteList.setSprites(spriteMetas);
 
 		String lastName = getConfig().getString(Options.SprLastNpcSprite);
-		int id = npcSpriteList.getInitialSelection(lastName);
-		if (id == -1) {
+		SpriteMetadata meta = npcSpriteList.getInitialSelection(lastName);
+		if (meta == null)
 			npcSpriteList.setSelectedIndex(0);
-		}
-
-		while (npcSpriteList.getSelected() == null && id > 0) {
-			npcSpriteList.setSelectedIndex(id);
-			id--;
-		}
-
-		if (id < 0)
-			Logger.log("Could not select initial NPC sprite");
+		else
+			npcSpriteList.setSelected(meta);
 
 		setSprite(npcSpriteList.getSelected(), true);
 
@@ -687,18 +684,11 @@ public class SpriteEditor extends BaseEditor
 		playerSpriteList.setSprites(spriteMetas);
 
 		String lastName = getConfig().getString(Options.SprLastPlayerSprite);
-		int id = playerSpriteList.getInitialSelection(lastName);
-		if (id == -1) {
+		SpriteMetadata meta = playerSpriteList.getInitialSelection(lastName);
+		if (meta == null)
 			playerSpriteList.setSelectedIndex(0);
-		}
-
-		while (playerSpriteList.getSelected() == null && id > 0) {
-			playerSpriteList.setSelectedIndex(id);
-			id--;
-		}
-
-		if (id < 0)
-			Logger.log("Could not select initial player sprite");
+		else
+			playerSpriteList.setSelected(meta);
 
 		playerSpriteList.ignoreSelectionChange = false;
 	}
@@ -1329,22 +1319,6 @@ public class SpriteEditor extends BaseEditor
 		});
 		menu.add(item);
 
-		item = new JMenuItem("Reload Current Sprite");
-		item.addActionListener((e) -> {
-			if (sprite == null) {
-				Toolkit.getDefaultToolkit().beep();
-				return;
-			}
-
-			// remove sprite from 'modified' list
-			sprite.clearModified();
-			dirtyModifiedSprites.remove(sprite);
-
-			// trigger a full reload of the sprite, bypassing the cache
-			setSprite(curMetadata, true);
-		});
-		menu.add(item);
-
 		menu.addSeparator();
 
 		item = new JMenuItem("View Shortcuts");
@@ -1396,6 +1370,27 @@ public class SpriteEditor extends BaseEditor
 		JMenu menu = new JMenu(MENU_BAR_SPACING + "Sprite" + MENU_BAR_SPACING);
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
+
+		item = new JMenuItem("Reload");
+		item.addActionListener((e) -> {
+			if (sprite == null) {
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			if (promptCannotUndo("Reload sprite")) {
+				// remove sprite from 'modified' list
+				sprite.clearModified();
+				dirtyModifiedSprites.remove(sprite);
+
+				// trigger a full reload of the sprite, bypassing the cache
+				setSprite(curMetadata, true);
+				flushUndoRedo();
+			}
+		});
+		menu.add(item);
+
+		menu.addSeparator();
 
 		item = new JMenuItem("Open Mod Content Folder");
 		item.addActionListener((evt) -> {

@@ -14,7 +14,7 @@ public interface ComponentAnimator extends XmlSerializable
 {
 	public boolean generateFrom(RawAnimation rawAnim);
 
-	public RawAnimation getCommandList();
+	public RawAnimation toRawAnimation();
 
 	public void reset();
 

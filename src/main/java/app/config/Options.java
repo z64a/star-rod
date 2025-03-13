@@ -68,7 +68,10 @@ public enum Options
 		"Show warnings for actions which clear undo/redo history."),
 	SprStrictErrorChecking	(true, Scope.SpriteEditor, Type.Boolean, "StrictErrorChecking", "false", "Strict error checking",
 		"Show error warnings for conditions that some vanilla sprites violate."),
+	SprForceKeyframes		(true, Scope.SpriteEditor, Type.Boolean, "SprForceKeyframes", "false"),
+	SprKeyframeHeuristics	(true, Scope.SpriteEditor, Type.Boolean, "KeyframeHeuristics", "true"),
 	SprOutputNames			(true, Scope.SpriteEditor, Type.Boolean, "OutputNames", "false"),
+	SprOutputRaw			(true, Scope.SpriteEditor, Type.Boolean, "OutputRaw", "false"),
 
 	StrPrintDelay			(true, Scope.StringEditor, Type.Boolean, "PrintDelay", "true"),
 	StrViewportGuides		(true, Scope.StringEditor, Type.Boolean, "ViewportGuides", "true"),

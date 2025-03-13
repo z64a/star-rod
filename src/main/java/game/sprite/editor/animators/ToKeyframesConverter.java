@@ -34,7 +34,6 @@ public class ToKeyframesConverter
 	private final List<AnimKeyframe> keyframes;
 
 	private Keyframe current;
-	private boolean currentEmpty;
 	private int keyframeCount;
 
 	public ToKeyframesConverter(CommandAnimator cmdAnim, KeyframeAnimator kfAnim)
@@ -48,12 +47,20 @@ public class ToKeyframesConverter
 		current = new Keyframe(kfAnim);
 		current.name = "";
 
+		String identifier = cmdAnim.comp.sprite.name
+			+ "_" + cmdAnim.comp.parentAnimation.name
+			+ "_" + cmdAnim.comp.name;
+
 		IdentityHashMap<Label, Keyframe> labelMap = new IdentityHashMap<>();
 		ArrayList<GotoKey> gotos = new ArrayList<>();
 		ArrayList<LoopKey> loops = new ArrayList<>();
 
 		for (AnimCommand cmd : cmdAnim.commands) {
 			if (cmd instanceof Label lbl) {
+
+				if (!current.empty) {
+					Logger.logError("Incomplete keyframe interrupted by Label: " + identifier);
+				}
 				if (current.name.isEmpty())
 					current.name = lbl.name;
 				labelMap.put(lbl, current);
@@ -65,8 +72,8 @@ public class ToKeyframesConverter
 				advanceCurrent();
 			}
 			else if (cmd instanceof Goto go2) {
-				if (!currentEmpty) {
-					Logger.logError("Incomplete keyframe interrupted by Goto");
+				if (!current.empty) {
+					Logger.logError("Incomplete keyframe interrupted by Goto: " + identifier);
 					advanceCurrent(); // flush the incomplete keyframe
 				}
 				GotoKey g2k = new GotoKey(kfAnim, go2.label);
@@ -74,8 +81,8 @@ public class ToKeyframesConverter
 				keyframes.add(g2k);
 			}
 			else if (cmd instanceof Loop loop) {
-				if (!currentEmpty) {
-					Logger.logError("Incomplete keyframe interrupted by Loop");
+				if (!current.empty) {
+					Logger.logError("Incomplete keyframe interrupted by Loop: " + identifier);
 					advanceCurrent(); // flush the incomplete keyframe
 				}
 				LoopKey lk = new LoopKey(kfAnim, loop.label, loop.count);
@@ -87,13 +94,15 @@ public class ToKeyframesConverter
 				current.dx = setPos.x;
 				current.dy = setPos.y;
 				current.dz = setPos.z;
-				currentEmpty = false;
+				if (setPos.x != 0 || setPos.y != 0 || setPos.z != 0)
+					current.empty = false;
 			}
 			else if (cmd instanceof SetRotation setRot) {
 				current.rx = setRot.x;
 				current.ry = setRot.y;
 				current.rz = setRot.z;
-				currentEmpty = false;
+				if (setRot.x != 0 || setRot.y != 0 || setRot.z != 0)
+					current.empty = false;
 			}
 			else if (cmd instanceof SetScale setScale) {
 				switch (setScale.mode) {
@@ -112,17 +121,18 @@ public class ToKeyframesConverter
 						current.sz = setScale.percent;
 						break;
 				}
-				currentEmpty = false;
+				if (setScale.percent != 100)
+					current.empty = false;
 			}
 			else if (cmd instanceof SetImage setImg) {
 				current.img = setImg.img;
 				current.setImage = true;
-				currentEmpty = false;
+				current.empty = false;
 			}
 			else if (cmd instanceof SetPalette setPal) {
 				current.pal = setPal.pal;
 				current.setPalette = true;
-				currentEmpty = false;
+				current.empty = false;
 			}
 			else if (cmd instanceof SetParent setParent) {
 				keyframes.add(new ParentKey(kfAnim, setParent.parent));
@@ -135,8 +145,8 @@ public class ToKeyframesConverter
 			}
 		}
 
-		if (!currentEmpty) {
-			Logger.logError("Animation ends with incomplete keyframe");
+		if (!current.empty) {
+			Logger.logError("Animation ends with incomplete keyframe: " + identifier);
 			keyframes.add(current);
 		}
 
@@ -160,7 +170,6 @@ public class ToKeyframesConverter
 
 		current = new Keyframe(kfAnim);
 		current.name = "";
-		currentEmpty = true;
 	}
 
 	public List<AnimKeyframe> getKeyframes()

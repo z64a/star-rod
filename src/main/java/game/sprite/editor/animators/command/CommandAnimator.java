@@ -60,7 +60,7 @@ public class CommandAnimator implements ComponentAnimator
 
 		// easier to compile to bytes and reconstruct a copy than to deal with the web of
 		// object references that would need to be properly updated in the new list
-		RawAnimation raw = other.getCommandList();
+		RawAnimation raw = other.toRawAnimation();
 		generateFrom(raw);
 	}
 
@@ -314,7 +314,7 @@ public class CommandAnimator implements ComponentAnimator
 	}
 
 	@Override
-	public RawAnimation getCommandList()
+	public RawAnimation toRawAnimation()
 	{
 		RawAnimation rawAnim = new RawAnimation();
 

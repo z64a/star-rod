@@ -7,6 +7,7 @@ import static org.lwjgl.opengl.GL11.glStencilFunc;
 import java.awt.Container;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
 
 import org.w3c.dom.Element;
 
@@ -236,11 +237,27 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		xmw.addIntArray(compTag, ATTR_OFFSET, posx, posy, posz);
 		xmw.openTag(compTag);
 
-		if (sprite.usesKeyframes)
-			keyframeAnimator.toXML(xmw);
-		else
-			cmdAnimator.toXML(xmw);
+		if (SpriteEditor.instance().optOutputRaw) {
+			RawAnimation rawAnim = animator.toRawAnimation();
 
+			for (Short s : rawAnim) {
+				XmlTag commandTag = xmw.createTag(TAG_COMMAND, true);
+				xmw.addHex(commandTag, ATTR_VAL, s & 0xFFFF);
+				xmw.printTag(commandTag);
+			}
+
+			for (Entry<Integer, String> e : rawAnim.getAllLabels()) {
+				XmlTag labelTag = xmw.createTag(TAG_LABEL, true);
+				xmw.addHex(labelTag, ATTR_POS, e.getKey());
+				xmw.addAttribute(labelTag, ATTR_POS, e.getValue());
+			}
+		}
+		else {
+			if (sprite.usesKeyframes)
+				keyframeAnimator.toXML(xmw);
+			else
+				cmdAnimator.toXML(xmw);
+		}
 		xmw.closeTag(compTag);
 	}
 

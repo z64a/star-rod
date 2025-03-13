@@ -75,6 +75,9 @@ public class Keyframe extends AnimKeyframe
 	// used during generation from RawAnimation
 	public transient int listLen = 0;
 
+	// used during generation from commands
+	public transient boolean empty = true;
+
 	public Keyframe(KeyframeAnimator animator)
 	{
 		super(animator);

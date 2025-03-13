@@ -116,16 +116,16 @@ public class SpriteList extends JPanel
 		list.setSelectedIndex(id);
 	}
 
-	public int getInitialSelection(String name)
+	public SpriteMetadata getInitialSelection(String name)
 	{
 		if (name != null && !name.isBlank()) {
 			for (int i = 0; i < listModel.size(); i++) {
-				SpriteMetadata cur = listModel.get(i);
-				if (cur.name.equals(name))
-					return i;
+				SpriteMetadata meta = listModel.get(i);
+				if (meta.name.equals(name))
+					return meta;
 			}
 		}
-		return -1;
+		return null;
 	}
 
 	private void updateListFilter()
