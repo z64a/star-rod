@@ -10,16 +10,16 @@ import java.util.function.Consumer;
 import org.w3c.dom.Element;
 
 import app.SwingUtils;
+import common.commands.AbstractCommand;
+import common.commands.EditableField;
+import common.commands.EditableField.EditableFieldFactory;
+import common.commands.EditableField.StandardBoolName;
 import game.map.BoundingBox;
 import game.map.MapObject;
 import game.map.MutablePoint;
 import game.map.ReversibleTransform;
 import game.map.editor.MapEditor;
 import game.map.editor.camera.MapEditViewport;
-import game.map.editor.commands.AbstractCommand;
-import game.map.editor.commands.fields.EditableField;
-import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
-import game.map.editor.commands.fields.EditableField.StandardBoolName;
 import game.map.editor.render.RenderMode;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;
@@ -860,7 +860,8 @@ public class Model extends MapObject
 			mdl.localTransformMatrix.baked = true;
 			mdl.updateTransformHierarchy();
 			mdl.notifyListeners();
-			editor.gui.repaintVisibleTree();
+
+			MapEditor.instance().gui.repaintVisibleTree();
 		}
 
 		@Override
@@ -875,7 +876,8 @@ public class Model extends MapObject
 			mdl.localTransformMatrix.baked = oldBaked;
 			mdl.updateTransformHierarchy();
 			mdl.notifyListeners();
-			editor.gui.repaintVisibleTree();
+
+			MapEditor.instance().gui.repaintVisibleTree();
 		}
 	}
 

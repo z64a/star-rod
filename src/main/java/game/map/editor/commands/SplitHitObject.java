@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import common.commands.AbstractCommand;
+import game.map.editor.MapEditor;
 import game.map.hit.Collider;
 import game.map.hit.HitObject;
 import game.map.hit.Zone;
@@ -95,6 +97,7 @@ public abstract class SplitHitObject<T extends HitObject> extends AbstractComman
 	{
 		super.exec();
 
+		MapEditor editor = MapEditor.instance();
 		editor.map.create(newObject);
 		editor.selectionManager.createObject(newObject);
 
@@ -108,6 +111,7 @@ public abstract class SplitHitObject<T extends HitObject> extends AbstractComman
 	{
 		super.undo();
 
+		MapEditor editor = MapEditor.instance();
 		editor.map.remove(newObject);
 		editor.selectionManager.deleteObject(newObject);
 

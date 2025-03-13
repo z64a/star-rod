@@ -1,52 +1,94 @@
 package game.sprite;
 
-import java.io.File;
+import java.util.List;
 
 import game.sprite.SpriteLoader.Indexable;
+import game.sprite.editor.Editable;
 import game.texture.Palette;
 
-public final class SpritePalette implements Indexable<SpritePalette>
+/**
+ * Represents an entry from a sprite's palette list
+ */
+public final class SpritePalette implements Indexable<SpritePalette>, Editable
 {
-	private final Sprite spr;
+	public final Sprite parentSprite;
 
-	public PalAsset asset;
-	public String filename = "";
+	public String name = "";
+
+	public String filename = ""; // soft link to PalAsset used only for serialization/deserialization
+	public PalAsset asset; // active link to PalAsset during editor runtime
+
 	public boolean frontOnly = false;
-
-	public boolean disabled = false;
 
 	// editor fields
 	protected transient int listIndex;
-	public transient boolean dirty; // needs reupload to GPU
-	public transient boolean modified;
+
 	public transient boolean deleted;
+
+	// used for accounting during cleanup actions
+	public transient boolean inUse;
 
 	public SpritePalette(Sprite spr)
 	{
-		this.spr = spr;
+		this.parentSprite = spr;
 	}
 
 	public SpritePalette(SpritePalette other)
 	{
-		this.spr = other.spr;
+		this.parentSprite = other.parentSprite;
+		this.name = other.name;
 		this.asset = other.asset;
-		this.filename = other.filename;
 		this.frontOnly = other.frontOnly;
-		this.disabled = other.disabled;
 	}
 
-	public Sprite getSprite()
+	public SpritePalette copy()
 	{
-		return spr;
+		return new SpritePalette(this);
+	}
+
+	public void assignAsset(PalAsset asset)
+	{
+		this.asset = asset;
+		this.filename = (asset == null) ? "" : asset.getFilename();
+	}
+
+	public String createUniqueName(String name)
+	{
+		String baseName = name;
+
+		for (int iteration = 0; iteration < 256; iteration++) {
+			boolean conflict = false;
+
+			// compare to all other names
+			for (SpritePalette other : parentSprite.palettes) {
+				if (other != this && other.name.equals(name)) {
+					conflict = true;
+					break;
+				}
+			}
+
+			if (!conflict) {
+				// name is valid
+				return name;
+			}
+			else {
+				// try next iteration
+				name = baseName + "_" + iteration;
+			}
+		}
+
+		// could not form a valid name
+		return null;
 	}
 
 	@Override
 	public String toString()
 	{
-		return filename;
+		return name;
 	}
 
 	@Override
+	@Deprecated //TODO remove
 	public SpritePalette getObject()
 	{
 		return this;
@@ -68,17 +110,30 @@ public final class SpritePalette implements Indexable<SpritePalette>
 		return (asset == null) ? null : asset.pal;
 	}
 
-	public void saveAs(File out)
+	private final EditableData editableData = new EditableData(this);
+
+	@Override
+	public EditableData getEditableData()
 	{
-		System.out.println(out.getAbsolutePath());
+		return editableData;
 	}
 
-	public static SpritePalette createDummy(Sprite spr, PalAsset pa, String name)
+	@Override
+	public void addEditableDownstream(List<Editable> downstream)
 	{
-		SpritePalette sp = new SpritePalette(spr);
-		sp.asset = pa;
-		sp.filename = name;
-		sp.disabled = true;
-		return sp;
+		if (asset != null)
+			downstream.add(asset);
+	}
+
+	@Override
+	public String checkErrorMsg()
+	{
+		if (deleted)
+			return "Palette: in use while deleted";
+
+		if (!hasPal())
+			return "Palette: undefined asset";
+
+		return null;
 	}
 }

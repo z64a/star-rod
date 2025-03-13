@@ -8,7 +8,6 @@ import javax.swing.JList;
 import javax.swing.ListCellRenderer;
 import javax.swing.SwingConstants;
 
-import game.sprite.ImgAsset;
 import game.sprite.SpriteRaster;
 
 public class SpriteRasterRenderer extends JLabel implements ListCellRenderer<SpriteRaster>
@@ -23,7 +22,7 @@ public class SpriteRasterRenderer extends JLabel implements ListCellRenderer<Spr
 	@Override
 	public Component getListCellRendererComponent(
 		JList<? extends SpriteRaster> list,
-		SpriteRaster value,
+		SpriteRaster img,
 		int index,
 		boolean isSelected,
 		boolean cellHasFocus)
@@ -38,10 +37,9 @@ public class SpriteRasterRenderer extends JLabel implements ListCellRenderer<Spr
 		}
 
 		setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
-		if (value != null) {
-			ImgAsset frontImg = value.getFront();
-			setIcon(frontImg != null ? frontImg.icon : null);
-			setText(value.toString());
+		if (img != null) {
+			setIcon(img.front.preview.getFullIcon());
+			setText(img.toString());
 		}
 		else {
 			setIcon(null);

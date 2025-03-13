@@ -2,13 +2,15 @@ package game.map.editor.commands;
 
 import java.util.ArrayList;
 
+import common.commands.AbstractCommand;
 import game.map.MapObject;
+import game.map.editor.MapEditor;
 import game.map.editor.selection.Selection;
 
 public class CloneObjects extends AbstractCommand
 {
-	private ArrayList<MapObject> copies;
-	private ArrayList<MapObject> originals;
+	private final ArrayList<MapObject> copies;
+	private final ArrayList<MapObject> originals;
 
 	public CloneObjects(Selection<MapObject> selection)
 	{
@@ -34,6 +36,8 @@ public class CloneObjects extends AbstractCommand
 	public void exec()
 	{
 		super.exec();
+
+		MapEditor editor = MapEditor.instance();
 		editor.selectionManager.clearObjectSelection();
 
 		for (MapObject obj : copies) {
@@ -46,6 +50,8 @@ public class CloneObjects extends AbstractCommand
 	public void undo()
 	{
 		super.undo();
+
+		MapEditor editor = MapEditor.instance();
 		editor.selectionManager.clearObjectSelection();
 
 		for (MapObject obj : copies) {

@@ -17,14 +17,14 @@ import org.w3c.dom.Element;
 import app.SwingUtils;
 import common.BaseCamera;
 import common.Vector3f;
+import common.commands.EditableField;
+import common.commands.EditableField.EditableFieldFactory;
 import game.ProjectDatabase;
 import game.map.Axis;
 import game.map.editor.MapEditor;
 import game.map.editor.UpdateProvider;
 import game.map.editor.camera.MapEditViewport;
-import game.map.editor.commands.AbstractCommand;
-import game.map.editor.commands.fields.EditableField;
-import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
+import common.commands.AbstractCommand;
 import game.map.editor.render.RenderingOptions;
 import game.map.shading.ShadingLightSource.FalloffType;
 import game.map.shading.SpriteShadingEditor.JsonShadingLight;
@@ -439,7 +439,7 @@ public class ShadingProfile extends UpdateProvider implements XmlSerializable
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}
@@ -486,7 +486,7 @@ public class ShadingProfile extends UpdateProvider implements XmlSerializable
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}
@@ -529,7 +529,7 @@ public class ShadingProfile extends UpdateProvider implements XmlSerializable
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}
@@ -572,7 +572,7 @@ public class ShadingProfile extends UpdateProvider implements XmlSerializable
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}
@@ -616,7 +616,7 @@ public class ShadingProfile extends UpdateProvider implements XmlSerializable
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}

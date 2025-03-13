@@ -1,7 +1,9 @@
 package game.map.editor.commands;
 
+import common.commands.AbstractCommand;
 import game.map.Map;
 import game.map.MapObject;
+import game.map.editor.MapEditor;
 
 public class CreateObjects extends AbstractCommand
 {
@@ -18,6 +20,8 @@ public class CreateObjects extends AbstractCommand
 	{
 		super.exec();
 
+		MapEditor editor = MapEditor.instance();
+
 		for (MapObject obj : objs) {
 			editor.map.create(obj);
 			editor.selectionManager.createObject(obj);
@@ -30,6 +34,8 @@ public class CreateObjects extends AbstractCommand
 	public void undo()
 	{
 		super.undo();
+
+		MapEditor editor = MapEditor.instance();
 
 		for (MapObject obj : objs) {
 			editor.map.remove(obj);

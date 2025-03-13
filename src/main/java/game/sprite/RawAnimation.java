@@ -10,6 +10,7 @@ import java.util.TreeMap;
 // only of a stream of s16 commands and a set of label names
 public class RawAnimation extends ArrayList<Short>
 {
+	// label names match indices in the ArrayList to names
 	private final Map<Integer, String> labels;
 
 	public RawAnimation()
@@ -25,22 +26,22 @@ public class RawAnimation extends ArrayList<Short>
 		labels.putAll(other.labels);
 	}
 
-	public void setLabel(int pos, String name)
+	public void setLabel(int streamPos, String name)
 	{
-		labels.put(pos, name);
+		labels.put(streamPos, name);
 	}
 
-	public boolean hasLabel(int pos)
+	public boolean hasLabel(int streamPos)
 	{
-		return labels.containsKey(pos);
+		return labels.containsKey(streamPos);
 	}
 
-	public String getLabel(int pos)
+	public String getLabel(int streamPos)
 	{
-		return labels.get(pos);
+		return labels.get(streamPos);
 	}
 
-	public int getPos(String label)
+	public int getStreamPos(String label)
 	{
 		for (Entry<Integer, String> e : labels.entrySet()) {
 			if (e.getValue().equals(label))
@@ -65,5 +66,21 @@ public class RawAnimation extends ArrayList<Short>
 			copy.labels.put(e.getKey(), e.getValue());
 
 		return copy;
+	}
+
+	public void print()
+	{
+		int i = 0;
+		for (Short s : this) {
+			System.out.printf("%04X ", s);
+			if (++i % 8 == 0)
+				System.out.println();
+		}
+		if (i % 8 != 0)
+			System.out.println();
+
+		for (Entry<Integer, String> e : labels.entrySet()) {
+			System.out.printf("%02X %s%n", e.getKey(), e.getValue());
+		}
 	}
 }

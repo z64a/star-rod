@@ -1,7 +1,7 @@
 package game.map.scripts.generators.foliage;
 
-import game.map.editor.commands.fields.EditableField;
-import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
+import common.commands.EditableField;
+import common.commands.EditableField.EditableFieldFactory;
 
 public class FoliageVector extends FoliageData
 {

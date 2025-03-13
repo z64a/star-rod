@@ -3,7 +3,7 @@ package game.map.shading;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import game.map.editor.commands.AbstractCommand;
+import common.commands.AbstractCommand;
 import util.IterableListModel;
 
 public class SpriteShadingData
@@ -141,7 +141,7 @@ public class SpriteShadingData
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}
@@ -180,7 +180,7 @@ public class SpriteShadingData
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}

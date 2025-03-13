@@ -1,11 +1,11 @@
 package game.map.editor;
 
 import common.Vector3f;
+import common.commands.AbstractCommand;
 import game.map.BoundingBox;
 import game.map.MutablePoint;
 import game.map.MutablePoint.PointBackup;
 import game.map.ReversibleTransform;
-import game.map.editor.commands.AbstractCommand;
 import game.map.editor.selection.PickRay;
 import game.map.editor.selection.PickRay.PickHit;
 import game.map.shape.TransformMatrix;
@@ -55,7 +55,7 @@ public abstract class PointObject extends EditorObject
 			obj.position.setY((int) newPos.y);
 			obj.position.setZ((int) newPos.z);
 			obj.recalculateAABB();
-			editor.selectionManager.currentSelection.updateAABB();
+			MapEditor.instance().selectionManager.currentSelection.updateAABB();
 		}
 
 		@Override
@@ -66,7 +66,7 @@ public abstract class PointObject extends EditorObject
 			obj.position.setY((int) oldPos.y);
 			obj.position.setZ((int) oldPos.z);
 			obj.recalculateAABB();
-			editor.selectionManager.currentSelection.updateAABB();
+			MapEditor.instance().selectionManager.currentSelection.updateAABB();
 		}
 	}
 

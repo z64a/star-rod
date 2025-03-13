@@ -2,6 +2,7 @@ package game.map.editor.commands;
 
 import java.util.ArrayList;
 
+import common.commands.AbstractCommand;
 import game.map.editor.selection.Selection;
 import game.map.mesh.Triangle;
 

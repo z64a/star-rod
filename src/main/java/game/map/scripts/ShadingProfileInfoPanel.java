@@ -25,8 +25,8 @@ import javax.swing.SwingConstants;
 import app.SwingUtils;
 import game.map.editor.MapEditor;
 import game.map.editor.MapInfoPanel;
-import game.map.editor.commands.AbstractCommand;
-import game.map.editor.commands.CommandBatch;
+import common.commands.CommandBatch;
+import common.commands.AbstractCommand;
 import game.map.editor.ui.LabelWithTip;
 import game.map.editor.ui.SwatchPanel;
 import game.map.editor.ui.SwingGUI;
@@ -119,11 +119,11 @@ public class ShadingProfileInfoPanel extends MapInfoPanel<ShadingProfile>
 		sourceList.addListSelectionListener((e) -> {
 			if(getData() == null)
 				return;
-		
+
 			MapEditor.instance().selectionManager.deselectLightsFromGUI(getData().sources);
 			if(sourceList.getSelectedValue() != null)
 				MapEditor.instance().selectionManager.selectLightsFromGUI(sourceList.getSelectedValue());
-		
+
 		});
 		*/
 

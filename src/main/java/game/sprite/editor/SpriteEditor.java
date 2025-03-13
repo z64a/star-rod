@@ -9,18 +9,21 @@ import java.awt.Container;
 import java.awt.Desktop;
 import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
+import java.awt.Toolkit;
 import java.awt.event.ActionListener;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -32,27 +35,37 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.KeyStroke;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.ToolTipManager;
 
 import app.Environment;
-import app.IconResource;
 import app.StarRodException;
 import app.SwingUtils;
 import app.config.Config;
 import app.config.Options;
 import app.config.Options.Scope;
+import assets.AssetHandle;
+import assets.AssetManager;
 import common.BaseEditor;
 import common.BaseEditorSettings;
 import common.KeyboardInput.KeyInputEvent;
+import common.commands.AbstractCommand;
+import common.commands.CommandBatch;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
+import game.map.editor.ui.dialogs.ChooseDialogResult;
+import game.map.editor.ui.dialogs.MultipleFilesChooser;
 import game.map.shape.TransformMatrix;
+import game.sprite.GLResource;
 import game.sprite.ImgAsset;
+import game.sprite.PalAsset;
 import game.sprite.Sprite;
 import game.sprite.SpriteAnimation;
 import game.sprite.SpriteComponent;
@@ -62,11 +75,19 @@ import game.sprite.SpriteLoader.SpriteSet;
 import game.sprite.SpritePalette;
 import game.sprite.SpriteRaster;
 import game.sprite.editor.SpriteCamera.BasicTraceRay;
-import game.sprite.editor.animators.CommandAnimatorEditor;
-import game.sprite.editor.animators.KeyframeAnimatorEditor;
-import game.sprite.editor.dialogs.AnimationListEditPanel;
-import game.sprite.editor.dialogs.ComponentListEditPanel;
-import game.sprite.editor.dialogs.ListEditPanel;
+import game.sprite.editor.animators.command.CommandAnimatorEditor;
+import game.sprite.editor.animators.keyframe.KeyframeAnimatorEditor;
+import game.sprite.editor.commands.CreateAnimation;
+import game.sprite.editor.commands.CreateComponent;
+import game.sprite.editor.commands.DeleteComponent;
+import game.sprite.editor.commands.SelectAnimation;
+import game.sprite.editor.commands.SelectComponent;
+import game.sprite.editor.commands.SelectModesTab;
+import game.sprite.editor.commands.SelectSpritesTab;
+import game.sprite.editor.commands.SetOverridePalette;
+import game.sprite.editor.commands.SpriteCommandManager;
+import game.sprite.editor.commands.ToggleDrawCurrent;
+import game.sprite.editor.commands.TogglePaletteOverride;
 import game.texture.Palette;
 import game.texture.Tile;
 import net.miginfocom.swing.MigLayout;
@@ -75,7 +96,12 @@ import renderer.shaders.RenderState;
 import renderer.shaders.ShaderManager;
 import renderer.shaders.scene.SpriteShader;
 import util.Logger;
-import util.ui.ListAdapterComboboxModel;
+import util.identity.IdentityHashSet;
+import util.ui.DragReorderList;
+import util.ui.EvenSpinner;
+import util.ui.FadingLabel;
+import util.ui.IntTextField;
+import util.ui.ThemedIcon;
 import util.xml.XmlWrapper.XmlWriter;
 
 public class SpriteEditor extends BaseEditor
@@ -87,7 +113,7 @@ public class SpriteEditor extends BaseEditor
 	private static final int RIGHT_PANEL_WIDTH = 640;
 	private static final int LEFT_PANEL_WIDTH = 300;
 
-	private static final int MIN_SPRITE_IDX = 1;
+	private static final int UNDO_LIMIT = 64;
 
 	private static final BaseEditorSettings EDITOR_SETTINGS = BaseEditorSettings.create()
 		.setTitle(Environment.decorateTitle("Sprite Editor"))
@@ -101,55 +127,59 @@ public class SpriteEditor extends BaseEditor
 
 	private SpriteLoader spriteLoader;
 
+	private IdentityHashSet<Sprite> dirtyModifiedSprites = new IdentityHashSet<>();
+	private IdentityHashSet<DragReorderList<?>> dragLists = new IdentityHashSet<>();
+
 	private SpriteList playerSpriteList;
 	private SpriteList npcSpriteList;
 
-	private JComboBox<SpriteAnimation> animationComboBox;
-	private JComboBox<SpritePalette> paletteComboBox;
+	private CommandComboBox<SpritePalette> paletteBox;
 
-	private JTabbedPane componentTabs;
-	private ArrayList<JPanel> componentTabPool;
-	// only create ONE component panel and pass it around as needed
+	private AnimationsList animList;
+	private ComponentsList compList;
+
 	private JPanel componentPanel;
+	private JPanel relativePosPanel;
 
 	private JCheckBox cbOverridePalette;
 	private JCheckBox cbShowOnlySelectedComponent;
 
-	private JCheckBox cbShowComponent;
 	private JSpinner compxSpinner, compySpinner, compzSpinner;
-
-	private volatile boolean ignoreComponentTabChanges = false;
-
-	// this is implemented but unused
-	// doesn't work for mounted WSL file systems while running in Windows
-	private SpriteAssetWatcher assetWatcher;
 
 	private JTabbedPane editorModeTabs;
 	private Container commandListPanel;
 	private Container commandEditPanel;
+	private FadingLabel errorLabel;
+
+	private MultipleFilesChooser importFileChooser;
 
 	// DONT INITIALIZE THESE HERE!
 	// gui is initialized before instance variable initialization!
 	// since the gui is created in the superclass constructor,
 	// setting values here will desync them from the checkboxes!
 	private boolean showGuide;
+	private boolean showAxes;
 	private boolean showBackground;
 	private boolean flipHorizontal;
 	private boolean useBackFacing;
 	private boolean useFiltering;
 	public boolean highlightCommand;
 	private boolean highlightComponent;
+	private boolean optWarnIrreversible;
+	public boolean optStrictErrorChecking;
+	public boolean optForceKeyframes; // unused
+	public boolean optOutputNames;
+	public boolean optOutputRaw;
 
 	// animation player controls
 	private enum PlayerEvent
 	{
-		Reset, End, Play, Pause, Stop, PrevFrame, NextFrame
+		Reset, End, Play, Pause, Stop, PrevFrame, NextFrame, Goto
 	}
 
 	private volatile Queue<PlayerEvent> playerEventQueue = new LinkedList<>();
 	private volatile boolean paused = false;
-	private JLabel playbackStatusLabel;
-	private JLabel playbackFrameLabel;
+	private IntTextField playbackTime;
 	private JButton resetButton;
 	private JButton endButton;
 	private JButton prevFrameButton;
@@ -160,8 +190,10 @@ public class SpriteEditor extends BaseEditor
 	private int playbackRate = 1;
 	private int playbackCounter = playbackRate;
 
+	private final SpriteCamera rasterCamera;
+	private final SpriteCamera paletteCamera;
 	private final SpriteCamera animCamera;
-	private final SpriteCamera sheetCamera;
+
 	private BasicTraceRay trace;
 
 	// sprite sheet tab
@@ -169,43 +201,59 @@ public class SpriteEditor extends BaseEditor
 	private RastersTab rastersTab;
 	private PalettesTab palettesTab;
 
-	private boolean useAtlasOverride = false;
-
 	private static enum EditorMode
 	{
 		// @formatter:off
-		Rasters 	("Rasters"),
-		Palettes	("Palettes"),
-		Animation	("Animations");
+		Rasters 	(0, "Rasters"),
+		Palettes	(1, "Palettes"),
+		Animation	(2, "Animations");
 		// @formatter:on
 
+		public final int tabIndex;
 		public final String tabName;
 
-		private EditorMode(String tabName)
+		private EditorMode(int tabIndex, String tabName)
 		{
+			this.tabIndex = tabIndex;
 			this.tabName = tabName;
 		}
 	}
 
-	private static EditorMode editorMode = EditorMode.Rasters;
+	private int modeTabIndex = 0; // slightly awkward duplication of state with editorMode
+	private EditorMode editorMode = EditorMode.Rasters;
 
+	private int spriteTabIndex = 0; // slightly awkward duplication of state with spriteSet
 	private SpriteSet spriteSet = SpriteSet.Npc;
 
 	private Tile referenceTile;
 	private Palette referencePal;
-	private int referenceMaxPos;
+	private int referencePos;
 
-	// only a single sprite can be selected at a time
+	// current state
 	private Sprite sprite;
 	private SpriteAnimation currentAnim;
 	private SpriteComponent currentComp;
-	private ImgAsset selectedImgAsset;
+
 	private ImgAsset highlightedImgAsset;
 
-	private volatile SpritePalette animOverridePalette;
+	private SpriteComponent dragComp;
+	private float dragStartX;
+	private float dragStartY;
 
-	// fields used by the renderer, don't set these from the gui
-	private volatile int spriteID;
+	private SpriteMetadata curMetadata = null;
+
+	public volatile boolean suppressCommands = false;
+
+	// handles comnmand execution and undo/redo
+	private SpriteCommandManager commandManager;
+
+	private Sprite unloadSprite = null;
+	private Sprite loadSprite = null;
+
+	private ArrayList<GLResource> pendingLoadResources = new ArrayList<>();
+	private ArrayList<GLResource> pendingDeleteResources = new ArrayList<>();
+
+	private long checkCount = 0L;
 
 	public static void main(String[] args) throws IOException
 	{
@@ -219,45 +267,107 @@ public class SpriteEditor extends BaseEditor
 	{
 		super(EDITOR_SETTINGS);
 
-		animCamera = new SpriteCamera(
-			0.0f, 32.0f, 0.3f,
-			0.5f, 0.125f, 2.0f,
-			true, false);
+		if (instance != null)
+			throw new IllegalStateException("Only one SpriteEditor open at a time please!");
 
-		sheetCamera = new SpriteCamera(
+		instance = this;
+
+		rasterCamera = new SpriteCamera(
 			0.0f, 0.0f, 0.7f,
 			1.0f, 0.125f, 2.0f,
 			true, true);
 
-		loadPlayerSpriteList();
-		loadNpcSpriteList();
+		paletteCamera = new SpriteCamera(
+			0.0f, 0.0f, 0.7f,
+			1.0f, 0.125f, 2.0f,
+			true, true);
 
-		assetWatcher = new SpriteAssetWatcher();
+		animCamera = new SpriteCamera(
+			0.0f, 64.0f, 0.7f,
+			0.5f, 0.125f, 2.0f,
+			true, false);
 
-		modified = true; // actually tracking this will be difficult
+		setup();
+
+		SwingUtilities.invokeLater(() -> {
+			loadPlayerSpriteList();
+			loadNpcSpriteList();
+		});
 
 		Logger.log("Loaded sprite editor.");
+	}
+
+	// singleton
+	private static SpriteEditor instance = null;
+
+	public static SpriteEditor instance()
+	{
+		return instance;
+	}
+
+	public static boolean exists()
+	{
+		return instance != null;
+	}
+
+	public static void execute(AbstractCommand cmd)
+	{
+		instance().commandManager.executeCommand(cmd);
+	}
+
+	public void flushUndoRedo()
+	{
+		commandManager.flush();
+	}
+
+	@Override
+	protected void undoEDT()
+	{
+		assert (SwingUtilities.isEventDispatchThread());
+
+		commandManager.action_Undo();
+	}
+
+	@Override
+	protected void redoEDT()
+	{
+		assert (SwingUtilities.isEventDispatchThread());
+
+		commandManager.action_Redo();
 	}
 
 	@Override
 	public void beforeCreateGui()
 	{
-		Config cfg = getConfig();
-		if (cfg != null) {
-			useFiltering = cfg.getBoolean(Options.SprUseFiltering);
-			showBackground = cfg.getBoolean(Options.SprEnableBackground);
-			highlightComponent = cfg.getBoolean(Options.SprHighlightSelected);
-			highlightCommand = cfg.getBoolean(Options.SprHighlightCommand);
-			showGuide = cfg.getBoolean(Options.SprShowScaleReference);
-			flipHorizontal = cfg.getBoolean(Options.SprFlipHorizontal);
-			useBackFacing = cfg.getBoolean(Options.SprBackFacing);
-		}
+		loadPreferences();
 
 		playerSpriteList = new SpriteList(this);
 		npcSpriteList = new SpriteList(this);
 
 		spriteLoader = new SpriteLoader();
 		spriteLoader.tryLoadingPlayerAssets(false);
+
+		commandManager = new SpriteCommandManager(this, UNDO_LIMIT);
+	}
+
+	private void loadPreferences()
+	{
+		Config cfg = getConfig();
+		if (cfg != null) {
+			useFiltering = cfg.getBoolean(Options.SprUseFiltering);
+			showAxes = cfg.getBoolean(Options.SprEnableAxes);
+			showBackground = cfg.getBoolean(Options.SprEnableBackground);
+			highlightComponent = cfg.getBoolean(Options.SprHighlightSelected);
+			highlightCommand = cfg.getBoolean(Options.SprHighlightCommand);
+			showGuide = cfg.getBoolean(Options.SprShowScaleReference);
+			flipHorizontal = cfg.getBoolean(Options.SprFlipHorizontal);
+			useBackFacing = cfg.getBoolean(Options.SprBackFacing);
+			optWarnIrreversible = cfg.getBoolean(Options.SprWarnIrreversible);
+			optStrictErrorChecking = cfg.getBoolean(Options.SprStrictErrorChecking);
+			optForceKeyframes = cfg.getBoolean(Options.SprForceKeyframes);
+			optOutputNames = cfg.getBoolean(Options.SprOutputNames);
+			optOutputRaw = cfg.getBoolean(Options.SprOutputRaw);
+		}
 	}
 
 	@Override
@@ -267,7 +377,8 @@ public class SpriteEditor extends BaseEditor
 
 		Sprite referenceSprite = spriteLoader.getSprite(SpriteSet.Player, 1);
 		if (referenceSprite != null) {
-			referenceTile = referenceSprite.rasters.get(0).getFront().img;
+			SpriteRaster referenceRaster = referenceSprite.rasters.get(0);
+			referenceTile = new Tile(referenceRaster.front.asset.img);
 			referenceTile.glLoad(GL_REPEAT, GL_REPEAT, false);
 
 			Color c = new Color(0, 60, 80, 255);
@@ -299,31 +410,24 @@ public class SpriteEditor extends BaseEditor
 
 		if (playerSpriteList.getSelected() != null)
 			getConfig().setString(Options.SprLastPlayerSprite, playerSpriteList.getSelected().name);
+
+		instance = null;
 	}
 
 	@Override
 	protected void update(double deltaTime)
 	{
-		/*
-		final int guiSpriteID = spriteList.getSelected().id;
-		if(spriteID != guiSpriteID)
-		{
-			setSprite(guiSpriteID, false);
-		}
-		 */
-
-		assetWatcher.process();
-
 		switch (editorMode) {
 			case Rasters:
+				trace = rasterCamera.getTraceRay(mouse.getPosX(), mouse.getPosY());
+
+				if (sprite != null)
+					highlightedImgAsset = sprite.tryImgAtlasPick(trace);
+
+				handleInput(deltaTime);
+				break;
+
 			case Palettes:
-				trace = sheetCamera.getTraceRay(mouse.getPosX(), mouse.getPosY());
-
-				if (sprite != null) {
-					checkPalettesForChanges();
-					highlightedImgAsset = sprite.tryAtlasPick(trace);
-				}
-
 				handleInput(deltaTime);
 				break;
 
@@ -340,8 +444,75 @@ public class SpriteEditor extends BaseEditor
 					}
 				}
 
+				if (dragComp != null)
+					componentDragUpdate();
+
 				handleInput(deltaTime);
 				break;
+		}
+
+		// takes less than 0.1 ms on a budget of 16.6 (~0.5%), and typically less than 0.02 ms
+		// its more efficient to only do this on state changes, but easier to just do it every frame
+		if (sprite != null) {
+			sprite.checkErrors(checkCount);
+			sprite.checkModified(checkCount);
+			checkCount++;
+		}
+
+		errorLabel.update(deltaTime);
+
+		// process the editor UI updates in the EDT, locking out commands while we do so
+		if (!editableChangedSet.isEmpty()) {
+			SwingUtilities.invokeLater(() -> {
+				runThreadsafe(this::flushEditableUpdates);
+			});
+		}
+
+	}
+
+	@Override
+	protected void resizeViews()
+	{
+		switch (editorMode) {
+			case Animation:
+				break;
+			case Rasters:
+				if (sprite != null)
+					resetAtlasCamera();
+				break;
+			case Palettes:
+				if (sprite != null)
+					resetAtlasCamera();
+				break;
+		}
+	}
+
+	public void queueLoadResource(GLResource res)
+	{
+		pendingLoadResources.add(res);
+	}
+
+	public void queueDeleteResource(GLResource res)
+	{
+		pendingDeleteResources.add(res);
+	}
+
+	private void processResourceQueues()
+	{
+		// process all pending glDelete
+		if (pendingDeleteResources.size() > 0) {
+			for (GLResource res : pendingDeleteResources) {
+				res.glDelete();
+			}
+			pendingDeleteResources.clear();
+		}
+
+		// process all pending glLoad
+		if (pendingLoadResources.size() > 0) {
+			for (GLResource res : pendingLoadResources) {
+				res.glLoad();
+			}
+			pendingLoadResources.clear();
 		}
 	}
 
@@ -350,10 +521,33 @@ public class SpriteEditor extends BaseEditor
 	{
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
+		processResourceQueues();
+
+		if (sprite != null) {
+			for (PalAsset asset : sprite.palAssets) {
+				if (asset.dirty) {
+					asset.pal.glReload();
+					asset.dirty = false;
+				}
+			}
+		}
+
+		if (unloadSprite != null) {
+			unloadSprite.unloadTextures();
+			unloadSprite = null;
+		}
+
+		if (loadSprite != null) {
+			loadSprite.loadTextures();
+			loadSprite = null;
+		}
+
 		switch (editorMode) {
 			case Rasters:
+				renderImgAtlas();
+				break;
 			case Palettes:
-				renderSpriteSheet();
+				renderRasterAtlas();
 				break;
 			case Animation:
 				renderAnim();
@@ -365,22 +559,6 @@ public class SpriteEditor extends BaseEditor
 	{
 		if (sprite == null)
 			return;
-
-		final SpritePalette selectedPalette = (SpritePalette) paletteComboBox.getSelectedItem();
-		if (selectedPalette != null && animOverridePalette != selectedPalette)
-			setPalette(selectedPalette);
-
-		final SpriteAnimation selectedAnimation = (SpriteAnimation) animationComboBox.getSelectedItem();
-		if (currentAnim != selectedAnimation)
-			setAnimation(selectedAnimation);
-
-		/*
-		// works, but adds noticeable stutter since tab doesn't get to repaint until following frame
-		// using a changelistener on the tabs works better
-		final int selectedTab = componentTabs.getSelectedIndex();
-		if(componentID != selectedTab)
-			setComponent(selectedTab, false);
-		 */
 
 		while (!playerEventQueue.isEmpty()) {
 			if (currentAnim == null)
@@ -414,12 +592,23 @@ public class SpriteEditor extends BaseEditor
 					break;
 
 				case PrevFrame:
-					if (paused && currentComp != null && currentComp.frameCount < 32768) {
-						int prevFrame = currentComp.frameCount - 2;
+					if (paused && currentAnim != null && currentAnim.animTime < 32768) {
+						int prevFrame = currentAnim.animTime - 2;
 						currentAnim.reset();
 						stepCurrentAnim();
 
-						while (currentComp.frameCount < prevFrame)
+						while (currentAnim.animTime < prevFrame)
+							stepCurrentAnim();
+					}
+					break;
+
+				case Goto:
+					int targetTime = playbackTime.getValue() + 2;
+					if (targetTime >= 0 && targetTime < 32768) {
+						currentAnim.reset();
+						stepCurrentAnim();
+
+						while (currentAnim.animTime < targetTime)
 							stepCurrentAnim();
 					}
 					break;
@@ -440,6 +629,11 @@ public class SpriteEditor extends BaseEditor
 
 	private void stepCurrentAnim()
 	{
+		for (DragReorderList<?> list : dragLists) {
+			if (list.isDragging())
+				return;
+		}
+
 		currentAnim.step();
 		commandListPanel.repaint();
 		updatePlaybackStatus();
@@ -451,25 +645,26 @@ public class SpriteEditor extends BaseEditor
 	 */
 	private void loadNpcSpriteList()
 	{
+		assert (SwingUtilities.isEventDispatchThread());
+
 		Collection<SpriteMetadata> spriteMetas = SpriteLoader.getValidSprites(SpriteSet.Npc);
 		if (spriteMetas.isEmpty())
 			throw new StarRodException("No valid NPC sprites could be found!");
 
+		npcSpriteList.ignoreSelectionChange = true;
+
 		npcSpriteList.setSprites(spriteMetas);
 
 		String lastName = getConfig().getString(Options.SprLastNpcSprite);
-		int id = npcSpriteList.getInitialSelection(lastName);
-		if (id == -1) {
+		SpriteMetadata meta = npcSpriteList.getInitialSelection(lastName);
+		if (meta == null)
 			npcSpriteList.setSelectedIndex(0);
-		}
+		else
+			npcSpriteList.setSelected(meta);
 
-		while (npcSpriteList.getSelected() == null && id > 0) {
-			npcSpriteList.setSelectedIndex(id);
-			id--;
-		}
+		setSprite(npcSpriteList.getSelected(), true);
 
-		if (id < 0)
-			Logger.log("Could not select initial NPC sprite");
+		npcSpriteList.ignoreSelectionChange = false;
 	}
 
 	/**
@@ -478,121 +673,173 @@ public class SpriteEditor extends BaseEditor
 	 */
 	private void loadPlayerSpriteList()
 	{
+		assert (SwingUtilities.isEventDispatchThread());
+
 		Collection<SpriteMetadata> spriteMetas = SpriteLoader.getValidSprites(SpriteSet.Player);
 		if (spriteMetas.isEmpty())
 			throw new StarRodException("No valid player sprites could be found!");
 
+		playerSpriteList.ignoreSelectionChange = true;
+
 		playerSpriteList.setSprites(spriteMetas);
 
 		String lastName = getConfig().getString(Options.SprLastPlayerSprite);
-		int id = playerSpriteList.getInitialSelection(lastName);
-		if (id == -1) {
+		SpriteMetadata meta = playerSpriteList.getInitialSelection(lastName);
+		if (meta == null)
 			playerSpriteList.setSelectedIndex(0);
-		}
+		else
+			playerSpriteList.setSelected(meta);
 
-		while (playerSpriteList.getSelected() == null && id > 0) {
-			playerSpriteList.setSelectedIndex(id);
-			id--;
-		}
-
-		if (id < 0)
-			Logger.log("Could not select initial player sprite");
+		playerSpriteList.ignoreSelectionChange = false;
 	}
 
-	public boolean setSprite(int id, boolean forceReload)
+	public void setModesTab(int tabIndex)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		modeTabIndex = tabIndex;
+		editorMode = EditorMode.values()[tabIndex];
 
-		if (!forceReload && spriteID == id)
-			return true;
+		if (tabIndex == 1)
+			sprite.makeRasterAtlas();
+	}
 
-		selectedImgAsset = null;
-		highlightedImgAsset = null;
+	public int getModesTab()
+	{
+		return modeTabIndex;
+	}
 
-		if (sprite != null) {
-			sprite.unloadTextures();
+	public void setSpritesTab(int tabIndex)
+	{
+		spriteTabIndex = tabIndex;
+		SpriteList spriteList;
+
+		if (spriteTabIndex == 0) {
+			spriteSet = SpriteSet.Npc;
+			spriteList = npcSpriteList;
+		}
+		else {
+			spriteSet = SpriteSet.Player;
+			spriteList = playerSpriteList;
 		}
 
-		assetWatcher.release();
+		setSprite(spriteList.getSelected(), false);
+	}
 
-		Logger.logDetail("Set sprite: " + id);
+	public int getSpriteTab()
+	{
+		return spriteTabIndex;
+	}
 
-		if (id < MIN_SPRITE_IDX) {
+	public void resetAtlasCamera()
+	{
+		assert (sprite != null);
+		//TODO separate these?
+		sprite.centerImgAtlas(rasterCamera, glCanvasWidth(), glCanvasHeight());
+		sprite.centerRasterAtlas(paletteCamera, glCanvasWidth(), glCanvasHeight());
+	}
+
+	public void setSprite(SpriteMetadata newMetadata, boolean forceReload)
+	{
+		assert (SwingUtilities.isEventDispatchThread());
+
+		if (curMetadata == newMetadata && !forceReload)
+			return;
+
+		highlightedImgAsset = null;
+
+		unloadSprite = sprite;
+
+		curMetadata = newMetadata;
+		Logger.logDetail("Set sprite: " + curMetadata);
+
+		if (curMetadata == null) {
 			sprite = null;
 			setAnimation(null);
 			editorModeTabs.setVisible(false);
-			return true;
+			return;
 		}
 
-		sprite = spriteLoader.getSprite(spriteSet, id, forceReload);
+		// save current animation selection for old sprite
+		if (sprite != null)
+			sprite.lastSelectedAnim = animList.getSelectedIndex();
 
-		if (sprite == null) {
-			setAnimation(null);
-			editorModeTabs.setVisible(false);
-			return false;
-		}
+		sprite = spriteLoader.getSprite(curMetadata, forceReload);
 
-		if (!editorModeTabs.isVisible())
+		// suppress selection events from setSelectedIndex and setModel operations on animList
+		animList.ignoreChanges.increment();
+
+		if (sprite != null) {
 			editorModeTabs.setVisible(true);
 
-		assetWatcher.acquire(sprite);
+			sprite.prepareForEditor();
+			sprite.enableStencilBuffer = true;
 
-		spriteID = id;
-		sprite.prepareForEditor();
-		sprite.enableStencilBuffer = true;
-		CommandAnimatorEditor.setModels(sprite);
-		KeyframeAnimatorEditor.setModels(sprite);
+			// update combo box models to match new list models
+			imgBoxRegistry.updateModels(false);
+			palBoxRegistry.updateModels(false);
 
-		sprite.makeAtlas();
-		sprite.centerAtlas(sheetCamera, glCanvasWidth(), glCanvasHeight());
+			sprite.makeImgAtlas();
+			sprite.makeRasterAtlas();
+			resetAtlasCamera();
 
-		sprite.loadTextures();
+			sprite.bindPalettes();
+			sprite.bindRasters();
 
-		SwingUtilities.invokeLater(() -> {
-			//spriteList.setSelectedId(id);
-			rastersTab.setSpriteEDT(sprite);
-			palettesTab.setSpriteEDT(sprite);
-		});
+			sprite.loadEditorImages();
+			loadSprite = sprite;
 
-		referenceMaxPos = 0;
+			rastersTab.setSprite(sprite);
+			palettesTab.setSprite(sprite);
 
-		refreshAnimList();
+			animList.setModel(sprite.animations);
 
-		if (sprite.palettes.size() > 0) {
-			paletteComboBox.setModel(new ListAdapterComboboxModel<>(sprite.palettes));
-			paletteComboBox.setSelectedIndex(0);
-			paletteComboBox.setEnabled(true);
+			// restore component selection (if valid) for new animation
+			int old = sprite.lastSelectedAnim;
+			if (old >= -1 && old < sprite.animations.size()) {
+				// note: -1 is a valid index corresponding to no selection
+				animList.setSelectedIndex(old);
+				setAnimation(animList.getSelectedValue());
+			}
+			else if (sprite.animations.size() > 0) {
+				// safety condition -- remove? should not be needed if undo/redo state intact
+				Logger.logfWarning("Reference to out of range animation ID: %d", old);
+				animList.setSelectedIndex(0);
+				setAnimation(animList.getSelectedValue());
+			}
+			else {
+				// extra safety condition -- also remove?
+				Logger.logfWarning("Reference to invalid animation ID: %d", old);
+				animList.setSelectedIndex(-1);
+				setAnimation(null);
+			}
+
+			paletteBox.setSelectedItem(sprite.overridePalette);
+			paletteBox.setEnabled(sprite.usingOverridePalette);
+
+			cbOverridePalette.setSelected(sprite.usingOverridePalette);
+
+			animList.setEnabled(true);
 		}
 		else {
-			// this is not expected to be a valid state...
-			animOverridePalette = null;
-			paletteComboBox.setModel(new ListAdapterComboboxModel<>(new DefaultListModel<SpritePalette>()));
-			paletteComboBox.setEnabled(false);
-		}
+			editorModeTabs.setVisible(false);
 
-		return true;
-	}
+			animList.setModel(new DefaultListModel<>()); // empty model
+			animList.setEnabled(false);
 
-	private void refreshAnimList()
-	{
-		if (sprite.animations.size() > 0) {
-			setAnimation(sprite.animations.get(0));
-			animationComboBox.setModel(new ListAdapterComboboxModel<>(sprite.animations));
-			animationComboBox.setSelectedIndex(0);
-			animationComboBox.setEnabled(true);
-			componentTabs.setVisible(true);
-		}
-		else {
 			setAnimation(null);
-			animationComboBox.setModel(new ListAdapterComboboxModel<>(new DefaultListModel<SpriteAnimation>()));
-			animationComboBox.setEnabled(false);
-			componentTabs.setVisible(false);
 		}
+
+		// re-enable selection events from animList
+		animList.ignoreChanges.decrement();
 	}
 
-	private boolean setAnimation(SpriteAnimation animation)
+	public Sprite getSprite()
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		return sprite;
+	}
+
+	public boolean setAnimation(SpriteAnimation animation)
+	{
+		assert (SwingUtilities.isEventDispatchThread());
 
 		if (currentAnim == animation)
 			return true;
@@ -600,10 +847,49 @@ public class SpriteEditor extends BaseEditor
 		String animName = (animation == null) ? "null" : "" + animation.getIndex();
 		Logger.logDetail("Set animation: " + animName);
 
+		// save current component selection for old animation
+		if (currentAnim != null)
+			currentAnim.lastSelectedComp = compList.getSelectedIndex();
+
 		currentAnim = animation;
 
-		if (currentAnim != null)
-			setComponent(0, false);
+		// suppress selection events from setSelectedIndex and setModel operations on compList
+		compList.ignoreChanges.increment();
+
+		if (currentAnim != null) {
+			compList.setModel(currentAnim.components);
+
+			// restore component selection (if valid) for new animation
+			int old = currentAnim.lastSelectedComp;
+			if (old >= -1 && old < currentAnim.components.size()) {
+				// note: -1 is a valid index corresponding to no selection
+				compList.setSelectedIndex(old);
+				setComponent(compList.getSelectedValue());
+			}
+			else if (currentAnim.components.size() > 0) {
+				// safety condition -- remove? should not be needed if undo/redo state intact
+				Logger.logfWarning("Reference to out of range component ID: %d", old);
+				compList.setSelectedIndex(0);
+				setComponent(compList.getSelectedValue());
+			}
+			else {
+				// extra safety condition -- also remove?
+				Logger.logfWarning("Reference to invalid component ID: %d", old);
+				compList.setSelectedIndex(-1);
+				setComponent(null);
+			}
+
+			compList.setEnabled(true);
+		}
+		else {
+			compList.setModel(new DefaultListModel<>()); // empty model
+			compList.setEnabled(false);
+
+			setComponent(null);
+		}
+
+		// re-enable selection events from compList
+		compList.ignoreChanges.decrement();
 
 		playerEventQueue.add(PlayerEvent.Reset);
 		return true;
@@ -614,78 +900,97 @@ public class SpriteEditor extends BaseEditor
 		return currentAnim;
 	}
 
-	private void setComponent(int id, boolean fromTabChange)
+	private void setComponentByID(int id)
 	{
 		assert (!SwingUtilities.isEventDispatchThread());
 
-		if (id < 0 || currentAnim == null)
+		if (currentAnim == null || id < 0 || id >= currentAnim.components.size())
 			return;
 
-		assert (id >= 0) : id;
-
-		Logger.logDetail("Set component: " + id);
-
-		currentComp = currentAnim.components.get(id);
-		currentAnim.setComponentSelected(id);
-
 		SwingUtilities.invokeLater(() -> {
-
-			currentComp.bind(this, commandListPanel, commandEditPanel);
-
-			compxSpinner.setValue(currentComp.posx);
-			compySpinner.setValue(currentComp.posy);
-			compzSpinner.setValue(currentComp.posz);
-
-			cbShowComponent.setSelected(currentComp.hidden);
-
-			if (!fromTabChange) {
-				ignoreComponentTabChanges = true;
-				populateComponentTabs();
-				componentTabs.setSelectedIndex(id);
-				ignoreComponentTabChanges = false;
-			}
-
-			refreshTab();
+			compList.setSelectedIndex(id);
 		});
 	}
 
-	public ImgAsset getSelectedImage()
+	/**
+	 * Sets <code>currentComp</code> and updates the content of component panel accordingly
+	 * @param component
+	 */
+	public void setComponent(SpriteComponent component)
 	{
-		return selectedImgAsset;
-	}
+		assert (SwingUtilities.isEventDispatchThread());
 
-	private void setPalette(SpritePalette pm)
-	{
-		if (cbOverridePalette.isSelected())
-			animOverridePalette = pm;
-	}
+		// save current component selection for old animation
+		if (currentComp != null)
+			currentComp.unbind();
 
-	private void checkPalettesForChanges()
-	{
-		for (int i = 0; i < sprite.palettes.size(); i++) {
-			SpritePalette sp = sprite.palettes.get(i);
-			if (sp.dirty && sp.hasPal()) {
-				sp.getPal().glReload();
-				sp.dirty = false;
-			}
+		currentComp = component;
+
+		if (currentComp == null) {
+			Logger.logDetail("Set component: NULL");
+			componentPanel.setVisible(false);
+			relativePosPanel.setVisible(false);
+
+			if (currentAnim != null)
+				currentAnim.setComponentSelected(-1);
+		}
+		else {
+			Logger.logDetail("Set component: " + currentComp.name);
+			componentPanel.setVisible(true);
+			relativePosPanel.setVisible(true);
+
+			if (currentAnim != null)
+				currentAnim.setComponentSelected(currentComp.listIndex);
+
+			currentComp.bind(this, commandListPanel, commandEditPanel);
+			currentComp.calculateTiming();
+
+			suppressCommands = true;
+			compxSpinner.setValue(currentComp.posx);
+			compySpinner.setValue(currentComp.posy);
+			compzSpinner.setValue(currentComp.posz);
+			suppressCommands = false;
+
+			componentPanel.repaint();
 		}
 	}
+
+	public SpriteComponent getComponent()
+	{
+		return currentComp;
+	}
+
+	public ComboBoxRegistry<SpriteRaster> imgBoxRegistry = new ComboBoxRegistry<>(() -> {
+		if (sprite == null)
+			return new ArrayList<SpriteRaster>();
+		else
+			return sprite.rasters;
+	});
+
+	public ComboBoxRegistry<SpritePalette> palBoxRegistry = new ComboBoxRegistry<>(() -> {
+		if (sprite == null)
+			return new ArrayList<SpritePalette>();
+		else
+			return sprite.palettes;
+	});
 
 	private void handleInput(double deltaTime)
 	{
 		switch (editorMode) {
-			case Animation: {
+			case Animation:
 				animCamera.handleInput(keyboard, mouse, deltaTime, glCanvasWidth(), glCanvasHeight());
 				if (keyboard.isKeyDown(KeyEvent.VK_SPACE))
 					animCamera.reset();
-			}
 				break;
 			case Rasters:
-			case Palettes: {
-				sheetCamera.handleInput(keyboard, mouse, deltaTime, glCanvasWidth(), glCanvasHeight());
+				rasterCamera.handleInput(keyboard, mouse, deltaTime, glCanvasWidth(), glCanvasHeight());
 				if (keyboard.isKeyDown(KeyEvent.VK_SPACE))
-					sprite.centerAtlas(sheetCamera, glCanvasWidth(), glCanvasHeight());
-			}
+					resetAtlasCamera();
+				break;
+			case Palettes:
+				paletteCamera.handleInput(keyboard, mouse, deltaTime, glCanvasWidth(), glCanvasHeight());
+				if (keyboard.isKeyDown(KeyEvent.VK_SPACE))
+					resetAtlasCamera();
 				break;
 			default:
 				throw new IllegalStateException("Invalid editor mode in handleInput().");
@@ -699,58 +1004,78 @@ public class SpriteEditor extends BaseEditor
 		boolean alt = keyboard.isAltDown();
 		boolean shift = keyboard.isShiftDown();
 
-		if (key.code == KeyEvent.VK_DELETE && !ctrl && !alt && !shift) {
-			switch (editorMode) {
-				case Animation:
+		switch (editorMode) {
+			case Animation:
+				if (key.code == KeyEvent.VK_DELETE && !ctrl && !alt && !shift) {
 					if (sprite != null && currentAnim != null && currentComp != null && currentComp.selected) {
-						if (currentAnim.components.size() > 1) {
-							SwingUtilities.invokeLater(() -> {
-								if (JOptionPane.YES_OPTION == super.getConfirmDialog("Confirm", "Delete component?").choose()) {
-									invokeLater(() -> {
-										currentAnim.components.removeElement(currentComp);
-										sprite.recalculateIndices();
-										setComponent(0, false);
-									});
-								}
-							});
-						}
+						SwingUtilities.invokeLater(() -> {
+							CommandBatch batch = new CommandBatch("Delete Component");
+							batch.addCommand(new SelectComponent(compList, null));
+							batch.addCommand(new DeleteComponent(currentAnim, currentComp));
+							SpriteEditor.execute(batch);
+						});
 					}
-					break;
-				case Palettes:
-				case Rasters:
-					break;
-				default:
-					throw new IllegalStateException("Invalid editor mode in handleInput().");
-			}
+					return;
+				}
+				else if (key.code == KeyEvent.VK_H && !ctrl && !alt && !shift) {
+					if (currentComp != null)
+						currentComp.hidden = !currentComp.hidden;
+
+					compList.repaint();
+					return;
+				}
+				break;
+			case Palettes:
+			case Rasters:
+				break;
+			default:
+				throw new IllegalStateException("Invalid editor mode in handleInput().");
 		}
-		else if (key.code == KeyEvent.VK_H && !ctrl && !alt && !shift) {
-			cbShowComponent.doClick();
-		}
-		else {
-			SwingUtilities.invokeLater(() -> {
-				handleKey(ctrl, alt, shift, key.code);
-			});
-		}
+
+		SwingUtilities.invokeLater(() -> {
+			handleKey(ctrl, alt, shift, key.code);
+		});
 	}
 
-	private void renderSpriteSheet()
+	private void renderImgAtlas()
 	{
-		sheetCamera.glSetViewport(0, 0, glCanvasWidth(), glCanvasHeight());
+		rasterCamera.glSetViewport(0, 0, glCanvasWidth(), glCanvasHeight());
 
 		if (showBackground)
-			sheetCamera.drawBackground();
+			rasterCamera.drawBackground();
 
-		sheetCamera.setOrthoView();
-		sheetCamera.glLoadTransform();
+		rasterCamera.setOrthoView();
+		rasterCamera.glLoadTransform();
 		RenderState.setModelMatrix(null);
-
-		//	drawAxes(1.0f);
 
 		if (sprite == null)
 			return;
 
-		SpritePalette override = useAtlasOverride ? palettesTab.getOverridePalette() : null;
-		sprite.renderAtlas(selectedImgAsset, highlightedImgAsset, override, useFiltering);
+		ImgAsset highlight = highlightedImgAsset;
+		ImgAsset selected = sprite.selectedImgAsset;
+
+		sprite.renderImgAtlas(selected, highlight, useFiltering);
+	}
+
+	private void renderRasterAtlas()
+	{
+		paletteCamera.glSetViewport(0, 0, glCanvasWidth(), glCanvasHeight());
+
+		if (showBackground)
+			paletteCamera.drawBackground();
+
+		paletteCamera.setOrthoView();
+		paletteCamera.glLoadTransform();
+		RenderState.setModelMatrix(null);
+
+		if (sprite == null)
+			return;
+
+		Palette overridePal = null;
+		if (sprite.selectedPalAsset != null && palettesTab.shouldPreviewPalette())
+			overridePal = sprite.selectedPalAsset.pal;
+
+		sprite.renderRasterAtlas(overridePal, useFiltering);
 	}
 
 	private void renderAnim()
@@ -760,30 +1085,32 @@ public class SpriteEditor extends BaseEditor
 		if (showBackground)
 			animCamera.drawBackground();
 
-		animCamera.setPerspView();
+		animCamera.setOrthoView();
 		animCamera.glLoadTransform();
 		RenderState.setModelMatrix(null);
 
-		drawAxes(1.0f);
+		if (showAxes)
+			drawAxes(1.0f);
 
 		if (showGuide && referenceTile != null)
 			renderReference();
 
-		TransformMatrix viewMtx = animCamera.viewMatrix;
-		if (flipHorizontal)
-			viewMtx.scale(-1.0, 1.0, 1.0);
-		RenderState.setViewMatrix(viewMtx);
+		if (flipHorizontal) {
+			TransformMatrix mtx = TransformMatrix.identity();
+			mtx.scale(-1.0, 1.0, 1.0);
+			RenderState.setModelMatrix(mtx);
+		}
 
 		glEnable(GL_STENCIL_TEST);
 		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
 		if (currentAnim != null) {
-			//	boolean showHighlight = mouse.hasLocation() || highlightComponent;
+			SpritePalette override = sprite.usingOverridePalette ? sprite.overridePalette : null;
 
-			if (cbShowOnlySelectedComponent.isSelected())
-				sprite.render(null, currentAnim, currentComp, animOverridePalette, useBackFacing, highlightComponent, false, useFiltering);
+			if (cbShowOnlySelectedComponent.isSelected() && currentComp != null)
+				sprite.render(null, currentAnim, currentComp, override, useBackFacing, highlightComponent, false, useFiltering);
 			else
-				sprite.render(null, currentAnim, animOverridePalette, useBackFacing, highlightComponent, false, useFiltering);
+				sprite.render(null, currentAnim, override, useBackFacing, highlightComponent, false, useFiltering);
 		}
 
 		glDisable(GL_STENCIL_TEST);
@@ -791,12 +1118,20 @@ public class SpriteEditor extends BaseEditor
 
 	private void renderReference()
 	{
-		int xmax = sprite.aabb.max.getX();
-		if (xmax > referenceMaxPos)
-			referenceMaxPos = xmax;
+		if (sprite == null)
+			return;
+
+		int xmax = flipHorizontal ? -sprite.aabb.min.getX() : sprite.aabb.max.getX();
+		if (xmax != 0) {
+			int delta = xmax - referencePos;
+			if (referencePos == 0 || delta >= 30)
+				referencePos = xmax;
+			else
+				referencePos = referencePos + (xmax - referencePos) / 5;
+		}
 
 		TransformMatrix mtx = RenderState.pushModelMatrix();
-		mtx.translate(referenceMaxPos + 20, 0, 0);
+		mtx.translate(referencePos + 20, 0, 0);
 
 		SpriteShader shader = ShaderManager.use(SpriteShader.class);
 
@@ -834,21 +1169,31 @@ public class SpriteEditor extends BaseEditor
 	@Override
 	protected void createGui(JPanel toolPanel, Canvas glCanvas, JMenuBar menuBar, JLabel infoLabel, ActionListener openLogAction)
 	{
+		// make tooltips appear faster than the default setting
+		ToolTipManager.sharedInstance().setInitialDelay(300);
+
+		importFileChooser = new MultipleFilesChooser(Environment.getProjectDirectory(), "Import Assets", "Images", "png");
+
 		rastersTab = new RastersTab(this);
-		palettesTab = new PalettesTab();
+		palettesTab = new PalettesTab(this);
+
+		CommandAnimatorEditor.init();
+		KeyframeAnimatorEditor.init();
 
 		editorModeTabs = new JTabbedPane();
 		editorModeTabs.addTab(EditorMode.Rasters.tabName, rastersTab);
 		editorModeTabs.addTab(EditorMode.Palettes.tabName, palettesTab);
 		editorModeTabs.addTab(EditorMode.Animation.tabName, getAnimationsTab());
+
 		editorModeTabs.addChangeListener((e) -> {
-			JTabbedPane sourceTabbedPane = (JTabbedPane) e.getSource();
-			int index = sourceTabbedPane.getSelectedIndex();
-			editorMode = EditorMode.values()[index];
+			JTabbedPane tabs = (JTabbedPane) e.getSource();
+			int index = tabs.getSelectedIndex();
+
+			if (!suppressCommands)
+				execute(new SelectModesTab(tabs, index));
 		});
 
-		JPanel rightSide = new JPanel(new MigLayout("fill, ins 0"));
-		rightSide.add(editorModeTabs, "grow, push, span, wrap");
+		errorLabel = new FadingLabel(false, SwingConstants.RIGHT, 4.0f, 0.5f);
 
 		JPanel playerSpriteListPanel = new JPanel(new MigLayout("fill, ins 0"));
 		playerSpriteListPanel.add(playerSpriteList, "growy, pushy, gaptop 16, gapleft 8, gapright 8");
@@ -859,38 +1204,22 @@ public class SpriteEditor extends BaseEditor
 		JTabbedPane spriteSetTabs = new JTabbedPane();
 		spriteSetTabs.addTab("NPC Sprites", npcSpriteListPanel);
 		spriteSetTabs.addTab("Player Sprites", playerSpriteListPanel);
+
 		spriteSetTabs.addChangeListener((e) -> {
-			JTabbedPane sourceTabbedPane = (JTabbedPane) e.getSource();
-			int index = sourceTabbedPane.getSelectedIndex();
-			SpriteList sprites;
+			JTabbedPane tabs = (JTabbedPane) e.getSource();
+			int index = tabs.getSelectedIndex();
 
-			if (index == 0) {
-				spriteSet = SpriteSet.Npc;
-				sprites = npcSpriteList;
-			}
-			else {
-				spriteSet = SpriteSet.Player;
-				sprites = playerSpriteList;
-			}
-
-			invokeLater(() -> {
-				if (sprites.getSelected() == null)
-					setSprite(-1, false);
-				else
-					setSprite(sprites.getSelected().id, false);
-			});
-
+			if (!suppressCommands)
+				execute(new SelectSpritesTab(tabs, index));
 		});
 
-		//	JScrollPane scrollPane = new JScrollPane(side);
-		//	scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		//	scrollPane.setBorder(null);
-
 		toolPanel.add(spriteSetTabs, "grow, w " + LEFT_PANEL_WIDTH + "!");
-		toolPanel.add(glCanvas, "grow, push");
-		toolPanel.add(rightSide, "hidemode 3, gapleft 8, grow, wrap, w " + RIGHT_PANEL_WIDTH + "!");
+		toolPanel.add(glCanvas, "grow, push, gapleft 8, gapright 8");
+		toolPanel.add(editorModeTabs, "grow, wrap, w " + RIGHT_PANEL_WIDTH + "!");
 
-		toolPanel.add(infoLabel, "h 16!, growx, span");
+		toolPanel.add(infoLabel, "h 16!, growx, span 2");
+		toolPanel.add(errorLabel, "h 16!, growx");
+
 		addOptionsMenu(menuBar, openLogAction);
 		addEditorMenu(menuBar);
 		addSpriteMenu(menuBar);
@@ -944,14 +1273,63 @@ public class SpriteEditor extends BaseEditor
 	private void addEditorMenu(JMenuBar menuBar)
 	{
 		JMenuItem item;
+		KeyStroke awtKeyStroke;
 
 		JMenu menu = new JMenu(MENU_BAR_SPACING + "Editor" + MENU_BAR_SPACING);
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
 
+		item = new JMenuItem("Undo");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
+		item.addActionListener((e) -> {
+			undoEDT();
+		});
+		menu.add(item);
+		//	item.setPreferredSize(menuItemDimension);
+
+		item = new JMenuItem("Redo");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
+		item.addActionListener((e) -> {
+			redoEDT();
+		});
+		menu.add(item);
+
+		menu.addSeparator();
+
+		item = new JMenuItem("Save All Changes");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
+		item.addActionListener((e) -> {
+			saveAllChanges();
+		});
+		menu.add(item);
+
+		item = new JMenuItem("Save Changes");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
+		item.addActionListener((e) -> {
+			if (sprite == null) {
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			saveSprite(sprite);
+		});
+		menu.add(item);
+
+		menu.addSeparator();
+
 		item = new JMenuItem("View Shortcuts");
 		item.addActionListener((e) -> {
 			showControls();
+		});
+		menu.add(item);
+
+		item = new JMenuItem("Preferences");
+		item.addActionListener((e) -> {
+			showPreferences();
 		});
 		menu.add(item);
 	}
@@ -963,32 +1341,6 @@ public class SpriteEditor extends BaseEditor
 		JMenu menu = new JMenu(MENU_BAR_SPACING + "Options" + MENU_BAR_SPACING);
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
-
-		/*
-		item = new JMenuItem("Create New Sprite");
-		item.addActionListener((e)-> {
-			invokeLater(() -> {
-				try {
-					int id = SpriteLoader.getMaximumID(spriteSet) + 1;
-					SpriteLoader.create(spriteSet, id);
-		
-					if(spriteSet == SpriteSet.Npc)
-						useNpcFiles(id);
-					else
-						usePlayerFiles(id);
-		
-				} catch (Throwable t) {
-					Logger.logError("Failed to create new sprite.");
-					incrementDialogsOpen();
-					StarRodDev.displayStackTrace(t);
-					decrementDialogsOpen();
-				}
-			});
-		});
-		menu.add(item);
-		
-		menu.addSeparator();
-		 */
 
 		item = new JMenuItem("Open Log");
 		item.addActionListener(openLogAction);
@@ -1014,39 +1366,57 @@ public class SpriteEditor extends BaseEditor
 	private void addSpriteMenu(JMenuBar menuBar)
 	{
 		JMenuItem item;
-		KeyStroke awtKeyStroke;
 
 		JMenu menu = new JMenu(MENU_BAR_SPACING + "Sprite" + MENU_BAR_SPACING);
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
 
-		item = new JMenuItem("Save Changes");
-		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK);
-		item.setAccelerator(awtKeyStroke);
+		item = new JMenuItem("Reload");
 		item.addActionListener((e) -> {
-			invokeLater(() -> {
-				saveSprite();
-			});
-		});
-		menu.add(item);
-
-		item = new JMenuItem("Reload Current Sprite");
-		item.addActionListener((e) -> {
-			invokeLater(() -> {
-				setSprite(spriteID, true);
-			});
-		});
-		menu.add(item);
-
-		item = new JMenuItem("Open Content Folder");
-		item.addActionListener((evt) -> {
-			if (sprite == null)
+			if (sprite == null) {
+				Toolkit.getDefaultToolkit().beep();
 				return;
-			try {
-				Desktop.getDesktop().open(new File(sprite.getDirectoryName()));
 			}
-			catch (IOException e) {
-				Logger.printStackTrace(e);
+
+			if (promptCannotUndo("Reload sprite")) {
+				// remove sprite from 'modified' list
+				sprite.clearModified();
+				dirtyModifiedSprites.remove(sprite);
+
+				// trigger a full reload of the sprite, bypassing the cache
+				setSprite(curMetadata, true);
+				flushUndoRedo();
+			}
+		});
+		menu.add(item);
+
+		menu.addSeparator();
+
+		item = new JMenuItem("Open Mod Content Folder");
+		item.addActionListener((evt) -> {
+			if (sprite != null) {
+				try {
+					AssetHandle ah = sprite.getAssetDir(true);
+					ah.mkdirs();
+					Desktop.getDesktop().open(ah);
+				}
+				catch (IOException e) {
+					Logger.logError(e.getMessage());
+				}
+			}
+		});
+		menu.add(item);
+
+		item = new JMenuItem("Open Base Content Folder");
+		item.addActionListener((evt) -> {
+			if (sprite != null) {
+				try {
+					AssetHandle ah = sprite.getAssetDir(false);
+					Desktop.getDesktop().open(ah);
+				}
+				catch (IOException e) {
+					Logger.printStackTrace(e);
+				}
 			}
 		});
 		menu.add(item);
@@ -1055,23 +1425,45 @@ public class SpriteEditor extends BaseEditor
 
 		item = new JMenuItem("Convert to Keyframes");
 		item.addActionListener((e) -> {
-			invokeLater(() -> {
-				if (sprite != null) {
-					sprite.convertToKeyframes();
-					setComponent(currentComp.getIndex(), false);
+			if (sprite != null) {
+				if (sprite.usesKeyframes) {
+					Toolkit.getDefaultToolkit().beep();
+					Logger.logWarning("Sprite is already using keyframes!");
+					return;
 				}
-			});
+				if (promptCannotUndo("Convert to keyframes")) {
+					sprite.convertToKeyframes();
+					flushUndoRedo();
+					setComponent(currentComp);
+					sprite.usesKeyframes = true;
+				}
+			}
 		});
 		menu.add(item);
 
 		item = new JMenuItem("Convert to Commands");
 		item.addActionListener((e) -> {
-			invokeLater(() -> {
-				if (sprite != null) {
-					sprite.convertToCommands();
-					setComponent(currentComp.getIndex(), false);
+			if (sprite != null) {
+				if (!sprite.usesKeyframes) {
+					Toolkit.getDefaultToolkit().beep();
+					Logger.logWarning("Sprite is already using commands!");
+					return;
 				}
-			});
+				if (promptCannotUndo("Convert to commands")) {
+					sprite.convertToCommands();
+					flushUndoRedo();
+					setComponent(currentComp);
+					sprite.usesKeyframes = false;
+				}
+			}
+		});
+		menu.add(item);
+
+		menu.addSeparator();
+
+		item = new JMenuItem("Cleanup");
+		item.addActionListener((e) -> {
+			showCleanupSprite();
 		});
 		menu.add(item);
 	}
@@ -1081,6 +1473,14 @@ public class SpriteEditor extends BaseEditor
 		JMenu menu = new JMenu(MENU_BAR_SPACING + "Rendering" + MENU_BAR_SPACING);
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
+
+		final JMenuItem itemAxes = new JCheckBoxMenuItem("Show Axes");
+		itemAxes.setSelected(showAxes);
+		itemAxes.addActionListener((e) -> {
+			showAxes = itemAxes.isSelected();
+			getConfig().setBoolean(Options.SprEnableAxes, showAxes);
+		});
+		menu.add(itemAxes);
 
 		final JMenuItem itemBackground = new JCheckBoxMenuItem("Show Background");
 		itemBackground.setSelected(showBackground);
@@ -1143,30 +1543,25 @@ public class SpriteEditor extends BaseEditor
 		menu.add(itemHighlightCmd);
 	}
 
-	protected void selectRasterEDT(SpriteRaster sr)
-	{
-		rastersTab.setRasterEDT(sr);
-	}
-
-	private JPanel getControlPanel()
+	private JPanel getPlaybackPanel()
 	{
 		final Insets buttonInsets = new Insets(0, 2, 0, 2);
 
-		resetButton = new JButton(IconResource.ICON_START);
+		resetButton = new JButton(ThemedIcon.REWIND_24);
 		resetButton.setToolTipText("Reset");
 		resetButton.setMargin(buttonInsets);
 		resetButton.addActionListener((e) -> {
 			playerEventQueue.add(PlayerEvent.Reset);
 		});
 
-		endButton = new JButton(IconResource.ICON_END);
+		endButton = new JButton(ThemedIcon.FFWD_24);
 		endButton.setToolTipText("Goto End");
 		endButton.setMargin(buttonInsets);
 		endButton.addActionListener((e) -> {
 			playerEventQueue.add(PlayerEvent.End);
 		});
 
-		prevFrameButton = new JButton(IconResource.ICON_PREV);
+		prevFrameButton = new JButton(ThemedIcon.PREV_24);
 		prevFrameButton.setToolTipText("Step Back");
 		prevFrameButton.setMargin(buttonInsets);
 		prevFrameButton.addActionListener((e) -> {
@@ -1174,7 +1569,7 @@ public class SpriteEditor extends BaseEditor
 		});
 		prevFrameButton.setEnabled(false);
 
-		nextFrameButton = new JButton(IconResource.ICON_NEXT);
+		nextFrameButton = new JButton(ThemedIcon.NEXT_24);
 		nextFrameButton.setToolTipText("Step Forward");
 		nextFrameButton.setMargin(buttonInsets);
 		nextFrameButton.addActionListener((e) -> {
@@ -1182,9 +1577,9 @@ public class SpriteEditor extends BaseEditor
 		});
 		nextFrameButton.setEnabled(false);
 
-		playButton = new JButton(IconResource.ICON_PAUSE);
+		playButton = new JButton(ThemedIcon.PAUSE_24);
 
-		stopButton = new JButton(IconResource.ICON_STOP);
+		stopButton = new JButton(ThemedIcon.STOP_24);
 		stopButton.setToolTipText("Stop");
 		stopButton.setMargin(buttonInsets);
 		stopButton.addActionListener((e) -> {
@@ -1192,7 +1587,7 @@ public class SpriteEditor extends BaseEditor
 
 			// stop playing, button is now 'play'
 			playerEventQueue.add(PlayerEvent.Stop);
-			playButton.setIcon(IconResource.ICON_PLAY);
+			playButton.setIcon(ThemedIcon.PLAY_24);
 			playButton.setToolTipText("Play");
 			nextFrameButton.setEnabled(true);
 			prevFrameButton.setEnabled(true);
@@ -1204,7 +1599,7 @@ public class SpriteEditor extends BaseEditor
 			if (paused) {
 				// start playing, button is now 'pause'
 				playerEventQueue.add(PlayerEvent.Play);
-				playButton.setIcon(IconResource.ICON_PAUSE);
+				playButton.setIcon(ThemedIcon.PAUSE_24);
 				playButton.setToolTipText("Pause");
 				nextFrameButton.setEnabled(false);
 				prevFrameButton.setEnabled(false);
@@ -1213,7 +1608,7 @@ public class SpriteEditor extends BaseEditor
 			else {
 				// pause playing, button is now 'play'
 				playerEventQueue.add(PlayerEvent.Pause);
-				playButton.setIcon(IconResource.ICON_PLAY);
+				playButton.setIcon(ThemedIcon.PLAY_24);
 				playButton.setToolTipText("Play");
 				nextFrameButton.setEnabled(true);
 				prevFrameButton.setEnabled(true);
@@ -1222,15 +1617,19 @@ public class SpriteEditor extends BaseEditor
 			super.revalidateFrame();
 		});
 
-		String fmt = "sg button, pushx, growx, h 20!";
-		JPanel controlPanel = new JPanel(new MigLayout("fill, ins 0", "[fill]0"));
-		controlPanel.add(resetButton, fmt);
-		controlPanel.add(prevFrameButton, fmt);
-		controlPanel.add(stopButton, fmt);
-		controlPanel.add(playButton, fmt);
-		controlPanel.add(nextFrameButton, fmt + ", wrap");
+		String fmt = "sg button, pushx, growx, w 48!, h 32!";
+		JPanel controlButtons = new JPanel(new MigLayout("fill, ins 0", "[]0"));
+		controlButtons.add(resetButton, fmt);
+		controlButtons.add(prevFrameButton, fmt);
+		controlButtons.add(stopButton, fmt);
+		controlButtons.add(playButton, fmt);
+		controlButtons.add(nextFrameButton, fmt);
 
-		JComboBox<String> playbackRateBox = new JComboBox<>(new String[] { "Normal", "1 / 2", "1 / 4", "1 / 8", "1 / 16", "1 / 32", "1 / 256" });
+		playbackTime = new IntTextField((v) -> playerEventQueue.add(PlayerEvent.Goto));
+		playbackTime.setHorizontalAlignment(SwingConstants.CENTER);
+
+		JComboBox<String> playbackRateBox = new JComboBox<>(new String[] {
+				"Full", "1 / 2", "1 / 4", "1 / 8", "1 / 16", "1 / 32" });
 		SwingUtils.addBorderPadding(playbackRateBox);
 		playbackRateBox.addActionListener((e) -> {
 			switch (playbackRateBox.getSelectedIndex()) {
@@ -1241,242 +1640,306 @@ public class SpriteEditor extends BaseEditor
 				case 3: playbackRate = 8; break;
 				case 4: playbackRate = 16; break;
 				case 5: playbackRate = 32; break;
-				case 6: playbackRate = 256; break;
 				// @formatter:on
 			}
 			playbackCounter = playbackRate;
 		});
+		DefaultListCellRenderer listRenderer = new DefaultListCellRenderer();
+		listRenderer.setHorizontalAlignment(DefaultListCellRenderer.CENTER);
+		playbackRateBox.setRenderer(listRenderer);
 
-		playbackStatusLabel = SwingUtils.getCenteredLabel("", 12);
-		controlPanel.add(playbackStatusLabel, "growx, span 3, h 32!");
-		controlPanel.add(playbackRateBox, "span 2, growx");
+		JPanel controlPanel = new JPanel(new MigLayout("fill, ins 0", "[pref]10[grow, sg edge]40[center]40[pref]10[grow, sg edge]"));
+
+		controlPanel.add(new JLabel("Speed"));
+		controlPanel.add(playbackRateBox, "growx, sgy field");
+
+		controlPanel.add(controlButtons);
+
+		controlPanel.add(new JLabel("Frame"));
+		controlPanel.add(playbackTime, "growx, sgy field");
 
 		return controlPanel;
 	}
 
-	private JPanel getAnimationsTab()
+	private JPanel getComponentOffsetsPanel()
 	{
-		JLabel defaultPaletteLabel = new JLabel("Palette");
-		SwingUtils.setFontSize(defaultPaletteLabel, 12);
-
-		paletteComboBox = new JComboBox<>();
-		SwingUtils.setFontSize(paletteComboBox, 14);
-		paletteComboBox.setMaximumRowCount(24);
-		paletteComboBox.setRenderer(new IndexableComboBoxRenderer());
-		paletteComboBox.addActionListener((e) -> {
-			if (cbOverridePalette.isSelected())
-				animOverridePalette = (SpritePalette) paletteComboBox.getSelectedItem();
-		});
-
-		animationComboBox = new JComboBox<>();
-		SwingUtils.setFontSize(animationComboBox, 14);
-		animationComboBox.setMaximumRowCount(24);
-		animationComboBox.setRenderer(new IndexableComboBoxRenderer());
-
 		compxSpinner = new JSpinner();
 		SwingUtils.setFontSize(compxSpinner, 12);
 		compxSpinner.setModel(new SpinnerNumberModel(0, -128, 128, 1));
 		compxSpinner.addChangeListener((e) -> {
-			if (currentComp != null)
-				currentComp.posx = (int) compxSpinner.getValue();
+			if (!suppressCommands)
+				execute(new SetComponentPosCommand(currentComp, 0, (int) compxSpinner.getValue()));
 		});
 		SwingUtils.centerSpinnerText(compxSpinner);
+		SwingUtils.addBorderPadding(compxSpinner);
 
 		compySpinner = new JSpinner();
 		SwingUtils.setFontSize(compySpinner, 12);
 		compySpinner.setModel(new SpinnerNumberModel(0, -128, 128, 1));
 		compySpinner.addChangeListener((e) -> {
-			if (currentComp != null)
-				currentComp.posy = (int) compySpinner.getValue();
+			if (!suppressCommands)
+				execute(new SetComponentPosCommand(currentComp, 1, (int) compySpinner.getValue()));
 		});
 		SwingUtils.centerSpinnerText(compySpinner);
+		SwingUtils.addBorderPadding(compySpinner);
 
-		compzSpinner = new JSpinner();
+		compzSpinner = new EvenSpinner();
 		SwingUtils.setFontSize(compzSpinner, 12);
 		compzSpinner.setModel(new SpinnerNumberModel(0, -32, 32, 1));
 		compzSpinner.addChangeListener((e) -> {
-			if (currentComp != null)
-				currentComp.posz = (int) compzSpinner.getValue();
+			if (!suppressCommands)
+				execute(new SetComponentPosCommand(currentComp, 2, (int) compzSpinner.getValue()));
 		});
 		SwingUtils.centerSpinnerText(compzSpinner);
+		SwingUtils.addBorderPadding(compzSpinner);
 
-		cbShowComponent = new JCheckBox(" Hide component");
-		cbShowComponent.addActionListener((e) -> {
-			if (currentComp != null) {
-				currentComp.hidden = cbShowComponent.isSelected();
-				updateComponentTabNames();
+		JPanel relativePosPanel = new JPanel(new MigLayout("fill, ins 0, wrap", "[grow]8[sg spin]4[sg spin]4[sg spin]"));
+		relativePosPanel.add(SwingUtils.getLabel("Pos offset", SwingConstants.CENTER, 12), "growx");
+		relativePosPanel.add(compxSpinner, "w 72!");
+		relativePosPanel.add(compySpinner, "w 72!");
+		relativePosPanel.add(compzSpinner, "w 72!");
+
+		return relativePosPanel;
+	}
+
+	public class SetComponentPosCommand extends AbstractCommand
+	{
+		private final SpriteComponent comp;
+		private final int coord;
+		private final int next;
+		private final int prev;
+
+		public SetComponentPosCommand(SpriteComponent comp, int coord, int next)
+		{
+			super("Set Component Offset");
+
+			this.comp = comp;
+			this.coord = coord;
+			this.next = next;
+
+			switch (coord) {
+				case 0:
+					this.prev = comp.posx;
+					break;
+				case 1:
+					this.prev = comp.posy;
+					break;
+				default:
+					this.prev = comp.posz;
+					break;
 			}
-		});
+		}
 
-		cbShowOnlySelectedComponent = new JCheckBox(" Draw current only");
-		cbShowOnlySelectedComponent.setSelected(false);
-		cbShowOnlySelectedComponent.setToolTipText("Only render the currently selected component in the preview window.");
+		@Override
+		public void exec()
+		{
+			super.exec();
 
-		cbOverridePalette = new JCheckBox(" Override default pal");
-		cbOverridePalette.setSelected(false);
-		cbOverridePalette.addActionListener((e) -> {
-			if (cbOverridePalette.isSelected())
-				animOverridePalette = (SpritePalette) paletteComboBox.getSelectedItem();
-			else
-				animOverridePalette = null;
-		});
+			switch (coord) {
+				case 0:
+					comp.posx = next;
+					break;
+				case 1:
+					comp.posy = next;
+					break;
+				default:
+					comp.posz = next;
+					break;
+			}
 
-		JButton editAnimationsButton = new JButton("Edit Animation List");
-		editAnimationsButton.addActionListener((e) -> {
-			if (sprite == null)
-				return;
-			showAnimationsEditorWindow();
-		});
+			suppressCommands = true;
+			switch (coord) {
+				case 0:
+					compxSpinner.setValue(next);
+					break;
+				case 1:
+					compySpinner.setValue(next);
+					break;
+				default:
+					compzSpinner.setValue(next);
+					break;
+			}
+			suppressCommands = false;
 
-		JButton addComponentButton = new JButton("Edit Components");
-		addComponentButton.addActionListener((e) -> {
-			if (sprite == null || currentAnim == null)
-				return;
-			showComponentsEditorWindow();
-		});
+			comp.incrementModified();
+		}
 
-		JPanel relativePosPanel = new JPanel(new MigLayout("fill, ins 0, wrap"));
-		relativePosPanel.add(SwingUtils.getLabel("Relative Component Position:", SwingConstants.RIGHT, 12));
-		relativePosPanel.add(compxSpinner, "h 20!, w 72!, sg spin, split 3, gaptop 4");
-		relativePosPanel.add(compySpinner, "w 72!, sg spin");
-		relativePosPanel.add(compzSpinner, "w 72!, sg spin, wrap");
+		@Override
+		public void undo()
+		{
+			super.undo();
 
-		relativePosPanel.add(cbShowComponent, "h 32!, gapbottom push");
+			switch (coord) {
+				case 0:
+					comp.posx = prev;
+					break;
+				case 1:
+					comp.posy = prev;
+					break;
+				default:
+					comp.posz = prev;
+					break;
+			}
 
-		playbackFrameLabel = SwingUtils.getLabel("", SwingConstants.RIGHT, 12);
+			suppressCommands = true;
+			switch (coord) {
+				case 0:
+					compxSpinner.setValue(prev);
+					break;
+				case 1:
+					compySpinner.setValue(prev);
+					break;
+				default:
+					compzSpinner.setValue(prev);
+					break;
+			}
+			suppressCommands = false;
 
-		JPanel playbackPanel = new JPanel(new MigLayout("fill, ins 0"));
-		playbackPanel.add(SwingUtils.getLabel("Playback Controls:", SwingConstants.RIGHT, 12));
-		playbackPanel.add(playbackFrameLabel, "growx, w 40::, wrap");
-		playbackPanel.add(getControlPanel(), "pushx, growx, span");
+			comp.decrementModified();
+		}
+	}
 
+	private JPanel getComponentPanel()
+	{
 		commandListPanel = new JPanel(new MigLayout("ins 0, fill"));
 		commandEditPanel = new JPanel(new MigLayout("ins 0, fill"));
 
-		componentPanel = new JPanel(new MigLayout("fill, ins 16", "[]32[grow]"));
-		componentPanel.add(relativePosPanel, "grow");
-		componentPanel.add(playbackPanel, "grow, wrap");
-		componentPanel.add(commandListPanel, "gaptop 16, grow, pushy");
-		componentPanel.add(commandEditPanel, "gaptop 16, grow, push");
+		componentPanel = new JPanel(new MigLayout("fill, ins 0, gapy 8", "[sg half]32[sg half]"));
+		componentPanel.add(commandListPanel, "grow, pushy");
+		componentPanel.add(commandEditPanel, "grow, pushy");
 
-		componentTabPool = new ArrayList<>();
+		return componentPanel;
+	}
 
-		componentTabs = new JTabbedPane();
-		componentTabs.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
+	private JPanel getAnimationsTab()
+	{
+		animList = new AnimationsList(this);
+		compList = new ComponentsList(this);
 
-		componentTabs.addChangeListener((e) -> {
-			if (ignoreComponentTabChanges)
+		cbShowOnlySelectedComponent = new JCheckBox(" Draw current only");
+		cbShowOnlySelectedComponent.setSelected(false);
+		cbShowOnlySelectedComponent.addActionListener((e) -> {
+			if (!suppressCommands)
+				execute(new ToggleDrawCurrent(cbShowOnlySelectedComponent));
+		});
+
+		paletteBox = new CommandComboBox<>();
+		SwingUtils.setFontSize(paletteBox, 14);
+		paletteBox.setMaximumRowCount(24);
+		paletteBox.addActionListener((e) -> {
+			if (sprite != null && !suppressCommands && paletteBox.allowChanges())
+				execute(new SetOverridePalette(paletteBox, sprite));
+		});
+
+		SpriteEditor.instance().palBoxRegistry.register(paletteBox, false, () -> {
+			if (sprite != null)
+				paletteBox.setSelectedItem(sprite.overridePalette);
+		});
+
+		cbOverridePalette = new JCheckBox(" Palette");
+		cbOverridePalette.setToolTipText("Override the default palette for rasters with selection");
+		cbOverridePalette.setSelected(false);
+		cbOverridePalette.addActionListener((e) -> {
+			if (!suppressCommands && sprite != null)
+				execute(new TogglePaletteOverride(cbOverridePalette, sprite, (b) -> {
+					paletteBox.setEnabled(b);
+				}));
+		});
+
+		JButton btnAddAnim = new JButton(ThemedIcon.ADD_16);
+		btnAddAnim.setToolTipText("Add new animation");
+		btnAddAnim.addActionListener((e) -> {
+			if (sprite == null) {
 				return;
-
-			final int id = componentTabs.getSelectedIndex();
-			if (id >= 0) {
-				invokeLater(() -> {
-					setComponent(id, true);
-				});
 			}
+
+			if (sprite.animations.size() >= Sprite.MAX_ANIMATIONS) {
+				Logger.logError("Cannot have more than " + Sprite.MAX_ANIMATIONS + " animations!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			SpriteAnimation anim = new SpriteAnimation(sprite);
+			String newName = anim.createUniqueName(String.format("Anim_%X", sprite.animations.size()));
+
+			if (newName == null) {
+				Logger.logError("Could not generate valid name for new animation!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			anim.name = newName;
+			CommandBatch batch = new CommandBatch("Add Animation");
+			batch.addCommand(new CreateAnimation("Add Animation", sprite, anim));
+			batch.addCommand(new SelectAnimation(animList, anim));
+			execute(batch);
 		});
 
-		componentTabs.addMouseListener(new MouseAdapter() {
-			@Override
-			public void mouseClicked(MouseEvent evt)
-			{
-				if (evt.getClickCount() == 3) {
-					int tabIndex = componentTabs.indexAtLocation(evt.getX(), evt.getY());
-					if (tabIndex < 0)
-						return;
-
-					incrementDialogsOpen();
-					String input = JOptionPane.showInputDialog(
-						componentTabs,
-						"Enter a new name", "Rename Component",
-						JOptionPane.PLAIN_MESSAGE);
-					decrementDialogsOpen();
-
-					if (input == null)
-						return;
-
-					String newName = input.trim();
-
-					if (newName.isEmpty() || currentAnim == null)
-						return;
-
-					SpriteComponent comp = currentAnim.components.get(tabIndex);
-					comp.name = newName;
-					componentTabs.setTitleAt(tabIndex, String.format("%-8s", newName));
-				}
+		JButton btnAddComp = new JButton(ThemedIcon.ADD_16);
+		btnAddComp.setToolTipText("Add new component");
+		btnAddComp.addActionListener((e) -> {
+			if (sprite == null) {
+				return;
 			}
+
+			if (currentAnim.components.size() >= Sprite.MAX_COMPONENTS) {
+				Logger.logError("Cannot have more than " + Sprite.MAX_COMPONENTS + " components!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			SpriteComponent comp = new SpriteComponent(currentAnim);
+			String newName = comp.createUniqueName(String.format("Comp_%X", currentAnim.components.size()));
+
+			if (newName == null) {
+				Logger.logError("Could not generate valid name for new component!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			comp.name = newName;
+			CommandBatch batch = new CommandBatch("Add Component");
+			batch.addCommand(new CreateComponent("Add Component", currentAnim, comp));
+			batch.addCommand(new SelectComponent(compList, comp));
+			execute(batch);
 		});
 
-		JPanel animationsTab = new JPanel(new MigLayout("fill, wrap, ins 16"));
+		JScrollPane animScrollPane = new JScrollPane(animList);
+		animScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
-		animationsTab.add(SwingUtils.getLabel("Animation: ", SwingConstants.RIGHT, 12), "sg etc, split 4");
-		animationsTab.add(animationComboBox, "w 200!");
-		animationsTab.add(editAnimationsButton, "gapleft 8, sg but, grow");
-		animationsTab.add(addComponentButton, "sg but, grow");
+		JScrollPane compScrollPane = new JScrollPane(compList);
+		compScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
-		animationsTab.add(SwingUtils.getLabel("Palette: ", SwingConstants.RIGHT, 12), "sg etc, split 4");
-		animationsTab.add(paletteComboBox, "w 200!");
-		animationsTab.add(cbOverridePalette, "gapleft 8, sg but, grow");
-		animationsTab.add(cbShowOnlySelectedComponent, "sg but, grow");
-		animationsTab.add(componentTabs, "grow, push, gaptop 8");
+		relativePosPanel = getComponentOffsetsPanel();
 
-		return animationsTab;
-	}
+		JPanel listsPanel = new JPanel(new MigLayout("fill, ins 0, wrap 2", "[grow, sg col][grow, sg col]"));
 
-	private void refreshTab()
-	{
-		assert (SwingUtilities.isEventDispatchThread());
+		listsPanel.add(btnAddAnim, "split 2");
+		listsPanel.add(new JLabel("Animations"), "growx");
 
-		JPanel tabPanel = (JPanel) componentTabs.getSelectedComponent();
-		if (tabPanel != null) {
-			tabPanel.add(componentPanel, "grow");
-			tabPanel.repaint();
-		}
-		else
-			Logger.logDetail("null tabPanel!");
-	}
+		listsPanel.add(btnAddComp, "split 3");
+		listsPanel.add(new JLabel("Components"), "growx");
+		listsPanel.add(cbShowOnlySelectedComponent, "gapleft push, align right");
 
-	private void showAnimationsEditorWindow()
-	{
-		if (sprite == null)
-			return;
+		listsPanel.add(animScrollPane, "pushy, grow, sg list");
+		listsPanel.add(compScrollPane, "pushy, grow, sg list");
 
-		ListEditPanel<SpriteAnimation> listPanel = new AnimationListEditPanel(sprite, sprite.animations, this);
-		getOptionDialog("Edit " + sprite + " Animations", listPanel).setOptions("Done").choose();
+		listsPanel.add(cbOverridePalette, "split 2, gapright 8, aligny center");
+		listsPanel.add(paletteBox, "growx");
 
-		invokeLater(() -> {
-			sprite.recalculateIndices();
-			if (currentAnim != null) {
-				if (sprite.animations.contains(currentAnim))
-					animationComboBox.setSelectedItem(currentAnim);
-				else if (!sprite.animations.isEmpty())
-					animationComboBox.setSelectedIndex(0);
-				else
-					animationComboBox.setSelectedItem(null);
-			}
-			animationComboBox.repaint();
-		});
-	}
+		listsPanel.add(relativePosPanel, "growx");
 
-	private void showComponentsEditorWindow()
-	{
-		if (sprite == null || currentAnim == null)
-			return;
+		JPanel playbackPanel = getPlaybackPanel();
 
-		ListEditPanel<SpriteComponent> listPanel = new ComponentListEditPanel(currentAnim, currentAnim.components);
-		getOptionDialog("Edit " + currentAnim + " Components", listPanel).setOptions("Done").choose();
+		componentPanel = getComponentPanel();
+		componentPanel.setVisible(false);
 
-		invokeLater(() -> {
-			sprite.recalculateIndices();
-			if (currentComp != null || currentAnim != null) {
-				if (currentAnim.components.contains(currentComp))
-					setComponent(currentComp.listIndex, false);
-				else if (!currentAnim.components.isEmpty())
-					setComponent(0, false);
-				else
-					currentComp = null;
-			}
-		});
+		JPanel animTab = new JPanel(new MigLayout("fill, wrap, ins 16 16 0 16, gapy 8", "", "[]16[]16[]"));
+		animTab.add(listsPanel, "grow, h 33%");
+		animTab.add(playbackPanel, "span, growx");
+		animTab.add(componentPanel, "span, grow, pushy");
+
+		return animTab;
 	}
 
 	private void showControls()
@@ -1493,113 +1956,67 @@ public class SpriteEditor extends BaseEditor
 		decrementDialogsOpen();
 	}
 
-	private void onRasterListChange()
+	private void saveCurrent()
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
-		sprite.recalculateIndices();
-		sprite.glRefreshRasters();
-		sprite.makeAtlas();
-
-		CommandAnimatorEditor.setModels(sprite);
-		KeyframeAnimatorEditor.setModels(sprite);
-
-		//XXX
-		for (int i = 0; i < sprite.animations.size(); i++) {
-			SpriteAnimation anim = sprite.animations.get(i);
-			anim.cleanDeletedRasters();
+		if (sprite != null) {
+			saveSprite(sprite);
+			dirtyModifiedSprites.remove(sprite);
 		}
 	}
 
-	private void onPaletteListChange()
+	private void saveAllChanges()
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
-		sprite.recalculateIndices();
-		sprite.glRefreshPalettes();
-
-		CommandAnimatorEditor.setModels(sprite);
-		KeyframeAnimatorEditor.setModels(sprite);
-
-		//XXX
-		for (int i = 0; i < sprite.animations.size(); i++) {
-			SpriteAnimation anim = sprite.animations.get(i);
-			anim.cleanDeletedPalettes();
+		for (Sprite spr : dirtyModifiedSprites) {
+			if (spr.isModified())
+				saveSprite(spr);
 		}
+		dirtyModifiedSprites.clear();
 	}
 
-	// resets the tabs on the component tabbed pane and selects the first one
-	private void populateComponentTabs()
+	private void saveSprite(Sprite spr)
 	{
-		assert (SwingUtilities.isEventDispatchThread());
+		AssetHandle ah = spr.getAsset();
+		ah = AssetManager.getTopLevel(ah);
 
-		componentTabs.removeAll();
+		sprite.reindex();
 
-		if (currentAnim == null)
-			return;
-
-		for (int i = 0; i < currentAnim.components.size(); i++) {
-			if (i >= componentTabPool.size()) {
-				componentTabPool.add(new JPanel(new MigLayout("fill, ins 0")));
-				Logger.logDetail("Tab pool size increased to " + componentTabPool.size());
-			}
-
-			SpriteComponent sc = currentAnim.components.getElementAt(i);
-
-			String tabName = sc.name.isEmpty() ? String.format("%02X", sc.getIndex()) : sc.name;
-			if (sc.hidden)
-				tabName = "<html><i>" + tabName;
-			componentTabs.add(componentTabPool.get(i), String.format("%-8s", tabName));
-		}
-	}
-
-	private void updateComponentTabNames()
-	{
-		for (int i = 0; i < currentAnim.components.size(); i++) {
-			SpriteComponent sc = currentAnim.components.getElementAt(i);
-
-			String tabName = sc.name.isEmpty() ? String.format("%02X", sc.getIndex()) : sc.name;
-			if (sc.hidden)
-				tabName = "<html><i>" + tabName;
-
-			componentTabs.setTitleAt(i, String.format("%-8s", tabName));
-		}
-	}
-
-	private void saveSprite()
-	{
-		if (sprite == null)
-			return;
-
-		File xmlFile = sprite.source;
-		if (!xmlFile.exists()) {
-			super.showErrorDialog(
-				"Missing XML File",
-				"Could not find XML file:",
-				xmlFile.getAbsolutePath());
-			return;
-		}
-
-		sprite.recalculateIndices();
-		sprite.saveChanges();
-		assert (sprite.source.getParentFile().isDirectory());
-
-		try (XmlWriter xmw = new XmlWriter(xmlFile)) {
+		try (XmlWriter xmw = new XmlWriter(ah)) {
 			sprite.savePalettes();
 			sprite.toXML(xmw);
 			xmw.save();
-			// force a reload
-			setSprite(spriteID, true);
-			Logger.log("Saved sprite to /" + xmlFile.getParentFile().getName() + "/");
+
+			sprite.clearModified();
+
+			Logger.log("Saved sprite " + spr.name);
 		}
 		catch (Throwable t) {
-			Logger.logError("Failed to save sprite /" + xmlFile.getParentFile().getName() + "/");
+			Logger.logError("Failed to save " + spr.name);
 			super.showStackTrace(t);
 		}
+	}
+
+	// any modification of the Sprite flags it as potentially modified until
+	// either the app is closed or Save All operation is performed
+	public void notifyModified()
+	{
+		if (sprite != null)
+			dirtyModifiedSprites.add(sprite);
+	}
+
+	@Override
+	protected boolean isModified()
+	{
+		for (Sprite spr : dirtyModifiedSprites) {
+			if (spr.isModified())
+				return true;
+		}
+		return false;
 	}
 
 	@Override
 	protected void saveChanges()
 	{
-		saveSprite();
+		saveAllChanges();
 	}
 
 	@Override
@@ -1607,17 +2024,10 @@ public class SpriteEditor extends BaseEditor
 	{
 		switch (editorMode) {
 			case Rasters:
-				ImgAsset picked = sprite.tryAtlasPick(trace);
-				if (picked != null) {
-					SwingUtilities.invokeLater(() -> {
-						for (SpriteRaster sr : sprite.rasters) {
-							if (sr.getFront() == picked || sr.getBack() == picked) {
-								rastersTab.selectRaster(sr);
-								break;
-							}
-						}
-					});
-				}
+				ImgAsset picked = sprite.tryImgAtlasPick(trace);
+				SwingUtilities.invokeLater(() -> {
+					rastersTab.selectAsset(picked);
+				});
 				break;
 			case Palettes:
 				break;
@@ -1628,21 +2038,69 @@ public class SpriteEditor extends BaseEditor
 				int selected = (trace.pixelData.stencilValue - 1);
 				currentAnim.setComponentSelected(selected);
 				if (selected >= 0)
-					setComponent(selected, false);
+					setComponentByID(selected);
 				break;
 		}
 	}
 
 	@Override
-	public void clickRMB()
+	public void startHoldingLMB()
 	{
-		switch (editorMode) {
-			case Rasters:
-			case Palettes:
-				selectedImgAsset = sprite.tryAtlasPick(trace);
-				break;
-			case Animation:
-				break;
+		if (editorMode == EditorMode.Animation && currentComp != null && currentComp.highlighted)
+			componentDragBegin();
+	}
+
+	@Override
+	public void stopHoldingLMB()
+	{
+		if (editorMode == EditorMode.Animation && dragComp != null)
+			componentDragEnd();
+	}
+
+	@Override
+	public void mouseExit()
+	{
+		if (editorMode == EditorMode.Animation && dragComp != null)
+			componentDragEnd();
+	}
+
+	private void componentDragBegin()
+	{
+		dragComp = currentComp;
+		dragComp.dragX = 0;
+		dragComp.dragY = 0;
+
+		dragStartX = animCamera.toWorldX(mouse.getPosX());
+		dragStartY = animCamera.toWorldY(mouse.getPosY());
+	}
+
+	private void componentDragEnd()
+	{
+		CommandBatch batch = new CommandBatch("Set Component Offset");
+		batch.addCommand(new SetComponentPosCommand(dragComp, 0, dragComp.posx + dragComp.dragX));
+		batch.addCommand(new SetComponentPosCommand(dragComp, 1, dragComp.posy + dragComp.dragY));
+		execute(batch);
+
+		dragComp.dragX = 0;
+		dragComp.dragY = 0;
+		dragComp = null;
+	}
+
+	private void componentDragUpdate()
+	{
+		dragComp.dragX = Math.round(animCamera.toWorldX(mouse.getPosX()) - dragStartX);
+		dragComp.dragY = Math.round(animCamera.toWorldY(mouse.getPosY()) - dragStartY);
+
+		if (flipHorizontal)
+			dragComp.dragX = -dragComp.dragX;
+
+		if (currentComp != null) {
+			SwingUtilities.invokeLater(() -> {
+				suppressCommands = true;
+				compxSpinner.setValue(currentComp.posx + currentComp.dragX);
+				compySpinner.setValue(currentComp.posy + currentComp.dragY);
+				suppressCommands = false;
+			});
 		}
 	}
 
@@ -1653,8 +2111,172 @@ public class SpriteEditor extends BaseEditor
 
 	public void updatePlaybackStatus()
 	{
-		//	assert(currentComp.frameCount >= 2);
-		playbackStatusLabel.setText(paused ? "(PAUSED) " : "");
-		playbackFrameLabel.setText(currentComp != null ? Math.max(currentComp.frameCount - 2, 0) + "" : "");
+		//TODO creates flickering of mouse icon during drag and drop
+		runInEDT(() -> {
+			if (currentAnim == null) {
+				playbackTime.setEnabled(false);
+				playbackTime.setValue(0);
+			}
+			else {
+				playbackTime.setEnabled(true);
+				playbackTime.setValue(Math.max(currentAnim.animTime - 2, 0));
+			}
+		});
+	}
+
+	public void registerDragList(DragReorderList<?> list)
+	{
+		dragLists.add(list);
+	}
+
+	public List<File> promptImportFiles()
+	{
+		List<File> files = new ArrayList<>();
+
+		incrementDialogsOpen();
+		if (importFileChooser.prompt() == ChooseDialogResult.APPROVE) {
+			List<File> result = importFileChooser.getSelectedFiles();
+			if (result != null)
+				files = result;
+		}
+		decrementDialogsOpen();
+
+		return files;
+	}
+
+	public SpriteRaster promptForRaster(Sprite s)
+	{
+		RasterSelectDialog dialog = new RasterSelectDialog(s.rasters);
+		showModalDialog(dialog, "Choose Raster");
+		return dialog.getSelected();
+	}
+
+	public boolean promptCannotUndo()
+	{
+		return promptCannotUndo("The following action");
+	}
+
+	/**
+	 * Try to show a warning that the following action cannot be undone.
+	 * Show this before anything that will flush the undo/redo stack.
+	 * @return true if user assents or the warnings are disabled, false otherwise
+	 */
+	public boolean promptCannotUndo(String actionName)
+	{
+		if (!optWarnIrreversible)
+			return true;
+
+		int result = SwingUtils.getWarningDialog()
+			.setTitle("Irreversible Action")
+			.setMessage(actionName + " cannot be undone.", "Proceed anyway?")
+			.setOptions("Yes", "No", "Don't Remind Me")
+			.choose();
+
+		if (result == 0) {
+			return true;
+		}
+		else if (result == 2) {
+			Config cfg = getConfig();
+			if (cfg != null)
+				cfg.setBoolean(Options.SprWarnIrreversible, false);
+			optWarnIrreversible = false;
+			return true;
+		}
+
+		return false;
+	}
+
+	private void showPreferences()
+	{
+		Config cfg = getConfig();
+		if (cfg == null)
+			return;
+
+		SpritePreferencesPanel preferences = new SpritePreferencesPanel();
+		preferences.setValues(cfg);
+
+		int choice = super.getConfirmDialog("Editor Preferences", preferences)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose();
+
+		if (choice == JOptionPane.OK_OPTION) {
+			preferences.getValues(cfg);
+			loadPreferences();
+			cfg.saveConfigFile();
+			Logger.log("Saved preferences to " + cfg.getFile().getName());
+		}
+	}
+
+	private void showCleanupSprite()
+	{
+		if (sprite == null)
+			return;
+
+		SpriteCleanupPanel panel = new SpriteCleanupPanel(this, sprite);
+
+		int choice = super.getConfirmDialog("Cleanup Options", panel)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose();
+
+		if (choice == JOptionPane.OK_OPTION && panel.getActionsCount() > 0) {
+			if (promptCannotUndo("Cleanup sprite actions")) {
+				panel.doCleanup();
+				flushUndoRedo();
+			}
+		}
+	}
+
+	private HashSet<Class<? extends Editable>> editableChangedSet = new HashSet<>();
+	private HashMap<Class<? extends Editable>, ArrayList<Runnable>> editableListeners = new HashMap<>();
+
+	/**
+	 *
+	 * @param c
+	 */
+	public void notifyEditableChanged(Class<? extends Editable> c)
+	{
+		editableChangedSet.add(c);
+	}
+
+	/**
+	 * Registers code to run when a change has been detected within a certain class of Editable objects
+	 * @param c
+	 * @param runnable
+	 */
+	public void registerEditableListener(Class<? extends Editable> c, Runnable runnable)
+	{
+		ArrayList<Runnable> listeners = editableListeners.get(c);
+
+		if (listeners == null) {
+			listeners = new ArrayList<>();
+			editableListeners.put(c, listeners);
+		}
+
+		listeners.add(runnable);
+	}
+
+	public void flushEditableUpdates()
+	{
+		if (editableChangedSet.isEmpty())
+			return;
+
+		for (Class<?> c : editableChangedSet) {
+			ArrayList<Runnable> listeners = editableListeners.get(c);
+			if (listeners != null) {
+				for (Runnable listener : listeners)
+					listener.run();
+			}
+		}
+
+		editableChangedSet.clear();
+	}
+
+	// post the error message when an editable is selected or a new error is detected
+	public void postEditableError(Editable e)
+	{
+		if (e != null && e.hasError())
+			errorLabel.setMessage(e.getErrorMsg(), SwingUtils.getRedTextColor());
 	}
 }

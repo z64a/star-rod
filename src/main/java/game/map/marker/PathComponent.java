@@ -10,13 +10,13 @@ import java.util.List;
 import org.w3c.dom.Element;
 
 import common.Vector3f;
+import common.commands.EditableField;
+import common.commands.EditableField.EditableFieldFactory;
+import common.commands.EditableField.StandardBoolName;
 import game.map.MutablePoint;
 import game.map.MutablePoint.PointBackup;
 import game.map.editor.camera.MapEditViewport;
 import game.map.editor.camera.ViewType;
-import game.map.editor.commands.fields.EditableField;
-import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
-import game.map.editor.commands.fields.EditableField.StandardBoolName;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;

@@ -25,7 +25,7 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 
 import game.map.editor.MapEditor;
-import game.map.editor.commands.AbstractCommand;
+import common.commands.AbstractCommand;
 import util.BasicNode;
 import util.Logger;
 import util.identity.IdentityArrayList;

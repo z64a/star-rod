@@ -1,7 +1,9 @@
 package app;
 
+import java.awt.Desktop;
 import java.awt.Frame;
 import java.awt.Image;
+import java.awt.Toolkit;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -16,6 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.regex.Matcher;
@@ -57,6 +61,14 @@ public abstract class Environment
 
 	public static ImageIcon ICON_DEFAULT = loadIconResource(ResourceType.Icon, "icon.png");
 	public static ImageIcon ICON_ERROR = null;
+
+	private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
+	public static final ExecutorService GLOBAL_EXECUTOR = Executors.newFixedThreadPool(NUM_THREADS);
+
+	public static ExecutorService getExecutor()
+	{
+		return GLOBAL_EXECUTOR;
+	}
 
 	private static enum OSFamily
 	{
@@ -307,10 +319,27 @@ public abstract class Environment
 				if (!latestVersion.equals("v" + versionString)) {
 					Logger.log("Detected newer remote version: " + latestVersion);
 
-					SwingUtils.getWarningDialog()
+					int result = SwingUtils.getWarningDialog()
 						.setTitle("Update Available")
 						.setMessage("A newer version is available!", "Please visit the GitHub repo to download it.")
-						.show();
+						.setOptions("Yes", "No", "Don't Remind Me")
+						.choose();
+
+					if (result == 0) {
+						try {
+							Desktop desktop = Desktop.getDesktop();
+							URI uri = new URI("https://github.com/z64a/star-rod/releases");
+							desktop.browse(uri);
+							exit();
+						}
+						catch (IOException | URISyntaxException e) {
+							Toolkit.getDefaultToolkit().beep();
+							Logger.printStackTrace(e);
+						}
+					}
+					else if (result == 2) {
+						mainConfig.setBoolean(Options.CheckForUpdates, false);
+					}
 				}
 			}
 			else {
@@ -371,7 +400,8 @@ public abstract class Environment
 		if (oldConfigFile.exists()) {
 			try {
 				FileUtils.moveFile(oldConfigFile, configFile);
-			} catch (FileExistsException e) {
+			}
+			catch (FileExistsException e) {
 				// existing configFile takes precedence
 			}
 		}

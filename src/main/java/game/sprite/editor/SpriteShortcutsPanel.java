@@ -7,6 +7,7 @@ import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 
 import net.miginfocom.swing.MigLayout;
+import util.ui.HelpIcon;
 
 public class SpriteShortcutsPanel extends JPanel
 {
@@ -16,9 +17,12 @@ public class SpriteShortcutsPanel extends JPanel
 
 		JTabbedPane tabs = new JTabbedPane();
 
-		tabs.addTab("Animations", getAnimationsTab());
+		tabs.addTab("Lists", getListsTab());
+		tabs.addTab("Camera", getCameraTab());
+		tabs.addTab("Playback", getPlaybackTab());
+		tabs.addTab("Misc", getMiscTab());
 
-		add(tabs, "grow, w 320!, h 360!");
+		add(tabs, "grow, w 320!");
 	}
 
 	private void addHeader(JPanel panel, String text)
@@ -39,43 +43,75 @@ public class SpriteShortcutsPanel extends JPanel
 
 	private void addShortcut(JPanel panel, String desc, String keys, String tip)
 	{
-		String lblText = tip.isEmpty() ? desc : desc + "*";
-		JLabel lbl = new JLabel(lblText);
-		if (!tip.isEmpty())
-			lbl.setToolTipText(tip);
-		panel.add(lbl);
+		JLabel lbl = new JLabel(desc);
+
+		if (!tip.isEmpty()) {
+			HelpIcon help = new HelpIcon(tip);
+			panel.add(lbl, "split 2");
+			panel.add(help);
+		}
+		else {
+			panel.add(lbl);
+		}
+
 		panel.add(new JLabel(keys), "wrap");
 	}
 
-	private JPanel getAnimationsTab()
+	private JPanel getListsTab()
 	{
 		JPanel tab = new JPanel(new MigLayout("fillx", "[50%][50%]"));
 
 		// @formatter:off
-		addHeader(tab, "Commands List");
-		addShortcut(tab, "Select", "Left Click");
-		addShortcut(tab, "Reorder", "Drag Selected");
-		addShortcut(tab, "Duplicate", "Ctrl + Left Click");
-		addShortcut(tab, "Delete", "Delete (while selected)");
-		addShortcut(tab, "Skip Animation To", "Right Click", "Play the current animation until the command is reached, if possible.");
+		addShortcut(tab, "Select",      "Left Click");
+		addShortcut(tab, "Rename",      "F2 (or Double Click)");
+		addShortcut(tab, "Reorder",     "Click + Drag");
+		addShortcut(tab, "Duplicate",   "Ctrl + D");
+		addShortcut(tab, "Copy",        "Ctrl + C");
+		addShortcut(tab, "Paste",       "Ctrl + V");
+		addShortcut(tab, "Delete",      "Delete (while selected)");
+		// @formatter:on
 
-		addHeader(tab, "Playback");
+		return tab;
+	}
+
+	private JPanel getCameraTab()
+	{
+		JPanel tab = new JPanel(new MigLayout("fillx", "[50%][50%]"));
+
+		// @formatter:off
+		addShortcut(tab, "WASD",        "Pan");
+		addShortcut(tab, "Mouse Wheel", "Zoom");
+		addShortcut(tab, "Space",       "Reset");
+		// @formatter:on
+
+		return tab;
+	}
+
+	private JPanel getPlaybackTab()
+	{
+		JPanel tab = new JPanel(new MigLayout("fillx", "[50%][50%]"));
+
+		// @formatter:off
 		addShortcut(tab, "Play/Pause",	"Alt + Up Arrow");
 		addShortcut(tab, "Stop",		"Alt + Down Arrow");
 		addShortcut(tab, "Prev Frame",	"Alt + Left Arrow");
 		addShortcut(tab, "Next Frame",	"Alt + Right Arrow");
 		addShortcut(tab, "Restart",		"Alt + Home");
+		// @formatter:on
 
-		/*
-		addHeader(tab, "Navigation");
-		addShortcut(tab, "Prev Animation", "Alt + Up Arrow");
-		addShortcut(tab, "Next Animation", "Alt + Down Arrow");
-		addShortcut(tab, "Prev Component", "Alt + Left Arrow");
-		addShortcut(tab, "Next Component", "Alt + Right Arrow");
-		*/
+		return tab;
+	}
 
-		addHeader(tab, "Misc");
-		addShortcut(tab, "Rename Component", "Triple Click on Tab");
+	private JPanel getMiscTab()
+	{
+		JPanel tab = new JPanel(new MigLayout("fillx", "[50%][50%]"));
+
+		// @formatter:off
+		addHeader(tab, "Commands List");
+		addShortcut(tab, "Skip Animation To", "Right Click", "Play the current animation until the command is reached, if possible.");
+
+		addHeader(tab, "Animations Viewport");
+		addShortcut(tab, "Move Component", "Click + Drag");
 		// @formatter:on
 
 		return tab;

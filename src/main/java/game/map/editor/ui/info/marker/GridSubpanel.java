@@ -9,8 +9,8 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 
 import app.SwingUtils;
+import common.commands.EditableField;
 import game.map.editor.MapEditor;
-import game.map.editor.commands.fields.EditableField;
 import game.map.editor.ui.info.MarkerInfoPanel;
 import game.map.marker.GridComponent;
 import net.miginfocom.swing.MigLayout;

@@ -176,25 +176,35 @@ public class Palette
 			raf.writeShort(packIndex(i));
 	}
 
+	public Color getColor(int i)
+	{
+		return new Color(r[i] & 0xFF, g[i] & 0xFF, b[i] & 0xFF, a[i] & 0xFF);
+	}
+
 	public Color[] getColors()
 	{
 		Color[] colors = new Color[size];
 		for (int i = 0; i < colors.length; i++)
-			colors[i] = new Color(r[i] & 0xFF, g[i] & 0xFF, b[i] & 0xFF, a[i] & 0xFF);
+			colors[i] = getColor(i);
 		return colors;
 	}
 
-	public void setColor(int paletteColorIndex, int R, int G, int B, int A)
+	public void setColor(int index, Color c)
 	{
-		setColor(paletteColorIndex, (byte) R, (byte) G, (byte) B, (byte) A);
+		setColor(index, c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha());
 	}
 
-	public void setColor(int paletteColorIndex, byte R, byte G, byte B, byte A)
+	public void setColor(int index, int R, int G, int B, int A)
 	{
-		r[paletteColorIndex] = R;
-		g[paletteColorIndex] = G;
-		b[paletteColorIndex] = B;
-		a[paletteColorIndex] = A;
+		setColor(index, (byte) R, (byte) G, (byte) B, (byte) A);
+	}
+
+	public void setColor(int index, byte R, byte G, byte B, byte A)
+	{
+		r[index] = R;
+		g[index] = G;
+		b[index] = B;
+		a[index] = A;
 	}
 
 	// Packing and unpacking require converting between a 5-bit color channel

@@ -60,6 +60,10 @@ import common.KeyboardInput.KeyboardInputListener;
 import common.MouseInput;
 import common.MouseInput.MouseManagerListener;
 import common.Vector3f;
+import common.commands.AbstractCommand;
+import common.commands.CommandBatch;
+import common.commands.CommandManager;
+import common.commands.EditableField;
 import game.ProjectDatabase;
 import game.map.Axis;
 import game.map.BoundingBox;
@@ -84,11 +88,9 @@ import game.map.editor.camera.PerspZoneCamera;
 import game.map.editor.camera.PerspectiveViewport;
 import game.map.editor.camera.UVEditorViewport;
 import game.map.editor.camera.ViewType;
-import game.map.editor.commands.AbstractCommand;
 import game.map.editor.commands.ApplyTexture;
 import game.map.editor.commands.ApplyTextureToList;
 import game.map.editor.commands.CleanupTriangles;
-import game.map.editor.commands.CommandBatch;
 import game.map.editor.commands.ConvertHitObjects.ConvertColliders;
 import game.map.editor.commands.ConvertHitObjects.ConvertZones;
 import game.map.editor.commands.CreateBVH;
@@ -102,13 +104,13 @@ import game.map.editor.commands.InvertNormals;
 import game.map.editor.commands.JoinHitObjects.JoinColliders;
 import game.map.editor.commands.JoinHitObjects.JoinZones;
 import game.map.editor.commands.JoinModels;
+import game.map.editor.commands.MapCommandManager;
 import game.map.editor.commands.PaintVertices;
 import game.map.editor.commands.SeparateVertices;
 import game.map.editor.commands.SplitHitObject.SplitCollider;
 import game.map.editor.commands.SplitHitObject.SplitZone;
 import game.map.editor.commands.SplitModel;
 import game.map.editor.commands.ToggleDoubleSided;
-import game.map.editor.commands.fields.EditableField;
 import game.map.editor.render.Color4d;
 import game.map.editor.render.PreviewGeneratorFromPaths;
 import game.map.editor.render.PreviewGeneratorFromTriangles;
@@ -556,7 +558,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		drawGeometryPreview = new PreviewGeometry();
 
 		selectionManager = new SelectionManager(this);
-		commandManager = new CommandManager(32);
+		commandManager = new MapCommandManager(this, 32);
 		drawTriManager = new DrawTrianglesManager(this, drawGeometryPreview);
 
 		KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
@@ -955,7 +957,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			}
 
 			if (choice == 0) {
-				File mapFile = SelectMapDialog.showPrompt();
+				File mapFile = SelectMapDialog.showPrompt(null);
 				if (mapFile != null) {
 					selectedMap = Map.loadMap(mapFile);
 					break;
@@ -1083,7 +1085,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		selectionPaintRadius = 16.0f;
 
 		selectionManager = new SelectionManager(this);
-		commandManager = new CommandManager(32);
+		commandManager = new MapCommandManager(this, 32);
 
 		if (changeMapState == ChangeMapState.NONE) {
 			showModels = true;
@@ -3162,7 +3164,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 				CommandBatch syncHidden = new CommandBatch("Set Visibility");
 				syncHidden.silence();
-				syncHidden.setModifiesMap(false);
+				syncHidden.setModifiesData(false);
 				syncHidden.addCommand(new HideObjectTreeSimple("Models", map.modelTree, !showModels));
 				syncHidden.addCommand(new HideObjectTreeSimple("Colliders", map.colliderTree, !showColliders));
 				syncHidden.addCommand(new HideObjectTreeSimple("Zones", map.zoneTree, !showZones));
@@ -4517,7 +4519,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}
@@ -4673,7 +4675,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		uvScale = editorConfig.getFloat(Options.uvScale);
 		normalsLength = editorConfig.getFloat(Options.NormalsLength);
 
-		int undoLimit = editorConfig.getInteger(Options.UndoLimit);
+		int undoLimit = editorConfig.getInteger(Options.MapUndoLimit);
 		commandManager.setUndoLimit(undoLimit);
 
 		rotationSnapIncrement = editorConfig.getFloat(Options.AngleSnap);

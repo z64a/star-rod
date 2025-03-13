@@ -8,16 +8,16 @@ import java.util.function.Consumer;
 import org.w3c.dom.Element;
 
 import common.Vector3f;
+import common.commands.EditableField;
+import common.commands.EditableField.EditableFieldFactory;
+import common.commands.EditableField.StandardBoolName;
 import game.ProjectDatabase;
 import game.map.Axis;
 import game.map.MutablePoint;
 import game.map.editor.MapEditor;
 import game.map.editor.PointObject;
 import game.map.editor.camera.MapEditViewport;
-import game.map.editor.commands.AbstractCommand;
-import game.map.editor.commands.fields.EditableField;
-import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
-import game.map.editor.commands.fields.EditableField.StandardBoolName;
+import common.commands.AbstractCommand;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;
 import game.map.editor.render.TextureManager;
@@ -322,7 +322,7 @@ public class ShadingLightSource extends PointObject implements XmlSerializable
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}
@@ -377,7 +377,7 @@ public class ShadingLightSource extends PointObject implements XmlSerializable
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}
@@ -444,7 +444,7 @@ public class ShadingLightSource extends PointObject implements XmlSerializable
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}
@@ -487,7 +487,7 @@ public class ShadingLightSource extends PointObject implements XmlSerializable
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}
@@ -530,7 +530,7 @@ public class ShadingLightSource extends PointObject implements XmlSerializable
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}

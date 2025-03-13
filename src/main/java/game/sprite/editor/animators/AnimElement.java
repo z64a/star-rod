@@ -1,19 +1,74 @@
 package game.sprite.editor.animators;
 
-import game.sprite.SpriteComponent;
+import java.awt.Color;
+import java.awt.Component;
+import java.util.List;
 
-public abstract class AnimElement
+import app.SwingUtils;
+import game.sprite.SpriteComponent;
+import game.sprite.editor.Editable;
+import util.xml.XmlWrapper.XmlSerializable;
+
+public abstract class AnimElement implements Editable, XmlSerializable
 {
-	protected final SpriteComponent ownerComp;
-	protected boolean highlighted = false;
+	public static enum AdvanceResult
+	{
+		BLOCK, NEXT, JUMP
+	}
+
+	public final SpriteComponent owner;
+	public boolean highlighted = false;
+
+	// first occurance frame of this element during animation playback
+	public int animTime = -1;
+
+	// used by keyframes for decorating targets of Goto/Repeat
+	public boolean isTarget = false;
 
 	public AnimElement(SpriteComponent c)
 	{
-		this.ownerComp = c;
+		this.owner = c;
 	}
 
 	public abstract AnimElement copy();
 
-	// returns TRUE if the next keyframe should be executed
-	public abstract boolean advance();
+	/**
+	 * Perform the action for a single command
+	 * @return AdvanceResult indicating how to handle advancing the next command
+	 */
+	public abstract AdvanceResult apply();
+
+	public abstract Component getPanel();
+
+	public abstract String getName();
+
+	public abstract String getFormattedText();
+
+	public Color getTextColor()
+	{
+		// highlight invalid values as errors
+		if (hasError())
+			return SwingUtils.getRedTextColor();
+		else
+			return null;
+	}
+
+	private final EditableData editableData = new EditableData(this);
+
+	@Override
+	public EditableData getEditableData()
+	{
+		return editableData;
+	}
+
+	@Override
+	public void addEditableDownstream(List<Editable> downstream)
+	{}
+
+	@Override
+	public String checkErrorMsg()
+	{
+		// override to add error reporting
+		return null;
+	}
 }

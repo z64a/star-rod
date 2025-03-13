@@ -90,6 +90,7 @@ dependencies {
         
     implementation("com.formdev:flatlaf:3.4.1")
     implementation("com.formdev:flatlaf-intellij-themes:3.4.1")
+    implementation("com.formdev:flatlaf-extras:3.4.1")
     
     implementation(files("lib/org.eclipse.cdt.core-5.11.0.jar"))
     implementation(files("lib/org.eclipse.equinox.common-3.6.0.jar"))

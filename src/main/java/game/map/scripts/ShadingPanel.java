@@ -7,12 +7,12 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 import app.SwingUtils;
+import common.commands.AbstractCommand;
+import common.commands.CommandBatch;
 import game.ProjectDatabase;
 import game.map.Map;
 import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.IShutdownListener;
-import game.map.editor.commands.AbstractCommand;
-import game.map.editor.commands.CommandBatch;
 import game.map.editor.ui.SwingGUI;
 import game.map.shading.ShadingLightSource;
 import game.map.shading.ShadingProfile;
@@ -179,6 +179,9 @@ public class ShadingPanel extends JPanel implements IShutdownListener
 		public void exec()
 		{
 			super.exec();
+
+			MapEditor editor = MapEditor.instance();
+
 			map.scripts.shadingProfile.set(newShading);
 			updateFields(map.scripts);
 
@@ -201,6 +204,8 @@ public class ShadingPanel extends JPanel implements IShutdownListener
 		public void undo()
 		{
 			super.undo();
+
+			MapEditor editor = MapEditor.instance();
 
 			if (newShading != null) {
 				for (ShadingLightSource source : newShading.sources) {

@@ -7,7 +7,7 @@ import javax.swing.JLabel;
 
 import org.w3c.dom.Element;
 
-import game.map.editor.commands.AbstractCommand;
+import common.commands.AbstractCommand;
 import game.map.editor.ui.ScriptManager;
 import renderer.shaders.ShaderManager;
 import renderer.shaders.scene.ModelShader;

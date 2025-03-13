@@ -14,7 +14,7 @@ import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
 
 import game.map.editor.DeepCopyable;
-import game.map.editor.commands.AbstractCommand;
+import common.commands.AbstractCommand;
 
 public class CategoryTreeModel<K extends Enum<?>, T extends DeepCopyable> extends DefaultTreeModel
 {

@@ -3,32 +3,24 @@ package game.sprite;
 import static game.texture.TileFormat.CI_4;
 import static org.lwjgl.opengl.GL13.GL_CLAMP_TO_BORDER;
 
-import java.awt.Image;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
-
-import javax.swing.ImageIcon;
 
 import org.apache.commons.io.FilenameUtils;
 
 import assets.AssetHandle;
-import assets.AssetManager;
-import game.texture.ImageConverter;
+import game.sprite.editor.ImgPreview;
 import game.texture.Palette;
 import game.texture.Tile;
 
-public class ImgAsset
+public class ImgAsset implements GLResource
 {
+	// source is not final because it updates upon saving
 	private AssetHandle source;
 
 	public final Tile img;
-	public SpritePalette boundPal;
+	public final ImgPreview preview;
 
-	public transient BufferedImage previewImg;
-	public transient ImageIcon icon;
-	public transient ImageIcon tiny;
-
-	// members used to lay out the editor sprite atlas
+	// members used to lay out the rasters tab sprite atlas
 	public transient int atlasRow, atlasX, atlasY;
 	public transient boolean inUse;
 
@@ -36,16 +28,17 @@ public class ImgAsset
 	{
 		source = ah;
 		img = Tile.load(ah, CI_4);
+		preview = new ImgPreview();
 	}
 
-	public void save() throws IOException
+	public AssetHandle getSource()
 	{
-		if (boundPal != null && boundPal.hasPal()) {
-			img.palette = boundPal.getPal();
-		}
+		return source;
+	}
 
-		source = AssetManager.getTopLevel(source);
-		img.savePNG(source.getAbsolutePath());
+	public String getFilename()
+	{
+		return source.getName();
 	}
 
 	public String getName()
@@ -61,39 +54,15 @@ public class ImgAsset
 
 	public Palette getPalette()
 	{
-		if (boundPal == null || !boundPal.hasPal()) {
-			return img.palette;
-		}
-		else {
-			return boundPal.getPal();
-		}
+		return img.palette;
 	}
 
 	public void loadEditorImages()
 	{
-		previewImg = ImageConverter.getIndexedImage(img, getPalette());
-		icon = new ImageIcon(getScaledToFit(previewImg, 80));
-		tiny = new ImageIcon(getScaledToFit(previewImg, 20));
+		preview.load(this);
 	}
 
-	private static Image getScaledToFit(BufferedImage in, int maxSize)
-	{
-		if (in.getHeight() > in.getWidth()) {
-			if (in.getHeight() > maxSize) {
-				return in.getScaledInstance(
-					(int) (in.getWidth() * (maxSize / (float) in.getHeight())), maxSize, java.awt.Image.SCALE_SMOOTH);
-			}
-		}
-		else {
-			if (in.getWidth() > maxSize) {
-				return in.getScaledInstance(maxSize,
-					(int) (in.getHeight() * (maxSize / (float) in.getWidth())), java.awt.Image.SCALE_SMOOTH);
-			}
-		}
-
-		return in.getScaledInstance(in.getWidth(), in.getHeight(), java.awt.Image.SCALE_DEFAULT);
-	}
-
+	@Override
 	public void glLoad()
 	{
 		if (img != null) {
@@ -102,6 +71,7 @@ public class ImgAsset
 		}
 	}
 
+	@Override
 	public void glDelete()
 	{
 		if (img != null) {

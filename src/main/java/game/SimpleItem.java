@@ -3,10 +3,13 @@ package game;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.CompletableFuture;
 
 import app.Directories;
+import app.Environment;
 import assets.AssetHandle;
 import assets.AssetManager;
 import assets.AssetSubdir;
@@ -23,13 +26,13 @@ public class SimpleItem
 	public final String iconName;
 	public final Tile iconTile;
 
-	private SimpleItem(int index, String name, String iconName)
+	private SimpleItem(SimpleItemTemplate template)
 	{
-		this.index = index;
-		this.name = name;
-		this.enumName = "ITEM_" + name.replaceAll("((?<=[a-z0-9])[A-Z]|(?!^)(?<!_)[A-Z](?=[a-z]))", "_$1").toUpperCase();
+		this.index = template.index;
+		this.name = template.name;
+		this.iconName = template.iconName;
 
-		this.iconName = iconName;
+		this.enumName = "ITEM_" + name.replaceAll("((?<=[a-z0-9])[A-Z]|(?!^)(?<!_)[A-Z](?=[a-z]))", "_$1").toUpperCase();
 
 		AssetHandle ah = AssetManager.get(AssetSubdir.ICON, iconName + ".png");
 		Tile tile = null;
@@ -45,9 +48,9 @@ public class SimpleItem
 	}
 
 	@SuppressWarnings("unchecked")
-	public static ArrayList<SimpleItem> readAll()
+	public static List<SimpleItem> readAll()
 	{
-		ArrayList<SimpleItem> items = new ArrayList<>();
+		ArrayList<SimpleItemTemplate> templates = new ArrayList<>();
 
 		File yamlFile = Directories.PROJ_SRC.file("item_table.yaml");
 		ArrayList<Object> itemList = YamlHelper.readAsList(yamlFile);
@@ -62,11 +65,34 @@ public class SimpleItem
 
 				String name = e.getKey();
 				String iconName = YamlHelper.getString(inner, "icon", "key/Gift");
-				items.add(new SimpleItem(i, name, iconName));
+				templates.add(new SimpleItemTemplate(i, name, iconName));
 				i++;
 			}
 		}
 
+		// load all SimpleItems in parallel; otherwise this is a performance bottleneck during startup
+		List<CompletableFuture<SimpleItem>> futures = templates.stream()
+			.map(template -> CompletableFuture.supplyAsync(() -> new SimpleItem(template), Environment.getExecutor()))
+			.toList();
+
+		List<SimpleItem> items = futures.stream()
+			.map(CompletableFuture::join)
+			.toList();
+
 		return items;
+	}
+
+	private static class SimpleItemTemplate
+	{
+		public final int index;
+		public final String name;
+		public final String iconName;
+
+		private SimpleItemTemplate(int index, String name, String iconName)
+		{
+			this.index = index;
+			this.name = name;
+			this.iconName = iconName;
+		}
 	}
 }

@@ -7,22 +7,21 @@ import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Frame;
-import java.awt.KeyboardFocusManager;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
 
 import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JMenuBar;
 import javax.swing.JOptionPane;
@@ -51,9 +50,7 @@ import app.config.Options;
 import app.config.Options.Scope;
 import common.KeyboardInput.KeyboardInputListener;
 import common.MouseInput.MouseManagerListener;
-import game.map.editor.CommandManager;
 import game.map.editor.Tickable;
-import game.map.editor.commands.AbstractCommand;
 import net.miginfocom.swing.MigLayout;
 import util.LogFile;
 import util.Logger;
@@ -73,7 +70,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 
 	private enum RunState
 	{
-		INIT, RUN, CLOSE
+		INIT, SETUP, RUN, CLOSE
 	}
 
 	private RunState runState = RunState.INIT;
@@ -93,14 +90,12 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	private static final float MESSAGE_FADE_TIME = 0.5f;
 
 	// editor state
-	protected volatile boolean modified = false;
 	private volatile boolean closeRequested = false;
 	private volatile OpenDialogCounter openDialogs = new OpenDialogCounter();
 
 	protected boolean glWindowGrabsMouse;
 	protected boolean glWindowHaltsForDialogs;
 
-	private CommandManager commandManager; // handles comnmand execution and undo/redo
 	private BlockingQueue<Runnable> eventQueue = new ArrayBlockingQueue<>(16);
 
 	// logging
@@ -114,9 +109,13 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 
 	// gl renderer information
 
+	private final BaseEditorSettings editorSettings;
+
 	public BaseEditor(BaseEditorSettings settings)
 	{
 		super();
+
+		this.editorSettings = settings;
 
 		LoadingBar.show("Please Wait");
 
@@ -140,22 +139,33 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			File editorConfigFile = new File(PROJ_CFG + "/" + settings.configFileName);
 			config = readEditorConfig(settings.configScope, editorConfigFile);
 		}
+	}
 
-		commandManager = new CommandManager(32);
+	/**
+	 * Creates the GUI. Expects to be called in the constructor of a subclass.
+	 * This ensures all subclass fields are initialized before the callbacks here are invoked.
+	 */
+	public void setup()
+	{
+		if (runState != RunState.INIT)
+			throw new IllegalStateException("Only call setup *once* during construction!");
+		else
+			runState = RunState.SETUP;
+
 		beforeCreateGui();
 
-		// create the GUI
-		CountDownLatch guiReadySignal = new CountDownLatch(1);
-		SwingUtilities.invokeLater(() -> {
-			createFrame(settings);
-			guiReadySignal.countDown();
-		});
-
-		// wait for the swing thread to finish creating the GUI
 		try {
-			guiReadySignal.await();
+			SwingUtilities.invokeAndWait(() -> {
+				try {
+					createFrame(editorSettings);
+				}
+				catch (Throwable e) {
+					StarRodMain.displayStackTrace(e);
+					Environment.exit(-1);
+				}
+			});
 		}
-		catch (InterruptedException e) {
+		catch (InvocationTargetException | InterruptedException e) {
 			StarRodMain.displayStackTrace(e);
 			Environment.exit(-1);
 		}
@@ -165,26 +175,56 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		frame.pack();
 
 		Logger.addListener(this);
+
+		afterCreateGui();
 	}
 
-	public void invokeLater(Runnable run)
+	/**
+	 * Schedules code to execute during the main loop to ensure a valid GL context is available
+	 * @param runnable the code to execute
+	 */
+	public void invokeLater(Runnable runnable)
 	{
-		eventQueue.add(run);
+		eventQueue.add(runnable);
 	}
 
-	public void execute(AbstractCommand cmd)
+	/**
+	 * Schedules code to run in the EDT; runs immediately when invoked from the EDT.
+	 * @param runnable the code to execute
+	 */
+	public void runInEDT(Runnable runnable)
 	{
 		if (SwingUtilities.isEventDispatchThread())
-			eventQueue.add(() -> commandManager.executeCommand(cmd));
+			runnable.run();
 		else
-			commandManager.executeCommand(cmd);
+			SwingUtilities.invokeLater(runnable);
 	}
 
+	/**
+	 * Schedules code to run in a synchronized block. Will not execute during the GL thread's
+	 * critical section.
+	 * @param runnable
+	 */
+	public void runThreadsafe(Runnable runnable)
+	{
+		synchronized (modifyLock) {
+			runnable.run();
+		}
+	}
+
+	/**
+	 * Registers a callback that will execute during every iteration of the main loop
+	 * @param ticker the callback to register
+	 */
 	public void registerTickable(Tickable ticker)
 	{
 		tickers.add(ticker);
 	}
 
+	/**
+	 * Removes a previously registered tickable callback
+	 * @param ticker the callback to remove
+	 */
 	public void deregisterTickable(Tickable ticker)
 	{
 		tickers.remove(ticker);
@@ -192,7 +232,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 
 	public final boolean launch()
 	{
-		if (runState != RunState.INIT)
+		if (runState != RunState.SETUP)
 			throw new IllegalStateException("Cannot launch an editor which is already running!");
 		else
 			runState = RunState.RUN;
@@ -211,7 +251,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 
 				// gl canvas acquires focus on mouseover
 				if (glWindowGrabsMouse && !glCanvas.hasFocus() && mouse.hasLocation() && openDialogs.isZero()) {
-					java.awt.EventQueue.invokeLater(() -> {
+					SwingUtilities.invokeLater(() -> {
 						glCanvas.requestFocusInWindow();
 					});
 				}
@@ -222,24 +262,27 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 					prevCanvasSize = glCanvas.getSize();
 				}
 
-				keyboard.update(this, frame.isFocused());
-				mouse.update(this, frame.isFocused());
+				synchronized (modifyLock) {
+					keyboard.update(this, frame.isFocused());
+					mouse.update(this, frame.isFocused());
 
-				if (!glWindowHaltsForDialogs || !areDialogsOpen()) {
-					runInContext(() -> {
-						while (!eventQueue.isEmpty())
-							eventQueue.poll().run();
+					if (!glWindowHaltsForDialogs || !areDialogsOpen()) {
+						runInContext(() -> {
+							while (!eventQueue.isEmpty())
+								eventQueue.poll().run();
 
-						for (Tickable ticker : tickers)
-							ticker.tick(deltaTime);
+							for (Tickable ticker : tickers)
+								ticker.tick(deltaTime);
 
-						// let the child do things
-						update(deltaTime);
-					});
+							// let the child do things
+							update(deltaTime);
+						});
+					}
+
+					if (glCanvas.isValid())
+						glCanvas.render();
 				}
 
-				if (glCanvas.isValid())
-					glCanvas.render();
 				limiter.sync(targetFPS);
 
 				// maybe before limiter?
@@ -350,27 +393,10 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			public void windowClosing(WindowEvent e)
 			{
 				openDialogs.increment();
-				closeRequested = !modified || promptForSave();
+				closeRequested = !isModified() || promptForSave();
 				if (!closeRequested)
 					openDialogs.decrement();
 			}
-		});
-
-		KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
-		manager.addKeyEventDispatcher(e -> {
-			if (e.getID() == KeyEvent.KEY_PRESSED) {
-				switch (e.getKeyCode()) {
-					case KeyEvent.VK_Z:
-						if (e.isControlDown())
-							undoEDT();
-						break;
-					case KeyEvent.VK_Y:
-						if (e.isControlDown())
-							redoEDT();
-						break;
-				}
-			}
-			return false;
 		});
 	}
 
@@ -494,6 +520,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	{
 		openDialogs.increment();
 		int choice = SwingUtils.getConfirmDialog()
+			.setParent(frame)
 			.setTitle("Warning")
 			.setMessage("Unsaved changes will be lost!", "Would you like to save now?")
 			.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
@@ -514,7 +541,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		return true;
 	}
 
-	protected final DialogBuilder getMessageDialog(String title, Object message)
+	public final DialogBuilder getMessageDialog(String title, Object message)
 	{
 		return SwingUtils.getMessageDialog()
 			.setParent(frame)
@@ -523,7 +550,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			.setCounter(openDialogs);
 	}
 
-	protected final DialogBuilder getConfirmDialog(String title, Object message)
+	public final DialogBuilder getConfirmDialog(String title, Object message)
 	{
 		return SwingUtils.getConfirmDialog()
 			.setParent(frame)
@@ -533,7 +560,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			.setMessageType(JOptionPane.PLAIN_MESSAGE);
 	}
 
-	protected final DialogBuilder getOptionDialog(String title, Object message)
+	public final DialogBuilder getOptionDialog(String title, Object message)
 	{
 		return SwingUtils.getOptionDialog()
 			.setParent(frame)
@@ -543,11 +570,29 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			.setMessageType(JOptionPane.PLAIN_MESSAGE);
 	}
 
-	/**
-	 * Interface for children
-	 */
+	public final void showModalDialog(JDialog dialog, String title)
+	{
+		dialog.setTitle(title);
+		dialog.setIconImage(Environment.getDefaultIconImage());
+
+		dialog.pack();
+		dialog.setLocationRelativeTo(frame);
+		dialog.setModal(true);
+
+		openDialogs.increment();
+		dialog.setVisible(true);
+
+		dialog.dispose();
+		openDialogs.decrement();
+	}
+
+	// -------------------------------------------------------------------
+	// Interface for children
 
 	protected void beforeCreateGui()
+	{}
+
+	protected void afterCreateGui()
 	{}
 
 	@Override
@@ -568,11 +613,12 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	protected void glDraw()
 	{}
 
+	protected abstract boolean isModified();
+
 	protected abstract void saveChanges();
 
-	/**
-	 * Exposed for children
-	 */
+	// -------------------------------------------------------------------
+	// Exposed for children
 
 	public final long getFrameCount()
 	{
@@ -620,7 +666,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		openDialogs.decrement();
 	}
 
-	protected final StarRodFrame getFrame()
+	public final StarRodFrame getFrame()
 	{
 		return frame;
 	}
@@ -640,9 +686,8 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		openDialogs.decrement();
 	}
 
-	/**
-	 * Implement interfaces
-	 */
+	// -------------------------------------------------------------------
+	// Implement interface
 
 	@Override
 	public void post(Message msg)

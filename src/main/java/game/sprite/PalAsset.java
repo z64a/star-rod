@@ -2,21 +2,33 @@ package game.sprite;
 
 import static game.texture.TileFormat.CI_4;
 
+import java.awt.Color;
 import java.io.IOException;
+import java.util.List;
+
+import org.apache.commons.io.FilenameUtils;
 
 import assets.AssetHandle;
 import assets.AssetManager;
+import game.sprite.editor.Editable;
 import game.texture.Palette;
 import game.texture.Tile;
 
-public class PalAsset
+public class PalAsset implements GLResource, Editable
 {
-	public static final String EXT = ".png";
-
 	private AssetHandle source;
 	private final Tile sourceImg;
 
 	public final Palette pal;
+
+	// remember colors before commands which adjust them are applied
+	public final Color[] savedColors = new Color[16];
+
+	// needs reupload to GPU
+	public transient boolean dirty;
+
+	// used for accounting during cleanup actions
+	public transient boolean inUse;
 
 	public PalAsset(AssetHandle ah) throws IOException
 	{
@@ -25,9 +37,62 @@ public class PalAsset
 		pal = sourceImg.palette;
 	}
 
+	public void stashColors()
+	{
+		for (int i = 0; i < 16; i++)
+			savedColors[i] = pal.getColor(i);
+	}
+
 	public void save() throws IOException
 	{
 		source = AssetManager.getTopLevel(source);
 		sourceImg.savePNG(source.getAbsolutePath());
+	}
+
+	public AssetHandle getSource()
+	{
+		return source;
+	}
+
+	public String getFilename()
+	{
+		return source.getName();
+	}
+
+	@Override
+	public String toString()
+	{
+		return FilenameUtils.removeExtension(source.getName());
+	}
+
+	@Override
+	public void glLoad()
+	{
+		pal.glLoad();
+	}
+
+	@Override
+	public void glDelete()
+	{
+		pal.glDelete();
+	}
+
+	private final EditableData editableData = new EditableData(this);
+
+	@Override
+	public EditableData getEditableData()
+	{
+		return editableData;
+	}
+
+	@Override
+	public void addEditableDownstream(List<Editable> downstream)
+	{}
+
+	@Override
+	public String checkErrorMsg()
+	{
+		// no errors here, could add support for detecting assets which have been deleted
+		return null;
 	}
 }

@@ -180,6 +180,8 @@ public class MessageEditor extends BaseEditor
 	private volatile boolean ignoreDocumentContentChanges = false;
 	private volatile boolean ignoreDocumentFormatChanges = false;
 
+	private volatile boolean modified = false;
+
 	// IO
 	public ArrayList<MessageAsset> resourcesToSave = new ArrayList<>();
 
@@ -200,6 +202,12 @@ public class MessageEditor extends BaseEditor
 	{
 		super(EDITOR_SETTINGS);
 
+		setup();
+	}
+
+	@Override
+	public void afterCreateGui()
+	{
 		Config cfg = getConfig();
 		if (cfg != null) {
 			cbPrintDelay.setSelected(cfg.getBoolean(Options.StrPrintDelay));
@@ -1282,7 +1290,6 @@ public class MessageEditor extends BaseEditor
 		item = new JMenuItem("Undo");
 		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK);
 		item.setAccelerator(awtKeyStroke);
-		item.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(awtKeyStroke, "none");
 		item.addActionListener((e) -> {
 			undoEDT();
 		});
@@ -1292,7 +1299,6 @@ public class MessageEditor extends BaseEditor
 		item = new JMenuItem("Redo");
 		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK);
 		item.setAccelerator(awtKeyStroke);
-		item.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(awtKeyStroke, "none");
 		item.addActionListener((e) -> {
 			redoEDT();
 		});
@@ -1333,6 +1339,12 @@ public class MessageEditor extends BaseEditor
 		menu.add(cbShowGrid);
 
 		cbPrintDelay.setPreferredSize(menuItemDimension);
+	}
+
+	@Override
+	protected boolean isModified()
+	{
+		return modified;
 	}
 
 	@Override

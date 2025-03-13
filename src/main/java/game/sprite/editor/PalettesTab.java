@@ -4,42 +4,60 @@ import java.awt.Color;
 import java.awt.Toolkit;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
-import javax.swing.DefaultListModel;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
+import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
+import javax.swing.ListSelectionModel;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EtchedBorder;
-import javax.swing.event.ListDataEvent;
-import javax.swing.event.ListDataListener;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 
 import app.SwingUtils;
+import common.commands.AbstractCommand;
+import common.commands.CommandBatch;
 import game.map.editor.ui.SwatchPanel;
+import game.sprite.PalAsset;
 import game.sprite.Sprite;
 import game.sprite.SpritePalette;
-import game.sprite.editor.dialogs.ListPanel;
+import game.sprite.editor.commands.BindPalAsset;
+import game.sprite.editor.commands.CreatePalette;
+import game.sprite.editor.commands.SelectPalAsset;
+import game.sprite.editor.commands.SelectPalette;
 import net.miginfocom.swing.MigLayout;
+import util.Logger;
 import util.ui.ColorSlider;
 import util.ui.ColorSlider.SliderListener;
 import util.ui.HexTextField;
+import util.ui.ThemedIcon;
 
 public class PalettesTab extends JPanel
 {
-	private JSpinner paletteGroupsSpinner;
+	private JCheckBox cbPreviewPalette;
+	private JSpinner variationsSpinner;
+
+	@Deprecated
 	private JLabel paletteGroupsLabel;
 
 	private JPanel paletteInfoPanel;
 	private SwatchPanel colorPreview;
 	private HexTextField colorHexValue;
+	private JRadioButton rgbButton;
+	private JRadioButton hslButton;
 	private JPanel rgbaPanel;
 	private ColorSlider channelR, channelG, channelB;
 	private ColorSlider channelH, channelS, channelV;
@@ -52,137 +70,240 @@ public class PalettesTab extends JPanel
 
 	private ColorModel selectedColorModel = ColorModel.RGB;
 
-	private ListPanel<SpritePalette> paletteList;
+	private AssetList<PalAsset> palAssetList;
+	private PalettesList paletteList;
 	private PaletteSwatchPanel swatchesPanel;
+	private JLabel lblCurrentBoundAsset;
 
 	private int paletteColorIndex = 1;
 	private Sprite sprite = null;
 
-	private boolean ignoreChanges = false;
+	private boolean suppressCommands = false;
 	private boolean ignoreSliderUpdates = false;
 	private boolean ignoreTextfieldUpdates = false;
 
-	public PalettesTab()
+	public PalettesTab(SpriteEditor editor)
 	{
 		paletteGroupsLabel = new JLabel();
 
-		paletteGroupsSpinner = new JSpinner();
-		SwingUtils.setFontSize(paletteGroupsSpinner, 12);
-		paletteGroupsSpinner.setModel(new SpinnerNumberModel(0, 0, 99, 1));
-		paletteGroupsSpinner.addChangeListener((e) -> {
-			if (sprite != null) {
-				int numPalettes = sprite.getPaletteCount();
-				sprite.numVariations = (int) paletteGroupsSpinner.getValue();
-				if (numPalettes == sprite.numVariations) {
-					paletteGroupsLabel.setForeground(null);
-					paletteGroupsLabel.setText("OK palette count for an overworld sprite with "
-						+ sprite.numVariations + ((sprite.numVariations == 1) ? " variation." : " variations."));
-				}
-				else if (numPalettes == 4 * sprite.numVariations + 1) {
-					paletteGroupsLabel.setForeground(null);
-					paletteGroupsLabel.setText("OK palette count for a battle sprite with "
-						+ sprite.numVariations + ((sprite.numVariations == 1) ? " variation." : " variations."));
-				}
-				else {
-					paletteGroupsLabel.setForeground(SwingUtils.getRedTextColor());
-					paletteGroupsLabel.setText("Unusual palette count for "
-						+ sprite.numVariations + ((sprite.numVariations == 1) ? " variation " : " variations ")
-						+ ((sprite.numVariations < 1) ? "." : "(expected " + (4 * sprite.numVariations + 1) + " or " + sprite.numVariations + ")."));
-				}
-			}
+		cbPreviewPalette = new JCheckBox(" Preview");
+		cbPreviewPalette.setSelected(true);
+		cbPreviewPalette.addActionListener((e) -> {
+			if (!suppressCommands)
+				SpriteEditor.execute(new TogglePreviewPalette(cbPreviewPalette));
 		});
-		SwingUtils.centerSpinnerText(paletteGroupsSpinner);
-		SwingUtils.addBorderPadding(paletteGroupsSpinner);
+		cbPreviewPalette.setHorizontalAlignment(SwingConstants.CENTER);
 
-		// create palette list
+		variationsSpinner = new JSpinner();
+		variationsSpinner.setModel(new SpinnerNumberModel(0, 0, 99, 1));
+		variationsSpinner.addChangeListener((e) -> {
+			if (sprite != null && !suppressCommands)
+				SpriteEditor.execute(new SetVariationCount(sprite, (int) variationsSpinner.getValue()));
+		});
 
-		paletteList = new ListPanel<>() {
-			@Override
-			public void onSelectEDT(SpritePalette selectedPal)
-			{
-				if (ignoreChanges)
-					return;
-				swatchesPanel.setPalette(selectedPal);
-				paletteInfoPanel.setVisible(selectedPal != null);
+		SwingUtils.setFontSize(variationsSpinner, 12);
+		SwingUtils.centerSpinnerText(variationsSpinner);
+
+		palAssetList = new AssetList<>();
+		palAssetList.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+		palAssetList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		palAssetList.setCellRenderer(new PalAssetSlicesRenderer());
+
+		editor.registerEditableListener(PalAsset.class, () -> palAssetList.repaint());
+
+		palAssetList.addListSelectionListener((e) -> {
+			if (e.getValueIsAdjusting())
+				return;
+
+			if (palAssetList.ignoreChanges.disabled())
+				SpriteEditor.execute(new SelectPalAsset(palAssetList, editor.getSprite(),
+					palAssetList.getSelectedValue(), this::setPalAsset));
+		});
+
+		paletteList = new PalettesList(editor, this);
+
+		JButton btnRefreshAssets = new JButton(ThemedIcon.REFRESH_16);
+		btnRefreshAssets.setToolTipText("Reload palette assets");
+		btnRefreshAssets.addActionListener((e) -> {
+			if (sprite == null) {
+				return;
 			}
 
-			@Override
-			public void onDelete(SpritePalette palette)
-			{
-				palette.deleted = true;
+			if (editor.promptCannotUndo("Reload palette assets"))
+				refreshPalAssets();
+		});
+
+		JButton btnImportAssets = new JButton(ThemedIcon.DOWNLOAD_16);
+		btnImportAssets.setToolTipText("Import palette assets");
+		btnImportAssets.addActionListener((evt) -> {
+			if (sprite == null) {
+				return;
 			}
 
-			@Override
-			public void rename(int index, String newName)
-			{
-				DefaultListModel<SpritePalette> listModel = getListModel();
-				SpritePalette sp = listModel.get(index);
-				if (!sp.filename.equals(newName)) {
-					sp.filename = makeUniqueName(sp, newName);
-					// beep if the chosen name had to be changed to become unique
-					if (!sp.filename.equals(newName)) {
-						Toolkit.getDefaultToolkit().beep();
+			List<File> files = editor.promptImportFiles();
+			int importedCount = 0;
+
+			if (!files.isEmpty()) {
+				for (File selected : files) {
+					String baseName = FilenameUtils.getBaseName(selected.getName());
+					String ext = FilenameUtils.getExtension(selected.getName());
+					String curName = baseName;
+					int iter = 0;
+
+					File copy;
+					do {
+						copy = new File(sprite.getPalettesDir(true), curName + "." + ext);
+
+						// form the next name to try
+						iter++;
+						curName = baseName + "_" + iter;
+					}
+					while (copy.exists());
+
+					try {
+						FileUtils.copyFile(selected, copy);
+						Logger.log("Imported " + copy.getName());
+						importedCount++;
+					}
+					catch (IOException e) {
+						Logger.printStackTrace(e);
 					}
 				}
-			}
-		};
 
-		paletteList.list.setCellRenderer(new PaletteSlicesRenderer());
-
-		// create buttons
-
-		JButton addButton = new JButton("Toggle Selected");
-		addButton.addActionListener((e) -> {
-			SpritePalette sp = paletteList.list.getSelectedValue();
-			if (sp == null)
-				return;
-
-			sp.disabled = !sp.disabled;
-			paletteList.list.repaint();
-		});
-		SwingUtils.addBorderPadding(addButton);
-
-		/*
-		JButton dupeButton = new JButton("Duplicate Selected");
-		dupeButton.addActionListener((e) -> {
-			SpritePalette original = paletteList.list.getSelectedValue();
-			if(original == null)
-				return;
-		
-			SpritePalette sp = new SpritePalette(original);
-			sp.filename = makeUniqueName(sp, original.filename);
-			DefaultListModel<SpritePalette> listModel = paletteList.getListModel();
-			listModel.addElement(sp);
-			selectPalette(sp);
-		});
-		SwingUtils.addBorderPadding(dupeButton);
-		*/
-
-		JButton renameButton = new JButton("Rename Selected");
-		renameButton.addActionListener((e) -> {
-			int index = paletteList.list.getSelectedIndex();
-			if (index >= 0) {
-				String oldName = paletteList.list.getSelectedValue().filename;
-				paletteList.promptRenameAt(index, oldName);
-				paletteList.list.repaint();
+				if (importedCount > 0) {
+					refreshPalAssets();
+					SpriteEditor.instance().flushUndoRedo();
+				}
 			}
 		});
-		SwingUtils.addBorderPadding(renameButton);
 
-		// create color chooser
+		JButton btnAddPalette = new JButton(ThemedIcon.ADD_16);
+		btnAddPalette.setToolTipText("Add new palette");
+		btnAddPalette.addActionListener((e) -> {
+			if (sprite == null) {
+				return;
+			}
 
-		JRadioButton rgbButton = new JRadioButton(ColorModel.RGB.toString());
+			SpritePalette pal = new SpritePalette(sprite);
+			String newName = pal.createUniqueName(String.format("Pal_%X", sprite.palettes.size()));
+
+			if (newName == null) {
+				Logger.logError("Could not generate valid name for new palette!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			PalAsset asset = palAssetList.getSelectedValue();
+			if (asset != null)
+				pal.assignAsset(asset);
+
+			pal.name = newName;
+			CommandBatch batch = new CommandBatch("Add Palette");
+			batch.addCommand(new CreatePalette("Add Palette", sprite, pal));
+			batch.addCommand(new SelectPalette(paletteList, sprite, pal, this::setPalette));
+			SpriteEditor.execute(batch);
+		});
+
+		JButton btnSave = new JButton("Save Changes");
+		btnSave.addActionListener((e) -> {
+			if (sprite != null) {
+				sprite.savePalettes();
+				palAssetList.repaint();
+			}
+		});
+		SwingUtils.addBorderPadding(btnSave);
+
+		JButton btnBind = new JButton("Bind Asset");
+		btnBind.addActionListener((e) -> {
+			SpritePalette pal = paletteList.getSelectedValue();
+
+			if (pal == null) {
+				Logger.logError("No palette is selected!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			PalAsset asset = palAssetList.getSelectedValue();
+
+			// null asset is allowed here
+			SpriteEditor.execute(new BindPalAsset(paletteList, pal, asset));
+		});
+		SwingUtils.addBorderPadding(btnBind);
+
+		JButton btnClear = new JButton("Select Asset");
+		btnClear.addActionListener((e) -> {
+			SpritePalette pal = paletteList.getSelectedValue();
+
+			if (pal == null) {
+				Logger.logError("No palette is selected!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			if (pal.asset == null) {
+				Logger.logError("No asset is bound for " + pal.name + "!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			if (!sprite.palAssets.contains(pal.asset)) {
+				Logger.logError("Asset for " + pal.name + " is missing!");
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			SpriteEditor.execute(new SelectPalAsset(palAssetList, sprite, pal.asset, this::setPalAsset));
+		});
+		SwingUtils.addBorderPadding(btnClear);
+
+		buildColorPanel();
+
+		JScrollPane assetScrollPane = new JScrollPane(palAssetList);
+		assetScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		JScrollPane paletteScrollPane = new JScrollPane(paletteList);
+		paletteScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+
+		JPanel listsPanel = new JPanel(new MigLayout("fill, ins 0, wrap 2", "[grow, sg col][grow, sg col]"));
+
+		listsPanel.add(btnRefreshAssets, "split 3");
+		listsPanel.add(btnImportAssets);
+		listsPanel.add(new JLabel("Assets"), "growx");
+
+		listsPanel.add(btnAddPalette, "split 5");
+		listsPanel.add(new JLabel("Palettes"), "growx");
+		listsPanel.add(new JPanel(), "growx, pushx"); // pushing dummy
+		listsPanel.add(new JLabel("Variations: "));
+		listsPanel.add(variationsSpinner, "w 80!");
+
+		listsPanel.add(assetScrollPane, "grow, push, sg list");
+		listsPanel.add(paletteScrollPane, "grow, push, sg list");
+
+		listsPanel.add(btnSave, "split 2, growx, sg btn");
+		listsPanel.add(cbPreviewPalette, "growx, sg btn, align center");
+		//	listsPanel.add(new JPanel(), "growx, sg btn"); // cell dummy
+
+		listsPanel.add(btnBind, "split 2, growx, sg btn");
+		listsPanel.add(btnClear, "growx, sg btn");
+
+		setLayout(new MigLayout("fill, ins 16 16 32 16, wrap, hidemode 0"));
+		add(listsPanel, "grow, push");
+		add(paletteInfoPanel, "growx, span, wrap, gaptop 16");
+	}
+
+	private void buildColorPanel()
+	{
+		rgbButton = new JRadioButton(ColorModel.RGB.toString());
 		rgbButton.setSelected(true);
 		rgbButton.addActionListener((e) -> {
 			if (rgbButton.isSelected())
-				setColorModel(ColorModel.RGB);
+				SpriteEditor.execute(new SetColorModel(ColorModel.RGB));
 		});
 
-		JRadioButton hslButton = new JRadioButton(ColorModel.HSL.toString());
+		hslButton = new JRadioButton(ColorModel.HSL.toString());
 		hslButton.setSelected(false);
 		hslButton.addActionListener((e) -> {
 			if (hslButton.isSelected())
-				setColorModel(ColorModel.HSL);
+				SpriteEditor.execute(new SetColorModel(ColorModel.HSL));
 		});
 
 		ButtonGroup group = new ButtonGroup();
@@ -222,17 +343,18 @@ public class PalettesTab extends JPanel
 			swatchesPanel.swatches[paletteColorIndex].setForeground(c);
 			colorPreview.setForeground(c);
 
-			SpritePalette selectedPal = paletteList.list.getSelectedValue();
-			if (selectedPal != null && selectedPal.hasPal()) {
-				selectedPal.getPal().setColor(paletteColorIndex, rgb[0], rgb[1], rgb[2], a);
-				for (ListDataListener listener : sprite.palettes.getListDataListeners()) {
-					listener.contentsChanged(new ListDataEvent(sprite.palettes,
-						ListDataEvent.CONTENTS_CHANGED,
-						selectedPal.getIndex(), selectedPal.getIndex()));
-				}
-				selectedPal.dirty = true;
-				selectedPal.modified = true;
+			PalAsset asset = palAssetList.getSelectedValue();
+			if (asset != null) {
+				asset.pal.setColor(paletteColorIndex, rgb[0], rgb[1], rgb[2], a);
+
+				paletteList.repaint();
+				palAssetList.repaint();
+
+				asset.dirty = true;
 			}
+
+			if (!preview)
+				SpriteEditor.execute(new SetColor(asset, paletteColorIndex, c, false));
 		};
 
 		colorHexValue = new HexTextField(8, true, (e) -> {
@@ -247,24 +369,24 @@ public class PalettesTab extends JPanel
 
 			Color c = new Color(r, g, b, a);
 
+			swatchesPanel.swatches[paletteColorIndex].setForeground(c);
+			colorPreview.setForeground(c);
+
+			PalAsset asset = palAssetList.getSelectedValue();
+			if (asset != null) {
+				asset.pal.setColor(paletteColorIndex, r, g, b, a);
+
+				paletteList.repaint();
+				palAssetList.repaint();
+
+				asset.dirty = true;
+			}
+
 			ignoreTextfieldUpdates = true;
 			setSelectedColor(c);
 			ignoreTextfieldUpdates = false;
 
-			swatchesPanel.swatches[paletteColorIndex].setForeground(c);
-			colorPreview.setForeground(c);
-
-			SpritePalette selectedPal = paletteList.list.getSelectedValue();
-			if (selectedPal != null && selectedPal.hasPal()) {
-				selectedPal.getPal().setColor(paletteColorIndex, r, g, b, a);
-				for (ListDataListener listener : sprite.palettes.getListDataListeners()) {
-					listener.contentsChanged(new ListDataEvent(sprite.palettes,
-						ListDataEvent.CONTENTS_CHANGED,
-						selectedPal.getIndex(), selectedPal.getIndex()));
-				}
-				selectedPal.dirty = true;
-				selectedPal.modified = true;
-			}
+			SpriteEditor.execute(new SetColor(asset, paletteColorIndex, c, true));
 		});
 
 		colorHexValue.setBorder(BorderFactory.createCompoundBorder(
@@ -312,78 +434,134 @@ public class PalettesTab extends JPanel
 		rightPanel.add(rgbaPanel, "gaptop 8");
 
 		swatchesPanel = new PaletteSwatchPanel(this);
+		SwatchPanel swatch = swatchesPanel.swatches[paletteColorIndex];
+		swatch.setBorder(BorderFactory.createLineBorder(getBackground(), 3));
 
 		paletteInfoPanel = new JPanel(new MigLayout("ins 0, fill, wrap"));
 		paletteInfoPanel.add(swatchesPanel, "split 3, gapleft 16, gapbottom push");
 		paletteInfoPanel.add(rightPanel, "gapleft 24, gaptop 8");
-
-		setLayout(new MigLayout("fill, ins 16, wrap, hidemode 0"));
-
-		add(SwingUtils.getLabel("Variations:", 12), "split 2, gapleft 8");
-		add(paletteGroupsSpinner, "w 80!, gapleft 12, gapright 16");
-		//		add(paletteGroupsLabel, "growx, gapbottom 4, gaptop 4");
-
-		add(paletteList, "grow, pushy, span, wrap, gaptop 8");
-		add(new JPanel(), "sg but, growx, split 3");
-		add(addButton, "sg but, growx");
-		//		add(dupeButton, "sg but, growx");
-		add(renameButton, "sg but, growx");
-
-		add(paletteInfoPanel, "growx, span, wrap, gaptop 16");
 	}
 
-	private static boolean isNameUsed(SpritePalette sp, String name)
-	{
-		for (SpritePalette other : sp.getSprite().palettes) {
-			if (sp != other && other.filename.equals(name))
-				return true;
-		}
-		return false;
-	}
-
-	private static String makeUniqueName(SpritePalette sp, String name)
-	{
-		if (!isNameUsed(sp, name))
-			return name;
-
-		int i = 1;
-		Matcher m = Pattern.compile("(\\D+)(\\d+)").matcher(name);
-
-		if (m.matches() && m.group(2) != null) {
-			name = m.group(1);
-			i = Integer.parseInt(m.group(2)) + 1;
-		}
-
-		while (true) {
-			String newName = String.format("%s%d", name, i);
-			if (!isNameUsed(sp, newName))
-				return newName;
-			// try the next name
-			i++;
-		}
-	}
-
-	public void selectPalette(SpritePalette sp)
-	{
-		paletteList.list.setSelectedValue(sp, true);
-	}
-
-	public void setSpriteEDT(Sprite sprite)
+	public void setSprite(Sprite sprite)
 	{
 		assert (SwingUtilities.isEventDispatchThread());
+		assert (sprite != null);
+
 		this.sprite = sprite;
 
-		paletteList.list.setModel(sprite.palettes);
+		palAssetList.ignoreChanges.increment();
+		palAssetList.setModel(sprite.palAssets.getListModel());
+		palAssetList.setSelectedValue(sprite.selectedPalAsset, true);
+		palAssetList.ignoreChanges.decrement();
 
-		if (!sprite.palettes.isEmpty())
-			paletteList.list.setSelectedIndex(0);
+		setPalAsset(sprite.selectedPalAsset);
 
-		paletteGroupsSpinner.setValue(sprite.numVariations);
+		paletteList.ignoreChanges.increment();
+		paletteList.setModel(sprite.palettes);
+		paletteList.setSelectedValue(sprite.selectedPalette, true);
+		paletteList.ignoreChanges.decrement();
+
+		setPalette(sprite.selectedPalette);
+
+		suppressCommands = true;
+		variationsSpinner.setValue(sprite.numVariations);
+		suppressCommands = false;
 	}
 
-	public SpritePalette getOverridePalette()
+	public void setPaletteIndex(int index)
 	{
-		return paletteList.list.getSelectedValue();
+		paletteColorIndex = index;
+
+		SwatchPanel swatch = swatchesPanel.getSwatch(index);
+		setSelectedColor(swatch.getForeground());
+		swatch.setBorder(BorderFactory.createLineBorder(getBackground(), 3));
+
+		// clear borders from other swatches
+		for (int i = 0; i < 16; i++) {
+			if (i == index)
+				continue;
+			swatchesPanel.getSwatch(i).setBorder(null);
+		}
+	}
+
+	public void setPalette(SpritePalette pal)
+	{
+		// nothing
+	}
+
+	public void setPalAsset(PalAsset asset)
+	{
+		swatchesPanel.setPalette(asset);
+		paletteInfoPanel.setVisible(asset != null);
+
+		if (asset != null)
+			asset.stashColors();
+	}
+
+	public boolean shouldPreviewPalette()
+	{
+		return cbPreviewPalette.isSelected();
+	}
+
+	private void refreshPalAssets()
+	{
+		palAssetList.ignoreChanges.increment();
+
+		// remember name of currently selected, so we can try reselecting after refreshing
+		PalAsset selected = palAssetList.getSelectedValue();
+		String selectedName = (selected == null) ? null : selected.getFilename();
+
+		// clear current selection
+		palAssetList.setSelectedValue(null, true);
+		sprite.lastSelectedPalAsset = -1;
+		setPalAsset(null);
+
+		// reload the assets
+		sprite.reloadPaletteAssets();
+
+		// prepare new selection for setSprite
+		if (sprite.palAssets.size() > 0)
+			sprite.lastSelectedPalAsset = 0;
+
+		// refresh this tab
+		setSprite(sprite);
+		PalettesTab.this.repaint();
+
+		// try reselecting asset with name matching previous selection
+		for (PalAsset newAsset : sprite.palAssets) {
+			if (newAsset.getFilename().equals(selectedName)) {
+				palAssetList.setSelectedValue(newAsset, true);
+			}
+		}
+
+		SpriteEditor.instance().flushUndoRedo();
+
+		palAssetList.ignoreChanges.decrement();
+	}
+
+	@Deprecated
+	public void variationCountChanged()
+	{
+		if (sprite == null)
+			return;
+
+		int numPalettes = sprite.getPaletteCount();
+		if (numPalettes == sprite.numVariations) {
+			paletteGroupsLabel.setForeground(null);
+			paletteGroupsLabel.setText("OK palette count for an overworld sprite with "
+				+ sprite.numVariations + ((sprite.numVariations == 1) ? " variation." : " variations."));
+		}
+		else if (numPalettes == 4 * sprite.numVariations + 1) {
+			paletteGroupsLabel.setForeground(null);
+			paletteGroupsLabel.setText("OK palette count for a battle sprite with "
+				+ sprite.numVariations + ((sprite.numVariations == 1) ? " variation." : " variations."));
+		}
+		else {
+			paletteGroupsLabel.setForeground(SwingUtils.getRedTextColor());
+			paletteGroupsLabel.setText("Unusual palette count for "
+				+ sprite.numVariations + ((sprite.numVariations == 1) ? " variation " : " variations ")
+				+ ((sprite.numVariations < 1) ? "." : "(expected " + (4 * sprite.numVariations + 1) + " or " + sprite.numVariations + ")."));
+		}
 	}
 
 	private void setSelectedColor(Color c)
@@ -436,6 +614,7 @@ public class PalettesTab extends JPanel
 				channelR.setValue(rgb[0]);
 				channelG.setValue(rgb[1]);
 				channelB.setValue(rgb[2]);
+				rgbButton.setSelected(true);
 				break;
 			case HSL:
 				channelR.setVisible(false);
@@ -448,6 +627,7 @@ public class PalettesTab extends JPanel
 				channelH.setValue(hsl[0]);
 				channelS.setValue(hsl[1]);
 				channelV.setValue(hsl[2]);
+				hslButton.setSelected(true);
 				break;
 			default:
 				throw new RuntimeException("Unknown color model.");
@@ -547,12 +727,12 @@ public class PalettesTab extends JPanel
 
 	private static class PaletteSwatchPanel extends JPanel
 	{
-		private final PalettesTab palEditor;
+		private final PalettesTab tab;
 		private SwatchPanel[] swatches;
 
-		public PaletteSwatchPanel(PalettesTab palEditor)
+		public PaletteSwatchPanel(PalettesTab tab)
 		{
-			this.palEditor = palEditor;
+			this.tab = tab;
 			setLayout(new MigLayout("fill, ins 0"));
 
 			swatches = new SwatchPanel[16];
@@ -565,34 +745,267 @@ public class PalettesTab extends JPanel
 					@Override
 					public void mouseClicked(MouseEvent e)
 					{
-						int prevIndex = palEditor.paletteColorIndex;
-						palEditor.paletteColorIndex = index;
-						palEditor.setSelectedColor(swatches[index].getForeground());
-
-						if (prevIndex >= 0)
-							swatches[prevIndex].setBorder(null);
-						swatches[index].setBorder(BorderFactory.createDashedBorder(null));
+						SpriteEditor.execute(tab.new SetPaletteIndex(index));
 					}
 				});
 
 			}
 		}
 
-		public void setPalette(SpritePalette value)
+		public void setPalette(PalAsset asset)
 		{
-			if (value == null || !value.hasPal()) {
+			if (asset == null) {
 				setVisible(false);
 				for (SwatchPanel panel : swatches)
 					panel.setForeground(Color.gray);
 			}
 			else {
 				setVisible(true);
-				Color[] colors = value.getPal().getColors();
+				Color[] colors = asset.pal.getColors();
 				for (int i = 0; i < swatches.length; i++)
 					swatches[i].setForeground(colors[i]);
 
-				palEditor.setSelectedColor(colors[palEditor.paletteColorIndex]);
+				tab.setSelectedColor(colors[tab.paletteColorIndex]);
 			}
 		}
+
+		public SwatchPanel getSwatch(int index)
+		{
+			return swatches[index];
+		}
 	}
+
+	private class SetVariationCount extends AbstractCommand
+	{
+		private final Sprite sprite;
+		private final int next;
+		private final int prev;
+
+		public SetVariationCount(Sprite sprite, int next)
+		{
+			super("Set Variation Count");
+
+			this.sprite = sprite;
+			this.next = next;
+			this.prev = sprite.numVariations;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+
+			sprite.numVariations = next;
+
+			suppressCommands = true;
+			variationsSpinner.setValue(next);
+			suppressCommands = false;
+
+			sprite.incrementModified();
+
+			variationCountChanged();
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+
+			sprite.numVariations = prev;
+
+			suppressCommands = true;
+			variationsSpinner.setValue(prev);
+			suppressCommands = false;
+
+			sprite.decrementModified();
+
+			variationCountChanged();
+		}
+	}
+
+	private class SetColorModel extends AbstractCommand
+	{
+		private final ColorModel next;
+		private final ColorModel prev;
+
+		public SetColorModel(ColorModel next)
+		{
+			super("Change Color Model");
+
+			this.next = next;
+			this.prev = selectedColorModel;
+		}
+
+		@Override
+		public boolean modifiesData()
+		{
+			return false;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+
+			setColorModel(next);
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+
+			setColorModel(prev);
+		}
+	}
+
+	private class SetPaletteIndex extends AbstractCommand
+	{
+		private final int next;
+		private final int prev;
+
+		public SetPaletteIndex(int next)
+		{
+			super("Change Color");
+
+			this.next = next;
+			this.prev = paletteColorIndex;
+		}
+
+		@Override
+		public boolean modifiesData()
+		{
+			return false;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+
+			setPaletteIndex(next);
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+
+			setPaletteIndex(prev);
+		}
+	}
+
+	private class SetColor extends AbstractCommand
+	{
+		private final PalAsset asset;
+		private final int index;
+		private final Color next;
+		private final Color prev;
+		private boolean ignoreFirstExec;
+
+		public SetColor(PalAsset asset, int index, Color next, boolean ignoreFirstExec)
+		{
+			super("Set Color");
+
+			this.asset = asset;
+			this.index = index;
+			this.next = next;
+			this.prev = asset.savedColors[index];
+
+			// awkward but effective way to prevent the text field from updating itself after
+			// triggering this command and disrupting user input in a frustrating way
+			this.ignoreFirstExec = ignoreFirstExec;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+
+			asset.pal.setColor(index, next);
+			asset.savedColors[index] = next;
+
+			sprite.loadEditorImages(asset);
+
+			swatchesPanel.swatches[index].setForeground(next);
+
+			if (ignoreFirstExec)
+				ignoreFirstExec = false;
+			else
+				setSelectedColor(next);
+
+			paletteList.repaint();
+			palAssetList.repaint();
+
+			asset.dirty = true;
+			asset.incrementModified();
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+
+			asset.pal.setColor(index, prev);
+			asset.savedColors[index] = prev;
+
+			sprite.loadEditorImages(asset);
+
+			swatchesPanel.swatches[index].setForeground(prev);
+
+			setSelectedColor(prev);
+
+			paletteList.repaint();
+			palAssetList.repaint();
+
+			asset.dirty = true;
+			asset.decrementModified();
+		}
+	}
+
+	private class TogglePreviewPalette extends AbstractCommand
+	{
+		private final JCheckBox checkbox;
+		private final boolean prev;
+		private final boolean next;
+
+		public TogglePreviewPalette(JCheckBox checkbox)
+		{
+			super("Toggle Palette Preview");
+
+			this.checkbox = checkbox;
+
+			this.next = checkbox.isSelected();
+			this.prev = !next;
+		}
+
+		@Override
+		public boolean shouldExec()
+		{
+			return prev != next;
+		}
+
+		@Override
+		public boolean modifiesData()
+		{
+			return false;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+
+			checkbox.setSelected(next);
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+
+			checkbox.setSelected(prev);
+		}
+	}
+
 }

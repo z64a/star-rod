@@ -1,20 +1,28 @@
 package game.sprite;
 
-import javax.swing.DefaultListModel;
+import java.util.List;
 
 import game.sprite.SpriteLoader.Indexable;
+import game.sprite.editor.Editable;
 import game.sprite.editor.animators.AnimElement;
 import game.sprite.editor.animators.ComponentAnimator;
+import util.IterableListModel;
 
-public class SpriteAnimation implements Indexable<SpriteAnimation>
+public class SpriteAnimation implements Indexable<SpriteAnimation>, Editable
 {
 	public final Sprite parentSprite;
 
-	public final DefaultListModel<SpriteComponent> components = new DefaultListModel<>();
+	public final IterableListModel<SpriteComponent> components = new IterableListModel<>();
 
 	// editor fields
 	public transient String name = "";
 	protected transient int listIndex;
+
+	public transient int animTime;
+
+	public transient boolean deleted;
+
+	public transient int lastSelectedComp = -1;
 
 	public SpriteAnimation(Sprite parentSprite)
 	{
@@ -30,11 +38,24 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 			SpriteComponent comp = original.components.elementAt(i);
 			components.addElement(new SpriteComponent(this, comp));
 		}
+
+		for (SpriteComponent comp : components) {
+			comp.popParents();
+		}
 	}
 
-	public int getComponentCount()
+	public SpriteAnimation copy()
 	{
-		return components.size();
+		return new SpriteAnimation(this);
+	}
+
+	public void prepareForEditor()
+	{
+		for (SpriteComponent comp : components)
+			comp.prepareForEditor();
+
+		if (components.size() > 0)
+			lastSelectedComp = 0;
 	}
 
 	@Override
@@ -55,12 +76,43 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 		return listIndex;
 	}
 
+	public String createUniqueName(String name)
+	{
+		String baseName = name;
+
+		for (int iteration = 0; iteration < 256; iteration++) {
+			boolean conflict = false;
+
+			// compare to all other names
+			for (SpriteAnimation other : parentSprite.animations) {
+				if (other != this && other.name.equals(name)) {
+					conflict = true;
+					break;
+				}
+			}
+
+			if (!conflict) {
+				// name is valid
+				return name;
+			}
+			else {
+				// try next iteration
+				name = baseName + "_" + iteration;
+			}
+		}
+
+		// could not form a valid name
+		return null;
+	}
+
 	public void step()
 	{
 		for (int i = 0; i < components.size(); i++) {
 			SpriteComponent comp = components.elementAt(i);
 			comp.step();
 		}
+
+		animTime += 2;
 	}
 
 	public void reset()
@@ -69,6 +121,8 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 			SpriteComponent comp = components.elementAt(i);
 			comp.reset();
 		}
+
+		animTime = 0;
 	}
 
 	public boolean end()
@@ -93,6 +147,7 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 			iterations++;
 		}
 
+		animTime = 2 * iterations;
 		return !notDone;
 	}
 
@@ -138,19 +193,25 @@ public class SpriteAnimation implements Indexable<SpriteAnimation>
 		}
 	}
 
-	public void cleanDeletedRasters()
+	private final EditableData editableData = new EditableData(this);
+
+	@Override
+	public EditableData getEditableData()
 	{
-		for (int i = 0; i < components.getSize(); i++) {
-			SpriteComponent comp = components.get(i);
-			comp.animator.cleanDeletedRasters();
-		}
+		return editableData;
 	}
 
-	public void cleanDeletedPalettes()
+	@Override
+	public void addEditableDownstream(List<Editable> downstream)
 	{
-		for (int i = 0; i < components.getSize(); i++) {
-			SpriteComponent comp = components.get(i);
-			comp.animator.cleanDeletedPalettes();
-		}
+		for (SpriteComponent comp : components)
+			downstream.add(comp);
+	}
+
+	@Override
+	public String checkErrorMsg()
+	{
+		// no errors for Animation objects
+		return null;
 	}
 }

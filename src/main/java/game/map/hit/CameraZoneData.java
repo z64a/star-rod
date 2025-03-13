@@ -9,14 +9,14 @@ import java.util.List;
 import org.w3c.dom.Element;
 
 import common.Vector3f;
+import common.commands.AbstractCommand;
+import common.commands.EditableField;
+import common.commands.EditableField.EditableFieldFactory;
 import game.map.MapObject;
 import game.map.MutablePoint;
 import game.map.editor.MapEditor;
 import game.map.editor.UpdateProvider;
 import game.map.editor.camera.CameraController;
-import game.map.editor.commands.AbstractCommand;
-import game.map.editor.commands.fields.EditableField;
-import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
 import game.map.editor.geometry.GeometryUtils;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.Renderer;
@@ -649,7 +649,7 @@ public class CameraZoneData extends UpdateProvider implements XmlSerializable
 					deselectList.add(p);
 			}
 
-			selectionModCommand = editor.selectionManager.getModifyPoints(null, deselectList);
+			selectionModCommand = MapEditor.instance().selectionManager.getModifyPoints(null, deselectList);
 		}
 
 		@Override
@@ -800,7 +800,7 @@ public class CameraZoneData extends UpdateProvider implements XmlSerializable
 					deselectList.add(p);
 			}
 
-			selectionModCommand = editor.selectionManager.getModifyPoints(null, deselectList);
+			selectionModCommand = MapEditor.instance().selectionManager.getModifyPoints(null, deselectList);
 		}
 
 		@Override

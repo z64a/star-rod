@@ -3,7 +3,9 @@ package game.map.editor.commands;
 import java.util.ArrayList;
 import java.util.List;
 
+import common.commands.AbstractCommand;
 import game.map.MapObject;
+import game.map.editor.MapEditor;
 import game.map.tree.MapObjectTreeModel;
 
 public class HideObjectTreeSimple extends AbstractCommand
@@ -28,7 +30,7 @@ public class HideObjectTreeSimple extends AbstractCommand
 	}
 
 	@Override
-	public boolean modifiesMap()
+	public boolean modifiesData()
 	{
 		return false;
 	}
@@ -41,6 +43,7 @@ public class HideObjectTreeSimple extends AbstractCommand
 		for (MapObject obj : objs)
 			obj.hidden = hiding;
 
+		MapEditor editor = MapEditor.instance();
 		editor.gui.repaintObjectPanel();
 	}
 
@@ -52,6 +55,7 @@ public class HideObjectTreeSimple extends AbstractCommand
 		for (int i = 0; i < objs.size(); i++)
 			objs.get(i).hidden = wasHidden[i];
 
+		MapEditor editor = MapEditor.instance();
 		editor.gui.repaintObjectPanel();
 	}
 }

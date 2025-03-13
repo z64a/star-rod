@@ -2,26 +2,32 @@ package game.sprite;
 
 import static game.sprite.SpriteKey.*;
 
+import java.awt.Toolkit;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Map.Entry;
-import java.util.Queue;
+
+import javax.swing.SwingUtilities;
 
 import org.apache.commons.io.FilenameUtils;
 import org.w3c.dom.Element;
 
 import app.input.InputFileException;
+import assets.AssetHandle;
+import assets.AssetManager;
+import assets.AssetSubdir;
 import common.Vector3f;
 import game.map.BoundingBox;
 import game.map.shading.ShadingProfile;
-import game.sprite.SpriteLoader.SpriteSet;
+import game.sprite.SpriteLoader.SpriteMetadata;
+import game.sprite.editor.Editable;
+import game.sprite.editor.SpriteAssetCollection;
 import game.sprite.editor.SpriteCamera;
 import game.sprite.editor.SpriteCamera.BasicTraceHit;
 import game.sprite.editor.SpriteCamera.BasicTraceRay;
+import game.sprite.editor.SpriteEditor;
 import game.texture.Palette;
 import renderer.shaders.ShaderManager;
 import renderer.shaders.scene.SpriteShader;
@@ -32,66 +38,100 @@ import util.xml.XmlWrapper.XmlSerializable;
 import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
 
-public class Sprite implements XmlSerializable
+public class Sprite implements XmlSerializable, Editable
 {
-	// const equal to (float)5/7, set at [800E1360]
-	// see component matrix located in S0 at [802DC958]
-	public static final float WORLD_SCALE = 0.714286f;
+	public static final float WORLD_SCALE = 0.714286f; // ~ 5.0f / 7.0f
+
+	public static final int MAX_ANIMATIONS = 255;
+	public static final int MAX_COMPONENTS = 255;
+
+	private static final int ATLAS_TILE_PADDING = 8;
+	private static final int ATLAS_SELECT_PADDING = 1;
+
+	public final SpriteMetadata metadata;
 
 	public final IterableListModel<SpriteAnimation> animations = new IterableListModel<>();
 	public final IterableListModel<SpriteRaster> rasters = new IterableListModel<>();
 	public final IterableListModel<SpritePalette> palettes = new IterableListModel<>();
 
-	// working set of images for the sprite rasters to reference
-	//public LinkedHashMap<String, SpriteImage> images = new LinkedHashMap<>();
+	// these are 'effectively' final, but must be assigned once to the global player assets for player sprites
+	public SpriteAssetCollection<ImgAsset> imgAssets = new SpriteAssetCollection<>();
+	public SpriteAssetCollection<PalAsset> palAssets = new SpriteAssetCollection<>();
 
-	public LinkedHashMap<String, ImgAsset> imgAssets = new LinkedHashMap<>();
-	public LinkedHashMap<String, PalAsset> palAssets = new LinkedHashMap<>();
+	public boolean usesKeyframes = false;
 
 	private transient boolean texturesLoaded = false;
 	private transient boolean readyForEditor = false;
 	public transient boolean enableStencilBuffer = false;
 
-	// create the list models and have the animators generate their animation commands
+	// rasters tab state to restore when this sprite is selected
+	public transient int lastSelectedImgAsset = -1;
+	public transient ImgAsset selectedImgAsset = null;
+	public transient int lastSelectedRaster = -1;
+	public transient SpriteRaster selectedRaster = null;
+	// palettes tab state to restore when this sprite is selected
+	public transient int lastSelectedPalAsset = -1;
+	public transient PalAsset selectedPalAsset = null;
+	public transient int lastSelectedPalette = -1;
+	public transient SpritePalette selectedPalette = null;
+	// animations tab state to restore when this sprite is selected
+	public transient int lastSelectedAnim = -1;
+	public transient boolean usingOverridePalette;
+	public transient SpritePalette overridePalette = null;
+
+	// have the animators generate their animation commands
 	public void prepareForEditor()
 	{
 		if (readyForEditor)
 			return;
 
-		for (int i = 0; i < animations.size(); i++) {
-			SpriteAnimation anim = animations.elementAt(i);
-			for (int j = 0; j < anim.components.size(); j++) {
-				SpriteComponent comp = anim.components.elementAt(j);
-				comp.generate();
-			}
+		if (imgAssets.size() > 0) {
+			selectedImgAsset = imgAssets.get(0);
+			lastSelectedImgAsset = 0;
 		}
 
-		recalculateIndices();
+		if (palAssets.size() > 0) {
+			selectedPalAsset = palAssets.get(0);
+			lastSelectedPalAsset = 0;
+		}
+
+		if (palettes.size() > 0)
+			overridePalette = palettes.get(0);
+
+		for (SpriteAnimation anim : animations)
+			anim.prepareForEditor();
+
+		if (animations.size() > 0)
+			lastSelectedAnim = 0;
+
+		reindex();
 
 		readyForEditor = true;
 	}
 
-	public void recalculateIndices()
+	/**
+	 * Computes list indices for objects which need them and recomputes hasError propagation.
+	 */
+	public void reindex()
 	{
-		int idx = 0;
-		for (SpritePalette pal : palettes) {
-			if (pal.disabled) {
-				pal.listIndex = -1;
-			}
-			else {
-				pal.listIndex = idx++;
-			}
+		for (int i = 0; i < palettes.size(); i++) {
+			SpritePalette pal = palettes.get(i);
+			pal.listIndex = i;
 		}
 
 		for (int i = 0; i < rasters.size(); i++) {
-			rasters.get(i).listIndex = i;
+			SpriteRaster raster = rasters.get(i);
+			raster.listIndex = i;
 		}
 
 		for (int i = 0; i < animations.size(); i++) {
 			SpriteAnimation anim = animations.get(i);
 			anim.listIndex = i;
-			for (int j = 0; j < anim.components.size(); j++)
-				anim.components.get(j).listIndex = j;
+
+			for (int j = 0; j < anim.components.size(); j++) {
+				SpriteComponent comp = anim.components.get(j);
+				comp.listIndex = j;
+			}
 		}
 	}
 
@@ -105,8 +145,7 @@ public class Sprite implements XmlSerializable
 		}
 	}
 
-	public File source;
-	private final boolean isPlayerSprite;
+	// duplicated in SpriteMetadata
 	public boolean hasBack;
 
 	public String name = "";
@@ -114,13 +153,14 @@ public class Sprite implements XmlSerializable
 	public int numVariations;
 	public int maxComponents;
 
-	private int atlasH, atlasW;
+	private int imgAtlasH, imgAtlasW;
+	private int rasterAtlasH, rasterAtlasW;
 
 	public transient BoundingBox aabb = new BoundingBox();
 
-	protected Sprite(SpriteSet set)
+	protected Sprite(SpriteMetadata metadata)
 	{
-		this.isPlayerSprite = (set == SpriteSet.Player);
+		this.metadata = metadata;
 	}
 
 	@Override
@@ -129,29 +169,72 @@ public class Sprite implements XmlSerializable
 		return name.isEmpty() ? "Unnamed" : name;
 	}
 
-	public String getDirectoryName()
+	public AssetHandle getAsset()
 	{
-		return source.getParentFile() + "/";
+		if (metadata.isPlayer)
+			return AssetManager.getPlayerSprite(name);
+		else
+			return AssetManager.getNpcSprite(name);
 	}
 
-	public boolean isPlayerSprite()
+	public AssetHandle getAssetDir(boolean modDir)
 	{
-		return isPlayerSprite;
+		AssetHandle ah;
+
+		if (metadata.isPlayer)
+			ah = AssetManager.getBase(AssetSubdir.PLR_SPRITE, "");
+		else
+			ah = AssetManager.getBase(AssetSubdir.NPC_SPRITE, name);
+
+		if (modDir)
+			return AssetManager.getTopLevel(ah);
+		else
+			return ah;
 	}
 
-	public static Sprite readNpc(File xmlFile, String name)
+	public AssetHandle getRastersDir(boolean modDir)
+	{
+		AssetHandle ah;
+
+		if (metadata.isPlayer)
+			ah = AssetManager.get(AssetSubdir.PLR_SPRITE_IMG, "");
+		else
+			ah = AssetManager.get(AssetSubdir.NPC_SPRITE, name + "/rasters/");
+
+		if (modDir)
+			return AssetManager.getTopLevel(ah);
+		else
+			return ah;
+	}
+
+	public AssetHandle getPalettesDir(boolean modDir)
+	{
+		AssetHandle ah;
+
+		if (metadata.isPlayer)
+			ah = AssetManager.get(AssetSubdir.PLR_SPRITE_PAL, "");
+		else
+			ah = AssetManager.get(AssetSubdir.NPC_SPRITE, name + "/palettes/");
+
+		if (modDir)
+			return AssetManager.getTopLevel(ah);
+		else
+			return ah;
+	}
+
+	public static Sprite readNpc(SpriteMetadata metadata, File xmlFile, String name)
 	{
 		XmlReader xmr = new XmlReader(xmlFile);
-		Sprite spr = new Sprite(SpriteSet.Npc);
+		Sprite spr = new Sprite(metadata);
 		spr.name = name;
 		spr.fromXML(xmr, xmr.getRootElement());
 		return spr;
 	}
 
-	public static Sprite readPlayer(File xmlFile, String name)
+	public static Sprite readPlayer(SpriteMetadata metadata, File xmlFile, String name)
 	{
 		XmlReader xmr = new XmlReader(xmlFile);
-		Sprite spr = new Sprite(SpriteSet.Player);
+		Sprite spr = new Sprite(metadata);
 		spr.name = name;
 		spr.fromXML(xmr, xmr.getRootElement());
 		return spr;
@@ -201,7 +284,7 @@ public class Sprite implements XmlSerializable
 	@Override
 	public void fromXML(XmlReader xmr, Element spriteElem)
 	{
-		source = xmr.getSourceFile();
+		File source = xmr.getSourceFile();
 
 		// read root attributes
 
@@ -225,7 +308,11 @@ public class Sprite implements XmlSerializable
 			variationNames = xmr.readStringList(spriteElem, ATTR_SPRITE_VARIATIONS);
 		}
 
-		if (isPlayerSprite && xmr.hasAttribute(spriteElem, ATTR_SPRITE_HAS_BACK)) {
+		if (xmr.hasAttribute(spriteElem, ATTR_KEYFRAMES)) {
+			usesKeyframes = xmr.readBoolean(spriteElem, ATTR_KEYFRAMES);
+		}
+
+		if (metadata.isPlayer && xmr.hasAttribute(spriteElem, ATTR_SPRITE_HAS_BACK)) {
 			hasBack = xmr.readBoolean(spriteElem, ATTR_SPRITE_HAS_BACK);
 		}
 
@@ -245,7 +332,13 @@ public class Sprite implements XmlSerializable
 
 			xmr.requiresAttribute(paletteElem, ATTR_SOURCE);
 			pal.filename = xmr.getAttribute(paletteElem, ATTR_SOURCE);
-			pal.filename = FilenameUtils.removeExtension(pal.filename);
+
+			if (xmr.hasAttribute(paletteElem, ATTR_NAME)) {
+				pal.name = xmr.getAttribute(paletteElem, ATTR_NAME);
+			}
+			else {
+				pal.name = FilenameUtils.removeExtension(pal.filename);
+			}
 
 			if (xmr.hasAttribute(paletteElem, ATTR_FRONT_ONLY)) {
 				pal.frontOnly = xmr.readBoolean(paletteElem, ATTR_FRONT_ONLY);
@@ -287,11 +380,13 @@ public class Sprite implements XmlSerializable
 			if (hasBack) {
 				if (xmr.hasAttribute(rasterElem, ATTR_BACK)) {
 					sr.back.filename = xmr.getAttribute(rasterElem, ATTR_BACK);
+					sr.hasIndependentBack = true;
 				}
 				else if (xmr.hasAttribute(rasterElem, ATTR_SPECIAL_SIZE)) {
 					int[] size = xmr.readHexArray(rasterElem, ATTR_SPECIAL_SIZE, 2);
 					sr.specialWidth = size[0];
 					sr.specialHeight = size[1];
+					sr.hasIndependentBack = false;
 				}
 				else {
 					throw new InputFileException(source, "Raster requires 'back' or 'special' for sprite supporting back-facing");
@@ -318,6 +413,18 @@ public class Sprite implements XmlSerializable
 
 		// read animations list
 
+		HashMap<String, SpriteRaster> imgMap = new HashMap<>();
+		HashMap<String, SpritePalette> palMap = new HashMap<>();
+		HashMap<String, SpriteComponent> compMap = new HashMap<>();
+
+		for (SpriteRaster img : rasters) {
+			imgMap.put(img.name, img);
+		}
+
+		for (SpritePalette pal : palettes) {
+			palMap.put(pal.name, pal);
+		}
+
 		Element animationsElem = xmr.getUniqueRequiredTag(spriteElem, TAG_ANIMATION_LIST);
 		List<Element> animationElems = xmr.getTags(animationsElem, TAG_ANIMATION);
 		for (Element animationElem : animationElems) {
@@ -327,53 +434,111 @@ public class Sprite implements XmlSerializable
 			if (xmr.hasAttribute(animationElem, ATTR_NAME))
 				anim.name = xmr.getAttribute(animationElem, ATTR_NAME);
 
+			compMap.clear();
+
 			List<Element> componentElems = xmr.getRequiredTags(animationElem, TAG_COMPONENT);
 			for (Element componentElem : componentElems) {
 				SpriteComponent comp = new SpriteComponent(anim);
 				anim.components.addElement(comp);
+				compMap.put(comp.name, comp);
 				comp.fromXML(xmr, componentElem);
+			}
+
+			for (SpriteComponent comp : anim.components) {
+				comp.updateReferences(imgMap, palMap, compMap);
 			}
 		}
 	}
 
-	public void bindPalettes()
+	public void reloadRasterAssets()
 	{
-		LinkedHashMap<String, PalAsset> remainingAssets = new LinkedHashMap<>(palAssets);
+		assert (SwingUtilities.isEventDispatchThread());
 
-		// remove any existing SpritePalettes which have been disabled
-		for (int i = 0; i < palettes.size(); i++) {
-			SpritePalette sp = palettes.elementAt(i);
-			if (sp.disabled) {
-				palettes.remove(i);
-				i--;
-			}
+		for (ImgAsset img : imgAssets) {
+			SpriteEditor.instance().queueDeleteResource(img);
 		}
 
-		// bind assets to palettes based on filename
+		try {
+			if (metadata.isPlayer) {
+				imgAssets.set(SpriteLoader.loadSpriteImages(AssetManager.getPlayerSpriteRasters()));
+			}
+			else {
+				imgAssets.set(SpriteLoader.loadSpriteImages(AssetManager.getNpcSpriteRasters(name)));
+			}
+
+			Logger.log("Loaded " + imgAssets.size() + " assets");
+		}
+		catch (IOException e) {
+			Logger.logError("IOException while reloading palettes: " + e.getMessage());
+			Toolkit.getDefaultToolkit().beep();
+		}
+
+		for (ImgAsset img : imgAssets) {
+			SpriteEditor.instance().queueLoadResource(img);
+		}
+
+		// assign new ImgAssets to SpriteRasters
+		bindRasters();
+
+		loadEditorImages();
+	}
+
+	public void reloadPaletteAssets()
+	{
+		assert (SwingUtilities.isEventDispatchThread());
+
+		for (PalAsset pal : palAssets) {
+			SpriteEditor.instance().queueDeleteResource(pal);
+		}
+
+		try {
+			if (metadata.isPlayer) {
+				palAssets.set(SpriteLoader.loadSpritePalettes(AssetManager.getPlayerSpritePalettes()));
+			}
+			else {
+				palAssets.set(SpriteLoader.loadSpritePalettes(AssetManager.getNpcSpritePalettes(name)));
+			}
+
+			Logger.log("Loaded " + palAssets.size() + " assets");
+		}
+		catch (IOException e) {
+			Logger.logError("IOException while reloading palettes: " + e.getMessage());
+			Toolkit.getDefaultToolkit().beep();
+		}
+
+		for (PalAsset pal : palAssets) {
+			SpriteEditor.instance().queueLoadResource(pal);
+		}
+
+		// assign new PalAssets to SpritePalettes
+		bindPalettes();
+
+		for (SpriteRaster raster : rasters) {
+			raster.loadEditorImages();
+		}
+	}
+
+	/**
+	 * Connect SpritePalettes to PalAssets by filename lookup
+	 */
+	public void bindPalettes()
+	{
 		for (SpritePalette sp : palettes) {
-			String fullName = sp.filename + PalAsset.EXT;
-			PalAsset asset = remainingAssets.get(fullName);
+			PalAsset asset = palAssets.get(sp.filename);
 
 			if (asset == null) {
-				Logger.logWarning("Can't find palette: " + fullName);
+				Logger.logWarning("Can't find palette: " + sp.filename);
 				sp.asset = null;
 			}
 			else {
 				sp.asset = asset;
-				remainingAssets.remove(fullName);
 			}
-		}
-
-		// add disabled 'dummy' SpritePalettes for all unused PalAssets
-		for (Entry<String, PalAsset> entry : remainingAssets.entrySet()) {
-			String name = FilenameUtils.removeExtension(entry.getKey());
-			PalAsset pa = entry.getValue();
-
-			SpritePalette dummyPalette = SpritePalette.createDummy(this, pa, name);
-			palettes.addElement(dummyPalette);
 		}
 	}
 
+	/**
+	 * Connect SpriteRasters to ImgAssets by filename lookup
+	 */
 	public void bindRasters()
 	{
 		for (SpriteRaster sr : rasters) {
@@ -381,43 +546,42 @@ public class Sprite implements XmlSerializable
 		}
 	}
 
-	protected void assignRasterPalettes()
-	{
-		for (ImgAsset ia : imgAssets.values()) {
-			ia.boundPal = null;
-		}
-
-		// bind default palettes for images
-		for (SpriteRaster sr : rasters) {
-			ImgAsset front = sr.getFront();
-			if (front != null) {
-				front.boundPal = sr.front.pal;
-			}
-
-			ImgAsset back = sr.getBack();
-			if (back != null) {
-				back.boundPal = sr.back.pal;
-			}
-		}
-	}
-
 	public void savePalettes()
 	{
-		File dir = new File(source.getParentFile(), "palettes");
-
-		for (SpritePalette sp : palettes) {
-			sp.saveAs(new File(dir, sp.filename + PalAsset.EXT));
+		int count = 0;
+		for (PalAsset asset : palAssets) {
+			if (asset.isModified()) {
+				try {
+					asset.save();
+					asset.clearModified();
+					count++;
+				}
+				catch (IOException e) {
+					Logger.logError("IOException while saving " + asset.getFilename() + ": " + e.getMessage());
+				}
+			}
 		}
+
+		if (count == 0)
+			Logger.log("No modified palettes found");
+		else if (count == 1)
+			Logger.log("Saved " + count + " modified palette");
+		else
+			Logger.log("Saved " + count + " modified palettes");
 	}
 
 	@Override
 	public void toXML(XmlWriter xmw)
 	{
-		recalculateIndices();
+		reindex();
 
 		XmlTag root = xmw.createTag(TAG_SPRITE, false);
 		xmw.addHex(root, ATTR_SPRITE_NUM_COMPONENTS, maxComponents);
 		xmw.addHex(root, ATTR_SPRITE_NUM_VARIATIONS, numVariations);
+		if (usesKeyframes)
+			xmw.addBoolean(root, ATTR_KEYFRAMES, true);
+		if (metadata.isPlayer && hasBack)
+			xmw.addBoolean(root, ATTR_SPRITE_HAS_BACK, true);
 		xmw.openTag(root);
 
 		XmlTag palettesTag = xmw.createTag(TAG_PALETTE_LIST, false);
@@ -425,14 +589,11 @@ public class Sprite implements XmlSerializable
 		for (int i = 0; i < palettes.size(); i++) {
 			SpritePalette sp = palettes.get(i);
 
-			if (sp.disabled) {
-				continue;
-			}
-
 			XmlTag paletteTag = xmw.createTag(TAG_PALETTE, true);
 			xmw.addHex(paletteTag, ATTR_ID, i);
 
-			xmw.addAttribute(paletteTag, ATTR_SOURCE, sp.filename + PalAsset.EXT);
+			xmw.addAttribute(paletteTag, ATTR_NAME, sp.name);
+			xmw.addAttribute(paletteTag, ATTR_SOURCE, sp.filename);
 
 			if (sp.frontOnly) {
 				xmw.addBoolean(paletteTag, ATTR_FRONT_ONLY, true);
@@ -456,7 +617,7 @@ public class Sprite implements XmlSerializable
 			xmw.addAttribute(rasterTag, ATTR_SOURCE, sr.front.filename);
 
 			if (hasBack) {
-				if (!sr.back.filename.isBlank()) {
+				if (sr.hasIndependentBack) {
 					xmw.addAttribute(rasterTag, ATTR_BACK, sr.back.filename);
 				}
 				else {
@@ -464,7 +625,7 @@ public class Sprite implements XmlSerializable
 				}
 
 				if (sr.back.pal != sr.front.pal) {
-					xmw.addHex(rasterTag, ATTR_PALETTE, sr.back.pal.getIndex());
+					xmw.addHex(rasterTag, ATTR_BACK_PAL, sr.back.pal.getIndex());
 				}
 			}
 
@@ -491,24 +652,6 @@ public class Sprite implements XmlSerializable
 		xmw.closeTag(animationsTag);
 
 		xmw.closeTag(root);
-	}
-
-	public void resaveRasters() throws IOException
-	{
-		for (ImgAsset ia : imgAssets.values()) {
-			ia.save();
-		}
-	}
-
-	public void saveChanges()
-	{
-		for (int i = 0; i < animations.size(); i++) {
-			SpriteAnimation anim = animations.get(i);
-			for (int j = 0; j < anim.components.size(); j++) {
-				SpriteComponent comp = anim.components.get(j);
-				comp.saveChanges();
-			}
-		}
 	}
 
 	public void convertToKeyframes()
@@ -540,43 +683,63 @@ public class Sprite implements XmlSerializable
 
 	public void loadTextures()
 	{
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			ia.glLoad();
 		}
 
-		for (PalAsset pa : palAssets.values()) {
+		for (PalAsset pa : palAssets) {
 			pa.pal.glLoad();
-		}
-
-		for (int i = 0; i < rasters.size(); i++) {
-			SpriteRaster sr = rasters.get(i);
-			sr.loadEditorImages();
 		}
 
 		texturesLoaded = true;
 	}
 
+	/**
+	 * Generate editor images for all ImgAssets
+	 */
+	public void loadEditorImages()
+	{
+		for (ImgAsset asset : imgAssets) {
+			asset.loadEditorImages();
+		}
+
+		for (SpriteRaster raster : rasters) {
+			raster.loadEditorImages();
+		}
+	}
+
+	/**
+	 * Generate editor images for all ImgAssets which use a particular PalAsset
+	 * @param filter
+	 */
+	public void loadEditorImages(PalAsset filter)
+	{
+		for (SpriteRaster img : rasters) {
+			img.loadEditorImages(filter);
+		}
+	}
+
 	public void unloadTextures()
 	{
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			ia.glDelete();
 		}
 
-		for (PalAsset pa : palAssets.values()) {
+		for (PalAsset pa : palAssets) {
 			pa.pal.glDelete();
 		}
 	}
 
 	public void glRefreshRasters()
 	{
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			ia.glLoad();
 		}
 	}
 
 	public void glRefreshPalettes()
 	{
-		for (PalAsset pa : palAssets.values()) {
+		for (PalAsset pa : palAssets) {
 			pa.pal.glReload();
 		}
 	}
@@ -616,6 +779,14 @@ public class Sprite implements XmlSerializable
 		animations.get(animationID).step();
 	}
 
+	public static class SpriteRenderingOpts
+	{
+		boolean useBack;
+		boolean enableSelectedHighlight;
+		boolean useSelectShading;
+		boolean useFiltering;
+	}
+
 	// render based on IDs -- these are used by the map editor
 	public void render(ShadingProfile spriteShading, int animationID, int paletteOverride, boolean useBack, boolean useSelectShading,
 		boolean useFiltering)
@@ -635,8 +806,10 @@ public class Sprite implements XmlSerializable
 	public void render(ShadingProfile spriteShading, SpriteAnimation anim, SpritePalette paletteOverride,
 		boolean useBack, boolean enableSelectedHighlight, boolean useSelectShading, boolean useFiltering)
 	{
-		if (!animations.contains(anim))
-			throw new IllegalArgumentException(anim + " does not belong to " + toString());
+		if (!animations.contains(anim)) {
+			Logger.logError(anim + " does not belong to " + toString());
+			return;
+		}
 
 		aabb.clear();
 
@@ -651,11 +824,15 @@ public class Sprite implements XmlSerializable
 	public void render(ShadingProfile spriteShading, SpriteAnimation anim, SpriteComponent comp, SpritePalette paletteOverride,
 		boolean useBack, boolean enableSelectedHighlight, boolean useSelectShading, boolean useFiltering)
 	{
-		if (!animations.contains(anim))
-			throw new IllegalArgumentException(anim + " does not belong to " + toString());
+		if (!animations.contains(anim)) {
+			Logger.logError(anim + " does not belong to " + toString());
+			return;
+		}
 
-		if (!anim.components.contains(comp))
-			throw new IllegalArgumentException(comp + " does not belong to " + anim);
+		if (!anim.components.contains(comp)) {
+			Logger.logError(comp + " does not belong to " + anim);
+			return;
+		}
 
 		aabb.clear();
 
@@ -663,16 +840,13 @@ public class Sprite implements XmlSerializable
 		comp.addCorners(aabb);
 	}
 
-	private static final int ATLAS_TILE_PADDING = 8;
-	private static final int ATLAS_SELECT_PADDING = 1;
-
-	public void makeAtlas()
+	public void makeImgAtlas()
 	{
 		int totalWidth = ATLAS_TILE_PADDING;
 		int totalHeight = ATLAS_TILE_PADDING;
 		int validRasterCount = 0;
 
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			totalWidth += ATLAS_TILE_PADDING + ia.img.width;
 			totalHeight += ATLAS_TILE_PADDING + ia.img.height;
 			validRasterCount++;
@@ -690,7 +864,7 @@ public class Sprite implements XmlSerializable
 		int currentRow = 0;
 		rowTallest.add(0);
 
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			if (currentX + ia.img.width + ATLAS_TILE_PADDING > maxWidth) {
 				// start new row
 				currentY -= rowTallest.get(currentRow);
@@ -719,32 +893,32 @@ public class Sprite implements XmlSerializable
 		rowPosY.add(currentY);
 		currentY -= ATLAS_TILE_PADDING;
 
-		atlasW = maxWidth;
-		atlasH = currentY;
+		imgAtlasW = maxWidth;
+		imgAtlasH = currentY;
 
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			ia.atlasY = rowPosY.get(ia.atlasRow) + ia.img.height;
 		}
 
 		// center the atlas
-		for (ImgAsset ia : imgAssets.values()) {
-			ia.atlasX -= atlasW / 2.0f;
-			ia.atlasY -= atlasH / 2.0f;
+		for (ImgAsset ia : imgAssets) {
+			ia.atlasX -= imgAtlasW / 2.0f;
+			ia.atlasY -= imgAtlasH / 2.0f;
 		}
 
 		// negative -> positive
-		atlasH = Math.abs(atlasH);
+		imgAtlasH = Math.abs(imgAtlasH);
 	}
 
-	public void centerAtlas(SpriteCamera sheetCamera, int canvasW, int canvasH)
+	public void centerImgAtlas(SpriteCamera sheetCamera, int canvasW, int canvasH)
 	{
-		sheetCamera.centerOn(canvasW, canvasH, 0, 0, 0, atlasW, atlasH, 0);
-		sheetCamera.setMaxPos(Math.round(atlasW / 2.0f), Math.round(atlasH / 2.0f));
+		sheetCamera.centerOn(canvasW, canvasH, 0, 0, 0, imgAtlasW, imgAtlasH, 0);
+		sheetCamera.setMaxPos(Math.round(imgAtlasW / 2.0f), Math.round(imgAtlasH / 2.0f));
 	}
 
-	public ImgAsset tryAtlasPick(BasicTraceRay trace)
+	public ImgAsset tryImgAtlasPick(BasicTraceRay trace)
 	{
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			Vector3f min = new Vector3f(
 				ia.atlasX - ATLAS_SELECT_PADDING,
 				ia.atlasY - ia.img.height - ATLAS_SELECT_PADDING,
@@ -764,19 +938,19 @@ public class Sprite implements XmlSerializable
 		return null;
 	}
 
-	public void renderAtlas(ImgAsset selected, ImgAsset highlighted, SpritePalette overridePalette, boolean useFiltering)
+	public void renderImgAtlas(ImgAsset selected, ImgAsset highlighted, boolean useFiltering)
 	{
-		for (ImgAsset ia : imgAssets.values()) {
+		for (ImgAsset ia : imgAssets) {
 			ia.inUse = false;
 		}
 
 		for (SpriteRaster sr : rasters) {
-			ImgAsset front = sr.getFront();
+			ImgAsset front = sr.front.asset;
 			if (front != null) {
 				front.inUse = true;
 			}
 
-			ImgAsset back = sr.getBack();
+			ImgAsset back = sr.back.asset;
 			if (back != null) {
 				back.inUse = true;
 			}
@@ -785,260 +959,178 @@ public class Sprite implements XmlSerializable
 		SpriteShader shader = ShaderManager.use(SpriteShader.class);
 		shader.useFiltering.set(useFiltering);
 
-		//	if(enableStencilBuffer)
-		//	{
-		//		glEnable(GL_STENCIL_TEST);
-		//		glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-		//	}
-
-		for (ImgAsset ia : imgAssets.values()) {
-			//		if(enableStencilBuffer)
-			//			glStencilFunc(GL_ALWAYS, i + 1, 0xFF);
-
+		for (ImgAsset ia : imgAssets) {
 			shader.selected.set(ia == selected);
 			shader.highlighted.set(ia == highlighted);
 
 			shader.alpha.set(ia.inUse ? 1.0f : 0.4f);
 
-			Palette renderPalette;
-			if (overridePalette != null && overridePalette.hasPal()) {
-				renderPalette = overridePalette.getPal();
-			}
-			else {
-				renderPalette = ia.getPalette();
-			}
-
 			ia.img.glBind(shader.texture);
-			renderPalette.glBind(shader.palette);
+			ia.getPalette().glBind(shader.palette);
 
 			float x1 = ia.atlasX;
 			float y1 = ia.atlasY;
 			float x2 = ia.atlasX + ia.img.width;
 			float y2 = ia.atlasY - ia.img.height;
 
-			shader.setXYQuadCoords(x1, y2, x2, y1, 0); //TODO upside down?
+			shader.setXYQuadCoords(x1, y2, x2, y1, 0); // NOTE: upside down
 			shader.renderQuad();
 		}
-
-		//	if(enableStencilBuffer)
-		//		glDisable(GL_STENCIL_TEST);
 	}
 
-	public static void validate(Sprite spr)
+	public void makeRasterAtlas()
 	{
-		for (int i = 0; i < spr.animations.size(); i++) {
-			SpriteAnimation anim = spr.animations.get(i);
-			for (int j = 0; j < anim.components.size(); j++) {
-				SpriteComponent comp = anim.components.get(j);
+		int totalWidth = ATLAS_TILE_PADDING;
+		int totalHeight = ATLAS_TILE_PADDING;
+		int validRasterCount = 0;
 
-				System.out.printf("%02X.%X : ", i, j);
+		for (SpriteRaster sr : rasters) {
+			if (sr.front.asset == null)
+				continue;
 
-				Queue<Short> sequence = new LinkedList<>(comp.rawAnim);
-				Queue<Short> cmdQueue = new LinkedList<>(sequence);
-
-				List<Integer> keyFrameCmds = new ArrayList<>(16);
-
-				while (!cmdQueue.isEmpty()) {
-					int pos = sequence.size() - cmdQueue.size();
-					short s = cmdQueue.poll();
-
-					int type = (s >> 12) & 0xF;
-					int extra = (s << 20) >> 20;
-
-					keyFrameCmds.add(type);
-
-					System.out.printf("%04X ", s);
-
-					switch (type) {
-						case 0x0: // delay
-							keyFrameCmds.clear();
-							if (!cmdQueue.isEmpty())
-								System.out.print("| ");
-							assert (extra > 0);
-							assert (extra <= 260); // longest delay = 4.333... seconds
-							// assert(extra == 1 || extra % 2 == 0); false! -- delay count can be ODD! and >1
-							break;
-						case 0x1: // set image -- 1FFF sets to null (do not draw)
-							assert (extra == -1 || (extra >= 0 && extra <= spr.rasters.size()));
-							break;
-						case 0x2: // goto command
-							keyFrameCmds.clear();
-							if (!cmdQueue.isEmpty())
-								System.out.print("| ");
-							assert (extra < sequence.size());
-							assert (extra < pos); // this goto always jumps backwards
-							break;
-						case 0x3: // set pos
-							assert (extra == 0 || extra == 1); //TODO absolute/relative position flag -- seems to do nothing...
-							//		if(extra == 0)
-							//			System.out.printf("<> %04X%n" , s);
-							short dx = cmdQueue.poll();
-							System.out.printf("%04X ", dx);
-							short dy = cmdQueue.poll();
-							System.out.printf("%04X ", dy);
-							short dz = cmdQueue.poll();
-							System.out.printf("%04X ", dz);
-							break;
-						case 0x4: // set angle
-							assert (extra >= -180 && extra <= 180);
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							assert (s >= -180 && s <= 180);
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							assert (s >= -180 && s <= 180);
-							break;
-						case 0x5: // set scale -- extra == 3 is valid, but unused
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							assert (extra == 0 || extra == 1 || extra == 2);
-							break;
-						case 0x6: // use palette -- FFF is valid, but unused
-							assert (extra >= 0 && extra < spr.getPaletteCount());
-							break;
-						case 0x7: // loop
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							keyFrameCmds.clear();
-							if (!cmdQueue.isEmpty())
-								System.out.print("| ");
-							assert (extra < sequence.size());
-							assert (extra < pos); // always jumps backwards
-							assert (s >= 0 && s < 25); // can be zero, how strange
-							break;
-						case 0x8: // set parent
-							int parentType = (extra >> 8) & 0xF;
-							int index = extra & 0xFF;
-
-							switch (parentType) {
-								case 0:
-									// found only for the black ash poofs included with certain animations (monty mole, bandit, etc)
-									assert (s == (short) 0x8000);
-									break;
-								case 1:
-									assert (pos == 0);
-									assert (index >= 0 && index < anim.components.size());
-									break;
-								case 2:
-									//assert(pos == comp.sequence.size() - 2);
-									System.out.printf("PARENT: %X%n", extra);
-									assert (index == 1 || index == 2);
-									break;
-								default:
-									assert (false);
-							}
-							break;
-						default:
-							throw new RuntimeException(String.format("Unknown animation command: %04X", s));
-					}
-				}
-				System.out.println();
-			}
+			totalWidth += ATLAS_TILE_PADDING + sr.front.asset.img.width;
+			totalHeight += ATLAS_TILE_PADDING + sr.front.asset.img.height;
+			validRasterCount++;
 		}
-		System.out.println();
+
+		float aspectRatio = 1.0f; // H/W
+		int maxWidth = (int) Math.sqrt(totalWidth * totalHeight / (aspectRatio * validRasterCount));
+		maxWidth = (maxWidth + 7) & 0xFFFFFFF8; // pad to multiple of 8
+
+		int currentX = ATLAS_TILE_PADDING;
+		int currentY = -ATLAS_TILE_PADDING;
+
+		ArrayList<Integer> rowPosY = new ArrayList<>();
+		ArrayList<Integer> rowTallest = new ArrayList<>();
+		int currentRow = 0;
+		rowTallest.add(0);
+
+		for (SpriteRaster sr : rasters) {
+			if (sr.front.asset == null)
+				continue;
+
+			int width = sr.front.asset.img.width;
+			int height = sr.front.asset.img.height;
+
+			if (currentX + width + ATLAS_TILE_PADDING > maxWidth) {
+				// start new row
+				currentY -= rowTallest.get(currentRow);
+				rowPosY.add(currentY);
+				rowTallest.add(0);
+
+				// next row
+				currentX = ATLAS_TILE_PADDING;
+				currentY -= ATLAS_TILE_PADDING;
+				currentRow++;
+			}
+
+			sr.atlasX = currentX;
+			sr.atlasRow = currentRow;
+
+			// move forward for next in the row
+			currentX += width;
+			currentX += ATLAS_TILE_PADDING;
+
+			if (height > rowTallest.get(currentRow))
+				rowTallest.set(currentRow, height);
+		}
+
+		// finish row
+		currentY -= rowTallest.get(currentRow);
+		rowPosY.add(currentY);
+		currentY -= ATLAS_TILE_PADDING;
+
+		rasterAtlasW = maxWidth;
+		rasterAtlasH = currentY;
+
+		for (SpriteRaster sr : rasters) {
+			if (sr.front.asset == null)
+				continue;
+
+			sr.atlasY = rowPosY.get(sr.atlasRow) + sr.front.asset.img.height;
+		}
+
+		// center the atlas
+		for (SpriteRaster sr : rasters) {
+			sr.atlasX -= rasterAtlasW / 2.0f;
+			sr.atlasY -= rasterAtlasH / 2.0f;
+		}
+
+		// negative -> positive
+		rasterAtlasH = Math.abs(rasterAtlasH);
 	}
 
-	public static void validateKeyframes(Sprite spr)
+	public void centerRasterAtlas(SpriteCamera sheetCamera, int canvasW, int canvasH)
 	{
-		for (int i = 0; i < spr.animations.size(); i++) {
-			SpriteAnimation anim = spr.animations.get(i);
-			for (int j = 0; j < anim.components.size(); j++) {
-				SpriteComponent comp = anim.components.get(j);
+		sheetCamera.centerOn(canvasW, canvasH, 0, 0, 0, rasterAtlasW, rasterAtlasH, 0);
+		sheetCamera.setMaxPos(Math.round(rasterAtlasW / 2.0f), Math.round(rasterAtlasH / 2.0f));
+	}
 
-				System.out.printf("%02X.%X : ", i, j);
+	public void renderRasterAtlas(Palette overridePalette, boolean useFiltering)
+	{
+		SpriteShader shader = ShaderManager.use(SpriteShader.class);
+		shader.useFiltering.set(useFiltering);
 
-				RawAnimation sequence = comp.animator.getCommandList();
-				Queue<Short> cmdQueue = new LinkedList<>(sequence);
+		for (SpriteRaster sr : rasters) {
+			if (sr.front.asset == null)
+				continue;
 
-				while (!cmdQueue.isEmpty()) {
-					int pos = sequence.size() - cmdQueue.size();
-					short s = cmdQueue.poll();
-
-					int type = (s >> 12) & 0xF;
-					int extra = (s << 20) >> 20;
-
-					System.out.printf("%04X ", s);
-
-					switch (type) {
-						case 0x0: // delay
-							if (!cmdQueue.isEmpty())
-								System.out.print("| ");
-							assert (extra > 0);
-							assert (extra <= 260); // longest delay = 4.333... seconds
-							break;
-						case 0x1: // set image -- 1FFF sets to null (do not draw)
-							assert (extra == -1 || (extra >= 0 && extra <= spr.rasters.size()));
-							break;
-						case 0x2: // goto command
-							if (!cmdQueue.isEmpty())
-								System.out.print("| ");
-							assert (extra < sequence.size());
-							assert (extra < pos); // this goto always jumps backwards
-							break;
-						case 0x3: // set pos
-							assert (extra == 0 || extra == 1); //TODO absolute/relative position flag?
-							//		if(extra == 0)
-							//			System.out.printf("<> %04X%n" , s);
-							short dx = cmdQueue.poll();
-							System.out.printf("%04X ", dx);
-							short dy = cmdQueue.poll();
-							System.out.printf("%04X ", dy);
-							short dz = cmdQueue.poll();
-							System.out.printf("%04X ", dz);
-							break;
-						case 0x4: // set angle
-							assert (extra >= -180 && extra <= 180);
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							assert (s >= -180 && s <= 180);
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							assert (s >= -180 && s <= 180);
-							break;
-						case 0x5: // set scale
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							assert (extra == 0 || extra == 1 || extra == 2);
-							break;
-						case 0x6: // use palette
-							assert (extra >= 0 && extra < spr.getPaletteCount());
-							break;
-						case 0x7: // loop
-							s = cmdQueue.poll();
-							System.out.printf("%04X ", s);
-							if (!cmdQueue.isEmpty())
-								System.out.print("| ");
-							assert (extra < sequence.size());
-							assert (extra < pos); // always jumps backwards
-							assert (s >= 0 && s < 25); // can be zero, how strange
-							break;
-						case 0x8: // set parent
-							int parentType = (extra >> 8) & 0xF;
-
-							switch (parentType) {
-								case 0:
-									// found only for the black ash poofs included with certain animations (monty mole, bandit, etc)
-									assert (s == (short) 0x8000);
-									break;
-								case 1:
-									assert (pos == 0);
-									break;
-								case 2:
-									//assert(pos == comp.sequence.size() - 2);
-									break;
-								default:
-									assert (false);
-							}
-							break;
-						default:
-							throw new RuntimeException(String.format("Unknown animation command: %04X", s));
-					}
-				}
-				System.out.println();
-
-				comp.animator.generate(sequence);
+			ImgAsset ia = sr.front.asset;
+			Palette renderPalette;
+			if (overridePalette != null) {
+				// use fixed palette if provided
+				renderPalette = overridePalette;
 			}
+			else if (sr.front.pal != null) {
+				// use palette asssigned to this face
+				renderPalette = sr.front.pal.getPal();
+			}
+			else {
+				// fallback to default palette of asset
+				renderPalette = ia.getPalette();
+			}
+
+			ia.img.glBind(shader.texture);
+			renderPalette.glBind(shader.palette);
+
+			float x1 = sr.atlasX;
+			float y1 = sr.atlasY;
+			float x2 = sr.atlasX + ia.img.width;
+			float y2 = sr.atlasY - ia.img.height;
+
+			shader.setXYQuadCoords(x1, y2, x2, y1, 0); // NOTE: upside down
+			shader.renderQuad();
 		}
-		System.out.println();
+	}
+
+	private final EditableData editableData = new EditableData(this);
+
+	@Override
+	public EditableData getEditableData()
+	{
+		return editableData;
+	}
+
+	@Override
+	public void addEditableDownstream(List<Editable> downstream)
+	{
+		for (PalAsset asset : palAssets)
+			downstream.add(asset);
+
+		for (SpritePalette pal : palettes)
+			downstream.add(pal);
+
+		for (SpriteRaster img : rasters)
+			downstream.add(img);
+
+		for (SpriteAnimation anim : animations)
+			downstream.add(anim);
+	}
+
+	@Override
+	public String checkErrorMsg()
+	{
+		// no errors for Sprite objects
+		return null;
 	}
 }

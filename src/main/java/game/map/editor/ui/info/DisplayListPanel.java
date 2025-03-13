@@ -37,9 +37,9 @@ import javax.swing.event.ListSelectionListener;
 import com.alexandriasoftware.swing.JSplitButton;
 
 import app.SwingUtils;
+import common.commands.AbstractCommand;
 import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.IShutdownListener;
-import game.map.editor.commands.AbstractCommand;
 import game.map.editor.ui.SwingGUI;
 import game.map.mesh.AbstractMesh;
 import game.map.mesh.TexturedMesh.DisplayListModel;
@@ -667,7 +667,7 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 
 				if (commandList.isSelectedIndex(i)) {
 					if (cmd instanceof TriangleBatch batch) {
-						deselectCommands.add(editor.selectionManager.getModifyTriangles(null, batch.triangles, false));
+						deselectCommands.add(MapEditor.instance().selectionManager.getModifyTriangles(null, batch.triangles, false));
 					}
 				}
 				else
@@ -865,7 +865,7 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 			super("Moving Triangles");
 			this.newParent = newParent;
 
-			triangles = editor.selectionManager.getTrianglesFromSelection(Model.class);
+			triangles = MapEditor.instance().selectionManager.getTrianglesFromSelection(Model.class);
 			meshes = new IdentityHashSet<>();
 			meshes.add(mdl.getMesh());
 

@@ -64,4 +64,9 @@ public class IntTextField extends JTextField
 		value = v;
 		setText(v + "");
 	}
+
+	public int getValue()
+	{
+		return value;
+	}
 }

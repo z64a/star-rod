@@ -7,6 +7,7 @@ import java.awt.Color;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
@@ -19,6 +20,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.KeyStroke;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
@@ -94,6 +96,8 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 	private OpenFileChooser importFileChooser;
 	private SaveFileChooser exportFileChooser;
 
+	private volatile boolean modified = false;
+
 	private boolean bDrawGrid = true;
 	private boolean bDrawBackground = false;
 	private JCheckBoxMenuItem cbGrid;
@@ -140,6 +144,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			true, true);
 
 		resetEditor();
+		setup();
 	}
 
 	private void resetEditor()
@@ -495,10 +500,29 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 	private void addEditorMenu(JMenuBar menuBar)
 	{
 		JMenuItem item;
+		KeyStroke awtKeyStroke;
 
 		JMenu menu = new JMenu(String.format("  %-10s", "Editor"));
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
+
+		item = new JMenuItem("Undo");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
+		item.addActionListener((e) -> {
+			undoEDT();
+		});
+		menu.add(item);
+
+		item = new JMenuItem("Redo");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
+		item.addActionListener((e) -> {
+			redoEDT();
+		});
+		menu.add(item);
+
+		menu.addSeparator();
 
 		item = new JMenuItem("View Controls");
 		item.addActionListener((e) -> {
@@ -599,14 +623,6 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			case KeyEvent.VK_SPACE:
 				if (!shift && !ctrl && !alt)
 					resetCam();
-				break;
-			case KeyEvent.VK_Z:
-				if (!shift && ctrl && !alt)
-					commandManager.undo();
-				break;
-			case KeyEvent.VK_Y:
-				if (!shift && ctrl && !alt)
-					commandManager.redo();
 				break;
 			case KeyEvent.VK_F:
 				if (!ctrl) {
@@ -806,6 +822,12 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 		RenderState.setDepthWrite(false);
 		LineRenderQueue.render(true);
 		RenderState.setDepthWrite(true);
+	}
+
+	@Override
+	protected boolean isModified()
+	{
+		return modified;
 	}
 
 	@Override

@@ -17,6 +17,7 @@ import com.google.gson.stream.JsonReader;
 import common.BaseCamera;
 import common.KeyboardInput;
 import common.Vector3f;
+import common.commands.AbstractCommand;
 import game.map.Axis;
 import game.map.BoundingBox;
 import game.map.Map;
@@ -28,7 +29,6 @@ import game.map.MutablePoint.PointBackup;
 import game.map.ReversibleTransform;
 import game.map.editor.camera.MapEditViewport;
 import game.map.editor.camera.OrthographicViewport;
-import game.map.editor.commands.AbstractCommand;
 import game.map.editor.render.RenderMode;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;
@@ -377,7 +377,7 @@ public class CursorObject extends EditorObject
 		double dot = nx*dir.x + nz*dir.z;
 		// okay way:
 		double dot = Vector3f.dot(dir, normalDir);
-		
+
 		pos.x += length * (dir.x - normalDir.x * dot);
 		pos.z += length * (dir.z - normalDir.z * dot);
 		 */
@@ -786,7 +786,7 @@ public class CursorObject extends EditorObject
 		}
 
 		GuideSprite primary = guides.get(0);
-		if (primary.sprite.isPlayerSprite() && primary.sprite.name.equals("Mario1")) {
+		if (primary.sprite.metadata.isPlayer && primary.sprite.name.equals("Mario1")) {
 			primary.animID = 2;
 			if (preview) {
 				switch (fallState) {
@@ -1007,7 +1007,7 @@ public class CursorObject extends EditorObject
 		}
 
 		@Override
-		public boolean modifiesMap()
+		public boolean modifiesData()
 		{
 			return false;
 		}
@@ -1027,7 +1027,7 @@ public class CursorObject extends EditorObject
 			obj.position.setY((int) newPos.y);
 			obj.position.setZ((int) newPos.z);
 			obj.recalculateAABB();
-			editor.selectionManager.currentSelection.updateAABB();
+			MapEditor.instance().selectionManager.currentSelection.updateAABB();
 		}
 
 		@Override
@@ -1039,7 +1039,7 @@ public class CursorObject extends EditorObject
 			obj.position.setY((int) oldPos.y);
 			obj.position.setZ((int) oldPos.z);
 			obj.recalculateAABB();
-			editor.selectionManager.currentSelection.updateAABB();
+			MapEditor.instance().selectionManager.currentSelection.updateAABB();
 		}
 	}
 

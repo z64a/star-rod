@@ -5,12 +5,11 @@ import static org.lwjgl.opengl.GL11.GL_ALWAYS;
 import static org.lwjgl.opengl.GL11.glStencilFunc;
 
 import java.awt.Container;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
 import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 
 import common.Vector3f;
 import game.map.Axis;
@@ -19,10 +18,24 @@ import game.map.editor.render.PresetColor;
 import game.map.shading.ShadingProfile;
 import game.map.shape.TransformMatrix;
 import game.sprite.SpriteLoader.Indexable;
+import game.sprite.editor.Editable;
+import game.sprite.editor.SpriteCleanup;
+import game.sprite.editor.SpriteCleanup.UnusedLabel;
 import game.sprite.editor.SpriteEditor;
-import game.sprite.editor.animators.CommandAnimator;
+import game.sprite.editor.animators.AnimElement;
 import game.sprite.editor.animators.ComponentAnimator;
-import game.sprite.editor.animators.KeyframeAnimator;
+import game.sprite.editor.animators.command.AnimCommand;
+import game.sprite.editor.animators.command.CommandAnimator;
+import game.sprite.editor.animators.command.Goto;
+import game.sprite.editor.animators.command.Label;
+import game.sprite.editor.animators.command.Loop;
+import game.sprite.editor.animators.command.SetImage;
+import game.sprite.editor.animators.command.SetPalette;
+import game.sprite.editor.animators.command.SetParent;
+import game.sprite.editor.animators.keyframe.AnimKeyframe;
+import game.sprite.editor.animators.keyframe.Keyframe;
+import game.sprite.editor.animators.keyframe.KeyframeAnimator;
+import game.sprite.editor.animators.keyframe.ParentKey;
 import game.texture.Palette;
 import renderer.buffers.LineRenderQueue;
 import renderer.shaders.RenderState;
@@ -34,19 +47,17 @@ import util.xml.XmlWrapper.XmlSerializable;
 import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
 
-public class SpriteComponent implements XmlSerializable, Indexable<SpriteComponent>
+public class SpriteComponent implements XmlSerializable, Indexable<SpriteComponent>, Editable
 {
-	public int posx, posy, posz;
-
+	public final Sprite sprite;
 	public final SpriteAnimation parentAnimation;
 
-	public boolean usesKeyframes = false;
+	/** overall position offset */
+	public int posx, posy, posz;
+
 	private CommandAnimator cmdAnimator;
 	private KeyframeAnimator keyframeAnimator;
-
 	protected ComponentAnimator animator;
-
-	public RawAnimation rawAnim = new RawAnimation();
 
 	// editor fields
 	public transient String name = "";
@@ -56,14 +67,16 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	public transient boolean selected;
 	public transient boolean hidden;
 
+	/** Time since last goto, used to detect goto:self infinite loops and break out */
+	public int gotoTime;
+
+	/** Has the animation reached a point where it cannot continue? */
+	public boolean complete;
+
 	// animation state
 	public SpriteRaster sr = null;
 	public SpritePalette sp = null;
 	public SpriteComponent parent = null;
-	public int parentType;
-	public int keyframeCount; // how many 'keyframes' have we gone through
-	public int frameCount;
-	public boolean complete;
 
 	public int delayCount;
 	public int repeatCount;
@@ -73,15 +86,27 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	public int rx, ry, rz;
 	public int scaleX, scaleY, scaleZ;
 
-	// 4f so we can operate on them with lwjgl matrix library
+	public transient boolean deleted;
+
+	public transient int lastSelectedCommand = -1;
+
+	// used while copying animations
+	public transient int parentID;
+
+	// bounding box containing all components as they are rendered
 	public transient Vector3f[] corners = new Vector3f[4];
+
+	// temporary offsets using while dragging components are in the viewport
+	public transient int dragX, dragY;
 
 	public SpriteComponent(SpriteAnimation parentAnimation)
 	{
 		this.parentAnimation = parentAnimation;
+		this.sprite = parentAnimation.parentSprite;
+
 		cmdAnimator = new CommandAnimator(this);
 		keyframeAnimator = new KeyframeAnimator(this);
-		animator = usesKeyframes ? keyframeAnimator : cmdAnimator;
+		animator = sprite.usesKeyframes ? keyframeAnimator : cmdAnimator;
 		reset();
 	}
 
@@ -89,27 +114,26 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	public SpriteComponent(SpriteAnimation anim, SpriteComponent original)
 	{
 		this.parentAnimation = anim;
-		this.usesKeyframes = original.usesKeyframes;
-		this.rawAnim = new RawAnimation(original.rawAnim);
-		this.cmdAnimator = new CommandAnimator(this);
-		this.keyframeAnimator = new KeyframeAnimator(this);
-		animator = usesKeyframes ? keyframeAnimator : cmdAnimator;
+		this.sprite = anim.parentSprite;
+
+		this.cmdAnimator = new CommandAnimator(this, original.cmdAnimator);
+		this.keyframeAnimator = new KeyframeAnimator(this, original.keyframeAnimator);
+		animator = sprite.usesKeyframes ? keyframeAnimator : cmdAnimator;
 		reset();
 
 		this.posx = original.posx;
 		this.posy = original.posy;
 		this.posz = original.posz;
 
-		this.rawAnim = rawAnim.deepCopy();
-
-		this.generate();
-
 		this.name = original.name;
 
 		this.sr = original.sr;
 		this.sp = original.sp;
-		this.parent = original.parent;
-		this.parentType = original.parentType;
+
+		if (original.parent == null)
+			this.parentID = -1;
+		else
+			this.parentID = original.parent.listIndex;
 
 		this.flag = original.flag;
 		this.dx = original.dx;
@@ -125,6 +149,48 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		this.scaleZ = original.scaleZ;
 	}
 
+	/**
+	 * Update SetParent object references from IDs saved when the commands were generated
+	 * from a RawAnimation. This must be called for each component after copying an animation,
+	 * as the SpriteComponent references would refer to the old SpriteAnimation.
+	 */
+	public void popParents()
+	{
+		SpriteAnimation anim = parentAnimation;
+
+		// update anim command lists
+		if (sprite.usesKeyframes) {
+			for (AnimElement e : keyframeAnimator.keyframes) {
+				if (e instanceof ParentKey setParent) {
+					int id = setParent.parIndex;
+					if (id >= 0 && id < anim.components.size()) {
+						setParent.parent = anim.components.get(setParent.parIndex);
+					}
+				}
+			}
+		}
+		else {
+			for (AnimElement e : cmdAnimator.commands) {
+				if (e instanceof SetParent setParent) {
+					int id = setParent.parIndex;
+					if (id >= 0 && id < anim.components.size()) {
+						setParent.parent = anim.components.get(setParent.parIndex);
+					}
+				}
+			}
+		}
+
+		// update animation state
+		if (parentID >= 0 && parentID < anim.components.size()) {
+			parent = anim.components.get(parentID);
+		}
+	}
+
+	public void prepareForEditor()
+	{
+		lastSelectedCommand = -1;
+	}
+
 	public void reset()
 	{
 		animator.reset();
@@ -132,23 +198,21 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		corners[1] = new Vector3f(0, 0, 0);
 		corners[2] = new Vector3f(0, 0, 0);
 		corners[3] = new Vector3f(0, 0, 0);
-		frameCount = 0;
 	}
 
 	public void step()
 	{
 		animator.step();
-		frameCount += 2;
 	}
 
 	public int getX()
 	{
-		return posx + dx;
+		return posx + dx + dragX;
 	}
 
 	public int getY()
 	{
-		return posy + dy;
+		return posy + dy + dragY;
 	}
 
 	public int getZ()
@@ -170,24 +234,30 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		if (!name.isEmpty())
 			xmw.addAttribute(compTag, ATTR_NAME, name);
 
-		if (usesKeyframes)
-			xmw.addBoolean(compTag, ATTR_KEYFRAMES, true);
-
 		xmw.addIntArray(compTag, ATTR_OFFSET, posx, posy, posz);
 		xmw.openTag(compTag);
 
-		for (Short s : rawAnim) {
-			XmlTag commandTag = xmw.createTag(TAG_COMMAND, true);
-			xmw.addHex(commandTag, ATTR_VAL, s & 0xFFFF);
-			xmw.printTag(commandTag);
-		}
+		if (SpriteEditor.instance().optOutputRaw) {
+			RawAnimation rawAnim = animator.toRawAnimation();
 
-		for (Entry<Integer, String> e : rawAnim.getAllLabels()) {
-			XmlTag labelTag = xmw.createTag(TAG_LABEL, true);
-			xmw.addHex(labelTag, ATTR_POS, e.getKey());
-			xmw.addAttribute(labelTag, ATTR_POS, e.getValue());
-		}
+			for (Short s : rawAnim) {
+				XmlTag commandTag = xmw.createTag(TAG_COMMAND, true);
+				xmw.addHex(commandTag, ATTR_VAL, s & 0xFFFF);
+				xmw.printTag(commandTag);
+			}
 
+			for (Entry<Integer, String> e : rawAnim.getAllLabels()) {
+				XmlTag labelTag = xmw.createTag(TAG_LABEL, true);
+				xmw.addHex(labelTag, ATTR_POS, e.getKey());
+				xmw.addAttribute(labelTag, ATTR_POS, e.getValue());
+			}
+		}
+		else {
+			if (sprite.usesKeyframes)
+				keyframeAnimator.toXML(xmw);
+			else
+				cmdAnimator.toXML(xmw);
+		}
 		xmw.closeTag(compTag);
 	}
 
@@ -196,9 +266,6 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	{
 		if (xmr.hasAttribute(componentElem, ATTR_NAME))
 			name = xmr.getAttribute(componentElem, ATTR_NAME);
-
-		if (xmr.hasAttribute(componentElem, ATTR_KEYFRAMES))
-			usesKeyframes = xmr.readBoolean(componentElem, ATTR_KEYFRAMES);
 
 		if (xmr.hasAttribute(componentElem, ATTR_OFFSET)) {
 			int[] xyz = xmr.readIntArray(componentElem, ATTR_OFFSET, 3);
@@ -218,7 +285,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		List<Element> commandElems = xmr.getTags(componentElem, TAG_COMMAND);
 
 		if (!commandElems.isEmpty()) {
-			rawAnim = new RawAnimation();
+			RawAnimation rawAnim = new RawAnimation();
 
 			// load legacy star rod sprite
 			for (Element commandElem : commandElems) {
@@ -232,225 +299,60 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 				xmr.requiresAttribute(labelElem, ATTR_POS);
 				rawAnim.setLabel(xmr.readHex(labelElem, ATTR_POS), xmr.getAttribute(labelElem, ATTR_NAME));
 			}
+
+			animator.generateFrom(rawAnim);
 		}
 		else {
-			// load new sprite command list
-			digestCommands(xmr, componentElem);
+			animator.fromXML(xmr, componentElem);
 		}
 	}
 
-	private void digestCommands(XmlReader xmr, Element compElem)
+	public void updateReferences(
+		HashMap<String, SpriteRaster> imgMap,
+		HashMap<String, SpritePalette> palMap,
+		HashMap<String, SpriteComponent> compMap)
 	{
-		rawAnim = new RawAnimation();
 
-		int bufPos = 0;
-		for (Node child = compElem.getFirstChild(); child != null; child = child.getNextSibling()) {
-			if (child instanceof Element elem) {
-				switch (elem.getNodeName()) {
-					case "Label":
-						rawAnim.setLabel(bufPos, elem.getAttribute("name"));
-						break;
-					case "Wait":
-					case "Goto":
-					case "SetRaster":
-					case "SetPalette":
-					case "Unknown":
-					case "SetParent":
-					case "SetNotify":
-						bufPos += 2;
-						break;
-					case "SetPos":
-						bufPos += 8;
-						break;
-					case "SetRot":
-						bufPos += 6;
-						break;
-					case "SetScale":
-					case "Loop":
-						bufPos += 4;
-						break;
-				}
-			}
-		}
-
-		for (Node child = compElem.getFirstChild(); child != null; child = child.getNextSibling()) {
-			if (child instanceof Element elem) {
-				int[] xyz;
-
-				switch (elem.getNodeName()) {
-					case "Wait":
-						int duration = xmr.readInt(elem, ATTR_DURATION);
-						rawAnim.add((short) (0x0000 | (duration & 0xFFF)));
-						break;
-					case "SetRaster":
-						if (xmr.hasAttribute(elem, ATTR_NAME)) {
-							String name = xmr.getAttribute(elem, ATTR_NAME);
-							//TODO select by name
-						}
-						else {
-							int index = xmr.readHex(elem, ATTR_INDEX);
-							rawAnim.add((short) (0x1000 | (index & 0xFFF)));
-						}
-						break;
-					case "Goto":
-						int gotoPos;
-						if (xmr.hasAttribute(elem, ATTR_POS)) {
-							gotoPos = xmr.readInt(elem, ATTR_POS);
-						}
-						else {
-							String name = xmr.getAttribute(elem, ATTR_DEST);
-							gotoPos = rawAnim.getPos(name);
-							if (gotoPos < 0) {
-								xmr.complain("Could not find label: " + name);
-							}
-						}
-						rawAnim.add((short) (0x2000 | (gotoPos & 0xFFF)));
-						break;
-					case "SetPos":
-						int flag = xmr.readHex(elem, ATTR_FLAG);
-						xyz = xmr.readIntArray(elem, ATTR_XYZ, 3);
-						rawAnim.add((short) (0x3000 | (flag & 0xFFF)));
-						rawAnim.add((short) xyz[0]);
-						rawAnim.add((short) xyz[1]);
-						rawAnim.add((short) xyz[2]);
-						break;
-					case "SetRot":
-						xyz = xmr.readIntArray(elem, ATTR_XYZ, 3);
-						rawAnim.add((short) (0x4000 | (xyz[0] & 0xFFF)));
-						rawAnim.add((short) xyz[1]);
-						rawAnim.add((short) xyz[2]);
-						break;
-					case "SetScale":
-						String mode = xmr.getAttribute(elem, ATTR_MODE);
-						int modeIdx = 0;
-						switch (mode) {
-							case "uniform":
-								modeIdx = 0;
-								break;
-							case "x":
-								modeIdx = 1;
-								break;
-							case "y":
-								modeIdx = 2;
-								break;
-							case "z":
-								modeIdx = 3;
-								break;
-						}
-						int percent = xmr.readInt(elem, ATTR_PERCENT);
-						rawAnim.add((short) (0x5000 | (modeIdx & 0xFFF)));
-						rawAnim.add((short) percent);
-						break;
-					case "SetPalette":
-						if (xmr.hasAttribute(elem, ATTR_NAME)) {
-							String name = xmr.getAttribute(elem, ATTR_NAME);
-							//TODO select by name
-						}
-						else {
-							int index = xmr.readHex(elem, ATTR_INDEX);
-							rawAnim.add((short) (0x6000 | (index & 0xFFF)));
-						}
-						break;
-					case "Loop":
-						int count = xmr.readInt(elem, ATTR_COUNT);
-						int loopPos;
-						if (xmr.hasAttribute(elem, ATTR_POS)) {
-							loopPos = xmr.readInt(elem, ATTR_POS);
-						}
-						else {
-							String name = xmr.getAttribute(elem, ATTR_DEST);
-							loopPos = rawAnim.getPos(name);
-							if (loopPos < 0) {
-								xmr.complain("Could not find label: " + name);
-							}
-						}
-						rawAnim.add((short) (0x7000 | (count & 0xFFF)));
-						rawAnim.add((short) loopPos);
-						break;
-					case "Unknown":
-						int value = xmr.readInt(elem, ATTR_VALUE);
-						rawAnim.add((short) (0x8000 | (value & 0xFF)));
-						break;
-					case "SetParent":
-						int parent = xmr.readInt(elem, ATTR_INDEX);
-						rawAnim.add((short) (0x8100 | (parent & 0xFF)));
-						break;
-					case "SetNotify":
-						int notify = xmr.readInt(elem, ATTR_VALUE);
-						rawAnim.add((short) (0x8200 | (notify & 0xFF)));
-						break;
-				}
-			}
-		}
-	}
-
-	public void saveChanges()
-	{
-		rawAnim = animator.getCommandList();
+		animator.updateReferences(imgMap, palMap, compMap);
 	}
 
 	public void convertToKeyframes()
 	{
-		if (usesKeyframes)
+		if (sprite.usesKeyframes)
 			return;
 
-		RawAnimation rawAnim = cmdAnimator.getCommandList();
-		keyframeAnimator.generate(rawAnim);
+		List<AnimKeyframe> keyframes = cmdAnimator.toKeyframes(keyframeAnimator);
+		keyframeAnimator.useKeyframes(keyframes);
 
 		animator = keyframeAnimator;
-		usesKeyframes = true;
+		lastSelectedCommand = -1;
 	}
 
 	public void convertToCommands()
 	{
-		if (!usesKeyframes)
+		if (!sprite.usesKeyframes)
 			return;
 
-		RawAnimation rawAnim = keyframeAnimator.getCommandList();
-		cmdAnimator.generate(rawAnim);
+		List<AnimCommand> commands = keyframeAnimator.toCommands(cmdAnimator);
+		cmdAnimator.useCommands(commands);
 
 		animator = cmdAnimator;
-		usesKeyframes = false;
+		lastSelectedCommand = -1;
 	}
 
-	public void validateGenerators()
+	public void calculateTiming()
 	{
-		List<Short> originalCommandList = new ArrayList<>(rawAnim);
-		cmdAnimator.generate(rawAnim);
-		List<Short> cmdCommands = cmdAnimator.getCommandList();
-
-		// commands should ALWAYS be faithful to the original sequence
-		assert (cmdCommands.size() == originalCommandList.size());
-		for (int i = 0; i < cmdCommands.size(); i++) {
-			short original = originalCommandList.get(i);
-			short generated = cmdCommands.get(i);
-			System.out.printf("%04X %04X%n", original, generated);
-			assert (original == generated);
-		}
-
-		// keyframes will generally NOT equal the original sequence
-		/*
-		keyframeAnimator.generate(cmdList, labelNames);
-		List<Short> kfCommands = keyframeAnimator.getCommandList();
-		assert(kfCommands.size() == originalCommandList.size());
-		for(int i = 0; i < kfCommands.size(); i++)
-		{
-			short original = originalCommandList.get(i);
-			short generated = kfCommands.get(i);
-			System.out.printf("%04X %04X%n", original, generated);
-			assert(original == generated);
-		}
-		*/
-	}
-
-	public void generate()
-	{
-		animator.generate(rawAnim);
+		animator.calculateTiming();
 	}
 
 	public void bind(SpriteEditor editor, Container commandListContainer, Container commandEditContainer)
 	{
 		animator.bind(editor, commandListContainer, commandEditContainer);
+	}
+
+	public void unbind()
+	{
+		animator.unbind();
 	}
 
 	@Override
@@ -471,6 +373,35 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		return listIndex;
 	}
 
+	public String createUniqueName(String name)
+	{
+		String baseName = name;
+
+		for (int iteration = 0; iteration < 256; iteration++) {
+			boolean conflict = false;
+
+			// compare to all other names
+			for (SpriteComponent other : parentAnimation.components) {
+				if (other != this && other.name.equals(name)) {
+					conflict = true;
+					break;
+				}
+			}
+
+			if (!conflict) {
+				// name is valid
+				return name;
+			}
+			else {
+				// try next iteration
+				name = baseName + "_" + iteration;
+			}
+		}
+
+		// could not form a valid name
+		return null;
+	}
+
 	/*
 	 * When composing transformations, the order is:
 	 * (1) Translate
@@ -487,21 +418,11 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		if (sr == null || hidden)
 			return;
 
-		ImgAsset ia = null;
-
-		// use back if it's available
-		if (useBack) {
-			ia = sr.getBack();
-		}
-
-		// fallback to front
-		if (ia == null) {
-			ia = sr.getFront();
-		}
+		boolean tryBack = parentAnimation.parentSprite.hasBack && sr.hasIndependentBack;
+		SpriteRasterFace face = (useBack && tryBack) ? sr.back : sr.front;
 
 		// no image found, skip drawing
-		//TODO perhaps draw a 32x32 error quad instead?
-		if (ia == null)
+		if (face == null || face.asset == null)
 			return;
 
 		if (enableStencilBuffer)
@@ -509,13 +430,20 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 
 		Palette renderPalette;
 		if (sp != null && sp.hasPal()) {
+			// use current palette set by command list
 			renderPalette = sp.getPal();
 		}
 		else if (paletteOverride != null && paletteOverride.hasPal()) {
+			// use override palette set in the Animations tab
 			renderPalette = paletteOverride.getPal();
 		}
+		else if (face.pal.hasPal()) {
+			// use palette assigned for this side of the SpriteRaster
+			renderPalette = face.pal.getPal();
+		}
 		else {
-			renderPalette = ia.getPalette();
+			// no valid palette could be found, fallback to palette of the image itself
+			renderPalette = face.asset.img.palette;
 		}
 
 		int x = (parent != null) ? parent.getX() + getX() : getX();
@@ -524,8 +452,8 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 
 		float depth = z / 100.0f;
 
-		float w = ia.img.width / 2;
-		float h = ia.img.height;
+		float w = face.asset.img.width / 2;
+		float h = face.asset.img.height;
 		corners[0].set(-w, 0, 0);
 		corners[1].set(w, 0, 0);
 		corners[2].set(w, h, 0);
@@ -562,7 +490,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 			spriteShading.setShaderParams(shader);
 		}
 
-		ia.img.glBind(shader.texture);
+		face.asset.img.glBind(shader.texture);
 		renderPalette.glBind(shader.palette);
 
 		shader.useFiltering.set(useFiltering);
@@ -578,7 +506,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		TransformMatrix currentMtx = RenderState.pushModelMatrix();
 
 		RenderState.setPolygonMode(PolygonMode.FILL);
-		shader.setXYQuadCoords(x1, y2, x2, y1, 0); //TODO reversed?
+		shader.setXYQuadCoords(x1, y2, x2, y1, 0); //note: y is reversed
 		shader.renderQuad(TransformMatrix.multiply(currentMtx, mtx));
 
 		RenderState.popModelMatrix();
@@ -595,5 +523,86 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 
 			LineRenderQueue.render(true);
 		}
+	}
+
+	public void addUnused(SpriteCleanup cleanup)
+	{
+		if (sprite.usesKeyframes) {
+			for (AnimElement elem : keyframeAnimator.keyframes) {
+				if (elem instanceof Keyframe kf) {
+					if (kf.img != null)
+						kf.img.inUse = true;
+
+					if (kf.pal != null)
+						kf.pal.inUse = true;
+				}
+			}
+		}
+		else {
+			for (AnimElement elem : cmdAnimator.commands) {
+				if (elem instanceof Label lbl) {
+					lbl.inUse = false;
+				}
+			}
+
+			for (AnimElement elem : cmdAnimator.commands) {
+				if (elem instanceof Goto go2) {
+					if (go2.label != null)
+						go2.label.inUse = true;
+				}
+
+				else if (elem instanceof Loop loop) {
+					if (loop.label != null)
+						loop.label.inUse = true;
+				}
+
+				else if (elem instanceof SetImage setImg) {
+					if (setImg.img != null)
+						setImg.img.inUse = true;
+				}
+
+				else if (elem instanceof SetPalette setPal) {
+					if (setPal.pal != null)
+						setPal.pal.inUse = true;
+				}
+			}
+
+			for (int i = 0; i < cmdAnimator.commands.size(); i++) {
+				AnimElement elem = cmdAnimator.commands.get(i);
+				if (elem instanceof Label lbl && !lbl.inUse) {
+					cleanup.unusedLabels.addElement(new UnusedLabel(lbl, cmdAnimator.commands));
+				}
+			}
+		}
+	}
+
+	private final EditableData editableData = new EditableData(this);
+
+	@Override
+	public EditableData getEditableData()
+	{
+		return editableData;
+	}
+
+	@Override
+	public void addEditableDownstream(List<Editable> downstream)
+	{
+		if (sprite.usesKeyframes) {
+			for (AnimElement e : keyframeAnimator.keyframes)
+				downstream.add(e);
+		}
+		else {
+			for (AnimElement e : cmdAnimator.commands)
+				downstream.add(e);
+		}
+	}
+
+	@Override
+	public String checkErrorMsg()
+	{
+		if (posz % 2 == 1 && SpriteEditor.instance().optStrictErrorChecking)
+			return "Component: odd z-offsets break Actor decorations";
+
+		return null;
 	}
 }

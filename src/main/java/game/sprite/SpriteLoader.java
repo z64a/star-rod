@@ -5,6 +5,7 @@ import static game.sprite.SpriteTableKey.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -12,13 +13,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import org.w3c.dom.Element;
 
+import app.Environment;
 import assets.AssetHandle;
 import assets.AssetManager;
 import assets.AssetSubdir;
 import game.sprite.Sprite.SpriteSummary;
+import game.sprite.editor.SpriteAssetCollection;
 import util.Logger;
 import util.xml.XmlWrapper.XmlReader;
 
@@ -32,18 +38,26 @@ public class SpriteLoader
 		public int getIndex();
 	}
 
+	/**
+	 * Represent entries in the sprite list files npc.xml and player.xml
+	 * These associate sprite IDs with directories and hold a reference to the loaded sprites.
+	 */
 	public static class SpriteMetadata implements Indexable<String>
 	{
 		public final int id;
 		public final String name;
+		public final boolean isPlayer;
 		public final boolean hasBack;
 		private final File xml;
 
-		private SpriteMetadata(int id, String name, File xml, boolean hasBack)
+		public transient Sprite loadedSprite;
+
+		private SpriteMetadata(int id, String name, File xml, boolean isPlayer, boolean hasBack)
 		{
 			this.id = id;
 			this.name = name;
 			this.xml = xml;
+			this.isPlayer = isPlayer;
 			this.hasBack = hasBack;
 		}
 
@@ -63,6 +77,16 @@ public class SpriteLoader
 		{
 			return xml.lastModified();
 		}
+
+		@Override
+		public int hashCode()
+		{
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + id;
+			result = prime * result + (isPlayer ? 1231 : 1237);
+			return result;
+		}
 	}
 
 	public static enum SpriteSet
@@ -75,12 +99,12 @@ public class SpriteLoader
 	private static TreeMap<Integer, SpriteMetadata> playerSpriteData = null;
 	private static TreeMap<Integer, SpriteMetadata> npcSpriteData = null;
 
-	private HashMap<Integer, Sprite> playerSpriteCache = new HashMap<>();
-	private HashMap<Integer, Sprite> npcSpriteCache = new HashMap<>();
+	private HashMap<SpriteMetadata, Sprite> playerSpriteCache = new HashMap<>();
+	private HashMap<SpriteMetadata, Sprite> npcSpriteCache = new HashMap<>();
 
 	private boolean loadedPlayerAssets = false;
-	private LinkedHashMap<String, ImgAsset> playerImgAssets;
-	private LinkedHashMap<String, PalAsset> playerPalAssets;
+	private final SpriteAssetCollection<ImgAsset> playerImgAssets = new SpriteAssetCollection<>();
+	private final SpriteAssetCollection<PalAsset> playerPalAssets = new SpriteAssetCollection<>();
 
 	public static void initialize()
 	{
@@ -106,63 +130,64 @@ public class SpriteLoader
 		throw new IllegalArgumentException("Unknown sprite set: " + set);
 	}
 
+	private SpriteMetadata getMetadata(SpriteSet set, int id)
+	{
+		return getMap(set).get(id);
+	}
+
 	public static Collection<SpriteMetadata> getValidSprites(SpriteSet set)
 	{
 		if (!loaded)
 			throw new IllegalStateException("getValidSprites invoked before initializing SpriteLoader!");
 
-		TreeMap<Integer, SpriteMetadata> spriteMap = getMap(set);
-		return spriteMap.values();
+		return getMap(set).values();
 	}
 
 	public Sprite getSprite(SpriteSet set, int id)
 	{
-		return getSprite(set, id, false);
+		SpriteMetadata metadata = getMetadata(set, id);
+		if (metadata == null) {
+			Logger.logfError("Unknown sprite: %s %02X", set, id);
+			return null;
+		}
+
+		return getSprite(metadata, false);
 	}
 
-	public Sprite getSprite(SpriteSet set, int id, boolean forceReload)
+	public Sprite getSprite(SpriteMetadata metadata, boolean forceReload)
 	{
 		if (!loaded)
 			throw new IllegalStateException("getSprite invoked before initializing SpriteLoader!");
 
 		Sprite spr = null;
-		switch (set) {
-			case Npc:
-				spr = getNpcSprite(id, forceReload);
-				break;
-			case Player:
-				spr = getPlayerSprite(id, forceReload);
-				break;
-			default:
-				throw new IllegalArgumentException("Unknown sprite set: " + set);
-		}
 
-		if (spr != null) {
-			spr.assignRasterPalettes();
-		}
+		if (metadata.isPlayer)
+			spr = getPlayerSprite(metadata, forceReload);
+		else
+			spr = getNpcSprite(metadata, forceReload);
+
+		metadata.loadedSprite = spr;
+
 		return spr;
 	}
 
-	private Sprite getNpcSprite(int id, boolean forceReload)
+	private Sprite getNpcSprite(SpriteMetadata md, boolean forceReload)
 	{
-		if (!forceReload && npcSpriteCache.containsKey(id))
-			return npcSpriteCache.get(id);
+		if (!forceReload && npcSpriteCache.containsKey(md))
+			return npcSpriteCache.get(md);
 
-		if (!npcSpriteData.containsKey(id))
-			return null;
-
-		SpriteMetadata md = npcSpriteData.get(id);
 		File xmlFile = md.xml;
 		Sprite npcSprite = null;
 
 		try {
-			npcSprite = Sprite.readNpc(xmlFile, md.name);
-			npcSprite.imgAssets = loadSpriteImages(AssetManager.getNpcSpriteRasters(md.name));
-			npcSprite.palAssets = loadSpritePalettes(AssetManager.getNpcSpritePalettes(md.name));
+			npcSprite = Sprite.readNpc(md, xmlFile, md.name);
+			npcSprite.imgAssets.set(loadSpriteImages(AssetManager.getNpcSpriteRasters(md.name)));
+			npcSprite.palAssets.set(loadSpritePalettes(AssetManager.getNpcSpritePalettes(md.name)));
+
 			npcSprite.bindPalettes();
 			npcSprite.bindRasters();
-			npcSprite.recalculateIndices();
-			npcSpriteCache.put(id, npcSprite);
+			npcSprite.reindex();
+			npcSpriteCache.put(md, npcSprite);
 		}
 		catch (Throwable e) {
 			Logger.logWarning("Error while loading NPC sprite! " + e.getMessage());
@@ -173,34 +198,29 @@ public class SpriteLoader
 		return npcSprite;
 	}
 
-	private Sprite getPlayerSprite(int id, boolean forceReload)
+	private Sprite getPlayerSprite(SpriteMetadata md, boolean forceReload)
 	{
 		Sprite playerSprite = null;
 
-		if (!forceReload && playerSpriteCache.containsKey(id))
-			return playerSpriteCache.get(id);
-
-		if (!playerSpriteData.containsKey(id))
-			return null;
+		if (!forceReload && playerSpriteCache.containsKey(md))
+			return playerSpriteCache.get(md);
 
 		tryLoadingPlayerAssets(forceReload);
 
-		SpriteMetadata md = playerSpriteData.get(id);
 		File xmlFile = md.xml;
 
 		try {
-			playerSprite = Sprite.readPlayer(xmlFile, md.name);
+			playerSprite = Sprite.readPlayer(md, xmlFile, md.name);
 			playerSprite.imgAssets = playerImgAssets;
 			playerSprite.palAssets = playerPalAssets;
 			playerSprite.bindPalettes();
 			playerSprite.bindRasters();
-			playerSprite.recalculateIndices();
-			playerSpriteCache.put(id, playerSprite);
+			playerSprite.reindex();
+			playerSpriteCache.put(md, playerSprite);
 		}
 		catch (Throwable e) {
 			Logger.logWarning("Error while loading player sprite " + md.id + "! " + e.getMessage());
 			e.printStackTrace();
-			playerSpriteData.remove(id); // file is invalid
 		}
 
 		return playerSprite;
@@ -210,8 +230,8 @@ public class SpriteLoader
 	{
 		if (!loadedPlayerAssets || force) {
 			try {
-				playerImgAssets = loadSpriteImages(AssetManager.getPlayerSpriteRasters());
-				playerPalAssets = loadSpritePalettes(AssetManager.getPlayerSpritePalettes());
+				playerImgAssets.set(loadSpriteImages(AssetManager.getPlayerSpriteRasters()));
+				playerPalAssets.set(loadSpritePalettes(AssetManager.getPlayerSpritePalettes()));
 				loadedPlayerAssets = true;
 			}
 			catch (IOException e) {
@@ -220,46 +240,80 @@ public class SpriteLoader
 		}
 	}
 
-	// load all raster assets
-	private static LinkedHashMap<String, ImgAsset> loadSpriteImages(Map<String, AssetHandle> assets)
+	// load all raster assets in parallel
+	public static LinkedHashMap<String, ImgAsset> loadSpriteImages(Map<String, AssetHandle> assets)
 	{
-		LinkedHashMap<String, ImgAsset> imgAssets = new LinkedHashMap<>();
+		ConcurrentHashMap<String, ImgAsset> imgAssets = new ConcurrentHashMap<>();
+		List<CompletableFuture<Void>> futures = new ArrayList<>();
 
 		for (Entry<String, AssetHandle> entry : assets.entrySet()) {
 			String name = entry.getKey();
 			AssetHandle ah = entry.getValue();
 
-			try {
-				ImgAsset ia = new ImgAsset(ah);
-				imgAssets.put(name, ia);
-			}
-			catch (Throwable e) {
-				Logger.logWarning("Failed to load raster: " + ah.getName());
-			}
+			CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+				try {
+					ImgAsset ia = new ImgAsset(ah);
+					imgAssets.put(name, ia);
+				}
+				catch (Throwable e) {
+					String assetName = ah.getName();
+					if ("PSR_1F880.png".equals(assetName) || "PSR_9CD50.png".equals(assetName))
+						; //TODO these assets should probably be removed in dx?
+					else
+						Logger.logWarning("Failed to load raster: " + assetName);
+				}
+			}, Environment.getExecutor());
+
+			futures.add(future);
 		}
 
-		return imgAssets;
+		CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+		// return a sorted map
+		return imgAssets.entrySet().stream()
+			.sorted(Map.Entry.comparingByKey())
+			.collect(Collectors.toMap(
+				Map.Entry::getKey,
+				Map.Entry::getValue,
+				(e1, e2) -> e1,
+				LinkedHashMap::new
+			));
 	}
 
-	// load all palette assets
+	// load all palette assets in parallel
 	public static LinkedHashMap<String, PalAsset> loadSpritePalettes(Map<String, AssetHandle> assets)
 	{
-		LinkedHashMap<String, PalAsset> palAssets = new LinkedHashMap<>();
+		ConcurrentHashMap<String, PalAsset> palAssets = new ConcurrentHashMap<>();
+		List<CompletableFuture<Void>> futures = new ArrayList<>();
 
 		for (Entry<String, AssetHandle> entry : assets.entrySet()) {
 			String name = entry.getKey();
 			AssetHandle ah = entry.getValue();
 
-			try {
-				PalAsset pa = new PalAsset(ah);
-				palAssets.put(name, pa);
-			}
-			catch (IOException e) {
-				Logger.logWarning("Failed to load palette: " + ah.getName());
-			}
+			CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+				try {
+					PalAsset pa = new PalAsset(ah);
+					palAssets.put(name, pa);
+				}
+				catch (Throwable e) {
+					Logger.logWarning("Failed to load palette: " + ah.getName());
+				}
+			}, Environment.getExecutor());
+
+			futures.add(future);
 		}
 
-		return palAssets;
+		CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+		// return a sorted map
+		return palAssets.entrySet().stream()
+			.sorted(Map.Entry.comparingByKey())
+			.collect(Collectors.toMap(
+				Map.Entry::getKey,
+				Map.Entry::getValue,
+				(e1, e2) -> e1,
+				LinkedHashMap::new
+			));
 	}
 
 	private static void readSpriteTable()
@@ -289,7 +343,7 @@ public class SpriteLoader
 					continue;
 				}
 
-				npcSpriteData.put(curID, new SpriteMetadata(curID, name, ah, false));
+				npcSpriteData.put(curID, new SpriteMetadata(curID, name, ah, false, false));
 				curID++;
 			}
 		}
@@ -328,7 +382,7 @@ public class SpriteLoader
 					hasBack = spriteXmr.readBoolean(spriteRoot, ATTR_SPRITE_HAS_BACK);
 				}
 
-				playerSpriteData.put(curID, new SpriteMetadata(curID, name, ah, hasBack));
+				playerSpriteData.put(curID, new SpriteMetadata(curID, name, ah, true, hasBack));
 				curID++;
 				if (hasBack) {
 					curID++; // consume extra ID for back sprite

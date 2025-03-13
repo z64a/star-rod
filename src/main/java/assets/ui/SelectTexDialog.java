@@ -1,10 +1,14 @@
 package assets.ui;
 
+import java.awt.Component;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
@@ -42,14 +46,14 @@ public class SelectTexDialog extends JDialog
 
 	public static File showPrompt()
 	{
-		return showPrompt("");
+		return showPrompt(null, "");
 	}
 
-	public static File showPrompt(String initialSelection)
+	public static File showPrompt(Component parent, String initialSelection)
 	{
 		try {
 			SelectTexDialog chooser = new SelectTexDialog(AssetManager.getTextureArchives(), initialSelection);
-			SwingUtils.showModalDialog(chooser, "Choose Textures");
+			SwingUtils.showModalDialog(chooser, parent, "Choose Textures");
 			if (chooser.result == DialogResult.ACCEPT)
 				return chooser.getSelectedFile();
 		}
@@ -71,10 +75,18 @@ public class SelectTexDialog extends JDialog
 		super(null, java.awt.Dialog.ModalityType.TOOLKIT_MODAL);
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
+		// load texture archive previews in parallel
+		List<CompletableFuture<TexturesAsset>> futures = assets.stream()
+			.map(ah -> CompletableFuture.supplyAsync(() -> new TexturesAsset(ah), Environment.getExecutor()))
+			.collect(Collectors.toList());
+
+		// wait for all tasks to complete and collect results
+		List<TexturesAsset> textureAssets = futures.stream()
+			.map(CompletableFuture::join)
+			.collect(Collectors.toList());
+
 		DefaultListModel<TexturesAsset> listModel = new DefaultListModel<>();
-		for (AssetHandle ah : assets) {
-			listModel.addElement(new TexturesAsset(ah));
-		}
+		textureAssets.forEach(listModel::addElement);
 
 		JList<TexturesAsset> list = new JList<>();
 		list.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -158,17 +170,20 @@ public class SelectTexDialog extends JDialog
 		add(selectButton, "sg but");
 
 		if (listModel.size() > 0) {
-			if (initialSelection != null && !initialSelection.isBlank()) {
-				for (int i = 0; i < listModel.getSize(); i++) {
-					TexturesAsset tex = listModel.getElementAt(i);
-					if (initialSelection.equals(FilenameUtils.getBaseName(tex.assetPath))) {
-						list.setSelectedIndex(i);
+			for (int i = 0; i < listModel.getSize(); i++) {
+				TexturesAsset tex = listModel.getElementAt(i);
+				if (initialSelection == null) {
+					if (tex == null) {
+						list.setSelectedValue(null, true);
 						break;
 					}
 				}
-			}
-			else {
-				list.setSelectedIndex(0);
+				else if (tex != null) {
+					if (initialSelection.equals(FilenameUtils.getBaseName(tex.assetPath))) {
+						list.setSelectedValue(tex, true);
+						break;
+					}
+				}
 			}
 		}
 		else {

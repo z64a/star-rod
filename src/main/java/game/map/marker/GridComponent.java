@@ -9,14 +9,14 @@ import java.util.function.Consumer;
 import org.w3c.dom.Element;
 
 import app.input.InputFileException;
+import common.commands.EditableField;
+import common.commands.EditableField.EditableFieldFactory;
+import common.commands.EditableField.StandardBoolName;
 import game.entity.EntityInfo.EntityType;
 import game.map.BoundingBox;
 import game.map.editor.MapEditor;
 import game.map.editor.camera.MapEditViewport;
-import game.map.editor.commands.AbstractCommand;
-import game.map.editor.commands.fields.EditableField;
-import game.map.editor.commands.fields.EditableField.EditableFieldFactory;
-import game.map.editor.commands.fields.EditableField.StandardBoolName;
+import common.commands.AbstractCommand;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;

@@ -5,8 +5,10 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -17,7 +19,6 @@ import javax.imageio.stream.ImageInputStream;
 
 import org.apache.commons.io.FilenameUtils;
 
-import app.input.IOUtils;
 import assets.AssetHandle;
 import assets.AssetSubdir;
 import util.Logger;
@@ -36,33 +37,27 @@ public class TexturesAsset extends AssetHandle
 		File dir = new File(asset.assetDir, AssetSubdir.MAP_TEX + dirName);
 
 		try {
-			Collection<File> images = IOUtils.getFilesWithExtension(dir, ".png", false);
+			List<File> images = new ArrayList<>();
 
-			/*
-			// pick three largest textures for previews (in terms of square pixels)
-			// a bit slow and unnecessary
-			TreeMap<Integer,File> sizeMap = new TreeMap<>();
-			for (File imgFile : images) {
-				sizeMap.put(getImageSize(imgFile), imgFile);
+			try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir.toPath(), "*.png")) {
+				for (Path file : stream) {
+					if (Files.isRegularFile(file)) {
+						images.add(file.toFile());
+					}
+				}
 			}
-			images = sizeMap.values();
-			
-			List<File> list = new ArrayList<>(images);
-			Collections.reverse(list);
-			*/
 
 			// pick three textures randomly for previews
-			List<File> list = new ArrayList<>(images);
-			Collections.shuffle(list);
+			Collections.shuffle(images);
 
-			if (list.size() > 0) {
-				bimg1 = getPreview(list.get(0));
+			if (images.size() > 0) {
+				bimg1 = getPreview(images.get(0));
 			}
-			if (list.size() > 1) {
-				bimg2 = getPreview(list.get(1));
+			if (images.size() > 1) {
+				bimg2 = getPreview(images.get(1));
 			}
-			if (list.size() > 2) {
-				bimg3 = getPreview(list.get(2));
+			if (images.size() > 2) {
+				bimg3 = getPreview(images.get(2));
 			}
 		}
 		catch (IOException e) {

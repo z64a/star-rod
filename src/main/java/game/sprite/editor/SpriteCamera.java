@@ -118,7 +118,7 @@ public class SpriteCamera extends BaseCamera
 		pos.y -= dv;
 		pos.z = 400.0f * zoom;
 
-		if (mouse.isHoldingLMB()) {
+		if (mouse.isHoldingRMB()) {
 			pos.x -= mouse.getFrameDX() * zoom;
 			pos.y -= mouse.getFrameDY() * zoom;
 		}
@@ -159,6 +159,16 @@ public class SpriteCamera extends BaseCamera
 		pos.y = defaultPosY;
 		zoom = defaultZoom;
 		yaw = 0.0f;
+	}
+
+	public float toWorldX(int mouseX)
+	{
+		return pos.x + zoom * (mouseX - (glViewSizeX / 2.0f));
+	}
+
+	public float toWorldY(int mouseY)
+	{
+		return pos.y + zoom * (mouseY - (glViewSizeY / 2.0f));
 	}
 
 	/**

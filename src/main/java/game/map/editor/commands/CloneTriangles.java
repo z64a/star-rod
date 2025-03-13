@@ -2,13 +2,14 @@ package game.map.editor.commands;
 
 import java.util.ArrayList;
 
+import common.commands.AbstractCommand;
 import game.map.editor.selection.Selection;
 import game.map.mesh.Triangle;
 
 public class CloneTriangles extends AbstractCommand
 {
-	private ArrayList<Triangle> copies;
-	private ArrayList<Triangle> originals;
+	private final ArrayList<Triangle> copies;
+	private final ArrayList<Triangle> originals;
 	private final Selection<Triangle> selection;
 
 	public CloneTriangles(Selection<Triangle> selection)

@@ -6,7 +6,9 @@ import java.util.function.Consumer;
 
 import javax.swing.JCheckBoxMenuItem;
 
+import common.commands.AbstractCommand;
 import game.map.MapObject;
+import game.map.editor.MapEditor;
 import game.map.tree.MapObjectTreeModel;
 
 public class HideObjectTree extends AbstractCommand
@@ -36,7 +38,7 @@ public class HideObjectTree extends AbstractCommand
 	}
 
 	@Override
-	public boolean modifiesMap()
+	public boolean modifiesData()
 	{
 		return false;
 	}
@@ -51,6 +53,8 @@ public class HideObjectTree extends AbstractCommand
 
 		setter.accept(!hiding);
 		checkBox.setSelected(!hiding);
+
+		MapEditor editor = MapEditor.instance();
 		editor.gui.repaintObjectPanel();
 	}
 
@@ -64,6 +68,8 @@ public class HideObjectTree extends AbstractCommand
 
 		setter.accept(hiding);
 		checkBox.setSelected(hiding);
+
+		MapEditor editor = MapEditor.instance();
 		editor.gui.repaintObjectPanel();
 	}
 }

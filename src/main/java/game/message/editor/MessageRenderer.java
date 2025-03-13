@@ -611,7 +611,7 @@ public class MessageRenderer
 					if (npc != null && npc.rasters.getSize() > rasterID) {
 						BasicIndexedShader shader = ShaderManager.use(BasicIndexedShader.class);
 						SpriteRaster raster = npc.rasters.get(rasterID);
-						ImgAsset front = raster.getFront();
+						ImgAsset front = raster.front.asset;
 						if (front != null) {
 							front.img.glBind(shader.texture);
 							front.getPalette().glBind(shader.palette);

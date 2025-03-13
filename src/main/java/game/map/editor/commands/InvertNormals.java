@@ -2,11 +2,12 @@ package game.map.editor.commands;
 
 import java.util.List;
 
+import common.commands.AbstractCommand;
 import game.map.mesh.Triangle;
 
 public class InvertNormals extends AbstractCommand
 {
-	private List<Triangle> triangles;
+	private final List<Triangle> triangles;
 
 	public InvertNormals(List<Triangle> triangles)
 	{

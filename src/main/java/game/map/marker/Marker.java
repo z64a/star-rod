@@ -23,7 +23,7 @@ import game.map.editor.Tickable;
 import game.map.editor.camera.MapEditViewport;
 import game.map.editor.camera.OrthographicCamera;
 import game.map.editor.camera.ViewType;
-import game.map.editor.commands.AbstractCommand;
+import common.commands.AbstractCommand;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;

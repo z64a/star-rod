@@ -1,5 +1,8 @@
 package game.map.editor.commands;
 
+import common.commands.AbstractCommand;
+import game.map.editor.MapEditor;
+
 public class ChangeTextureArchive extends AbstractCommand
 {
 	private final String oldName;
@@ -9,6 +12,7 @@ public class ChangeTextureArchive extends AbstractCommand
 	{
 		super("Use Texture Archive " + name);
 
+		MapEditor editor = MapEditor.instance();
 		this.oldName = editor.map.texName;
 		this.newName = name;
 	}
@@ -24,6 +28,7 @@ public class ChangeTextureArchive extends AbstractCommand
 	{
 		super.exec();
 
+		MapEditor editor = MapEditor.instance();
 		editor.map.texName = newName;
 		editor.needsTextureReload = true;
 	}
@@ -33,6 +38,7 @@ public class ChangeTextureArchive extends AbstractCommand
 	{
 		super.undo();
 
+		MapEditor editor = MapEditor.instance();
 		editor.map.texName = oldName;
 		editor.needsTextureReload = true;
 	}
