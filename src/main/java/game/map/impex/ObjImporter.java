@@ -192,6 +192,9 @@ public class ObjImporter
 				float vScale = ModelTexture.getScaleV(currentTexture);
 				currentBatch.triangles.add(readTriangle(tokens, uScale, vScale));
 			}
+			else if (tokens[0].equals("f") && tokens.length == 5) {
+				Logger.logWarning("Unsupported OBJ face quads: " + line);
+			}
 			else
 				Logger.logWarning("Unsupported OBJ keyword: " + line);
 		}

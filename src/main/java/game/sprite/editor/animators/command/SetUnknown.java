@@ -49,7 +49,7 @@ public class SetUnknown extends AnimCommand
 	public void fromXML(XmlReader xmr, Element elem)
 	{
 		if (xmr.hasAttribute(elem, ATTR_VALUE))
-			value = xmr.readInt(elem, ATTR_VALUE); //TODO check if hex...
+			value = xmr.readInt(elem, ATTR_VALUE);
 	}
 
 	@Override

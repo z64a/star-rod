@@ -243,39 +243,39 @@ public abstract class StringConstants
 		INPUT_ON	(0, 0x08, "InputOn"),
 		DELAY_OFF	(0, 0x09, "DelayOff"),
 		DELAY_ON	(0, 0x0A, "DelayOn"),
-		SPACING		(1, 0x0B, 0x5, "Spacing"),		//XXX	Kerning --> CharWidth		// char width override. forces all chars to have width = arg
+		SPACING		(1, 0x0B, 0x5, "Spacing"),		// char width override. forces all chars to have width = arg
 		SCROLL		(1, 0x0C, 0xFA, "Scroll"),		// prints just FA; not FF,FA
 		SIZE		(2, 0x0D, 0x6, "Size"),
 		SIZE_RESET	(0, 0x0E, 0x7, "SizeReset"),
 		SPEED		(2, 0x0F, "Speed"),
-		SET_X		(2, 0x10, 0x8, "SetPosX"),		//XXX	SetPrintPos --> SetPosX		// args = (upper posX, lower posX)
-		SET_Y		(1, 0x11, 0x9, "SetPosY"),		//XXX	SetPrintY   --> SetPosY		// args = (posY)
-		RIGHT		(1, 0x12, 0xA, "Right"),		//XXX	?? Indent   --> Right
+		SET_X		(2, 0x10, 0x8, "SetPosX"),		// args = (upper posX, lower posX)
+		SET_Y		(1, 0x11, 0x9, "SetPosY"),		// args = (posY)
+		RIGHT		(1, 0x12, 0xA, "Right"),
 		DOWN		(1, 0x13, 0xB, "Down"),
 		UP			(1, 0x14, 0xC, "Up"),
-		INLINE_IMAGE(1, 0x15, 0xE, "InlineImage"),	//XXX	Image1	--> InlineImage		// args = (index) for small inline images printed at caret pos
-		ANIM_SPRITE	(3, 0x16, 0xF, "AnimSprite"),	//XXX	Sprite	--> AnimSprite
-		ITEM_ICON	(2, 0x17, 0x10, "ItemIcon"),	//XXX	Item	--> ItemIcon			// args = (itemID upper, itemID lower)	-- DEV ERROR in getproperties assumes this has only one arg!
-		IMAGE		(7, 0x18, "Image"),				//XXX	Image7	--> Image			// args = (index, posX upper, posX lower, posY, hasBorder (can also be 2?), alphaFinal, alphaStep)
+		INLINE_IMAGE(1, 0x15, 0xE, "InlineImage"),	// args = (index) for small inline images printed at caret pos
+		ANIM_SPRITE	(3, 0x16, 0xF, "AnimSprite"),
+		ITEM_ICON	(2, 0x17, 0x10, "ItemIcon"),	// args = (itemID upper, itemID lower)	-- DEV ERROR in getproperties assumes this has only one arg!
+		IMAGE		(7, 0x18, "Image"),				// args = (index, posX upper, posX lower, posY, hasBorder (can also be 2?), alphaFinal, alphaStep)
 		HIDE_IMAGE	(1, 0x19, "HideImage"),			// args = (fade amount per frame, 0 = instant)
-		ANIM_DELAY	(3, 0x1A, 0x11, "AnimDelay"),	//XXX	Func_1A	--> AnimDelay
-		ANIM_LOOP	(2, 0x1B, 0x12, "AnimLoop"),	//XXX	Func_1B	--> AnimLoop
-		ANIM_DONE	(1, 0x1C, 0x13, "AnimDone"),	//XXX	Func_1C	--> AnimDone
+		ANIM_DELAY	(3, 0x1A, 0x11, "AnimDelay"),
+		ANIM_LOOP	(2, 0x1B, 0x12, "AnimLoop"),
+		ANIM_DONE	(1, 0x1C, 0x13, "AnimDone"),
 		SET_CURSOR	(3, 0x1D, "SetCursorPos"),		// args = (index, cursor[i] x, cursor[i] y)
 		CURSOR		(1, 0x1E, 0x14, "Cursor"),		// position in text where finger cursor for choice N
 		END_CHOICE	(1, 0x1F, "EndChoice"),			// end choices
-		SET_CANCEL	(1, 0x20, "SetCancel"),			// sets the return value of the cancel button (b)
+		SET_CANCEL	(1, 0x20, "SetCancel"),			// sets the return value of the cancel button (B)
 		OPTION		(1, 0x21, 0x15, "Option"),		// denotes text to highlight for each option
-		PUSH_POS	(0, 0x22, 0x18, "SavePos"),		//XXX	StartAnim --> SavePos
-		POP_POS		(0, 0x23, 0x19, "RestorePos"),	//XXX	EndAnim   --> RestorePos
-		PUSH_COLOR	(0, 0x24, 0x1A, "SaveColor"),	//XXX	PushColor --> SaveColor			(no stack is involved!)
-		POP_COLOR	(0, 0x25, 0x1B, "RestoreColor"),//XXX	PopColor  --> RestoreColor		(no stack is involved!)
+		PUSH_POS	(0, 0x22, 0x18, "SavePos"),
+		POP_POS		(0, 0x23, 0x19, "RestorePos"),
+		PUSH_COLOR	(0, 0x24, 0x1A, "SaveColor"),
+		POP_COLOR	(0, 0x25, 0x1B, "RestoreColor"),
 		START_FX	(-1, 0x26, 0x1C, "StartFX"),
 		END_FX		(-1, 0x27, 0x1D, "EndFX"),
 		VAR			(1, 0x28,  "Var"),
 		CENTER_X	(1, 0x29, 0x1E, "CenterX"),
 		SET_REWIND	(1, 0x2A, "SetRewind"),			// arg = set or clear print->stateFlags | 0x40000;
-		ENABLE_CDOWN(0, 0x2B, "EnableCDownNext"), 	//XXX	Func_2B --> AllowCDownNext	// allows C-Down to advance to next page, print->stateFlags | 0x80000;
+		ENABLE_CDOWN(0, 0x2B, "EnableCDownNext"), 	// allows C-Down to advance to next page
 		SETVOICE	(8, 0x2C, "CustomVoice"),		// args = soundA=(AA BB CC DD) soundB=(EE FF GG HH)
 		// 2D
 		VOLUME		(1, 0x2E, "Volume"),
@@ -317,16 +317,16 @@ public abstract class StringConstants
 	public static enum StringEffect
 	{
 		// @formatter:off
-		SHAKE			(0, 0x00,   0x01, "Shake"),			//XXX	Jitter		--> Shake
-		WAVE			(0, 0x01,   0x02, "Wave"),			//XXX	Wavy		--> Wave
-		NOISE_OUTLINE	(0, 0x02,   0x04, "NoiseOutline"),	//XXX	Noise		--> NoiseOutline
-		STATIC			(1, 0x03,0x10000, "Static"),		//XXX	FadedNoise	--> StaticBlend (amount=d|percent=f)
+		SHAKE			(0, 0x00,   0x01, "Shake"),
+		WAVE			(0, 0x01,   0x02, "Wave"),
+		NOISE_OUTLINE	(0, 0x02,   0x04, "NoiseOutline"),
+		STATIC			(1, 0x03,0x10000, "Static"),		// StaticBlend (amount=d|percent=f)
 		UNUSED			(0, 0x04,      0, "???"),			// there is no code for this
-		BLUR			(1, 0x05,   0x20, "Blur"),			//XXX	FadedJitter	--> Blur (direction|dir)=(x|y|both)
+		BLUR			(1, 0x05,   0x20, "Blur"),			// Blur (direction|dir)=(x|y|both)
 		RAINBOW			(0, 0x06,   0x40, "Rainbow"),
-		DITHER_FADE		(1, 0x07,   0x80, "DitherFade"),	//XXX	Faded		--> DitherFade (amount=d|percent=f)
-		GLOBAL_WAVE		(0, 0x08,  0x200, "GlobalWave"),	//XXX	WavyB		--> GlobalWave
-		GLOBAL_RAINBOW	(0, 0x09,  0x400, "GlobalRainbow"),	//XXX	RainbowB	--> GLobalRainbow
+		DITHER_FADE		(1, 0x07,   0x80, "DitherFade"),	// DitherFade (amount=d|percent=f)
+		GLOBAL_WAVE		(0, 0x08,  0x200, "GlobalWave"),
+		GLOBAL_RAINBOW	(0, 0x09,  0x400, "GlobalRainbow"),
 		RISE_PRINT		(0, 0x0A,  0x800, "PrintRising"),
 		GROW_PRINT		(0, 0x0B, 0x1000, "PrintGrowing"),
 		SIZE_JITTER		(0, 0x0C, 0x2000, "SizeJitter"),

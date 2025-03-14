@@ -4,7 +4,6 @@ import static game.map.MapKey.*;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -28,7 +27,6 @@ import app.Directories;
 import app.SwingUtils;
 import app.input.IOUtils;
 import assets.AssetManager;
-import assets.AssetSubdir;
 import common.commands.AbstractCommand;
 import common.commands.CommandBatch;
 import game.map.MapObject.MapObjectType;
@@ -69,7 +67,6 @@ import game.map.tree.ModelTreeModel;
 import game.map.tree.ZoneTreeModel;
 import util.IterableListModel;
 import util.Logger;
-import util.Priority;
 import util.identity.IdentityHashSet;
 import util.xml.XmlKey;
 import util.xml.XmlWrapper.XmlReader;
@@ -940,6 +937,31 @@ public class Map implements XmlSerializable
 		return objectList;
 	}
 
+	private <T extends MapObject> void addSelectionFromTree(List<MapObject> selectedObjects, MapObjectTreeModel<T> treeModel)
+	{
+		Stack<MapObjectNode<T>> nodes = new Stack<>();
+		List<MapObjectNode<T>> selectedNodes = new ArrayList<>();
+
+		MapObjectNode<T> root = treeModel.getRoot();
+		nodes.push(root);
+
+		while (!nodes.isEmpty()) {
+			MapObjectNode<T> node = nodes.pop();
+			T obj = node.getUserObject();
+
+			if (obj.selected && node != root)
+				selectedNodes.add(node);
+
+			for (int i = 0; i < node.getChildCount(); i++)
+				nodes.push(node.getChildAt(i));
+		}
+
+		// selection order not important, keep them in tree index order
+		Collections.sort(selectedNodes);
+		for (MapObjectNode<T> node : selectedNodes)
+			selectedObjects.add(node.getUserObject());
+	}
+
 	public void addChildrenToList(List<MapObject> objectList)
 	{
 		Stack<MapObject> objectStack = new Stack<>();
@@ -966,6 +988,27 @@ public class Map implements XmlSerializable
 		}
 	}
 
+	public int exportPrefab(File f, boolean quiet) throws IOException
+	{
+		List<MapObject> selectedList = getCompleteSelection();
+
+		if (selectedList.size() > 0) {
+			Prefab prefab = new Prefab(selectedList, lightSets, texName);
+
+			try (XmlWriter xmw = new XmlWriter(f)) {
+				prefab.toXML(xmw);
+				xmw.save();
+			}
+
+			if (!quiet) {
+				for (MapObject obj : selectedList)
+					Logger.log("Exported " + obj.getName());
+			}
+		}
+
+		return selectedList.size();
+	}
+
 	private int exportOBJ(File f) throws IOException
 	{
 		List<Model> models = modelTree.getList().stream()
@@ -985,12 +1028,6 @@ public class Map implements XmlSerializable
 		if (num == 0)
 			return 0;
 
-		File textureFile = AssetManager.get(AssetSubdir.MAP_TEX, texName + "/" + texName + ".mtl");
-		if ((models.size() > 0) && !textureFile.exists()) {
-			Logger.log("Could not load materials for area " + texName);
-			return 0;
-		}
-
 		ObjExporter exporter = new ObjExporter(f);
 		exporter.writeModels(models, texName);
 		exporter.writeColliders(colliders);
@@ -1001,54 +1038,19 @@ public class Map implements XmlSerializable
 		return num;
 	}
 
-	public int exportPrefab(File f, boolean quiet) throws IOException
+	public void exportToFile(File f) throws IOException
 	{
-		List<MapObject> selectedList = getCompleteSelection();
+		String ext = FilenameUtils.getExtension(f.getName());
 
-		if (selectedList.size() > 0) {
-			Prefab prefab = new Prefab(selectedList, lightSets, texName);
-
-			try (XmlWriter xmw = new XmlWriter(f)) {
-				prefab.toXML(xmw);
-				xmw.save();
-			}
-			catch (FileNotFoundException e) {
-				Logger.logError("EXPORT FAILED! File not found: " + f.getAbsolutePath());
-				return 0;
-			}
-
-			if (!quiet) {
-				for (MapObject obj : selectedList)
-					Logger.log("Exported " + obj.getName());
-			}
+		if (ext.equalsIgnoreCase("obj")) {
+			exportOBJ(f);
 		}
-
-		return selectedList.size();
-	}
-
-	private <T extends MapObject> void addSelectionFromTree(List<MapObject> selectedObjects, MapObjectTreeModel<T> treeModel)
-	{
-		Stack<MapObjectNode<T>> nodes = new Stack<>();
-		List<MapObjectNode<T>> selectedNodes = new ArrayList<>();
-
-		MapObjectNode<T> root = treeModel.getRoot();
-		nodes.push(root);
-
-		while (!nodes.isEmpty()) {
-			MapObjectNode<T> node = nodes.pop();
-			T obj = node.getUserObject();
-
-			if (obj.selected && node != root)
-				selectedNodes.add(node);
-
-			for (int i = 0; i < node.getChildCount(); i++)
-				nodes.push(node.getChildAt(i));
+		else {
+			SwingUtils.getWarningDialog()
+				.setTitle("Export Failed")
+				.setMessage("Unsupported export format: " + ext)
+				.show();
 		}
-
-		// selection order not important, keep them in tree index order
-		Collections.sort(selectedNodes);
-		for (MapObjectNode<T> node : selectedNodes)
-			selectedObjects.add(node.getUserObject());
 	}
 
 	public static class PrefabImportData
@@ -1212,7 +1214,7 @@ public class Map implements XmlSerializable
 			Logger.log("Succesfully loaded " + numObjects + " objects from " + f.getName());
 		}
 
-		if (ext.equalsIgnoreCase("obj")) {
+		else if (ext.equalsIgnoreCase("obj")) {
 			int numObjects = 0;
 
 			MapObjectType type = (node == null) ? MapObjectType.MODEL : node.getObjectType();
@@ -1247,62 +1249,42 @@ public class Map implements XmlSerializable
 
 			Logger.log("Succesfully loaded " + numObjects + " objects from " + f.getName());
 		}
-
-		if (ext.equalsIgnoreCase("fbx")) {
-			int numObjects = 0;
-
-			MapObjectType type = (node == null) ? MapObjectType.MODEL : node.getObjectType();
-			switch (type) {
-				case MODEL:
-					List<Model> models = AssimpImporter.importModels(f, new AssimpImportOptions());
-					MapEditor.execute(new CreateObjects(models));
-					numObjects = models.size();
-					break;
-
-				case COLLIDER:
-					List<Collider> colliders = AssimpImporter.importColliders(f, new AssimpImportOptions());
-					MapEditor.execute(new CreateObjects(colliders));
-					numObjects = colliders.size();
-					break;
-
-				case ZONE:
-					List<Zone> zones = AssimpImporter.importZones(f, new AssimpImportOptions());
-					MapEditor.execute(new CreateObjects(zones));
-					numObjects = zones.size();
-					break;
-
-				default:
-			}
-
-			Logger.log("Succesfully loaded " + numObjects + " objects from " + f.getName());
-		}
 	}
 
-	public void exportToFile(File f)
+	@SuppressWarnings("unchecked")
+	public void importViaAssimp(File f, AssimpImportOptions options, MapObjectNode<? extends MapObject> node)
 	{
-		String ext = FilenameUtils.getExtension(f.getName());
+		int numObjects = 0;
 
-		try {
-			if (ext.equalsIgnoreCase("prefab")) {
-				exportPrefab(f, false);
-			}
-			else if (ext.equalsIgnoreCase("obj")) {
-				exportOBJ(f);
-			}
-			else if (ext.equalsIgnoreCase("fbx")) {
-				//TODO exportFBX(f);
-			}
-			else {
-				SwingUtils.getWarningDialog()
-					.setTitle("Export Failed")
-					.setMessage("Unsupported export format: " + ext)
-					.show();
-			}
+		MapObjectType importAs;
+		if (node == null)
+			importAs = options.importAs.getType();
+		else
+			importAs = node.getObjectType();
+
+		switch (importAs) {
+			case MODEL:
+				List<Model> models = AssimpImporter.importModels(f, options, (MapObjectNode<Model>) node);
+				MapEditor.execute(new CreateObjects(models));
+				numObjects = models.size();
+				break;
+
+			case COLLIDER:
+				List<Collider> colliders = AssimpImporter.importColliders(f, options, (MapObjectNode<Collider>) node);
+				MapEditor.execute(new CreateObjects(colliders));
+				numObjects = colliders.size();
+				break;
+
+			case ZONE:
+				List<Zone> zones = AssimpImporter.importZones(f, options, (MapObjectNode<Zone>) node);
+				MapEditor.execute(new CreateObjects(zones));
+				numObjects = zones.size();
+				break;
+
+			default:
 		}
-		catch (IOException e) {
-			Logger.log("IOException when saving objects to " + f.getName(), Priority.WARNING);
-			return;
-		}
+
+		Logger.log("Succesfully loaded " + numObjects + " objects from " + f.getName());
 	}
 
 	/*

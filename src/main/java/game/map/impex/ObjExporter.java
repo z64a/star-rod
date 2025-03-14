@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 
 import app.input.IOUtils;
+import assets.AssetManager;
+import assets.AssetSubdir;
 import common.Vector3f;
 import game.map.hit.Collider;
 import game.map.hit.Zone;
@@ -30,10 +32,11 @@ public class ObjExporter
 		vertexTable = new ArrayList<>();
 	}
 
-	public void writeModels(Iterable<Model> models, String mtlFilename)
+	public void writeModels(Iterable<Model> models, String texName)
 	{
-		if (!mtlFilename.isEmpty()) {
-			pw.println("mtllib " + mtlFilename);
+		File textureFile = AssetManager.get(AssetSubdir.MAP_TEX, texName + "/" + texName + ".mtl");
+		if (textureFile.exists()) {
+			pw.println("mtllib " + texName);
 			pw.println("");
 		}
 

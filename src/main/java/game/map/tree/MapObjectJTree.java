@@ -28,10 +28,10 @@ import javax.swing.tree.DefaultTreeSelectionModel;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
+import common.commands.AbstractCommand;
 import game.map.MapObject;
 import game.map.editor.EditorShortcut;
 import game.map.editor.MapEditor;
-import common.commands.AbstractCommand;
 import game.map.editor.ui.GuiCommand;
 import game.map.editor.ui.MapObjectPanel;
 import game.map.editor.ui.MapObjectTreeCellRenderer;
@@ -285,7 +285,7 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 				break;
 
 			case POPUP_IMPORT_HERE:
-				editor.gui.prompt_ImportObjects(popupSource);
+				editor.gui.prompt_Import(popupSource);
 				break;
 
 			case POPUP_PASTE_HERE:

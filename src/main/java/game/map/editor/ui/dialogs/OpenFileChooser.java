@@ -9,23 +9,20 @@ import org.lwjgl.util.tinyfd.TinyFileDialogs;
 public class OpenFileChooser
 {
 	private final String title;
-	private final String filterName;
-	private final String[] filterExts;
+	private String baseFilterName;
+	private String filterName;
+	private String[] filterExts;
 
 	private File currentDirectory = null;
 	private File selected = null;
 
-	public OpenFileChooser(File dir, String title, String filterName, String ... filterExts)
+	public OpenFileChooser(File dir, String title, String baseFilterName, String ... filterExts)
 	{
 		this.title = title;
-		StringBuilder sb = new StringBuilder(filterName);
-		sb.append(" (");
-		for (String s : filterExts)
-			sb.append("*.").append(s);
-		sb.append(")");
-		this.filterName = sb.toString();
-		this.filterExts = filterExts;
 		currentDirectory = dir;
+
+		this.baseFilterName = baseFilterName;
+		setExtenstions(filterExts);
 	}
 
 	public void setDirectoryContaining(File dir)
@@ -68,5 +65,21 @@ public class OpenFileChooser
 	public File getSelectedFile()
 	{
 		return selected;
+	}
+
+	public String[] getExtensions()
+	{
+		return filterExts;
+	}
+
+	public void setExtenstions(String ... exts)
+	{
+		filterExts = exts;
+
+		StringBuilder sb = new StringBuilder(baseFilterName);
+		sb.append(" (");
+		for (String s : filterExts)
+			sb.append("*.").append(s);
+		sb.append(")");
 	}
 }

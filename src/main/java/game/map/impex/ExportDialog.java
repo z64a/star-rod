@@ -1,7 +1,6 @@
 package game.map.impex;
 
 import java.awt.event.WindowEvent;
-import java.io.File;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -19,24 +18,41 @@ import net.miginfocom.swing.MigLayout;
 
 public class ExportDialog extends JDialog
 {
+	private static enum ExportFormat
+	{
+		PREFAB ("prefab"),
+		OBJ ("obj"),
+		FBX ("fbx"),
+		GLTF ("gltf"),
+		GLB ("glb");
+
+		private final String name;
+
+		private ExportFormat(String name)
+		{
+			this.name = name;
+		}
+
+		@Override
+		public String toString()
+		{
+			return name;
+		}
+	}
+
 	public static final String FRAME_TITLE = "Export";
 
-	private JComboBox<ImpexFormat> fileTypeComboBox;
+	private JComboBox<ExportFormat> fileTypeComboBox;
 	private JCheckBox cbSelectedOnly;
 
-	public ExportDialog(JFrame parent)
+	public ExportDialog(JFrame parent, SaveFileChooser fileChooser)
 	{
 		super(parent);
 
 		JButton selectButton = new JButton("Export");
 		SwingUtils.addBorderPadding(selectButton);
 		selectButton.addActionListener((e) -> {
-
-			File mapDir = Environment.getProjectDirectory();
-			SaveFileChooser chooser = new SaveFileChooser(mapDir, "Export Geometry",
-				"Exportables", "obj", "fbx", "prefab");
-
-			//TODO select file
+			//TODO select file?
 			setVisible(false);
 		});
 
@@ -55,7 +71,7 @@ public class ExportDialog extends JDialog
 			}
 		});
 
-		fileTypeComboBox = new JComboBox<>(ImpexFormat.values());
+		fileTypeComboBox = new JComboBox<>(ExportFormat.values());
 		SwingUtils.addBorderPadding(fileTypeComboBox);
 
 		cbSelectedOnly = new JCheckBox(" Selected object only");
@@ -68,8 +84,8 @@ public class ExportDialog extends JDialog
 		add(cbSelectedOnly, "span, growx, gapbottom 8");
 
 		add(new JPanel(), "span, split 3, growx, sg but");
-		add(cancelButton, "growx, sg but");
 		add(selectButton, "growx, sg but");
+		add(cancelButton, "growx, sg but");
 
 		pack();
 		setResizable(false);
@@ -77,6 +93,6 @@ public class ExportDialog extends JDialog
 		setTitle(FRAME_TITLE);
 		setIconImage(Environment.getDefaultIconImage());
 		setLocationRelativeTo(parent);
-		setModal(false);
+		setModal(true);
 	}
 }

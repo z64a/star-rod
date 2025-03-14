@@ -46,9 +46,11 @@ import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 
 import org.apache.commons.io.FilenameUtils;
+import org.lwjgl.assimp.Assimp;
 
 import app.Environment;
 import app.StarRodFrame;
+import app.StarRodMain;
 import app.SwingUtils;
 import app.SwingUtils.OpenDialogCounter;
 import assets.AssetHandle;
@@ -67,12 +69,13 @@ import game.map.MapObject;
 import game.map.MapObject.MapObjectType;
 import game.map.editor.EditorShortcut;
 import game.map.editor.MapEditor;
-import game.map.editor.MapPreferencesPanel;
 import game.map.editor.MapEditor.EditorMode;
 import game.map.editor.MapEditor.IShutdownListener;
+import game.map.editor.MapPreferencesPanel;
 import game.map.editor.PaintManager;
 import game.map.editor.commands.ChangeTextureArchive;
 import game.map.editor.commands.CreateObjects;
+import game.map.editor.render.PreviewGeneratorPrimitive;
 import game.map.editor.render.TextureManager;
 import game.map.editor.selection.Selection;
 import game.map.editor.selection.SelectionManager;
@@ -91,8 +94,8 @@ import game.map.editor.ui.dialogs.UVOptionsPanel;
 import game.map.editor.ui.info.DisplayListPanel.AddTriangles;
 import game.map.hit.Collider;
 import game.map.hit.Zone;
-import game.map.impex.ExportDialog;
 import game.map.impex.ImportDialog;
+import game.map.impex.ImportDialog.ImportDialogResult;
 import game.map.marker.Marker;
 import game.map.shape.Model;
 import game.map.shape.TexturePanner;
@@ -175,8 +178,6 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 	private GenerateFromTrianglesDialog generateFromTrianglesDialog;
 	private GenerateFromPathsDialog generateFromPathsDialog;
 	private EditPannerDialog editTexPannerDialog;
-	private ExportDialog exportDialog;
-	private ImportDialog importDialog;
 
 	private TransformSelectionPanel transformSelectionPanel;
 
@@ -226,8 +227,8 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		// set file chooser behavior
 		File mapDir = Environment.getProjectDirectory();
 
-		importFileChooser = new OpenFileChooser(mapDir, "Import Geometry", "Importables", "obj", "fbx", "prefab");
-		exportFileChooser = new SaveFileChooser(mapDir, "Export Geometry", null, "obj", "fbx");
+		importFileChooser = new OpenFileChooser(mapDir, "Import Geometry", "Importables", "prefab", "obj", "fbx", "gltf", "glb");
+		exportFileChooser = new SaveFileChooser(mapDir, "Export Geometry", null, "prefab", "obj");
 
 		commandMap = new HashMap<>();
 		for (GuiCommand cmd : GuiCommand.values())
@@ -378,7 +379,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 	public void destroyGUI()
 	{
 		setVisible(false);
-		dispose(); //TODO verify if necessary
+		dispose();
 	}
 
 	public boolean isModalDialogOpen()
@@ -518,12 +519,12 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 		menu.addSeparator();
 
-		item = new JMenuItem("Export");
-		addButtonCommand(item, GuiCommand.PROMPT_EXPORT);
-		menu.add(item);
-
 		item = new JMenuItem("Import");
 		addButtonCommand(item, GuiCommand.PROMPT_IMPORT);
+		menu.add(item);
+
+		item = new JMenuItem("Export");
+		addButtonCommand(item, GuiCommand.PROMPT_EXPORT);
 		menu.add(item);
 
 		menu.addSeparator();
@@ -1155,10 +1156,10 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 				break;
 
 			case PROMPT_EXPORT:
-				prompt_Import();
+				prompt_Export();
 				break;
 			case PROMPT_IMPORT:
-				prompt_Export();
+				prompt_Import(null);
 				break;
 			case SAVE_PREFAB:
 				prompt_Prefab();
@@ -1359,48 +1360,82 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		}
 	}
 
-	//XXX
-	public void prompt_ImportObjects(MapObjectNode<? extends MapObject> node)
+	public void prompt_Import(MapObjectNode<? extends MapObject> node)
 	{
 		openDialogCount.increment();
-		if (importFileChooser.prompt() == ChooseDialogResult.APPROVE) {
-			File f = importFileChooser.getSelectedFile();
-			editor.map.importFromFile(f, node);
-		}
+		ChooseDialogResult result = importFileChooser.prompt();
 		openDialogCount.decrement();
-	}
 
-	public void prompt_Import()
-	{
-		//TODO if needed
-		/*
-		if (importDialog == null)
-			importDialog = new ImportDialog(this);
+		if (result != ChooseDialogResult.APPROVE)
+			return;
 
-		importDialog.pack();
-		importDialog.setVisible(true);
-		*/
+		File in = importFileChooser.getSelectedFile();
+		String ext = FilenameUtils.getExtension(in.getName()).toLowerCase();
+
+		if ("prefab".equals(ext)) {
+			editor.map.importFromFile(in, node);
+		}
+		else if ("obj".equals(ext)) {
+			editor.map.importFromFile(in, node);
+		}
+		else if (Assimp.aiIsExtensionSupported(ext)) {
+			openDialogCount.increment();
+
+			ImportDialog importDialog = new ImportDialog(this, in, node != null);
+			importDialog.pack();
+			importDialog.setVisible(true);
+
+			openDialogCount.decrement();
+
+			if (importDialog.getResult() == ImportDialogResult.READY)
+				editor.map.importViaAssimp(in, importDialog.getOptions(), node);
+		}
+		else {
+			SwingUtils.getErrorDialog()
+				.setParent(this)
+				.setCounter(openDialogCount)
+				.setTitle("Unable to Import")
+				.setMessage("Unsupported file extension: " + ext)
+				.setOptions("OK")
+				.show();
+		}
+
 	}
 
 	public void prompt_Export()
 	{
-		exportFileChooser.setFilters(null, "obj", "fbx");
+		exportFileChooser.setFilters("Export Geometry", "obj");
 
 		openDialogCount.increment();
-		if (exportFileChooser.prompt() == ChooseDialogResult.APPROVE) {
-			File f = exportFileChooser.getSelectedFile();
-			editor.map.exportToFile(f);
-		}
+		ChooseDialogResult result = exportFileChooser.prompt();
 		openDialogCount.decrement();
 
-		//TODO if needed
-		/*
-		if (exportDialog == null)
-			exportDialog = new ExportDialog(this);
+		if (result != ChooseDialogResult.APPROVE)
+			return;
 
-		exportDialog.pack();
-		exportDialog.setVisible(true);
-		*/
+		try {
+			File out = exportFileChooser.getSelectedFile();
+			String ext = FilenameUtils.getExtension(out.getName()).toLowerCase();
+
+			if ("obj".equals(ext)) {
+				editor.map.exportToFile(out);
+			}
+			else {
+				SwingUtils.getErrorDialog()
+					.setParent(this)
+					.setCounter(openDialogCount)
+					.setTitle("Unable to Export")
+					.setMessage("Unsupported file extension: " + ext)
+					.setOptions("OK")
+					.show();
+
+			}
+		}
+		catch (Exception e) {
+			openDialogCount.increment();
+			StarRodMain.displayStackTrace(e);
+			openDialogCount.decrement();
+		}
 	}
 
 	public void prompt_Prefab()
@@ -1413,11 +1448,24 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		exportFileChooser.setFilters("Prefabs", "prefab");
 
 		openDialogCount.increment();
-		if (exportFileChooser.prompt() == ChooseDialogResult.APPROVE) {
-			File f = exportFileChooser.getSelectedFile();
-			editor.map.exportToFile(f);
-		}
+		ChooseDialogResult result = exportFileChooser.prompt();
 		openDialogCount.decrement();
+
+		if (result != ChooseDialogResult.APPROVE)
+			return;
+
+		try {
+			File out = exportFileChooser.getSelectedFile();
+
+			int count = editor.map.exportPrefab(out, false);
+			if (count > 0)
+				Logger.log("Exported " + count + " objects to prefab.");
+		}
+		catch (Exception e) {
+			openDialogCount.increment();
+			StarRodMain.displayStackTrace(e);
+			openDialogCount.decrement();
+		}
 	}
 
 	public void prompt_EditTexPanner(TexturePanner panner)
@@ -1517,13 +1565,12 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 						return;
 					if (batch == null)
 						return;
-					if (editor.generatePrimitivePreview.targetBatch != null)
-						MapEditor.execute(new AddTriangles(editor.generatePrimitivePreview.targetBatch,
-							batch.triangles));
+
+					PreviewGeneratorPrimitive preview = editor.generatePrimitivePreview;
+					if (preview.targetBatch != null)
+						MapEditor.execute(new AddTriangles(preview.targetBatch, batch.triangles));
 					else
-						createObjectFromBatch(batch,
-							generatePrimitiveDialog.getTypeName(),
-							editor.generatePrimitivePreview.parentObj);
+						createObjectFromBatch(batch, generatePrimitiveDialog.getTypeName(), preview.parentObj);
 				});
 
 			generatePrimitiveDialog.setTitle(GeneratePrimitiveOptionsDialog.FRAME_TITLE);
@@ -1546,6 +1593,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 						return;
 					if (batch == null)
 						return;
+
 					createObjectFromBatch(batch,
 						generateFromTrianglesDialog.getTypeName(),
 						editor.generateFromTrianglesPreview.parentObj);

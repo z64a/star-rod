@@ -688,7 +688,6 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		EditableField.setCallbacksEnabled(false);
 		TextureManager.clear();
 		Logger.removeListener(gui);
-		glCanvas.disposeCanvas();
 		gui.destroyGUI();
 
 		// update recent/crashed maps and flush the config
@@ -763,7 +762,6 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		TextureManager.clear();
 		Logger.removeListener(gui);
 
-		glCanvas.disposeCanvas();
 		gui.destroyGUI();
 
 		editorLog.close();

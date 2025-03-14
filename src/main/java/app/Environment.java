@@ -311,39 +311,46 @@ public abstract class Environment
 			connection.setReadTimeout(1000);
 
 			int responseCode = connection.getResponseCode();
-			if (responseCode == HttpURLConnection.HTTP_OK) {
-				InputStreamReader inputStreamReader = new InputStreamReader(connection.getInputStream());
-				JsonObject jsonObject = JsonParser.parseReader(inputStreamReader).getAsJsonObject();
-				String latestVersion = jsonObject.get("tag_name").getAsString();
+			if (responseCode != HttpURLConnection.HTTP_OK) {
+				Logger.logError("Update check failed (response code: " + responseCode + ")");
+				return;
 
-				if (!latestVersion.equals("v" + versionString)) {
-					Logger.log("Detected newer remote version: " + latestVersion);
+			}
+			InputStreamReader inputStreamReader = new InputStreamReader(connection.getInputStream());
+			JsonObject jsonObject = JsonParser.parseReader(inputStreamReader).getAsJsonObject();
+			String latestVersion = jsonObject.get("tag_name").getAsString();
 
-					int result = SwingUtils.getWarningDialog()
-						.setTitle("Update Available")
-						.setMessage("A newer version is available!", "Please visit the GitHub repo to download it.")
-						.setOptions("Yes", "No", "Don't Remind Me")
-						.choose();
+			if (latestVersion.equals("v" + versionString)) {
+				return;
+			}
 
-					if (result == 0) {
-						try {
-							Desktop desktop = Desktop.getDesktop();
-							URI uri = new URI("https://github.com/z64a/star-rod/releases");
-							desktop.browse(uri);
-							exit();
-						}
-						catch (IOException | URISyntaxException e) {
-							Toolkit.getDefaultToolkit().beep();
-							Logger.printStackTrace(e);
-						}
-					}
-					else if (result == 2) {
-						mainConfig.setBoolean(Options.CheckForUpdates, false);
-					}
+			Logger.log("Detected newer remote version: " + latestVersion);
+
+			if (isCommandLine()) {
+				Logger.log("Please visit the GitHub repo to download it.");
+				return;
+			}
+
+			int result = SwingUtils.getWarningDialog()
+				.setTitle("Update Available")
+				.setMessage("A newer version is available!", "Please visit the GitHub repo to download it.")
+				.setOptions("Yes", "No", "Don't Remind Me")
+				.choose();
+
+			if (result == 0) {
+				try {
+					Desktop desktop = Desktop.getDesktop();
+					URI uri = new URI("https://github.com/z64a/star-rod/releases");
+					desktop.browse(uri);
+					exit();
+				}
+				catch (IOException | URISyntaxException e) {
+					Toolkit.getDefaultToolkit().beep();
+					Logger.printStackTrace(e);
 				}
 			}
-			else {
-				Logger.logError("Update check failed (response code: " + responseCode + ")");
+			else if (result == 2) {
+				mainConfig.setBoolean(Options.CheckForUpdates, false);
 			}
 		}
 		catch (Exception e) {
@@ -598,7 +605,7 @@ public abstract class Environment
 		catch (IOException e) {
 			Logger.printStackTrace(e);
 			showErrorMessage("Base ROM Read Exception",
-				"IOException while attempting to read baserom: %n%s %n%s", usBaseRom.getAbsolutePath());
+				"IOException while attempting to read baserom: %n%s", usBaseRom.getAbsolutePath());
 			return null;
 		}
 
