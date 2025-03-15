@@ -58,6 +58,7 @@ import common.BaseEditorSettings;
 import common.KeyboardInput.KeyInputEvent;
 import common.commands.AbstractCommand;
 import common.commands.CommandBatch;
+import common.commands.ThreadSafeCommandManager;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
 import game.map.editor.ui.dialogs.ChooseDialogResult;
@@ -85,7 +86,6 @@ import game.sprite.editor.commands.SelectComponent;
 import game.sprite.editor.commands.SelectModesTab;
 import game.sprite.editor.commands.SelectSpritesTab;
 import game.sprite.editor.commands.SetOverridePalette;
-import game.sprite.editor.commands.SpriteCommandManager;
 import game.sprite.editor.commands.ToggleDrawCurrent;
 import game.sprite.editor.commands.TogglePaletteOverride;
 import game.texture.Palette;
@@ -245,7 +245,7 @@ public class SpriteEditor extends BaseEditor
 	public volatile boolean suppressCommands = false;
 
 	// handles comnmand execution and undo/redo
-	private SpriteCommandManager commandManager;
+	private ThreadSafeCommandManager commandManager;
 
 	private Sprite unloadSprite = null;
 	private Sprite loadSprite = null;
@@ -347,7 +347,7 @@ public class SpriteEditor extends BaseEditor
 		spriteLoader = new SpriteLoader();
 		spriteLoader.tryLoadingPlayerAssets(false);
 
-		commandManager = new SpriteCommandManager(this, UNDO_LIMIT);
+		commandManager = new ThreadSafeCommandManager(UNDO_LIMIT, modifyLock, this::onModified);
 	}
 
 	private void loadPreferences()
@@ -1997,7 +1997,7 @@ public class SpriteEditor extends BaseEditor
 
 	// any modification of the Sprite flags it as potentially modified until
 	// either the app is closed or Save All operation is performed
-	public void notifyModified()
+	public void onModified()
 	{
 		if (sprite != null)
 			dirtyModifiedSprites.add(sprite);

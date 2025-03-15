@@ -199,10 +199,10 @@ public abstract class Themes
 	static {
 		if (!Environment.isCommandLine()) {
 			// @formatter:off
-			DEFAULT_THEME = Theme.createBuiltIn("Flat Light",			     "com.formdev.flatlaf.FlatLightLaf");
+			DEFAULT_THEME = Theme.createBuiltIn("Flat Dark",			     "com.formdev.flatlaf.FlatDarkLaf");
 			addTheme(DEFAULT_THEME);
 
-            addTheme(Theme.createBuiltIn("Flat Dark",               	   "com.formdev.flatlaf.FlatDarkLaf"));
+            addTheme(Theme.createBuiltIn("Flat Light",               	   "com.formdev.flatlaf.FlatLightLaf"));
 			addTheme(Theme.createBuiltIn("Arc Light",                      "com.formdev.flatlaf.intellijthemes.FlatArcIJTheme"));
 			addTheme(Theme.createBuiltIn("Arc Light Orange",               "com.formdev.flatlaf.intellijthemes.FlatArcOrangeIJTheme"));
 			addTheme(Theme.createBuiltIn("Arc Dark",                       "com.formdev.flatlaf.intellijthemes.FlatArcDarkIJTheme"));

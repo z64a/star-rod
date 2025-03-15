@@ -21,7 +21,7 @@ public enum Options
 	GameVersion			(true, Scope.Main, Type.String, "GameVersion", "us"),
 
 	LogDetails			(true, Scope.Main, Type.Boolean, "LogDetails", "false"),
-	Theme				(true, Scope.Main, Type.String, "Theme", "FlatLight"),
+	Theme				(true, Scope.Main, Type.String, "Theme", "FlatDark"),
 	ExitToMenu			(true, Scope.Main, Type.Boolean, "ExitToMenu", "true"),
 	CheckForUpdates		(true, Scope.Main, Type.Boolean, "CheckForUpdates", "true"),
 

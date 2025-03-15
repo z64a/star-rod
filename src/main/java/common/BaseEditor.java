@@ -293,6 +293,12 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 				if (warmup) {
 					warmup = false;
 					LoadingBar.dismiss();
+
+					if (editorSettings.fullscreen)
+						frame.setExtendedState(Frame.MAXIMIZED_BOTH);
+					else
+						frame.setBounds(0, 0, editorSettings.sizeX, editorSettings.sizeY);
+
 					frame.setVisible(true);
 				}
 			}
@@ -344,25 +350,20 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(closingEvent);
 	}
 
-	private final void createFrame(BaseEditorSettings windowSettings)
+	private final void createFrame(BaseEditorSettings editorSettings)
 	{
 		frame = new StarRodFrame();
 
-		if (windowSettings.fullscreen)
-			frame.setExtendedState(Frame.MAXIMIZED_BOTH);
-		else
-			frame.setBounds(0, 0, windowSettings.sizeX, windowSettings.sizeY);
-
-		if (windowSettings.resizeable)
-			frame.setMinimumSize(new Dimension(windowSettings.sizeX, windowSettings.sizeY));
+		if (editorSettings.resizeable)
+			frame.setMinimumSize(new Dimension(editorSettings.sizeX, editorSettings.sizeY));
 
 		frame.setLocationRelativeTo(null);
-		frame.setTitle(windowSettings.title);
+		frame.setTitle(editorSettings.title);
 
 		keyboard = new KeyboardInput(glCanvas);
 		mouse = new MouseInput(glCanvas);
 
-		if (windowSettings.resizeable)
+		if (editorSettings.resizeable)
 			glCanvas.setMinimumSize(new Dimension(1, 1));
 
 		infoLabel = new FadingLabel(false, SwingConstants.LEFT, MESSAGE_HOLD_TIME, MESSAGE_FADE_TIME);
@@ -372,9 +373,9 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		ActionListener openLogAction = createOpenLogAction();
 
 		JPanel toolPanel = new JPanel(new MigLayout());
-		toolPanel.setPreferredSize(new Dimension(windowSettings.sizeX, windowSettings.sizeY));
+		toolPanel.setPreferredSize(new Dimension(editorSettings.sizeX, editorSettings.sizeY));
 
-		if (windowSettings.hasMenuBar) {
+		if (editorSettings.hasMenuBar) {
 			menuBar = new JMenuBar();
 			frame.setJMenuBar(menuBar);
 		}
@@ -385,7 +386,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		contentPanel.add(toolPanel, "grow");
 
 		frame.setContentPane(contentPanel);
-		frame.setResizable(windowSettings.resizeable);
+		frame.setResizable(editorSettings.resizeable);
 
 		frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 		frame.addWindowListener(new java.awt.event.WindowAdapter() {

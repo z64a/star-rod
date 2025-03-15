@@ -1,22 +1,22 @@
-package game.sprite.editor.commands;
+package common.commands;
 
 import java.util.Stack;
 
-import common.commands.AbstractCommand;
-import game.sprite.editor.SpriteEditor;
 import util.EvictingStack;
 import util.Logger;
 
-public class SpriteCommandManager
+public class ThreadSafeCommandManager
 {
-	private final SpriteEditor editor;
-
 	private EvictingStack<AbstractCommand> undoStack;
 	private Stack<AbstractCommand> redoStack;
 
-	public SpriteCommandManager(SpriteEditor editor, int undoLimit)
+	private final Object modifyLock;
+	private final Runnable modifyCallback;
+
+	public ThreadSafeCommandManager(int undoLimit, Object modifyLock, Runnable modifyCallback)
 	{
-		this.editor = editor;
+		this.modifyLock = modifyLock;
+		this.modifyCallback = modifyCallback;
 
 		undoStack = new EvictingStack<>(undoLimit);
 		redoStack = new Stack<>();
@@ -32,21 +32,21 @@ public class SpriteCommandManager
 		if (!cmd.shouldExec())
 			return;
 
-		synchronized (editor.modifyLock) {
+		synchronized (modifyLock) {
 			cmd.exec();
 
 			undoStack.push(cmd);
 			redoStack.clear();
 
 			if (cmd.modifiesData())
-				onModified();
+				modifyCallback.run();
 		}
 	}
 
 	public void action_Undo()
 	{
 		if (undoStack.size() > 0) {
-			synchronized (editor.modifyLock) {
+			synchronized (modifyLock) {
 				AbstractCommand cmd = undoStack.pop();
 				cmd.undo();
 				redoStack.push(cmd);
@@ -60,7 +60,7 @@ public class SpriteCommandManager
 	public void action_Redo()
 	{
 		if (redoStack.size() > 0) {
-			synchronized (editor.modifyLock) {
+			synchronized (modifyLock) {
 				AbstractCommand cmd = redoStack.pop();
 				cmd.exec();
 				undoStack.push(cmd);
@@ -75,10 +75,5 @@ public class SpriteCommandManager
 	{
 		undoStack.clear();
 		redoStack.clear();
-	}
-
-	public void onModified()
-	{
-		editor.notifyModified();
 	}
 }

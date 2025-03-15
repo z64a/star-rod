@@ -24,6 +24,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 
 import app.Environment;
 import app.SwingUtils;
@@ -31,14 +32,21 @@ import assets.ExpectedAsset;
 import common.BaseEditor;
 import common.BaseEditorSettings;
 import common.BasicCamera;
-import common.BasicCommandManager;
-import common.BasicEditorCommand;
 import common.KeyboardInput.KeyInputEvent;
 import common.MouseInput.MouseManagerListener;
 import common.MousePixelRead;
+import common.commands.AbstractCommand;
+import common.commands.CommandBatch;
+import common.commands.ThreadSafeCommandManager;
 import game.ProjectDatabase;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
+import game.worldmap.WorldMapModder.AddPathElem;
+import game.worldmap.WorldMapModder.RemovePathElem;
+import game.worldmap.WorldMapModder.SetLocName;
+import game.worldmap.WorldMapModder.SetLocStory;
+import game.worldmap.WorldMapModder.SetParent;
+import game.worldmap.WorldMapModder.SetPosition;
 import game.worldmap.WorldMapModder.WorldLocation;
 import game.worldmap.WorldMapModder.WorldMarker;
 import game.worldmap.WorldMapModder.WorldPathElement;
@@ -76,6 +84,8 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 
 	private static final int MAX_SIZE = 320;
 
+	private static final int UNDO_LIMIT = 64;
+
 	private List<WorldLocation> locations;
 
 	private JCheckBox cbMoveTogether;
@@ -84,7 +94,7 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 	private JComboBox<String> locationsBox;
 	private JComboBox<String> storyBox;
 
-	private BasicCommandManager commandManager;
+	private ThreadSafeCommandManager commandManager;
 	private final BasicCamera cam;
 
 	private boolean glTexDirty = true;
@@ -105,13 +115,15 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 	private MousePixelRead framePick;
 	private WorldMarker mouseMarker;
 	private WorldMarker dragMarker;
-	private WorldMarker parentingMarker;
+	private WorldLocation parentingLoc;
 	private WorldLocation selectedLocation;
 
 	private JPanel sidePanel;
 	private JPanel selectedPanel;
 
 	private volatile boolean modified = false;
+
+	public volatile boolean suppressCommands = false;
 
 	public WorldMapEditor()
 	{
@@ -134,7 +146,7 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 
 	private void resetEditor()
 	{
-		commandManager = new BasicCommandManager(32);
+		commandManager = new ThreadSafeCommandManager(UNDO_LIMIT, modifyLock, this::onModified);
 
 		cbBackground.setSelected(bDrawBackground);
 		cbLines.setSelected(bDrawLines);
@@ -145,15 +157,12 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 
 		mouseMarker = null;
 		dragMarker = null;
+
+		suppressCommands = true;
 		setSelectedLocation(null);
+		suppressCommands = false;
 
 		resetCam();
-	}
-
-	public void push(BasicEditorCommand cmd)
-	{
-		commandManager.pushCommand(cmd);
-		modified = true;
 	}
 
 	@Override
@@ -173,8 +182,10 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 		String[] locNames = ProjectDatabase.ELocations.getValues();
 		locationsBox = new JComboBox<>(WorldMapModder.stripAllPrefix(locNames, WorldMapModder.PREFIX_LOC));
 		locationsBox.addActionListener((e) -> {
-			if (selectedLocation != null)
-				selectedLocation.name = (String) locationsBox.getSelectedItem();
+			if (selectedLocation != null && !suppressCommands) {
+				String name = (String) locationsBox.getSelectedItem();
+				execute(new SetLocName(selectedLocation, name, this::refreshSelected));
+			}
 		});
 		locationsBox.setMaximumRowCount(20);
 		SwingUtils.addBorderPadding(locationsBox);
@@ -182,8 +193,10 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 		String[] storyNames = ProjectDatabase.EStoryProgress.getValues();
 		storyBox = new JComboBox<>(WorldMapModder.stripAllPrefix(storyNames, WorldMapModder.PREFIX_STORY));
 		storyBox.addActionListener((e) -> {
-			if (selectedLocation != null)
-				selectedLocation.descUpdate = (String) storyBox.getSelectedItem();
+			if (selectedLocation != null && !suppressCommands) {
+				String name = (String) storyBox.getSelectedItem();
+				execute(new SetLocStory(selectedLocation, name, this::refreshSelected));
+			}
 		});
 		storyBox.setMaximumRowCount(20);
 		SwingUtils.addBorderPadding(storyBox);
@@ -231,30 +244,10 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
 
-		//TODO implement commands for this editor
-		/*
-		item = new JMenuItem("Undo");
-		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK);
-		item.setAccelerator(awtKeyStroke);
-		item.addActionListener((e) -> {
-			undoEDT();
-		});
-		menu.add(item);
-		
-		item = new JMenuItem("Redo");
-		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK);
-		item.setAccelerator(awtKeyStroke);
-		item.addActionListener((e) -> {
-			redoEDT();
-		});
-		menu.add(item);
-		
-		menu.addSeparator();
-		*/
-
 		item = new JMenuItem("Reload");
 		item.addActionListener((e) -> {
 			loadData();
+			flushUndoRedo();
 			glTexDirty = true;
 		});
 		menu.add(item);
@@ -264,6 +257,7 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 		item.setAccelerator(awtKeyStroke);
 		item.addActionListener((e) -> {
 			saveChanges();
+			flushUndoRedo();
 		});
 		menu.add(item);
 
@@ -295,10 +289,29 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 	private void addEditorMenu(JMenuBar menuBar)
 	{
 		JMenuItem item;
+		KeyStroke awtKeyStroke;
 
 		JMenu menu = new JMenu(String.format("  %-10s", "Editor"));
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
+
+		item = new JMenuItem("Undo");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Z, InputEvent.CTRL_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
+		item.addActionListener((e) -> {
+			undoEDT();
+		});
+		menu.add(item);
+
+		item = new JMenuItem("Redo");
+		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK);
+		item.setAccelerator(awtKeyStroke);
+		item.addActionListener((e) -> {
+			redoEDT();
+		});
+		menu.add(item);
+
+		menu.addSeparator();
 
 		item = new JMenuItem("View Controls");
 		item.addActionListener((e) -> {
@@ -442,20 +455,30 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 		}
 	}
 
+	public void execute(AbstractCommand cmd)
+	{
+		commandManager.executeCommand(cmd);
+	}
+
+	public void flushUndoRedo()
+	{
+		commandManager.flush();
+	}
+
 	@Override
 	protected void undoEDT()
 	{
-		invokeLater(() -> {
-			commandManager.undo();
-		});
+		assert (SwingUtilities.isEventDispatchThread());
+
+		commandManager.action_Undo();
 	}
 
 	@Override
 	protected void redoEDT()
 	{
-		invokeLater(() -> {
-			commandManager.redo();
-		});
+		assert (SwingUtilities.isEventDispatchThread());
+
+		commandManager.action_Redo();
 	}
 
 	private void resetCam()
@@ -523,7 +546,7 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 			// parenting lines
 			RenderState.setColor(PresetColor.TEAL);
 			for (WorldLocation loc : locations) {
-				if (loc == parentingMarker) {
+				if (loc == parentingLoc) {
 					if (framePick != null) {
 						LineRenderQueue.addLine(
 							LineRenderQueue.addVertex().setPosition(loc.getX(), loc.getY(), 0).getIndex(),
@@ -714,6 +737,11 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 		}
 	}
 
+	public void onModified()
+	{
+		// nothing to do
+	}
+
 	@Override
 	protected boolean isModified()
 	{
@@ -753,7 +781,7 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 		}
 		else {
 			if (mouseMarker == null || mouseMarker instanceof WorldLocation)
-				setSelectedLocation((WorldLocation) mouseMarker);
+				execute(new SetSelected(this, (WorldLocation) mouseMarker));
 		}
 	}
 
@@ -778,23 +806,32 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 	public void stopHoldingLMB()
 	{
 		if (dragMarker != null) {
+
+			CommandBatch batch = new CommandBatch("Set Position");
+
 			for (WorldLocation loc : locations) {
 				if (loc.dragX != 0 || loc.dragY != 0) {
-					loc.x += Math.round(loc.dragX);
-					loc.y += Math.round(loc.dragY);
+					int newX = loc.x + Math.round(loc.dragX);
+					int newY = loc.y + Math.round(loc.dragY);
 					loc.dragX = 0;
 					loc.dragY = 0;
+
+					batch.addCommand(new SetPosition(loc, newX, newY));
 				}
 
 				for (WorldPathElement elem : loc.path) {
 					if (elem.dragX != 0 || elem.dragY != 0) {
-						elem.x += Math.round(elem.dragX);
-						elem.y += Math.round(elem.dragY);
+						int newX = elem.x + Math.round(elem.dragX);
+						int newY = elem.y + Math.round(elem.dragY);
 						elem.dragX = 0;
 						elem.dragY = 0;
+
+						batch.addCommand(new SetPosition(elem, newX, newY));
 					}
 				}
 			}
+
+			execute(batch);
 
 			dragMarker = null;
 		}
@@ -803,27 +840,27 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 	@Override
 	public void startHoldingRMB()
 	{
-		if (mouseMarker != null && mouseMarker instanceof WorldLocation) {
-			parentingMarker = mouseMarker;
+		if (mouseMarker != null && mouseMarker instanceof WorldLocation mouseLoc) {
+			parentingLoc = mouseLoc;
 		}
 	}
 
 	@Override
 	public void stopHoldingRMB()
 	{
-		if (parentingMarker != null) {
+		if (parentingLoc != null) {
 			if (mouseMarker != null) {
 				if (mouseMarker instanceof WorldLocation loc)
-					((WorldLocation) parentingMarker).parent = loc;
+					execute(new SetParent(parentingLoc, loc));
 				else if (mouseMarker instanceof WorldPathElement pathElem)
-					((WorldLocation) parentingMarker).parent = pathElem.owner;
+					execute(new SetParent(parentingLoc, pathElem.owner));
 			}
 
-			parentingMarker = null;
+			parentingLoc = null;
 		}
 	}
 
-	private static void addPathPoint(WorldMarker marker)
+	private void addPathPoint(WorldMarker marker)
 	{
 		if (marker instanceof WorldLocation) {
 			WorldLocation loc = (WorldLocation) marker;
@@ -860,7 +897,9 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 
 			int dX = prev1X - prev2X;
 			int dY = prev1Y - prev2Y;
-			loc.path.add(new WorldPathElement(loc, prev1X + dX, prev1Y + dY));
+
+			WorldPathElement elem = new WorldPathElement(loc, prev1X + dX, prev1Y + dY);
+			execute(new AddPathElem(elem));
 		}
 		else if (marker instanceof WorldPathElement) {
 			WorldPathElement elem = (WorldPathElement) marker;
@@ -907,25 +946,34 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 				dY = (prev2Y - prev1Y) / 2;
 			}
 
-			elem.owner.path.add(pos + 1, new WorldPathElement(elem.owner, prev1X + dX, prev1Y + dY));
+			WorldPathElement newElem = new WorldPathElement(elem.owner, prev1X + dX, prev1Y + dY);
+			execute(new AddPathElem(newElem, pos + 1));
 		}
 	}
 
-	private static void removePathPoint(WorldMarker marker)
+	private void removePathPoint(WorldMarker marker)
 	{
-		if (marker instanceof WorldLocation) {
-			WorldLocation loc = (WorldLocation) marker;
+		if (marker instanceof WorldLocation loc) {
 			if (loc.path.size() == 0) {
 				Toolkit.getDefaultToolkit().beep();
 				Logger.log("Path is empty!");
 				return;
 			}
 
-			loc.path.remove(loc.path.size() - 1);
+			execute(new RemovePathElem(loc, loc.path.size() - 1));
 		}
-		else if (marker instanceof WorldPathElement) {
-			WorldPathElement elem = (WorldPathElement) marker;
-			elem.owner.path.remove(elem);
+		else if (marker instanceof WorldPathElement elem) {
+			execute(new RemovePathElem(elem.owner, elem.owner.path.indexOf(elem)));
+		}
+	}
+
+	private void refreshSelected()
+	{
+		if (selectedLocation != null) {
+			suppressCommands = true;
+			locationsBox.setSelectedItem(selectedLocation.name);
+			storyBox.setSelectedItem(selectedLocation.descUpdate);
+			suppressCommands = false;
 		}
 	}
 
@@ -933,9 +981,39 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 	{
 		selectedLocation = loc;
 		selectedPanel.setVisible(selectedLocation != null);
-		if (selectedLocation != null) {
-			locationsBox.setSelectedItem(selectedLocation.name);
-			storyBox.setSelectedItem(selectedLocation.descUpdate);
+		refreshSelected();
+	}
+
+	public static class SetSelected extends AbstractCommand
+	{
+		private WorldMapEditor editor;
+		private final WorldLocation next;
+		private final WorldLocation prev;
+
+		public SetSelected(WorldMapEditor editor, WorldLocation selected)
+		{
+			super("Set Selected");
+
+			this.editor = editor;
+
+			this.next = selected;
+			this.prev = editor.selectedLocation;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+
+			editor.setSelectedLocation(next);
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+
+			editor.setSelectedLocation(prev);
 		}
 	}
 }

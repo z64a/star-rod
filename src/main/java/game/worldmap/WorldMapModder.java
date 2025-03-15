@@ -13,6 +13,7 @@ import org.w3c.dom.Element;
 import app.Directories;
 import app.StarRodMain;
 import app.input.InputFileException;
+import common.commands.AbstractCommand;
 import util.Logger;
 import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlTag;
@@ -27,9 +28,9 @@ public class WorldMapModder
 	public static class WorldMarker
 	{
 		public boolean mouseOver;
+		public float dragX, dragY;
 
 		protected int x, y;
-		public float dragX, dragY;
 
 		public WorldMarker(int x, int y)
 		{
@@ -221,5 +222,217 @@ public class WorldMapModder
 			out[i] = WorldMapModder.stripPrefix(in[i], prefix);
 		}
 		return out;
+	}
+
+	public static class SetParent extends AbstractCommand
+	{
+		private final WorldLocation loc;
+		private final WorldLocation next;
+		private final WorldLocation prev;
+
+		public SetParent(WorldLocation loc, WorldLocation parent)
+		{
+			super("Set Parent");
+
+			this.loc = loc;
+
+			prev = loc.parent;
+			next = parent;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+
+			loc.parent = next;
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+
+			loc.parent = prev;
+		}
+	}
+
+	public static class SetLocName extends AbstractCommand
+	{
+		private final WorldLocation loc;
+		private final Runnable callback;
+		private final String next;
+		private final String prev;
+
+		public SetLocName(WorldLocation loc, String name, Runnable callback)
+		{
+			super("Set Parent");
+
+			this.loc = loc;
+			this.callback = callback;
+
+			prev = loc.name;
+			next = name;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+
+			loc.name = next;
+			callback.run();
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+
+			loc.name = prev;
+			callback.run();
+		}
+	}
+
+	public static class SetLocStory extends AbstractCommand
+	{
+		private final WorldLocation loc;
+		private final Runnable callback;
+		private final String next;
+		private final String prev;
+
+		public SetLocStory(WorldLocation loc, String name, Runnable callback)
+		{
+			super("Set Parent");
+
+			this.loc = loc;
+			this.callback = callback;
+
+			prev = loc.descUpdate;
+			next = name;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+
+			loc.descUpdate = next;
+			callback.run();
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+
+			loc.descUpdate = prev;
+			callback.run();
+		}
+	}
+
+	public static class SetPosition extends AbstractCommand
+	{
+		private final WorldMarker marker;
+		private final int newX, newY;
+		private final int oldX, oldY;
+
+		public SetPosition(WorldMarker marker, int newX, int newY)
+		{
+			super("Set Position");
+
+			this.marker = marker;
+
+			this.newX = newX;
+			this.newY = newY;
+
+			this.oldX = marker.x;
+			this.oldY = marker.y;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+
+			marker.x = newX;
+			marker.y = newY;
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+
+			marker.x = oldX;
+			marker.y = oldY;
+		}
+	}
+
+	public static class AddPathElem extends AbstractCommand
+	{
+		private final WorldPathElement elem;
+		private final int pos;
+
+		public AddPathElem(WorldPathElement elem)
+		{
+			this(elem, elem.owner.path.size());
+		}
+
+		public AddPathElem(WorldPathElement elem, int pos)
+		{
+			super("Add Path");
+
+			this.elem = elem;
+			this.pos = pos;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+
+			elem.owner.path.add(pos, elem);
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+
+			elem.owner.path.remove(pos);
+		}
+	}
+
+	public static class RemovePathElem extends AbstractCommand
+	{
+		private final WorldLocation loc;
+		private final WorldPathElement elem;
+		private final int pos;
+
+		public RemovePathElem(WorldLocation loc, int pos)
+		{
+			super("Remove Path");
+
+			this.loc = loc;
+			this.elem = loc.path.get(pos);
+			this.pos = pos;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+
+			loc.path.remove(pos);
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+
+			loc.path.add(pos, elem);
+		}
 	}
 }

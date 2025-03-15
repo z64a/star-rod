@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - (Sprite Editor) Timing information listed for commands in command list
 - (Sprite Editor) Error highlighting for commands/components/etc
 - (Map Editor) A wide array of import formats are now supported, including fbx and gltf
+- (World Map Editor) Undo/redo for all actions
 
 ### Changed
 - (Sprite Editor) UI reorganized and improved
@@ -18,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - (Sprite Editor) Proper keyframe support
 - (Sprite Editor) Faster sprite loading
 - Version checking will not open windows from command line and can be skipped
+- Dark theme used by default
 - Faster startup
 
 ### Fixed
