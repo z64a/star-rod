@@ -5,15 +5,19 @@ import java.util.Stack;
 import util.EvictingStack;
 import util.Logger;
 
-public abstract class CommandManager
+public class CommandManager
 {
 	private EvictingStack<AbstractCommand> undoStack;
 	private Stack<AbstractCommand> redoStack;
 
-	public CommandManager(int undoLimit)
+	private final Runnable modifyCallback;
+
+	public CommandManager(int undoLimit, Runnable modifyCallback)
 	{
 		undoStack = new EvictingStack<>(undoLimit);
 		redoStack = new Stack<>();
+
+		this.modifyCallback = modifyCallback;
 	}
 
 	public void setUndoLimit(int undoLimit)
@@ -31,7 +35,7 @@ public abstract class CommandManager
 		redoStack.clear();
 
 		if (cmd.modifiesData())
-			onModified();
+			modifyCallback.run();
 	}
 
 	public void action_Undo()
@@ -63,6 +67,4 @@ public abstract class CommandManager
 		undoStack.clear();
 		redoStack.clear();
 	}
-
-	public abstract void onModified();
 }

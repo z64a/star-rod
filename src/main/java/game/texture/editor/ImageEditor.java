@@ -30,11 +30,11 @@ import app.SwingUtils;
 import common.BaseEditor;
 import common.BaseEditorSettings;
 import common.BasicCamera;
-import common.BasicCommandManager;
-import common.BasicEditorCommand;
 import common.KeyboardInput.KeyInputEvent;
 import common.MouseInput.MouseManagerListener;
 import common.MousePixelRead;
+import common.commands.AbstractCommand;
+import common.commands.ThreadSafeCommandManager;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
 import game.map.editor.ui.SwatchPanel;
@@ -90,7 +90,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 
 	private DrawableString greetingStr;
 
-	private BasicCommandManager commandManager;
+	private ThreadSafeCommandManager commandManager;
 	private final BasicCamera cam;
 
 	private OpenFileChooser importFileChooser;
@@ -149,18 +149,12 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 
 	private void resetEditor()
 	{
-		commandManager = new BasicCommandManager(32);
+		commandManager = new ThreadSafeCommandManager(32, modifyLock, this::onModified);
 
 		mousePixelValid = false;
 		pickedPixel.clear();
 		drawing = false;
 		adjustingColor = false;
-	}
-
-	public void push(BasicEditorCommand cmd)
-	{
-		commandManager.pushCommand(cmd);
-		modified = true;
 	}
 
 	@Override
@@ -654,20 +648,22 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 		}
 	}
 
+	public void push(AbstractCommand cmd)
+	{
+		commandManager.pushCommand(cmd);
+		modified = true;
+	}
+
 	@Override
 	protected void undoEDT()
 	{
-		invokeLater(() -> {
-			commandManager.undo();
-		});
+		commandManager.undo();
 	}
 
 	@Override
 	protected void redoEDT()
 	{
-		invokeLater(() -> {
-			commandManager.redo();
-		});
+		commandManager.redo();
 	}
 
 	private void resetCam()
@@ -822,6 +818,11 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 		RenderState.setDepthWrite(false);
 		LineRenderQueue.render(true);
 		RenderState.setDepthWrite(true);
+	}
+
+	public void onModified()
+	{
+		// nothing to do
 	}
 
 	@Override
@@ -1207,7 +1208,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			else
 				image.draw(mousePixelX, mousePixelY, pickedPixel);
 		}
-
+		
 		if(mouseManager.holdingRMB && mousePixelValid)
 			image.deselect(mousePixelX, mousePixelY);
 			*/

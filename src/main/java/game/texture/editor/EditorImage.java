@@ -10,7 +10,7 @@ import java.awt.image.IndexColorModel;
 import java.io.File;
 import java.nio.ByteBuffer;
 
-import common.BasicEditorCommand;
+import common.commands.AbstractCommand;
 import game.texture.ImageConverter;
 import game.texture.Palette;
 import game.texture.Tile;
@@ -987,7 +987,7 @@ public class EditorImage
 		}
 	}
 
-	public static class RestoreImage extends BasicEditorCommand
+	public static class RestoreImage extends AbstractCommand
 	{
 		private final EditorImage image;
 		private final ImageBackup oldBackup;
@@ -1002,17 +1002,17 @@ public class EditorImage
 		}
 
 		@Override
+		public void exec()
+		{
+			super.exec();
+			newBackup.apply(image);
+		}
+
+		@Override
 		public void undo()
 		{
 			super.undo();
 			oldBackup.apply(image);
-		}
-
-		@Override
-		public void redo()
-		{
-			super.redo();
-			newBackup.apply(image);
 		}
 	}
 
@@ -1044,7 +1044,7 @@ public class EditorImage
 		}
 	}
 
-	public static class RestoreSelection extends BasicEditorCommand
+	public static class RestoreSelection extends AbstractCommand
 	{
 		private final EditorImage image;
 		private final SelectionBackup oldBackup;
@@ -1059,21 +1059,21 @@ public class EditorImage
 		}
 
 		@Override
+		public void exec()
+		{
+			super.exec();
+			newBackup.apply(image);
+		}
+
+		@Override
 		public void undo()
 		{
 			super.undo();
 			oldBackup.apply(image);
 		}
-
-		@Override
-		public void redo()
-		{
-			super.redo();
-			newBackup.apply(image);
-		}
 	}
 
-	public static class RestoreColor extends BasicEditorCommand
+	public static class RestoreColor extends AbstractCommand
 	{
 		private final EditorImage image;
 		private final int index;
@@ -1090,18 +1090,18 @@ public class EditorImage
 		}
 
 		@Override
-		public void undo()
+		public void exec()
 		{
-			super.undo();
-			oldBackup.apply(image);
+			super.exec();
+			newBackup.apply(image);
 			image.editor.setSelectedIndex(index, false);
 		}
 
 		@Override
-		public void redo()
+		public void undo()
 		{
-			super.redo();
-			newBackup.apply(image);
+			super.undo();
+			oldBackup.apply(image);
 			image.editor.setSelectedIndex(index, false);
 		}
 	}

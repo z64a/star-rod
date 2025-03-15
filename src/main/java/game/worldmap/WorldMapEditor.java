@@ -470,7 +470,7 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 	{
 		assert (SwingUtilities.isEventDispatchThread());
 
-		commandManager.action_Undo();
+		commandManager.undo();
 	}
 
 	@Override
@@ -478,7 +478,7 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 	{
 		assert (SwingUtilities.isEventDispatchThread());
 
-		commandManager.action_Redo();
+		commandManager.redo();
 	}
 
 	private void resetCam()

@@ -325,7 +325,7 @@ public class SpriteEditor extends BaseEditor
 	{
 		assert (SwingUtilities.isEventDispatchThread());
 
-		commandManager.action_Undo();
+		commandManager.undo();
 	}
 
 	@Override
@@ -333,7 +333,7 @@ public class SpriteEditor extends BaseEditor
 	{
 		assert (SwingUtilities.isEventDispatchThread());
 
-		commandManager.action_Redo();
+		commandManager.redo();
 	}
 
 	@Override

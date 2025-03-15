@@ -104,7 +104,6 @@ import game.map.editor.commands.InvertNormals;
 import game.map.editor.commands.JoinHitObjects.JoinColliders;
 import game.map.editor.commands.JoinHitObjects.JoinZones;
 import game.map.editor.commands.JoinModels;
-import game.map.editor.commands.MapCommandManager;
 import game.map.editor.commands.PaintVertices;
 import game.map.editor.commands.SeparateVertices;
 import game.map.editor.commands.SplitHitObject.SplitCollider;
@@ -447,6 +446,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	 * Major Components
 	 */
 
+	private static final int UNDO_LIMIT = 32;
+
 	public KeyboardInput keyboard;
 	public MouseInput mouse;
 	public SpriteLoader spriteLoader;
@@ -558,7 +559,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		drawGeometryPreview = new PreviewGeometry();
 
 		selectionManager = new SelectionManager(this);
-		commandManager = new MapCommandManager(this, 32);
+		commandManager = new CommandManager(UNDO_LIMIT, this::onModified);
 		drawTriManager = new DrawTrianglesManager(this, drawGeometryPreview);
 
 		KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
@@ -1083,7 +1084,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		selectionPaintRadius = 16.0f;
 
 		selectionManager = new SelectionManager(this);
-		commandManager = new MapCommandManager(this, 32);
+		commandManager = new CommandManager(UNDO_LIMIT, this::onModified);
 
 		if (changeMapState == ChangeMapState.NONE) {
 			showModels = true;
@@ -1430,6 +1431,11 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			profiler.record("the rest");
 			profiler.print();
 		}
+	}
+
+	private void onModified()
+	{
+		map.modified = true;
 	}
 
 	public EditorMode getEditorMode()
