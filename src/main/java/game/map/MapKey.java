@@ -75,6 +75,7 @@ public enum MapKey implements XmlKey
 	ATTR_EXTRACTED		("extracted"),
 
 	TAG_MARKER_GRID		("Grid"),
+	ATTR_MARKER_GRID_INDEX	("index"),
 	ATTR_MARKER_GRID_SIZE	("size"),
 	ATTR_MARKER_GRID_OCC	("gridContent"),
 	ATTR_MARKER_GRID_GRAV	("blockGravity"),

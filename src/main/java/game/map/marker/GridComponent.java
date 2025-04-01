@@ -9,6 +9,7 @@ import java.util.function.Consumer;
 import org.w3c.dom.Element;
 
 import app.input.InputFileException;
+import common.commands.AbstractCommand;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
@@ -16,7 +17,6 @@ import game.entity.EntityInfo.EntityType;
 import game.map.BoundingBox;
 import game.map.editor.MapEditor;
 import game.map.editor.camera.MapEditViewport;
-import common.commands.AbstractCommand;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;
@@ -92,6 +92,7 @@ public class GridComponent extends BaseMarkerComponent
 	public void toXML(XmlWriter xmw)
 	{
 		XmlTag compTag = xmw.createTag(TAG_MARKER_GRID, true);
+		xmw.addInt(compTag, ATTR_MARKER_GRID_INDEX, gridIndex.get());
 		xmw.addIntArray(compTag, ATTR_MARKER_GRID_SIZE, gridSizeX.get(), gridSizeZ.get(), gridSpacing.get());
 
 		int[] gridContent = new int[gridOccupants.size() * 3];
@@ -114,6 +115,9 @@ public class GridComponent extends BaseMarkerComponent
 	public void fromXML(XmlReader xmr, Element markerElem)
 	{
 		Element gridElem = xmr.getUniqueRequiredTag(markerElem, TAG_MARKER_GRID);
+
+		if (xmr.hasAttribute(gridElem, ATTR_MARKER_GRID_INDEX)) // optional to allow loading old versions
+			gridIndex.set(xmr.readInt(gridElem, ATTR_MARKER_GRID_INDEX));
 
 		int[] grid = xmr.readIntArray(gridElem, ATTR_MARKER_GRID_SIZE, 3);
 		gridSizeX.set(grid[0]);

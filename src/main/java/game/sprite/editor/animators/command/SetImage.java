@@ -48,10 +48,9 @@ public class SetImage extends AnimCommand
 
 		// FFF is valid, so sign extend (implicit cast to int)
 		int id = (s0 << 20) >> 20;
+
 		if (id < 0 || id >= sprite.rasters.size())
-			img = null;
-		else
-			img = sprite.rasters.get(id);
+			imgIndex = id;
 	}
 
 	public SetImage(CommandAnimator animator, SpriteRaster img)

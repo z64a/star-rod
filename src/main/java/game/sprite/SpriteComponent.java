@@ -450,8 +450,6 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		int y = (parent != null) ? parent.getY() + getY() : getY();
 		int z = (parent != null) ? parent.getZ() + getZ() : getZ();
 
-		float depth = z / 100.0f;
-
 		float w = face.asset.img.width / 2;
 		float h = face.asset.img.height;
 		corners[0].set(-w, 0, 0);
@@ -476,7 +474,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		if (scaleX != 100 || scaleY != 100 || scaleZ != 100)
 			mtx.scale(renderScaleX, renderScaleY, renderScaleZ);
 
-		mtx.translate(x, y, depth);
+		mtx.translate(x, y, z);
 
 		for (int i = 0; i < 4; i++)
 			corners[i] = mtx.applyTransform(corners[i]);

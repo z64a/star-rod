@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.1] - 2025-04-01
+
+### Fixed
+- (Sprite Editor) Imported sprites from old versions now load rasters properly
+- (Sprite Editor) Component rendering is now sorted in the correct order
+- (Map Editor) Push block grid indices are now saved
+
 ## [0.10.0] - 2025-03-13
 
 ### Added
@@ -24,6 +31,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 - (Map Editor) Importing/exporting
+- (Map Editor) Camera target override toggles now save properly
 
 ## [0.9.4] - 2025-02-21
 

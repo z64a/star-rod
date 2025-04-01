@@ -149,7 +149,7 @@ public class SpriteCamera extends BaseCamera
 	{
 		float halfW = zoom * glViewSizeX / 2.0f;
 		float halfH = zoom * glViewSizeY / 2.0f;
-		projMatrix.ortho(-halfW, halfW, -halfH, halfH, 1, Float.MAX_VALUE);
+		projMatrix.ortho(-halfW, halfW, -halfH, halfH, 1, 0x2000);
 		glLoadProjection();
 	}
 
