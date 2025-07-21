@@ -11,6 +11,7 @@ import org.w3c.dom.Element;
 
 import app.SwingUtils;
 import common.commands.AbstractCommand;
+import game.sprite.Sprite;
 import game.sprite.SpritePalette;
 import game.sprite.editor.CommandComboBox;
 import game.sprite.editor.Editable;
@@ -40,9 +41,14 @@ public class SetPalette extends AnimCommand
 	{
 		super(animator);
 
+		Sprite sprite = animator.comp.parentAnimation.parentSprite;
+
 		// FFF is valid, so sign extend (implicit cast to int)
 		int id = (s0 << 20) >> 20;
-		pal = (id < 0) ? null : animator.comp.parentAnimation.parentSprite.palettes.get(id);
+
+		if (id >= 0 && id < sprite.palettes.size()) {
+			pal = sprite.palettes.get(id);
+		}
 	}
 
 	public SetPalette(CommandAnimator animator, SpritePalette pal)

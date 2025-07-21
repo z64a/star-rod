@@ -891,7 +891,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			exportFileChooser.setCurrentDirectory(file.getParentFile());
 		super.incrementDialogsOpen();
 		if (exportFileChooser.prompt() == ChooseDialogResult.APPROVE)
-			chosen = importFileChooser.getSelectedFile();
+			chosen = exportFileChooser.getSelectedFile();
 		super.decrementDialogsOpen();
 
 		return chosen;

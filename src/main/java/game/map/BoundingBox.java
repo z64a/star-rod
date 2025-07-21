@@ -307,7 +307,7 @@ public class BoundingBox implements XmlSerializable
 
 	public boolean overlaps(BoundingBox other)
 	{
-		return (min.getX() <= other.max.getX() && other.min.getX() <= max.getY() &&
+		return (min.getX() <= other.max.getX() && other.min.getX() <= max.getX() &&
 			min.getY() <= other.max.getY() && other.min.getY() <= max.getY() &&
 			min.getZ() <= other.max.getZ() && other.min.getZ() <= max.getZ());
 	}

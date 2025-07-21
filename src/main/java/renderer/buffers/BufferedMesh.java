@@ -4,6 +4,7 @@ import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL15.*;
 import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
 import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
+import static org.lwjgl.opengl.GL30.glDeleteVertexArrays;
 import static org.lwjgl.opengl.GL30.glGenVertexArrays;
 
 import java.nio.FloatBuffer;
@@ -271,6 +272,10 @@ public class BufferedMesh
 
 		if (auxVBO != null)
 			glDeleteBuffers(auxVBO.id);
+
+		glDeleteVertexArrays(vao);
+		RenderState.setVAO(0);
+		vao = -1;
 	}
 
 	public void setVAO()

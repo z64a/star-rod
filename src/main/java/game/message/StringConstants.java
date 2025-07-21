@@ -617,6 +617,18 @@ public abstract class StringConstants
 				characterMap.add((byte) sc.id, sc.name.charAt(0));
 		}
 
+		// support for mapping macrons --> umlauts
+		characterMap.add((byte) StandardCharacter.c7A.id, 'ā'); // ä
+		characterMap.add((byte) StandardCharacter.c7F.id, 'ē'); // ë
+		characterMap.add((byte) StandardCharacter.c83.id, 'ī'); // ï
+		characterMap.add((byte) StandardCharacter.c88.id, 'ō'); // ö
+		characterMap.add((byte) StandardCharacter.c8C.id, 'ū'); // ü
+		characterMap.add((byte) StandardCharacter.c63.id, 'Ā'); // Ä
+		characterMap.add((byte) StandardCharacter.c68.id, 'Ē'); // Ë
+		characterMap.add((byte) StandardCharacter.c6C.id, 'Ī'); // Ï
+		characterMap.add((byte) StandardCharacter.c71.id, 'Ō'); // Ö
+		characterMap.add((byte) StandardCharacter.c75.id, 'Ū'); // Ü
+
 		creditsCharacterMap = new DualHashMap<>();
 		creditsCharacterMap.add((byte) 0x00, 'A');
 		creditsCharacterMap.add((byte) 0x01, 'B');

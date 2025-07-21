@@ -270,11 +270,6 @@ public abstract class RenderState
 		glBindVertexArray(rec.glVertexArray);
 	}
 
-	public static final void useDefaultVAO()
-	{
-		glBindVertexArray(0);
-	}
-
 	public static final void setVAO(int vao)
 	{
 		if (rec.glVertexArray == vao)
@@ -551,7 +546,7 @@ public abstract class RenderState
 
 	public static void setBlendFunc(int srcFactor, int destFactor)
 	{
-		if (srcFactor == rec.blendDestFactor && destFactor == rec.blendDestFactor)
+		if (srcFactor == rec.blendSrcFactor && destFactor == rec.blendDestFactor)
 			return;
 
 		rec.blendSrcFactor = srcFactor;

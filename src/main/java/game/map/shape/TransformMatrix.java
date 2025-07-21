@@ -328,13 +328,11 @@ public class TransformMatrix implements XmlSerializable
 		double sin = Math.sin(Math.toRadians(angle));
 		double soc = 1.0 - cos;
 
-		//TODO off-diagonal correct?
-
 		TransformMatrix rot = TransformMatrix.identity();
 
 		rot.mat[0][0] = soc * nx * nx + cos;
 		rot.mat[0][1] = soc * nx * ny - nz * sin;
-		rot.mat[0][2] = soc * nx * ny + ny * sin;
+		rot.mat[0][2] = soc * nx * nz + ny * sin;
 
 		rot.mat[1][0] = soc * nx * ny + nz * sin;
 		rot.mat[1][1] = soc * ny * ny + cos;
