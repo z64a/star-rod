@@ -190,3 +190,7 @@ tasks {
         destinationDirectory.set(releaseBuildDir)
     }
 }
+
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+}
