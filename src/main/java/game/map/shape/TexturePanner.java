@@ -8,6 +8,7 @@ import javax.swing.JLabel;
 import org.w3c.dom.Element;
 
 import common.commands.AbstractCommand;
+import game.map.JsonFeatures.JsonTexturePanner;
 import game.map.editor.ui.ScriptManager;
 import renderer.shaders.ShaderManager;
 import renderer.shaders.scene.ModelShader;
@@ -244,6 +245,103 @@ public class TexturePanner
 				}
 			}
 		}
+	}
+
+	public JsonTexturePanner toJson()
+	{
+		JsonTexturePanner out = new JsonTexturePanner();
+		out.id = panID;
+		out.generate = params.generate;
+		out.useTexels = params.useTexels;
+		out.max = params.useTexels ? params.maxST : params.maxUV;
+
+		if (params.useTexels) {
+			out.init = new int[] {
+					params.init[MAIN_S], params.init[MAIN_T],
+					params.init[AUX_S], params.init[AUX_T]
+			};
+			out.step = new int[] {
+					params.rate[MAIN_S], params.rate[MAIN_T],
+					params.rate[AUX_S], params.rate[AUX_T]
+			};
+		}
+		else {
+			out.init = new int[] {
+					params.init[MAIN_U], params.init[MAIN_V],
+					params.init[AUX_U], params.init[AUX_V]
+			};
+			out.step = new int[] {
+					params.rate[MAIN_U], params.rate[MAIN_V],
+					params.rate[AUX_U], params.rate[AUX_V]
+			};
+		}
+
+		out.freq = new int[] {
+				params.freq[0], params.freq[1], params.freq[2], params.freq[3]
+		};
+
+		return out;
+	}
+
+	public static TexturePanner fromJson(JsonTexturePanner in)
+	{
+		TexturePanner panner = new TexturePanner(in.id);
+		panner.params.generate = in.generate;
+		panner.params.useTexels = in.useTexels;
+
+		if (panner.params.useTexels) {
+			panner.params.maxST = in.max;
+			panner.params.maxUV = in.max * TEXEL_RATIO;
+
+			panner.params.init[MAIN_S] = in.init[0];
+			panner.params.init[MAIN_T] = in.init[1];
+			panner.params.init[AUX_S] = in.init[2];
+			panner.params.init[AUX_T] = in.init[3];
+
+			panner.params.init[MAIN_U] = in.init[0] * TEXEL_RATIO;
+			panner.params.init[MAIN_V] = in.init[1] * TEXEL_RATIO;
+			panner.params.init[AUX_U] = in.init[2] * TEXEL_RATIO;
+			panner.params.init[AUX_V] = in.init[3] * TEXEL_RATIO;
+
+			panner.params.rate[MAIN_S] = in.step[0];
+			panner.params.rate[MAIN_T] = in.step[1];
+			panner.params.rate[AUX_S] = in.step[2];
+			panner.params.rate[AUX_T] = in.step[3];
+
+			panner.params.rate[MAIN_U] = in.step[0] * TEXEL_RATIO;
+			panner.params.rate[MAIN_V] = in.step[1] * TEXEL_RATIO;
+			panner.params.rate[AUX_U] = in.step[2] * TEXEL_RATIO;
+			panner.params.rate[AUX_V] = in.step[3] * TEXEL_RATIO;
+		}
+		else {
+			panner.params.maxST = in.max / TEXEL_RATIO;
+			panner.params.maxUV = in.max;
+
+			panner.params.init[MAIN_S] = in.init[0] / TEXEL_RATIO;
+			panner.params.init[MAIN_T] = in.init[1] / TEXEL_RATIO;
+			panner.params.init[AUX_S] = in.init[2] / TEXEL_RATIO;
+			panner.params.init[AUX_T] = in.init[3] / TEXEL_RATIO;
+
+			panner.params.init[MAIN_U] = in.init[0];
+			panner.params.init[MAIN_V] = in.init[1];
+			panner.params.init[AUX_U] = in.init[2];
+			panner.params.init[AUX_V] = in.init[3];
+
+			panner.params.rate[MAIN_S] = in.step[0] / TEXEL_RATIO;
+			panner.params.rate[MAIN_T] = in.step[1] / TEXEL_RATIO;
+			panner.params.rate[AUX_S] = in.step[2] / TEXEL_RATIO;
+			panner.params.rate[AUX_T] = in.step[3] / TEXEL_RATIO;
+
+			panner.params.rate[MAIN_U] = in.step[0];
+			panner.params.rate[MAIN_V] = in.step[1];
+			panner.params.rate[AUX_U] = in.step[2];
+			panner.params.rate[AUX_V] = in.step[3];
+		}
+
+		for (int i = 0; i < 4; i++)
+			panner.params.freq[i] = in.freq[i];
+
+		return panner;
 	}
 
 	public void toXML(XmlWriter xmw)

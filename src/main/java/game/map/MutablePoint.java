@@ -56,6 +56,16 @@ public class MutablePoint
 		setPosition(p.getX(), p.getY(), p.getZ());
 	}
 
+	public void setPosition(int[] pos)
+	{
+		setPosition(pos[0], pos[1], pos[2]);
+	}
+
+	public int[] toArray()
+	{
+		return new int[] { getX(), getY(), getZ() };
+	}
+
 	public void startTransform()
 	{
 		transforming = true;

@@ -1,4 +1,4 @@
-package game.map.scripts.extract;
+package game.map.scripts.nextract;
 
 import java.util.HashMap;
 import java.util.regex.Matcher;
@@ -37,7 +37,7 @@ public class NpcExtractor
 		}
 	}
 
-	protected static void findAndReplace(Extractor extractor)
+	protected static void findAndReplace(NewExtractor extractor)
 	{
 		if (animDefs == null)
 			loadAnimDefs();

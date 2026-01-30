@@ -13,6 +13,8 @@ import common.Vector3f;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
+import game.map.JsonFeatures.JsonMarker;
+import game.map.JsonFeatures.JsonPathComp;
 import game.map.MutablePoint;
 import game.map.MutablePoint.PointBackup;
 import game.map.editor.camera.MapEditViewport;
@@ -55,6 +57,39 @@ public class PathComponent extends BaseMarkerComponent
 		for (PathPoint wp : path.points)
 			copy.path.points.addElement(new PathPoint(copy.path, wp.getX(), wp.getY(), wp.getZ()));
 		return copy;
+	}
+
+	@Override
+	protected void fromJson(JsonMarker in)
+	{
+		if (in.pathComp == null)
+			return;
+
+		showInterp.set(in.pathComp.showInterp);
+
+		if (in.pathComp.waypoints != null) {
+			for (int i = 0; i < in.pathComp.waypoints.length; i++) {
+				int[] wp = in.pathComp.waypoints[i];
+				if (wp == null || wp.length != 3) {
+					Logger.logError("PathComponent: waypoint " + i + " pos must have exactly 3 elements");
+					continue;
+				}
+				path.points.addElement(new PathPoint(path, wp[0], wp[1], wp[2]));
+			}
+		}
+	}
+
+	@Override
+	protected void toJson(JsonMarker out)
+	{
+		out.pathComp = new JsonPathComp();
+		out.pathComp.showInterp = showInterp.get();
+
+		out.pathComp.waypoints = new int[path.points.size()][];
+		for (int i = 0; i < path.points.size(); i++) {
+			PathPoint p = path.points.get(i);
+			out.pathComp.waypoints[i] = new int[] { p.getX(), p.getY(), p.getZ() };
+		}
 	}
 
 	@Override

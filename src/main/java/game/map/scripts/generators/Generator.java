@@ -2,8 +2,16 @@ package game.map.scripts.generators;
 
 import static game.map.MapKey.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.w3c.dom.Element;
 
+import game.map.JsonFeatures.JsonBush;
+import game.map.JsonFeatures.JsonEntrance;
+import game.map.JsonFeatures.JsonExit;
+import game.map.JsonFeatures.JsonMap;
+import game.map.JsonFeatures.JsonTree;
 import game.map.editor.DeepCopyable;
 import game.map.scripts.ScriptData;
 import game.map.scripts.generators.foliage.Foliage;
@@ -115,6 +123,85 @@ public abstract class Generator implements XmlSerializable, DeepCopyable
 		for (Generator generator : data.generatorsTreeModel.getObjectsInCategory(GeneratorType.Bush)) {
 			Foliage bush = (Foliage) generator;
 			bush.toXML(xmw);
+		}
+	}
+
+	public static void writeEntrances(JsonMap out, ScriptData data)
+	{
+		List<JsonEntrance> list = new ArrayList<>();
+		for (Generator generator : data.generatorsTreeModel.getObjectsInCategory(GeneratorType.Entrance)) {
+			Entrance entrance = (Entrance) generator;
+			list.add(entrance.toJson());
+		}
+		out.entrances = list.toArray(new JsonEntrance[0]);
+	}
+
+	public static void writeExits(JsonMap out, ScriptData data)
+	{
+		List<JsonExit> list = new ArrayList<>();
+		for (Generator generator : data.generatorsTreeModel.getObjectsInCategory(GeneratorType.Exit)) {
+			Exit exit = (Exit) generator;
+			list.add(exit.toJson());
+		}
+		out.exits = list.toArray(new JsonExit[0]);
+	}
+
+	public static void writeTrees(JsonMap out, ScriptData data)
+	{
+		List<JsonTree> list = new ArrayList<>();
+		for (Generator generator : data.generatorsTreeModel.getObjectsInCategory(GeneratorType.Tree)) {
+			Foliage tree = (Foliage) generator;
+			list.add(tree.toTreeJson());
+		}
+		out.trees = list.toArray(new JsonTree[0]);
+	}
+
+	public static void writeBushes(JsonMap out, ScriptData data)
+	{
+		List<JsonBush> list = new ArrayList<>();
+		for (Generator generator : data.generatorsTreeModel.getObjectsInCategory(GeneratorType.Bush)) {
+			Foliage bush = (Foliage) generator;
+			list.add(bush.toBushJson());
+		}
+		out.bushes = list.toArray(new JsonBush[0]);
+	}
+
+	public static void writeJson(JsonMap out, ScriptData data)
+	{
+		writeEntrances(out, data);
+		writeExits(out, data);
+		writeTrees(out, data);
+		writeBushes(out, data);
+	}
+
+	public static void readJson(JsonMap in, ScriptData data)
+	{
+		if (in.entrances != null) {
+			for (JsonEntrance js : in.entrances) {
+				Entrance entrance = new Entrance(js);
+				data.generatorsTreeModel.addToCategory(GeneratorType.Entrance, entrance);
+			}
+		}
+
+		if (in.exits != null) {
+			for (JsonExit js : in.exits) {
+				Exit exit = new Exit(js);
+				data.generatorsTreeModel.addToCategory(GeneratorType.Exit, exit);
+			}
+		}
+
+		if (in.trees != null) {
+			for (JsonTree js : in.trees) {
+				Foliage tree = new Foliage(js);
+				data.generatorsTreeModel.addToCategory(GeneratorType.Tree, tree);
+			}
+		}
+
+		if (in.bushes != null) {
+			for (JsonBush js : in.bushes) {
+				Foliage bush = new Foliage(js);
+				data.generatorsTreeModel.addToCategory(GeneratorType.Bush, bush);
+			}
 		}
 	}
 }

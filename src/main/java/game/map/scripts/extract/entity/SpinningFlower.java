@@ -72,7 +72,7 @@ public class SpinningFlower extends ExtractedEntity
 		super.addHeaderDefines(h);
 
 		if (hasTarget) {
-			String genTarget = NameUtils.toEnumStyle("GEN_" + targetName);
+			String genTarget = NameUtils.toExtractStyle("GEN_" + targetName);
 			h.addDefine("TARGET", "%s_VEC", genTarget);
 			h.addDefine("PARAMS", makeParamList(h, "TARGET"));
 		}

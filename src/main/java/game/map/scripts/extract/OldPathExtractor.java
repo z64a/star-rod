@@ -9,7 +9,7 @@ import game.map.marker.Marker.MarkerType;
 import game.map.marker.PathComponent;
 import game.map.marker.PathPoint;
 
-public abstract class PathExtractor
+public abstract class OldPathExtractor
 {
 	private static final Matcher PathMatcher = Pattern.compile(
 		"(Vec3f \\S+\\[\\] = \\{\\n)" +

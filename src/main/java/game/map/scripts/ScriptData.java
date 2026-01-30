@@ -12,6 +12,8 @@ import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
 import game.ProjectDatabase;
+import game.map.JsonFeatures.JsonMap;
+import game.map.JsonFeatures.JsonTexturePanner;
 import game.map.editor.MapEditor;
 import game.map.editor.UpdateProvider;
 import game.map.editor.ui.ScriptManager;
@@ -196,6 +198,115 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 	public void removeGenerator(String cmdName, SimpleEditableJTree generatorsTree, CategoryTreeNode toRemoveNode)
 	{
 		MapEditor.execute(generatorsTreeModel.new RemoveObject(cmdName, generatorsTree, toRemoveNode));
+	}
+
+	public void toJson(JsonMap out)
+	{
+		out.overrideShape = overrideShape.get();
+		out.overrideHit = overrideHit.get();
+		out.overrideTex = overrideTex.get();
+
+		out.shapeOverrideName = shapeOverrideName.get();
+		out.hitOverrideName = hitOverrideName.get();
+
+		out.camVfov = camVfov.get();
+		out.camNearClip = camNearClip.get();
+		out.camFarClip = camFarClip.get();
+
+		out.bgColor = new int[] { bgColorR.get(), bgColorG.get(), bgColorB.get() };
+
+		out.fogWorld = worldFogSettings.pack();
+		out.fogEntity = entityFogSettings.pack();
+
+		//FIXME
+		/*
+		out.hasMusic = hasMusic.get();
+		out.songName = songName.get();
+		out.hasAmbientSFX = hasAmbientSFX.get();
+		out.ambientSFX = ambientSFX.get();
+		*/
+
+		out.locationName = locationName.get();
+
+		out.shadingProfile = (shadingProfile.get() != null)
+			? shadingProfile.get().name.get()
+			: SpriteShadingData.NO_SHADING_NAME;
+
+		//FIXME
+		/*
+		out.cameraLeadsPlayer = cameraLeadsPlayer.get();
+		out.isDark = isDark.get();
+		
+		out.callbackBeforeEnter = addCallbackBeforeEnterMap.get();
+		out.callbackAfterEnter = addCallbackAfterEnterMap.get();
+		*/
+
+		List<JsonTexturePanner> list = new ArrayList<>();
+		for (TexturePanner panner : texPanners) {
+			list.add(panner.toJson());
+		}
+		out.texPanners = list.toArray(new JsonTexturePanner[0]);
+
+		//TODO
+		Generator.writeJson(out, this);
+	}
+
+	public void fromJson(JsonMap in)
+	{
+		overrideShape.set(in.overrideShape);
+		overrideHit.set(in.overrideHit);
+		overrideTex.set(in.overrideTex);
+
+		shapeOverrideName.set(in.shapeOverrideName != null ? in.shapeOverrideName : "");
+		hitOverrideName.set(in.hitOverrideName != null ? in.hitOverrideName : "");
+
+		camVfov.set(in.camVfov);
+		camNearClip.set(in.camNearClip);
+		camFarClip.set(in.camFarClip);
+
+		if (in.bgColor != null && in.bgColor.length == 3) {
+			bgColorR.set(in.bgColor[0]);
+			bgColorG.set(in.bgColor[1]);
+			bgColorB.set(in.bgColor[2]);
+		}
+
+		if (in.fogWorld != null && in.fogWorld.length == 7)
+			worldFogSettings.load(in.fogWorld);
+
+		if (in.fogEntity != null && in.fogEntity.length == 7)
+			entityFogSettings.load(in.fogEntity);
+
+		/*
+		hasMusic.set(in.hasMusic);
+		songName.set(in.songName != null ? in.songName : "");
+
+		hasAmbientSFX.set(in.hasAmbientSFX);
+		ambientSFX.set(in.ambientSFX != null ? in.ambientSFX : "");
+
+		locationName.set(in.locationName != null ? in.locationName : "");
+		*/
+
+		hasSpriteShading.set(in.shadingProfile != null);
+		if (in.shadingProfile != null && !in.shadingProfile.equals(SpriteShadingData.NO_SHADING_NAME))
+			shadingProfile.set(ProjectDatabase.SpriteShading.getShadingProfile(in.shadingProfile));
+		else
+			shadingProfile.set((ShadingProfile) null);
+
+		/*
+		cameraLeadsPlayer.set(in.cameraLeadsPlayer);
+		isDark.set(in.isDark);
+
+		addCallbackBeforeEnterMap.set(in.callbackBeforeEnter);
+		addCallbackAfterEnterMap.set(in.callbackAfterEnter);
+		 */
+
+		texPanners.clear();
+		if (in.texPanners != null) {
+			for (JsonTexturePanner json : in.texPanners)
+				texPanners.addElement(TexturePanner.fromJson(json));
+		}
+
+		Generator.readJson(in, this);
 	}
 
 	@Override

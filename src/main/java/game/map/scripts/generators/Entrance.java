@@ -10,6 +10,8 @@ import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
 import game.ProjectDatabase;
+import game.map.JsonFeatures;
+import game.map.JsonFeatures.JsonEntrance;
 import game.map.scripts.GeneratorsPanel;
 import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlSerializable;
@@ -184,20 +186,88 @@ public final class Entrance extends Generator implements XmlSerializable
 			}).setName(new StandardBoolName("Callback")).build();
 	}
 
+	public Entrance(JsonEntrance in)
+	{
+		this(); // for field initialization
+
+		if (in.name != null)
+			overrideName.set(in.name);
+		if (in.type != null)
+			type.set(in.type);
+		if (in.markerName != null)
+			markerName.set(in.markerName);
+
+		if (in.door1Name != null)
+			door1Name.set(in.door1Name);
+		if (in.door2Name != null)
+			door2Name.set(in.door2Name);
+		if (in.doorSound != null)
+			doorSound.set(in.doorSound);
+		if (in.doorSwing != null)
+			doorSwing.set(in.doorSwing);
+
+		if (in.pipeCollider != null)
+			pipeCollider.set(in.pipeCollider);
+		if (in.warpPipeEntity != null)
+			warpPipeEntity.set(in.warpPipeEntity);
+
+		hasCallback.set(in.hasCallback);
+	}
+
+	public JsonEntrance toJson()
+	{
+		JsonEntrance out = new JsonEntrance();
+
+		out.name = JsonFeatures.getOrNull(overrideName);
+		out.type = type.get();
+		out.markerName = JsonFeatures.getOrNull(markerName);
+		out.hasCallback = hasCallback.get();
+
+		switch (type.get()) {
+			case SingleDoor:
+				out.door1Name = JsonFeatures.getOrNull(door1Name);
+				out.doorSwing = JsonFeatures.getOrNull(doorSwing);
+				out.doorSound = JsonFeatures.getOrNull(doorSound);
+				break;
+
+			case DoubleDoor:
+				out.door1Name = JsonFeatures.getOrNull(door1Name);
+				out.door2Name = JsonFeatures.getOrNull(door2Name);
+				out.doorSound = JsonFeatures.getOrNull(doorSound);
+				break;
+
+			case HorizontalPipe:
+				out.pipeCollider = JsonFeatures.getOrNull(pipeCollider);
+				break;
+
+			case BlueWarpPipe:
+				out.warpPipeEntity = JsonFeatures.getOrNull(warpPipeEntity);
+				break;
+
+			case Teleport:
+			case Walk:
+			case VerticalPipe:
+				// no extra fields
+				break;
+		}
+
+		return out;
+	}
+
 	/*
 	//TODO
 	public Entrance(EntranceType type, ArrayList<ScriptLine> script)
 	{
 		this(type);
 		ScriptLine gotoMap = null;
-	
+
 		switch(type)
 		{
 		case Walk:
 			markerID = script.get(1).args[2];
 			gotoMap = script.get(3);
 			break;
-	
+
 		case SingleDoor:
 			doorSound = DataConstants.DoorSoundsType.getName(script.get(2).args[1]);
 			markerID = script.get(3).args[1];
@@ -205,7 +275,7 @@ public final class Entrance extends Generator implements XmlSerializable
 			doorSwing = DataConstants.DoorSwingsType.getName(script.get(6).args[1]);
 			gotoMap = script.get(9);
 			break;
-	
+
 		case DoubleDoor:
 			doorSound = DataConstants.DoorSoundsType.getName(script.get(2).args[1]);
 			markerID = script.get(3).args[1];

@@ -9,8 +9,10 @@ import java.util.List;
 import org.w3c.dom.Element;
 
 import common.Vector3f;
+import common.commands.AbstractCommand;
 import game.map.Axis;
 import game.map.BoundingBox;
+import game.map.JsonFeatures.JsonMarker;
 import game.map.Map;
 import game.map.MapObject;
 import game.map.MutableAngle;
@@ -23,7 +25,6 @@ import game.map.editor.Tickable;
 import game.map.editor.camera.MapEditViewport;
 import game.map.editor.camera.OrthographicCamera;
 import game.map.editor.camera.ViewType;
-import common.commands.AbstractCommand;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;
@@ -46,6 +47,7 @@ import renderer.shaders.RenderState;
 import renderer.shaders.RenderState.PolygonMode;
 import renderer.shaders.ShaderManager;
 import renderer.shaders.scene.MarkerShader;
+import util.Logger;
 import util.identity.IdentityHashSet;
 import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlSerializable;
@@ -154,6 +156,59 @@ public class Marker extends MapObject implements Tickable, XmlSerializable
 		}
 
 		throw new IllegalStateException("Can't get component reference for marker type " + type);
+	}
+
+	public Marker(JsonMarker in)
+	{
+		super(MapObjectType.MARKER);
+
+		super.setName(in.name);
+		super.hidden = in.hidden;
+
+		setType(in.type);
+		description = in.desc;
+		extracted = in.extracted;
+
+		if (in.pos != null) {
+			if (in.pos.length != 3)
+				Logger.logError("Marker: " + in.name + " position must have exactly 3 elements");
+			else
+				position.setPosition(in.pos[0], in.pos[1], in.pos[2]);
+		}
+
+		yaw.setAngle(in.yaw);
+
+		BaseMarkerComponent comp = getCurrentComponent();
+		if (comp != null)
+			comp.fromJson(in);
+
+		node = new MapObjectNode<>(this);
+	}
+
+	public JsonMarker toJson()
+	{
+		JsonMarker out = new JsonMarker();
+
+		out.id = node.getTreeIndex();
+
+		if (node.parentNode.getUserObject().type != MarkerType.Root)
+			out.parent = node.parentNode.getTreeIndex();
+
+		out.name = super.getName();
+		out.hidden = super.hidden;
+
+		out.type = type;
+		out.desc = description;
+		out.extracted = extracted;
+
+		out.pos = new int[] { position.getX(), position.getY(), position.getZ() };
+		out.yaw = yaw.getAngle();
+
+		BaseMarkerComponent comp = getCurrentComponent();
+		if (comp != null)
+			comp.toJson(out);
+
+		return out;
 	}
 
 	/**

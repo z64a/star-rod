@@ -111,7 +111,7 @@ public class HeaderEntry
 	public void setName(String name)
 	{
 		addProperty("name", name);
-		genName = NameUtils.toEnumStyle("GEN_" + name);
+		genName = NameUtils.toExtractStyle("GEN_" + name);
 	}
 
 	public String getPropertyUnchecked(String property)

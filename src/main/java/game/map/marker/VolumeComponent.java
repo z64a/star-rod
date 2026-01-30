@@ -9,6 +9,8 @@ import org.w3c.dom.Element;
 
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
+import game.map.JsonFeatures.JsonMarker;
+import game.map.JsonFeatures.JsonVolumeComp;
 import game.map.MutablePoint;
 import game.map.MutablePoint.PointBackup;
 import game.map.editor.camera.MapEditViewport;
@@ -22,6 +24,7 @@ import renderer.buffers.PointRenderQueue;
 import renderer.shaders.RenderState;
 import renderer.shaders.ShaderManager;
 import renderer.shaders.scene.LineShader;
+import util.Logger;
 import util.identity.IdentityHashSet;
 import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlTag;
@@ -69,6 +72,42 @@ public class VolumeComponent extends BaseMarkerComponent
 		copy.minPos.point.setPosition(minPos.point);
 		copy.maxPos.point.setPosition(maxPos.point);
 		return copy;
+	}
+
+	@Override
+	protected void fromJson(JsonMarker in)
+	{
+		if (in.volComp == null)
+			return;
+
+		radius.set(in.volComp.radius);
+		height.set(in.volComp.height);
+
+		if (in.volComp.minPos != null) {
+			if (in.volComp.minPos.length != 3)
+				Logger.logError("VolumeComponent: minPos must have exactly 3 elements");
+			else
+				minPos.point.setPosition(in.volComp.minPos[0], in.volComp.minPos[1], in.volComp.minPos[2]);
+		}
+
+		if (in.volComp.maxPos != null) {
+			if (in.volComp.maxPos.length != 3)
+				Logger.logError("VolumeComponent: maxPos must have exactly 3 elements");
+			else
+				maxPos.point.setPosition(in.volComp.maxPos[0], in.volComp.maxPos[1], in.volComp.maxPos[2]);
+		}
+	}
+
+	@Override
+	protected void toJson(JsonMarker out)
+	{
+		out.volComp = new JsonVolumeComp();
+
+		out.volComp.radius = radius.get();
+		out.volComp.height = height.get();
+
+		out.volComp.minPos = new float[] { minPos.point.getX(), minPos.point.getY(), minPos.point.getZ() };
+		out.volComp.maxPos = new float[] { maxPos.point.getX(), maxPos.point.getY(), maxPos.point.getZ() };
 	}
 
 	@Override

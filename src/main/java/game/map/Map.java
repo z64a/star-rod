@@ -5,8 +5,6 @@ import static game.map.MapKey.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,6 +27,8 @@ import app.input.IOUtils;
 import assets.AssetManager;
 import common.commands.AbstractCommand;
 import common.commands.CommandBatch;
+import game.map.JsonFeatures.JsonMap;
+import game.map.JsonFeatures.JsonMarker;
 import game.map.MapObject.MapObjectType;
 import game.map.editor.EditorObject;
 import game.map.editor.MapEditor;
@@ -51,10 +51,6 @@ import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
 import game.map.scripts.LightingPanel;
 import game.map.scripts.ScriptData;
-import game.map.scripts.extract.EntryListExtractor;
-import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.extract.MapPropertiesExtractor;
-import game.map.scripts.extract.TexPannerExtractor;
 import game.map.shape.LightSet;
 import game.map.shape.LightSet.LightSetDigest;
 import game.map.shape.Model;
@@ -78,6 +74,9 @@ public class Map implements XmlSerializable
 {
 	private static final int latestVersion = 3;
 	private int instanceVersion = latestVersion;
+
+	private boolean loadedJson = false;
+	private boolean writeLegacyXML = false;
 
 	public MapEditorMetadata editorData = null;
 
@@ -159,18 +158,27 @@ public class Map implements XmlSerializable
 			xmr, mapElem, TAG_ZONES, TAG_ZONE, TAG_ZONE_TREE);
 		zoneTree = new ZoneTreeModel(zoneRoot);
 
-		MapObjectNode<Marker> markerRoot = readTree((elem) -> Marker.read(xmr, elem),
-			xmr, mapElem, TAG_MARKERS, TAG_MARKER, TAG_MARKER_TREE);
-		markerTree = new MarkerTreeModel(markerRoot);
+		if (!loadedJson) {
+			MapObjectNode<Marker> markerRoot;
 
-		for (Model mdl : modelTree.getList())
-			mdl.lights.set(lightSets.get(mdl.lightsIndex));
+			if (xmr.hasTag(mapElem, TAG_MARKERS)) {
+				markerRoot = readTree((elem) -> Marker.read(xmr, elem),
+					xmr, mapElem, TAG_MARKERS, TAG_MARKER, TAG_MARKER_TREE);
+			}
+			else {
+				markerRoot = Marker.createDefaultRoot().getNode();
+			}
+			markerTree = new MarkerTreeModel(markerRoot);
 
-		scripts = new ScriptData();
+			for (Model mdl : modelTree.getList())
+				mdl.lights.set(lightSets.get(mdl.lightsIndex));
 
-		Element scriptsElem = xmr.getUniqueTag(mapElem, TAG_SCRIPT_DATA);
-		if (scriptsElem != null)
-			scripts.fromXML(xmr, scriptsElem);
+			scripts = new ScriptData();
+
+			Element scriptsElem = xmr.getUniqueTag(mapElem, TAG_SCRIPT_DATA);
+			if (scriptsElem != null)
+				scripts.fromXML(xmr, scriptsElem);
+		}
 
 		Element editorElem = xmr.getUniqueTag(mapElem, TAG_EDITOR);
 		if (editorElem != null) {
@@ -242,10 +250,12 @@ public class Map implements XmlSerializable
 		zoneTree.toXML(xmw);
 		xmw.closeTag(zoneTreeTag);
 
-		XmlTag markerTreeTag = xmw.createTag(TAG_MARKER_TREE, false);
-		xmw.openTag(markerTreeTag);
-		markerTree.toXML(xmw);
-		xmw.closeTag(markerTreeTag);
+		if (writeLegacyXML) {
+			XmlTag markerTreeTag = xmw.createTag(TAG_MARKER_TREE, false);
+			xmw.openTag(markerTreeTag);
+			markerTree.toXML(xmw);
+			xmw.closeTag(markerTreeTag);
+		}
 
 		XmlTag lightsetsTag = xmw.createTag(TAG_LIGHTSETS, false);
 		xmw.openTag(lightsetsTag);
@@ -274,16 +284,18 @@ public class Map implements XmlSerializable
 			z.toXML(xmw);
 		xmw.closeTag(zonesTag);
 
-		XmlTag markersTag = xmw.createTag(TAG_MARKERS, false);
-		xmw.openTag(markersTag);
-		for (Marker m : markerTree.getList())
-			m.toXML(xmw);
-		xmw.closeTag(markersTag);
+		if (writeLegacyXML) {
+			XmlTag markersTag = xmw.createTag(TAG_MARKERS, false);
+			xmw.openTag(markersTag);
+			for (Marker m : markerTree.getList())
+				m.toXML(xmw);
+			xmw.closeTag(markersTag);
 
-		XmlTag scriptsTag = xmw.createTag(TAG_SCRIPT_DATA, false);
-		xmw.openTag(scriptsTag);
-		scripts.toXML(xmw);
-		xmw.closeTag(scriptsTag);
+			XmlTag scriptsTag = xmw.createTag(TAG_SCRIPT_DATA, false);
+			xmw.openTag(scriptsTag);
+			scripts.toXML(xmw);
+			xmw.closeTag(scriptsTag);
+		}
 
 		xmw.closeTag(root);
 	}
@@ -685,9 +697,12 @@ public class Map implements XmlSerializable
 
 		XmlReader xmr = new XmlReader(f);
 		map = new Map();
-		map.fromXML(xmr, xmr.getRootElement());
 
 		map.setName(deriveName(f));
+		map.tryLoadFeatures();
+
+		map.fromXML(xmr, xmr.getRootElement());
+
 		map.lastModified = f.lastModified();
 		validateObjectData(map);
 
@@ -865,7 +880,7 @@ public class Map implements XmlSerializable
 		saveMapAs_impl(file, true);
 	}
 
-	private void saveMapAs_impl(File file, boolean generateHeader) throws Exception
+	private void saveMapAs_impl(File file, boolean saveFeatures) throws Exception
 	{
 		FileUtils.touch(file);
 		File tempFile = new File(file.getAbsolutePath() + ".temp");
@@ -893,9 +908,8 @@ public class Map implements XmlSerializable
 		lastModified = file.lastModified();
 		modified = false;
 
-		if (generateHeader) {
-			tryInjectHeader();
-			writeHeader();
+		if (saveFeatures) {
+			saveFeatures();
 		}
 	}
 
@@ -1565,46 +1579,58 @@ public class Map implements XmlSerializable
 		return false;
 	}
 
-	private static final String INC_GEN = "#include \"generated.h\"";
-	private static final String INC_COM = "#include \"common.h\"";
-
-	private void tryInjectHeader() throws IOException
+	private void tryLoadFeatures()
 	{
-		File mapHeader = new File(projDir, name + ".h");
-		File genHeader = new File(projDir, "generated.h");
+		loadedJson = false;
 
-		if (!mapHeader.exists()) {
-			Logger.logError("Could not find header file for " + name);
+		File featuresJson = new File(projDir, "features.json");
+		if (!featuresJson.exists())
 			return;
+
+		try {
+			JsonMap in = JsonFeatures.fromJson(featuresJson);
+
+			scripts = new ScriptData();
+			scripts.fromJson(in);
+
+			HashMap<Integer, Marker> idMap = new HashMap<>();
+
+			markerTree = new MarkerTreeModel();
+			MapObjectNode<Marker> root = markerTree.getRoot();
+
+			for (JsonMarker jsonMarker : in.markers) {
+				Marker m = new Marker(jsonMarker);
+				idMap.put(jsonMarker.id, m);
+
+				if (jsonMarker.parent == null)
+					m.getNode().parentNode = root;
+				else
+					m.getNode().parentNode = idMap.get(jsonMarker.parent).getNode();
+
+				markerTree.create(m);
+			}
+
+			loadedJson = true;
 		}
-
-		String headerText = Files.readString(mapHeader.toPath());
-		if (headerText.contains(INC_GEN))
-			return;
-
-		// try injecting on the line after "common.h", else append to the end
-		if (headerText.contains(INC_COM))
-			headerText = headerText.replace(INC_COM, INC_COM + "\n" + INC_GEN);
-		else
-			headerText += "\n#include \"generated.h\"";
-
-		Files.writeString(mapHeader.toPath(), headerText);
-		FileUtils.touch(genHeader);
+		catch (IOException e) {
+			Logger.logError(e.getMessage());
+		}
 	}
 
-	private void writeHeader() throws IOException
+	private void saveFeatures() throws IOException
 	{
+		//FIXME -- remove
+		/*
 		File genHeader = new File(projDir, "generated.h");
 		FileUtils.touch(genHeader);
 
 		try (PrintWriter pw = IOUtils.getBufferedPrintWriter(genHeader)) {
-			pw.println("/* auto-generated, do not edit */");
 			pw.println("#include \"star_rod_macros.h\"");
 			pw.println();
 
 			MapPropertiesExtractor.print(pw, this);
-			EntryListExtractor.print(pw, markerTree);
-			TexPannerExtractor.print(pw, this);
+			EntryListExtractor.print(pw, markerTree); //done
+			TexPannerExtractor.print(pw, this); // done
 
 			for (Marker m : markerTree) {
 				HeaderEntry h = m.getHeaderEntry();
@@ -1612,5 +1638,21 @@ public class Map implements XmlSerializable
 					h.print(pw);
 			}
 		}
+		 */
+
+		File featuresJson = new File(projDir, "features.json");
+		FileUtils.touch(featuresJson);
+
+		JsonMap out = new JsonMap();
+		scripts.toJson(out);
+
+		List<JsonMarker> jsonMarkers = new ArrayList<>();
+		for (Marker m : markerTree.asBreadthFirst()) {
+			if (m.type != MarkerType.Root)
+				jsonMarkers.add(m.toJson());
+		}
+		out.markers = jsonMarkers.toArray(new JsonMarker[0]);
+
+		JsonFeatures.toJson(out, featuresJson);
 	}
 }

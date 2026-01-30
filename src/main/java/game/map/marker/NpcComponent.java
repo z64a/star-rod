@@ -3,6 +3,7 @@ package game.map.marker;
 import static game.map.MapKey.*;
 import static org.lwjgl.opengl.GL11.*;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
@@ -16,6 +17,12 @@ import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
 import game.map.Axis;
+import game.map.JsonFeatures.JsonDetectData;
+import game.map.JsonFeatures.JsonMarker;
+import game.map.JsonFeatures.JsonNpcComp;
+import game.map.JsonFeatures.JsonPatrolData;
+import game.map.JsonFeatures.JsonSpriteData;
+import game.map.JsonFeatures.JsonWanderData;
 import game.map.MutablePoint;
 import game.map.MutablePoint.PointBackup;
 import game.map.editor.camera.MapEditViewport;
@@ -68,6 +75,7 @@ public class NpcComponent extends BaseMarkerComponent
 	}
 
 	private static final double SPRITE_TICK_RATE = 1.0 / 30.0;
+	private static final int MAX_PATROL_PATH_POINTS = 10;
 
 	private transient SpriteLoader spriteLoader;
 	private transient double spriteTime = 0.0;
@@ -130,6 +138,10 @@ public class NpcComponent extends BaseMarkerComponent
 	public EditableField<Integer> detectRadius = EditableFieldFactory.create(0)
 		.setCallback(notifyMovement).setName("Set Detection Radius").build();
 
+	// required to match certain NPCs in pmret, does nothing
+	public EditableField<Integer> detectHeight = EditableFieldFactory.create(0)
+		.setCallback(notifyMovement).setName("Set Detection Height").build();
+
 	public SelectablePoint detectCenter;
 	public SelectablePoint wanderCenter;
 
@@ -154,7 +166,7 @@ public class NpcComponent extends BaseMarkerComponent
 		wanderCenter = new SelectablePoint(wanderPoint, 2.0f);
 		detectCenter = new SelectablePoint(detectPoint, 2.0f);
 
-		patrolPath = new PathData(marker, MarkerInfoPanel.tag_NPCMovementTab, 10);
+		patrolPath = new PathData(marker, MarkerInfoPanel.tag_NPCMovementTab, MAX_PATROL_PATH_POINTS);
 	}
 
 	@Override
@@ -171,6 +183,136 @@ public class NpcComponent extends BaseMarkerComponent
 		copy.needsReloading = true;
 
 		return copy;
+	}
+
+	@Override
+	protected void fromJson(JsonMarker in)
+	{
+		if (in.npcComp == null)
+			return;
+
+		JsonNpcComp comp = in.npcComp;
+
+		moveType.set(comp.moveType);
+		flying.set(comp.flying);
+
+		if (comp.sprite != null) {
+			spriteID.set(comp.sprite.id);
+			paletteID.set(comp.sprite.palette);
+			animIndex.set(comp.sprite.anim);
+			animName = comp.sprite.animName;
+			flipX = comp.sprite.flipX;
+			flipY = comp.sprite.flipY;
+		}
+
+		// detect volume
+		if (comp.detect != null) {
+			if (comp.detect.center != null && comp.detect.center.length == 3) {
+				detectCenter.point.setPosition(comp.detect.center);
+			}
+
+			useDetectCircle.set(comp.detect.useCircle);
+
+			if (comp.detect.useCircle) {
+				detectRadius.set(comp.detect.radius);
+				detectHeight.set(comp.detect.height);
+			}
+			else {
+				detectSizeX.set(comp.detect.sizeX);
+				detectSizeZ.set(comp.detect.sizeZ);
+			}
+		}
+
+		// moveType == Wander
+		if (moveType.get() == MoveType.Wander && comp.wander != null) {
+			if (comp.wander.center != null && comp.wander.center.length == 3) {
+				wanderCenter.point.setPosition(comp.wander.center);
+			}
+
+			useWanderCircle.set(comp.wander.useCircle);
+
+			if (comp.wander.useCircle) {
+				wanderRadius.set(comp.wander.radius);
+			}
+			else {
+				wanderSizeX.set(comp.wander.sizeX);
+				wanderSizeZ.set(comp.wander.sizeZ);
+			}
+
+			overrideMovementSpeed.set(comp.wander.overrideSpeed);
+			if (comp.wander.overrideSpeed)
+				movementSpeedOverride.set(comp.wander.speed);
+		}
+
+		// moveType == Patrol
+		else if (moveType.get() == MoveType.Patrol && comp.patrol != null) {
+			patrolPath.points.clear();
+			if (comp.patrol.points != null) {
+				for (int i = 0; i < comp.patrol.points.length && i < MAX_PATROL_PATH_POINTS; i++) {
+					int[] p = comp.patrol.points[i];
+					if (p != null && p.length == 3) {
+						patrolPath.points.addElement(new PathPoint(patrolPath, p[0], p[1], p[2]));
+					}
+				}
+			}
+
+			overrideMovementSpeed.set(comp.patrol.overrideSpeed);
+			if (comp.patrol.overrideSpeed)
+				movementSpeedOverride.set(comp.patrol.speed);
+		}
+	}
+
+	@Override
+	protected void toJson(JsonMarker out)
+	{
+		out.npcComp = new JsonNpcComp();
+
+		out.npcComp.moveType = moveType.get();
+		out.npcComp.flying = flying.get();
+
+		JsonSpriteData sprite = new JsonSpriteData();
+		out.npcComp.sprite = sprite;
+		sprite.id = spriteID.get();
+		sprite.palette = paletteID.get();
+		sprite.anim = animIndex.get();
+		sprite.animName = animName;
+		sprite.flipX = flipX;
+		sprite.flipY = flipY;
+
+		JsonDetectData detect = new JsonDetectData();
+		out.npcComp.detect = detect;
+		detect.center = detectCenter.point.toArray();
+		detect.useCircle = useDetectCircle.get();
+		detect.radius = detectRadius.get();
+		detect.height = detectHeight.get();
+		detect.sizeX = detectSizeX.get();
+		detect.sizeZ = detectSizeZ.get();
+
+		if (moveType.get() == MoveType.Wander) {
+			JsonWanderData wander = new JsonWanderData();
+			out.npcComp.wander = wander;
+			wander.center = wanderCenter.point.toArray();
+			wander.useCircle = useWanderCircle.get();
+			wander.radius = wanderRadius.get();
+			wander.sizeX = wanderSizeX.get();
+			wander.sizeZ = wanderSizeZ.get();
+			wander.overrideSpeed = overrideMovementSpeed.get();
+			wander.speed = movementSpeedOverride.get();
+		}
+		else if (moveType.get() == MoveType.Patrol) {
+			JsonPatrolData patrol = new JsonPatrolData();
+			out.npcComp.patrol = patrol;
+			patrol.overrideSpeed = overrideMovementSpeed.get();
+			patrol.speed = movementSpeedOverride.get();
+
+			List<int[]> points = new ArrayList<>();
+			for (PathPoint p : patrolPath.points) {
+				points.add(new int[] { p.getX(), p.getY(), p.getZ() });
+				if (points.size() == MAX_PATROL_PATH_POINTS)
+					break;
+			}
+			patrol.points = points.toArray(new int[0][]);
+		}
 	}
 
 	@Override
@@ -849,6 +991,9 @@ public class NpcComponent extends BaseMarkerComponent
 					if (useDetectCircle.get()) {
 						coords = getIntVec(kv[1], "detectSize", -1);
 						detectRadius.set(coords[0]);
+						if (coords.length > 1 && coords[1] != 0) {
+							detectHeight.set(coords[1]);
+						}
 					}
 					else {
 						coords = getIntVec(kv[1], "detectSize", 2);

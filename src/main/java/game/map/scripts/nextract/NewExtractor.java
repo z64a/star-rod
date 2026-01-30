@@ -1,4 +1,4 @@
-package game.map.scripts.extract;
+package game.map.scripts.nextract;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,32 +18,31 @@ import assets.AssetManager;
 import game.map.Map;
 import game.map.MapObject.MapObjectType;
 import game.map.marker.Marker;
+import game.map.scripts.extract.HeaderEntry;
 import game.map.scripts.extract.HeaderEntry.HeaderParseException;
-import game.map.scripts.extract.entity.ArrowSign;
-import game.map.scripts.extract.entity.BasicEntity;
-import game.map.scripts.extract.entity.BlueSwitch;
-import game.map.scripts.extract.entity.BlueWarpPipe;
-import game.map.scripts.extract.entity.Chest;
-import game.map.scripts.extract.entity.CoinBlock;
-import game.map.scripts.extract.entity.ExtractedEntity;
-import game.map.scripts.extract.entity.HeartBlock;
-import game.map.scripts.extract.entity.HiddenPanel;
-import game.map.scripts.extract.entity.ItemBlock;
-import game.map.scripts.extract.entity.ItemEntity;
-import game.map.scripts.extract.entity.OptionalScriptEntity;
-import game.map.scripts.extract.entity.SimpleSpring;
-import game.map.scripts.extract.entity.SpinningFlower;
-import game.map.scripts.extract.entity.SuperBlock;
-import game.map.scripts.extract.entity.Tweester;
-import game.map.scripts.extract.entity.WoodenCrate;
+import game.map.scripts.nextract.entity.ArrowSign;
+import game.map.scripts.nextract.entity.BasicEntity;
+import game.map.scripts.nextract.entity.ExtractedEntity;
+import game.map.scripts.nextract.entity.ItemEntity;
+import game.map.scripts.nextract.entity.OptionalScriptEntity;
 import game.map.tree.MapObjectNode;
 import game.sprite.SpriteLoader;
 import util.Logger;
 import util.NameUtils;
 import util.Priority;
 
-public class Extractor
+public class NewExtractor
 {
+	// KNOWN PROBLEMS MATCHING:
+	// - mac_06 / EVS_Main -- two different GEN_TEX_PANNER_1 created
+	//  drip volumes min/max are not respected tik_05 and tik_07 are known bad
+	// - trd_06 / FallPath -- needs Float values for Path marker -- skip??
+	// - kpa_16 / EVS_TexPan_Steam -- revert the generated panner here
+	// - kzn_03 and kzn_09 have non-integer Vec3f for Zipline_Endpoints
+	// - flo_14 bubbles / EVS_SetupBubbles -- EVT_FLOWER_SPAWN_REGION bad min/max
+
+	// revert TEX_PAN_PARAMS_SKIP_ID
+
 	public static void main(String[] args) throws IOException
 	{
 		Environment.initialize();
@@ -59,6 +58,8 @@ public class Extractor
 		File[] worldDirs = f.listFiles();
 		Arrays.sort(worldDirs);
 
+		int COUNT = 0;
+
 		for (File worldDir : worldDirs) {
 			if (worldDir.isDirectory() && worldDir.getName().matches("area_\\w+")) {
 				String areaName = worldDir.getName().substring(5);
@@ -67,7 +68,11 @@ public class Extractor
 
 				for (File mapDir : mapDirs) {
 					if (mapDir.isDirectory() && mapDir.getName().startsWith(areaName)) {
-						new Extractor(mapDir.getName(), true);
+						new NewExtractor(mapDir.getName(), true);
+						//return; //FIXME -- only first map for now
+						COUNT++;
+						//if (COUNT >= 50)
+						//	return;
 					}
 				}
 			}
@@ -85,7 +90,7 @@ public class Extractor
 	private String fileText;
 	public boolean fileModified = false;
 
-	public Extractor(String mapName, boolean fromSource) throws IOException
+	public NewExtractor(String mapName, boolean fromSource) throws IOException
 	{
 		Logger.log("Extracting data from " + mapName, Priority.IMPORTANT);
 
@@ -108,7 +113,7 @@ public class Extractor
 		}
 	}
 
-	public Extractor(Map map, boolean fromSource) throws IOException
+	public NewExtractor(Map map, boolean fromSource) throws IOException
 	{
 		Logger.log("Extracting data for " + map.getName(), Priority.IMPORTANT);
 		extractToMap(map, fromSource);
@@ -160,7 +165,7 @@ public class Extractor
 			LavaResetExtractor.findAndReplace(this);
 
 		if (fileText.contains("NpcData"))
-			OldNpcExtractor.findAndReplace(this);
+			NpcExtractor.findAndReplace(this);
 
 		if (fileText.contains("MakeItemEntity"))
 			findAndReplace(ItemEntity.RegexMatcher, ItemEntity.class);
@@ -168,28 +173,34 @@ public class Extractor
 		if (fileText.contains("MakeEntity")) {
 			findAndReplace(BasicEntity.RegexMatcher, BasicEntity.class);
 			findAndReplace(OptionalScriptEntity.RegexMatcher, OptionalScriptEntity.class);
+			/*
 			findAndReplace(BlueSwitch.RegexMatcher, BlueSwitch.class);
 			findAndReplace(ItemBlock.RegexMatcher, ItemBlock.class);
 			findAndReplace(CoinBlock.RegexMatcher, CoinBlock.class);
 			findAndReplace(HeartBlock.RegexMatcher, HeartBlock.class);
 			findAndReplace(Chest.RegexMatcher, Chest.class);
+			*/
 			findAndReplace(ArrowSign.RegexMatcher, ArrowSign.class);
+			/*
 			findAndReplace(HiddenPanel.RegexMatcher, HiddenPanel.class);
 			findAndReplace(SimpleSpring.RegexMatcher, SimpleSpring.class);
 			findAndReplace(WoodenCrate.RegexMatcher, WoodenCrate.class);
 			findAndReplace(SpinningFlower.RegexMatcher, SpinningFlower.class);
 			findAndReplace(BlueWarpPipe.RegexMatcher, BlueWarpPipe.class);
 			findAndReplace(Tweester.RegexMatcher, Tweester.class);
+			*/
 		}
 
 		// special case for Super Blocks since they use macros
+		/*
 		if (fileText.contains("EVT_MAKE_SUPER_BLOCK"))
 			SuperBlock.scan(this);
+		*/
 
-		OldPathExtractor.findAndReplace(this);
+		PathExtractor.findAndReplace(this);
 
 		if (fileText.contains("CreatePushBlockGrid"))
-			OldPushGridExtractor.findAndReplace(this);
+			PushGridExtractor.findAndReplace(this);
 
 		if (fileText.contains("BombTrigger"))
 			BombPosExtractor.findAndReplace(this);

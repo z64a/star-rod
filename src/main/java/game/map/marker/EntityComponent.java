@@ -12,6 +12,8 @@ import common.commands.EditableField.EditableFieldFactory;
 import game.entity.EntityInfo.EntityParam;
 import game.entity.EntityInfo.EntityType;
 import game.entity.EntityInfo.ShadowType;
+import game.map.JsonFeatures.JsonEntityComp;
+import game.map.JsonFeatures.JsonMarker;
 import game.map.MapKey;
 import game.map.editor.camera.MapEditViewport;
 import game.map.editor.render.Renderer;
@@ -184,6 +186,97 @@ public class EntityComponent extends BaseMarkerComponent
 				field.set(xmr.readInt(entityElem, key));
 				field.setEnabled(true);
 			}
+		}
+	}
+
+	@Override
+	protected void fromJson(JsonMarker in)
+	{
+		if (in.entityComp == null)
+			return;
+
+		JsonEntityComp comp = in.entityComp;
+		type.set(comp.type);
+
+		readJsonStringField(comp.type, ATTR_NTT_ITEM, comp.itemName, itemName);
+		readJsonStringField(comp.type, ATTR_NTT_GAME_FLAG, comp.gameFlagName, gameFlagName);
+		readJsonStringField(comp.type, ATTR_NTT_AREA_FLAG, comp.areaFlagName, areaFlagName);
+		readJsonStringField(comp.type, ATTR_NTT_SCRIPT, comp.scriptName, scriptName);
+		readJsonStringField(comp.type, ATTR_NTT_MODEL, comp.modelName, modelName);
+		readJsonStringField(comp.type, ATTR_NTT_COLLIDER, comp.colliderName, colliderName);
+		readJsonStringField(comp.type, ATTR_NTT_TARGET, comp.targetName, targetName);
+		readJsonStringField(comp.type, ATTR_NTT_ENTRY, comp.entryName, entryName);
+		readJsonStringField(comp.type, ATTR_NTT_MAP_VAR, comp.mapVarName, mapVarName);
+		readJsonStringField(comp.type, ATTR_NTT_SPAWN_MODE, comp.spawnMode, spawnMode);
+		readJsonStringField(comp.type, ATTR_NTT_PATHS, comp.pathsName, pathsName);
+
+		readJsonIntField(comp.type, ATTR_NTT_INDEX, comp.index, index);
+		readJsonIntField(comp.type, ATTR_NTT_STYLE, comp.style, style);
+		readJsonIntField(comp.type, ATTR_NTT_ANGLE, comp.angle, angle);
+		readJsonIntField(comp.type, ATTR_NTT_LAUNCH_DIST, comp.launchDist, launchDist);
+	}
+
+	@Override
+	protected void toJson(JsonMarker out)
+	{
+		JsonEntityComp comp = new JsonEntityComp();
+		out.entityComp = comp;
+
+		comp.type = type.get();
+
+		writeJsonStringField(comp.type, ATTR_NTT_ITEM, itemName, val -> comp.itemName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_GAME_FLAG, gameFlagName, val -> comp.gameFlagName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_AREA_FLAG, areaFlagName, val -> comp.areaFlagName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_SCRIPT, scriptName, val -> comp.scriptName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_MODEL, modelName, val -> comp.modelName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_COLLIDER, colliderName, val -> comp.colliderName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_TARGET, targetName, val -> comp.targetName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_ENTRY, entryName, val -> comp.entryName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_MAP_VAR, mapVarName, val -> comp.mapVarName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_SPAWN_MODE, spawnMode, val -> comp.spawnMode = val);
+		writeJsonStringField(comp.type, ATTR_NTT_PATHS, pathsName, val -> comp.pathsName = val);
+
+		writeJsonIntField(comp.type, ATTR_NTT_INDEX, index, val -> comp.index = val);
+		writeJsonIntField(comp.type, ATTR_NTT_STYLE, style, val -> comp.style = val);
+		writeJsonIntField(comp.type, ATTR_NTT_ANGLE, angle, val -> comp.angle = val);
+		writeJsonIntField(comp.type, ATTR_NTT_LAUNCH_DIST, launchDist, val -> comp.launchDist = val);
+	}
+
+	private void readJsonStringField(EntityType type, MapKey key, String jsonValue, EditableField<String> field)
+	{
+		if (type.hasParam(key)) {
+			EntityParam param = type.getParam(key);
+			field.setEnabled(param.required || jsonValue != null);
+			if (jsonValue != null)
+				field.set(jsonValue);
+		}
+	}
+
+	private void readJsonIntField(EntityType type, MapKey key, Integer jsonValue, EditableField<Integer> field)
+	{
+		if (type.hasParam(key)) {
+			EntityParam param = type.getParam(key);
+			field.setEnabled(param.required || jsonValue != null);
+			if (jsonValue != null)
+				field.set(jsonValue);
+		}
+	}
+
+	private void writeJsonStringField(EntityType type, MapKey key, EditableField<String> field, Consumer<String> setter)
+	{
+		if (type.hasParam(key)) {
+			EntityParam param = type.getParam(key);
+			if (param.required || field.isEnabled())
+				setter.accept(field.get());
+		}
+	}
+
+	private void writeJsonIntField(EntityType type, MapKey key, EditableField<Integer> field, Consumer<Integer> setter)
+	{
+		if (type.hasParam(key)) {
+			EntityParam param = type.getParam(key);
+			if (param.required || field.isEnabled())
+				setter.accept(field.get());
 		}
 	}
 

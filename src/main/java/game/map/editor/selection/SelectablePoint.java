@@ -1,12 +1,12 @@
 package game.map.editor.selection;
 
 import common.Vector3f;
+import common.commands.AbstractCommand;
 import game.map.Axis;
 import game.map.BoundingBox;
 import game.map.MutablePoint;
 import game.map.PointListBackup;
 import game.map.ReversibleTransform;
-import common.commands.AbstractCommand;
 import game.map.shape.TransformMatrix;
 import util.identity.IdentityHashSet;
 

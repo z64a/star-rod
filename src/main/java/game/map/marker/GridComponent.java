@@ -15,6 +15,8 @@ import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
 import game.entity.EntityInfo.EntityType;
 import game.map.BoundingBox;
+import game.map.JsonFeatures.JsonGridComp;
+import game.map.JsonFeatures.JsonMarker;
 import game.map.editor.MapEditor;
 import game.map.editor.camera.MapEditViewport;
 import game.map.editor.render.PresetColor;
@@ -37,6 +39,7 @@ import renderer.shaders.RenderState;
 import renderer.shaders.RenderState.PolygonMode;
 import renderer.shaders.ShaderManager;
 import renderer.shaders.scene.MarkerShader;
+import util.Logger;
 import util.identity.IdentityArrayList;
 import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlTag;
@@ -86,6 +89,49 @@ public class GridComponent extends BaseMarkerComponent
 		for (GridOccupant occ : gridOccupants)
 			copy.gridOccupants.add(occ.deepCopy(copy.gridOccupants));
 		return copy;
+	}
+
+	@Override
+	protected void fromJson(JsonMarker in)
+	{
+		if (in.gridComp == null)
+			return;
+
+		gridIndex.set(in.gridComp.gridIndex);
+		gridSizeX.set(in.gridComp.gridSizeX);
+		gridSizeZ.set(in.gridComp.gridSizeZ);
+		gridSpacing.set(in.gridComp.gridSpacing);
+		gridUseGravity.set(in.gridComp.gridUseGravity);
+
+		gridOccupants.clear();
+		if (in.gridComp.occupants != null) {
+			for (int i = 0; i < in.gridComp.occupants.length; i++) {
+				int[] occ = in.gridComp.occupants[i];
+				if (occ == null || occ.length != 3) {
+					Logger.logError("GridComponent: occupant " + i + " must have exactly 3 elements");
+					continue;
+				}
+				gridOccupants.add(new GridOccupant(gridOccupants, occ[0], occ[1], occ[2]));
+			}
+		}
+	}
+
+	@Override
+	protected void toJson(JsonMarker out)
+	{
+		out.gridComp = new JsonGridComp();
+
+		out.gridComp.gridIndex = gridIndex.get();
+		out.gridComp.gridSizeX = gridSizeX.get();
+		out.gridComp.gridSizeZ = gridSizeZ.get();
+		out.gridComp.gridSpacing = gridSpacing.get();
+		out.gridComp.gridUseGravity = gridUseGravity.get();
+
+		out.gridComp.occupants = new int[gridOccupants.size()][];
+		for (int i = 0; i < gridOccupants.size(); i++) {
+			GridOccupant occ = gridOccupants.get(i);
+			out.gridComp.occupants[i] = new int[] { occ.posX, occ.posZ, occ.type.get().id };
+		}
 	}
 
 	@Override

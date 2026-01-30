@@ -150,6 +150,6 @@ public class StageExtractor
 
 	public String getGenName(String name)
 	{
-		return NameUtils.toEnumStyle("GEN_" + name);
+		return NameUtils.toExtractStyle("GEN_" + name);
 	}
 }

@@ -12,6 +12,7 @@ import common.Vector3f;
 import common.commands.AbstractCommand;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
+import game.map.JsonFeatures.JsonCameraZone;
 import game.map.MapObject;
 import game.map.MutablePoint;
 import game.map.editor.MapEditor;
@@ -177,6 +178,39 @@ public class CameraZoneData extends UpdateProvider implements XmlSerializable
 		CameraZoneData controller = new CameraZoneData(parent);
 		controller.fromXML(xmr, cameraElement);
 		return controller;
+	}
+
+	public void toJson(JsonCameraZone out)
+	{
+		out.type = type.index;
+		out.flag = flag;
+
+		out.boomLength = boomLength.get();
+		out.boomPitch = boomPitch.get();
+		out.viewPitch = viewPitch.get();
+
+		out.posA = new int[] { posA.getX(), posA.getY(), posA.getZ() };
+		out.posB = new int[] { posB.getX(), posB.getY(), posB.getZ() };
+		out.posC = new int[] { posC.getX(), posC.getY(), posC.getZ() };
+	}
+
+	public void fromJson(JsonCameraZone in)
+	{
+		boomLength.set(in.boomLength);
+		boomPitch.set(in.boomPitch);
+		viewPitch.set(in.viewPitch);
+
+		posA = new SelectablePoint(new MutablePoint(in.posA[0], in.posA[1], in.posA[2]), 2.0f);
+		posB = new SelectablePoint(new MutablePoint(in.posB[0], in.posB[1], in.posB[2]), 2.0f);
+		posC = new SelectablePoint(new MutablePoint(in.posC[0], in.posC[1], in.posC[2]), 2.0f);
+
+		points.clear();
+		points.add(posA);
+		points.add(posB);
+		points.add(posC);
+
+		setFlag(in.flag);
+		setType(ControlType.getType(in.type));
 	}
 
 	@Override

@@ -17,6 +17,6 @@ public class MarkerTreeModel extends MapObjectTreeModel<Marker>
 	@Override
 	public void recalculateIndicies()
 	{
-		getRoot().reassignIndexDepthFirstPost(-1);
+		getRoot().reassignIndexDepthFirstPost(0);
 	}
 }
