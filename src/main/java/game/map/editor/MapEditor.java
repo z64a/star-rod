@@ -740,6 +740,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		if (newMap == null)
 			return;
 
+		thumbnailMode = true;
 		openMap(newMap, true);
 		for (MapObject obj : getCollisionMap().colliderTree)
 			obj.hidden = true;
@@ -1001,7 +1002,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		generateFromPathsPreview.init();
 		drawGeometryPreview.init();
 
-		if (changeMapState == ChangeMapState.NONE) {
+		if (changeMapState == ChangeMapState.NONE && !thumbnailMode) {
 			hDivRatio = 0.5f;
 			vDivRatio = 0.5f;
 
@@ -1038,7 +1039,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		uvViews[0] = perspectiveView;
 		uvViews[1] = uvEditView;
 
-		if (changeMapState == ChangeMapState.NONE) {
+		if (changeMapState == ChangeMapState.NONE && !thumbnailMode) {
 			mainViewMode = ViewMode.FOUR;
 			setViewMode(mainViewMode);
 			resizeViews();
@@ -1072,6 +1073,18 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 			gui.updateSnapLabel();
 		}
+		else if (thumbnailMode) {
+			activeView = perspectiveView;
+			mainViewMode = ViewMode.ONE;
+			setViewMode(ViewMode.ONE);
+			objectGrid = new Grid(false, 4);
+			grid = objectGrid;
+			dummyCameraController = new CameraController();
+			showModels = true;
+			showColliders = true;
+			showZones = true;
+			showMarkers = true;
+		}
 
 		canDoNudgeTranslation = true;
 		doingNudgeTranslation = false;
@@ -1086,7 +1099,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		selectionManager = new SelectionManager(this);
 		commandManager = new CommandManager(UNDO_LIMIT, this::onModified);
 
-		if (changeMapState == ChangeMapState.NONE) {
+		if (changeMapState == ChangeMapState.NONE && !thumbnailMode) {
 			showModels = true;
 			showColliders = true;
 			showZones = true;
@@ -1126,9 +1139,14 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		// switch to modify mode, bootstrap if necessary
 		if (lastModeChange == null)
 			lastModeChange = new ChangeMode(EditorMode.Modify);
-		ChangeMode resetMode = new ChangeMode(EditorMode.Modify);
-		resetMode.silence();
-		resetMode.exec();
+		if (!thumbnailMode) {
+			ChangeMode resetMode = new ChangeMode(EditorMode.Modify);
+			resetMode.silence();
+			resetMode.exec();
+		}
+		else {
+			editorMode = EditorMode.Modify;
+		}
 
 		guiEventQueue = new LinkedBlockingQueue<>();
 		keyEventQueue = new LinkedBlockingQueue<>();
@@ -3699,31 +3717,34 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	 *
 	 * @param map
 	 */
-	private void loadMapResources(boolean reloadTextures)
+	private boolean tryLoadTextures(boolean reloadTextures)
 	{
-		boolean loadedTextures = !reloadTextures;
-		if (!loadedTextures)
-			loadedTextures = TextureManager.load(map.texName);
+		if (!reloadTextures)
+			return true;
+		return TextureManager.load(map.texName);
+	}
 
-		while (!loadedTextures) {
-			int choice = SwingUtils.getConfirmDialog()
-				.setParent(gui)
-				.setTitle("Missing Texture Archive")
-				.setMessage("Could not open texture archive \"" + map.texName + "\", select a different one?")
-				.setOptionsType(JOptionPane.YES_NO_OPTION)
-				.choose();
+	/** Shows dialog to select alternate texture archive. */
+	private String promptForTextureArchive()
+	{
+		int choice = SwingUtils.getConfirmDialog()
+			.setParent(gui)
+			.setTitle("Missing Texture Archive")
+			.setMessage("Could not open texture archive \"" + map.texName + "\", select a different one?")
+			.setOptionsType(JOptionPane.YES_NO_OPTION)
+			.choose();
 
-			if (choice == JOptionPane.YES_OPTION) {
-				File texFile = SelectTexDialog.showPrompt();
-				if (texFile != null) {
-					String texName = FilenameUtils.getBaseName(texFile.getName());
-					loadedTextures = TextureManager.load(texName);
-				}
+		if (choice == JOptionPane.YES_OPTION) {
+			File texFile = SelectTexDialog.showPrompt();
+			if (texFile != null) {
+				return FilenameUtils.getBaseName(texFile.getName());
 			}
-			else
-				break;
 		}
+		return null;
+	}
 
+	private void loadMapResourcesAfterTextures()
+	{
 		TextureManager.assignModelTextures(map);
 
 		for (Model mdl : map.modelTree)
@@ -3954,23 +3975,40 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		if (newMap == null)
 			return;
 
-		// this MUST run with GLContext available
+		final boolean[] texturesLoaded = { false };
+		final boolean[] reloadTexturesFlag = { false };
+
 		runInContext(() -> {
 			String prevTexName = (thumbnailMode || map == null) ? null : map.texName;
-			boolean reloadTextures = !newMap.texName.equals(prevTexName);
+			reloadTexturesFlag[0] = !newMap.texName.equals(prevTexName);
 
 			if (map != null)
-				releaseMapResources(reloadTextures);
+				releaseMapResources(reloadTexturesFlag[0]);
 
 			loading = true;
 			map = newMap;
 
-			loadMapResources(reloadTextures);
+			texturesLoaded[0] = tryLoadTextures(reloadTexturesFlag[0]);
+		});
 
+		while (!texturesLoaded[0]) {
+			String altTexName = promptForTextureArchive();
+			if (altTexName == null)
+				break;
+
+			runInContext(() -> {
+				texturesLoaded[0] = TextureManager.load(altTexName);
+			});
+		}
+
+		runInContext(() -> {
+			loadMapResourcesAfterTextures();
 			loadOverrides();
 
-			updateRecentMaps();
-			gui.setRecentMaps(recentMaps);
+			if (!thumbnailMode) {
+				updateRecentMaps();
+				gui.setRecentMaps(recentMaps);
+			}
 
 			resetEditorSettings();
 			map.initializeAllObjects();
@@ -3983,10 +4021,9 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			}
 
 			if (!thumbnailMode) {
-				final Map guiMap = newMap;
 				SwingUtilities.invokeLater(() -> {
 					updateWindowTitle();
-					gui.setMap(guiMap);
+					gui.setMap(map);
 				});
 
 				if (map.editorData != null) {
