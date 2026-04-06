@@ -20,7 +20,7 @@ import assets.AssetManager;
 import assets.AssetSubdir;
 import common.Vector3f;
 import game.map.BoundingBox;
-import game.map.shading.ShadingProfile;
+import game.map.shading.RenderShadingProfile;
 import game.sprite.SpriteLoader.SpriteMetadata;
 import game.sprite.editor.Editable;
 import game.sprite.editor.SpriteAssetCollection;
@@ -788,7 +788,7 @@ public class Sprite implements XmlSerializable, Editable
 	}
 
 	// render based on IDs -- these are used by the map editor
-	public void render(ShadingProfile spriteShading, int animationID, int paletteOverride, boolean useBack, boolean useSelectShading,
+	public void render(RenderShadingProfile spriteShading, int animationID, int paletteOverride, boolean useBack, boolean useSelectShading,
 		boolean useFiltering)
 	{
 		if (animationID >= animations.size())
@@ -803,7 +803,7 @@ public class Sprite implements XmlSerializable, Editable
 	}
 
 	// render based on reference
-	public void render(ShadingProfile spriteShading, SpriteAnimation anim, SpritePalette paletteOverride,
+	public void render(RenderShadingProfile spriteShading, SpriteAnimation anim, SpritePalette paletteOverride,
 		boolean useBack, boolean enableSelectedHighlight, boolean useSelectShading, boolean useFiltering)
 	{
 		if (!animations.contains(anim)) {
@@ -821,7 +821,7 @@ public class Sprite implements XmlSerializable, Editable
 	}
 
 	// render single component based on references
-	public void render(ShadingProfile spriteShading, SpriteAnimation anim, SpriteComponent comp, SpritePalette paletteOverride,
+	public void render(RenderShadingProfile spriteShading, SpriteAnimation anim, SpriteComponent comp, SpritePalette paletteOverride,
 		boolean useBack, boolean enableSelectedHighlight, boolean useSelectShading, boolean useFiltering)
 	{
 		if (!animations.contains(anim)) {

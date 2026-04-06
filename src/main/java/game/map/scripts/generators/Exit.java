@@ -8,8 +8,6 @@ import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
 import game.ProjectDatabase;
-import game.map.JsonFeatures;
-import game.map.JsonFeatures.JsonExit;
 import game.map.scripts.GeneratorsPanel;
 import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlTag;
@@ -172,17 +170,18 @@ public final class Exit extends Generator
 			}).setName(new StandardBoolName("Callback")).build();
 	}
 
+	/*
 	public Exit(JsonExit in)
 	{
 		this(ExitType.Walk); // for field initialization
-
+	
 		if (in.name != null)
 			overrideName.set(in.name);
 		if (in.type != null)
 			type.set(in.type);
 		if (in.markerName != null)
 			markerName.set(in.markerName);
-
+	
 		if (in.colliderName != null)
 			colliderName.set(in.colliderName);
 		if (in.door1Name != null)
@@ -195,56 +194,57 @@ public final class Exit extends Generator
 			doorSound.set(in.doorSound);
 		if (in.doorSwing != null)
 			doorSwing.set(in.doorSwing);
-
+	
 		if (in.destMap != null)
 			destMap.set(in.destMap);
 		if (in.destMarkerName != null)
 			destMarkerName.set(in.destMarkerName);
-
+	
 		useDestMarkerID.set(in.useDestMarkerID);
-
+	
 		hasCallback.set(in.hasCallback);
 	}
-
+	
 	public JsonExit toJson()
 	{
 		JsonExit out = new JsonExit();
-
+	
 		out.name = JsonFeatures.getOrNull(overrideName);
 		out.type = type.get();
 		out.markerName = JsonFeatures.getOrNull(markerName);
-
+	
 		out.destMap = JsonFeatures.getOrNull(destMap);
 		out.destMarkerName = JsonFeatures.getOrNull(destMarkerName);
 		out.useDestMarkerID = useDestMarkerID.get();
-
+	
 		out.colliderName = JsonFeatures.getOrNull(colliderName);
 		out.lockName = JsonFeatures.getOrNull(lockName);
-
+	
 		out.hasCallback = hasCallback.get();
-
+	
 		switch (type.get()) {
 			case SingleDoor:
 				out.door1Name = JsonFeatures.getOrNull(door1Name);
 				out.doorSwing = JsonFeatures.getOrNull(doorSwing);
 				out.doorSound = JsonFeatures.getOrNull(doorSound);
 				break;
-
+	
 			case DoubleDoor:
 				out.door1Name = JsonFeatures.getOrNull(door1Name);
 				out.door2Name = JsonFeatures.getOrNull(door2Name);
 				out.doorSound = JsonFeatures.getOrNull(doorSound);
 				break;
-
+	
 			case Walk:
 			case HorizontalPipe:
 			case VerticalPipe:
 				// no extra fields
 				break;
 		}
-
+	
 		return out;
 	}
+	*/
 
 	public static Exit read(XmlReader xmr, Element elem)
 	{

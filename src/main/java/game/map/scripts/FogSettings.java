@@ -16,28 +16,28 @@ public class FogSettings
 	public EditableField<Integer> B;
 	public EditableField<Integer> A;
 
-	public FogSettings(ScriptData data)
+	public FogSettings(Features features)
 	{
 		enabled = EditableFieldFactory.create(false)
-			.setCallback(data.notifyCamera).setName(new StandardBoolName("Fog")).build();
+			.setCallback(features.notifyCamera).setName(new StandardBoolName("Fog")).build();
 
 		start = EditableFieldFactory.create(950)
-			.setCallback(data.notifyCamera).setName("Set Fog Start").build();
+			.setCallback(features.notifyCamera).setName("Set Fog Start").build();
 
 		end = EditableFieldFactory.create(1000)
-			.setCallback(data.notifyCamera).setName("Set Fog End").build();
+			.setCallback(features.notifyCamera).setName("Set Fog End").build();
 
 		R = EditableFieldFactory.create(10)
-			.setCallback(data.notifyCamera).setName("Set Fog Red").build();
+			.setCallback(features.notifyCamera).setName("Set Fog Red").build();
 
 		G = EditableFieldFactory.create(10)
-			.setCallback(data.notifyCamera).setName("Set Fog Green").build();
+			.setCallback(features.notifyCamera).setName("Set Fog Green").build();
 
 		B = EditableFieldFactory.create(10)
-			.setCallback(data.notifyCamera).setName("Set Fog Blue").build();
+			.setCallback(features.notifyCamera).setName("Set Fog Blue").build();
 
 		A = EditableFieldFactory.create(255)
-			.setCallback(data.notifyCamera).setName("Set Fog Alpha").build();
+			.setCallback(features.notifyCamera).setName("Set Fog Alpha").build();
 	}
 
 	public void load(int[] packed)

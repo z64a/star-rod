@@ -1,21 +1,21 @@
 package game.map;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Reader;
 import java.io.Writer;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.stream.JsonReader;
 
 import common.commands.EditableField;
 import game.entity.EntityInfo.EntityType;
 import game.map.marker.Marker.MarkerType;
 import game.map.marker.NpcComponent.MoveType;
-import game.map.scripts.generators.Entrance.EntranceType;
-import game.map.scripts.generators.Exit.ExitType;
+import game.map.shading.FalloffType;
 
 public abstract class JsonFeatures
 {
@@ -30,7 +30,7 @@ public abstract class JsonFeatures
 
 	public static JsonMap fromJson(File file) throws IOException
 	{
-		try (Reader reader = new FileReader(file)) {
+		try (JsonReader reader = new JsonReader(new BufferedReader(new FileReader(file)))) {
 			return MAP_GSON.fromJson(reader, JsonMap.class);
 		}
 	}
@@ -52,97 +52,25 @@ public abstract class JsonFeatures
 		public String shapeOverrideName;
 		public String hitOverrideName;
 
+		public String locationName;
 		public Integer overrideEntryCount;
 
 		public int camVfov;
 		public int camNearClip;
 		public int camFarClip;
+		public boolean camLeadsPlayer; //FIXME ??
 		public int[] bgColor;
 
 		public int[] fogWorld;
 		public int[] fogEntity;
 
-		/*
-		public boolean hasMusic;
-		public String songName;
-		public boolean hasAmbientSFX;
-		public String ambientSFX;
 		public boolean hasSpriteShading;
-		*/
-
-		public String locationName;
-
 		public String shadingProfile;
-
-		/*
-		public boolean cameraLeadsPlayer;
-		public boolean isDark;
-		
-		public boolean callbackBeforeEnter;
-		public boolean callbackAfterEnter;
-		*/
+		public int shadingOffset;
+		public int[] shadingBaseColor;
 
 		public JsonTexturePanner[] texPanners;
-		public JsonEntrance[] entrances;
-		public JsonExit[] exits;
-		public JsonTree[] trees;
-		public JsonBush[] bushes;
-
 		public JsonMarker[] markers;
-	}
-
-	public static class JsonEntrance
-	{
-		public EntranceType type;
-		public String name;
-		public String markerName;
-
-		public String door1Name;
-		public String door2Name;
-		public String doorSound;
-		public String doorSwing;
-
-		public String pipeCollider;
-		public String warpPipeEntity;
-
-		public boolean hasCallback;
-	}
-
-	public static class JsonExit
-	{
-		public ExitType type;
-		public String name;
-
-		public String destMap;
-		public String destMarkerName;
-		public boolean useDestMarkerID;
-
-		public String markerName;
-		public String colliderName;
-
-		public String door1Name;
-		public String door2Name;
-		public String doorSound;
-		public String doorSwing;
-
-		public String lockName;
-
-		public boolean hasCallback;
-	}
-
-	public static class JsonTree
-	{
-		//TODO
-	}
-
-	public static class JsonBush
-	{
-		//TODO
-	}
-
-	public static class JsonMapProperties
-	{
-
 	}
 
 	public static class JsonTexturePanner
@@ -178,6 +106,7 @@ public abstract class JsonFeatures
 		public JsonGridComp gridComp;
 		public JsonPathComp pathComp;
 		public JsonVolumeComp volComp;
+		public JsonLightComp lightComp;
 		public JsonEntityComp entityComp;
 		public JsonCamTargetComp camTargetComp;
 	}
@@ -257,6 +186,14 @@ public abstract class JsonFeatures
 		public float height;
 		public float[] minPos;
 		public float[] maxPos;
+	}
+
+	public static class JsonLightComp
+	{
+		public int[] rgb;
+		public int[] pos;
+		public float falloff;
+		public FalloffType mode;
 	}
 
 	public static class JsonCamTargetComp

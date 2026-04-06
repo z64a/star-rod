@@ -100,10 +100,10 @@ public class OrthographicViewport extends MapEditViewport
 		DeferredLineRenderer.reset();
 		opts.modelSurfaceMode = wireframeMode ? SurfaceMode.WIREFRAME : SurfaceMode.TEXTURED;
 
-		boolean onlyDrawModels = (opts.editorMode != EditorMode.Modify && opts.editorMode != EditorMode.Scripts);
+		boolean onlyDrawModels = (opts.editorMode != EditorMode.Modify && opts.editorMode != EditorMode.Options);
 
 		setViewport();
-		Renderer.setFogEnabled(editor.map.scripts, false);
+		Renderer.setFogEnabled(editor.map.features, false);
 
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -153,7 +153,7 @@ public class OrthographicViewport extends MapEditViewport
 		// draw various editor helpers and hints
 		switch (opts.editorMode) {
 			case Modify:
-			case Scripts:
+			case Options:
 				editor.selectionManager.currentSelection.render(renderer, this);
 				break;
 
@@ -164,11 +164,8 @@ public class OrthographicViewport extends MapEditViewport
 		}
 		RenderState.enableDepthTest(true);
 
-		if (!opts.thumbnailMode) {
+		if (!opts.thumbnailMode)
 			editor.cursor3D.render(this, opts, camera.pos);
-			if (opts.spriteShading != null)
-				opts.spriteShading.render(this, opts, camera.pos);
-		}
 
 		renderer.drawGeometryPreviews(editor);
 

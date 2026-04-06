@@ -7,8 +7,6 @@ import org.w3c.dom.Element;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
-import game.map.JsonFeatures.JsonBush;
-import game.map.JsonFeatures.JsonTree;
 import game.map.scripts.GeneratorsPanel;
 import game.map.scripts.generators.Generator;
 import game.map.tree.CategoryTreeModel;
@@ -16,6 +14,7 @@ import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
 
+@Deprecated
 public class Foliage extends Generator
 {
 	public static enum FoliageType
@@ -107,30 +106,6 @@ public class Foliage extends Generator
 
 		dataTreeModel.addCategory(FoliageDataCategory.FXPositions);
 		dataTreeModel.addCategory(FoliageDataCategory.Drops);
-	}
-
-	public Foliage(JsonTree js)
-	{
-		this(FoliageType.Tree);
-		// FIXME
-	}
-
-	public Foliage(JsonBush js)
-	{
-		this(FoliageType.Bush);
-		// FIXME
-	}
-
-	public JsonTree toTreeJson()
-	{
-		return new JsonTree();
-		// FIXME
-	}
-
-	public JsonBush toBushJson()
-	{
-		return new JsonBush();
-		// FIXME
 	}
 
 	@Override

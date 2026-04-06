@@ -5,17 +5,11 @@ import java.awt.event.FocusListener;
 import java.util.function.Consumer;
 
 import javax.swing.JTextField;
-import javax.swing.SwingConstants;
 
 import app.SwingUtils;
 
 public class StringField extends JTextField
 {
-	public StringField(Consumer<String> consumer)
-	{
-		this(SwingConstants.CENTER, consumer);
-	}
-
 	public StringField(int alignment, Consumer<String> consumer)
 	{
 		setFont(getFont().deriveFont(12f));

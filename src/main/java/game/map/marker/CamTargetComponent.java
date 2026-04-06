@@ -41,7 +41,7 @@ import util.xml.XmlWrapper.XmlWriter;
 public class CamTargetComponent extends BaseMarkerComponent
 {
 	private final Consumer<Object> notifyCallback = (o) -> {
-		parentMarker.updateListeners(MarkerInfoPanel.tag_GeneralTab);
+		parentMarker.updateListeners(MarkerInfoPanel.TAG_GENERAL);
 	};
 
 	public EditableField<Boolean> useZone = EditableFieldFactory.create(false)

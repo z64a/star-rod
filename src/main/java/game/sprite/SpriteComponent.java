@@ -15,7 +15,7 @@ import common.Vector3f;
 import game.map.Axis;
 import game.map.BoundingBox;
 import game.map.editor.render.PresetColor;
-import game.map.shading.ShadingProfile;
+import game.map.shading.RenderShadingProfile;
 import game.map.shape.TransformMatrix;
 import game.sprite.SpriteLoader.Indexable;
 import game.sprite.editor.Editable;
@@ -411,7 +411,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 	 * (5) Scale
 	 * The order of animation commands does not matter.
 	 */
-	public void render(ShadingProfile spriteShading, SpritePalette paletteOverride, boolean useBack,
+	public void render(RenderShadingProfile spriteShading, SpritePalette paletteOverride, boolean useBack,
 		boolean enableStencilBuffer, boolean enableSelectedHighlight,
 		boolean useSelectShading, boolean drawBounds, boolean useFiltering)
 	{

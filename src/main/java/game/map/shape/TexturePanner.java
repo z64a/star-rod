@@ -9,7 +9,7 @@ import org.w3c.dom.Element;
 
 import common.commands.AbstractCommand;
 import game.map.JsonFeatures.JsonTexturePanner;
-import game.map.editor.ui.ScriptManager;
+import game.map.editor.ui.SwingGUI;
 import renderer.shaders.ShaderManager;
 import renderer.shaders.scene.ModelShader;
 import util.xml.XmlKey;
@@ -396,7 +396,7 @@ public class TexturePanner
 			super.exec();
 			panner.params.set(newParams);
 			panner.reset();
-			ScriptManager.instance().updatePannersTab();
+			SwingGUI.instance().updatePannersTab();
 		}
 
 		@Override
@@ -405,7 +405,7 @@ public class TexturePanner
 			super.undo();
 			panner.params.set(oldParams);
 			panner.reset();
-			ScriptManager.instance().updatePannersTab();
+			SwingGUI.instance().updatePannersTab();
 		}
 	}
 

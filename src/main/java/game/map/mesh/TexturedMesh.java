@@ -136,7 +136,7 @@ public class TexturedMesh extends AbstractMesh implements XmlSerializable
 
 		validateBuffer();
 		buffer.clear();
-		boolean selectionEnabled = (opts.editorMode == EditorMode.Modify || opts.editorMode == EditorMode.Scripts);
+		boolean selectionEnabled = (opts.editorMode == EditorMode.Modify || opts.editorMode == EditorMode.Options);
 		for (TriangleBatch batch : getBatches()) {
 			batch.bufferStartPos = -1;
 			for (Triangle t : batch.triangles) {

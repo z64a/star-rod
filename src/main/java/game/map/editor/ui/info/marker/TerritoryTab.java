@@ -80,8 +80,7 @@ public class TerritoryTab extends JPanel
 		overrideField = new FloatTextField((speed) -> MapEditor.execute(
 			parent.getData().npcComponent.movementSpeedOverride.mutator(speed)));
 
-		detectCenterPanel = new IntVectorPanel(3, (i, v) -> MapEditor.execute(new SetDetectPos(parent.getData(), i, v)));
-		detectCenterPanel.addBorderPaddings();
+		detectCenterPanel = new IntVectorPanel(true, 3, (i, v) -> MapEditor.execute(new SetDetectPos(parent.getData(), i, v)));
 
 		detectTypeBox = new JComboBox<>(VolumeType.values());
 		detectTypeBox.addActionListener(e -> {
@@ -110,8 +109,7 @@ public class TerritoryTab extends JPanel
 		});
 		SwingUtils.addVerticalBorderPadding(detectSpinnerZ);
 
-		wanderCenterPanel = new IntVectorPanel(3, (i, v) -> MapEditor.execute(new SetWanderPos(parent.getData(), i, v)));
-		wanderCenterPanel.addBorderPaddings();
+		wanderCenterPanel = new IntVectorPanel(true, 3, (i, v) -> MapEditor.execute(new SetWanderPos(parent.getData(), i, v)));
 
 		wanderTypeBox = new JComboBox<>(VolumeType.values());
 		wanderTypeBox.addActionListener(e -> {

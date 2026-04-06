@@ -1,12 +1,9 @@
 package game.map.scripts.nextract.entity;
 
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
-import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.extract.HeaderEntry.HeaderParseException;
 import game.map.scripts.nextract.NewExtractor;
 
 public class OptionalScriptEntity extends ExtractedEntity
@@ -27,7 +24,7 @@ public class OptionalScriptEntity extends ExtractedEntity
 		+ ")";
 	private static final String RegexString = ExtractedEntity.INDENT +
 		"Call\\(MakeEntity, Ref\\(Entity_" + TYPES + "\\)" + ExtractedEntity.ARG.repeat(4) + ",\\s*MAKE_ENTITY_END\\)" +
-		"(?:\\n\\s*Call\\(AssignScript,\\s*Ref\\((\\S+)\\)\\))?";
+		"(?:\\R\\s*Call\\(AssignScript,\\s*Ref\\((\\S+)\\)\\))?";
 	public static final Matcher RegexMatcher = Pattern.compile(RegexString).matcher("");
 
 	private boolean hasScript = false;
@@ -65,31 +62,5 @@ public class OptionalScriptEntity extends ExtractedEntity
 
 		hasScript = m.entityComponent.scriptName.isEnabled();
 		scriptName = m.entityComponent.scriptName.get();
-	}
-
-	@Override
-	public List<String> getLines()
-	{
-		List<String> lines = super.getLines();
-		if (hasScript)
-			lines.add(String.format("Call(AssignScript, Ref(%s_SCRIPT))", genName));
-		return lines;
-	}
-
-	@Override
-	public void addHeaderDefines(HeaderEntry h)
-	{
-		super.addHeaderDefines(h);
-		h.addDefine("PARAMS", makeParamList(h));
-
-		if (hasScript)
-			h.addDefine("SCRIPT", scriptName);
-	}
-
-	@Override
-	public void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException
-	{
-		if (h.hasDefine("SCRIPT"))
-			m.entityComponent.scriptName.setAndEnable(h.getDefine("SCRIPT"));
 	}
 }

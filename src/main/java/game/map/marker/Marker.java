@@ -39,6 +39,7 @@ import game.map.mesh.BasicMesh;
 import game.map.mesh.Triangle;
 import game.map.scripts.extract.HeaderEntry;
 import game.map.scripts.extract.HeaderEntry.HeaderParseException;
+import game.map.scripts.nextract.NewExtractor.MarkerExtractionGroup;
 import game.map.shape.TransformMatrix;
 import game.map.tree.MapObjectNode;
 import renderer.buffers.DeferredLineRenderer;
@@ -74,6 +75,7 @@ public class Marker extends MapObject implements Tickable, XmlSerializable
 		Path		("Path", YELLOW, PINK),
 		NPC			("NPC", GREEN, PINK),
 		Entity		("Entity", YELLOW, PINK),
+		Light		("Light", YELLOW, PINK),
 		BlockGrid	("Push Block Grid", RED, PINK),
 		CamTarget	("Camera Target", DARK_BLUE, PINK);
 		// @formatter:on
@@ -128,7 +130,11 @@ public class Marker extends MapObject implements Tickable, XmlSerializable
 	public PathComponent pathComponent = new PathComponent(this);
 	public VolumeComponent volumeComponent = new VolumeComponent(this);
 	public EntityComponent entityComponent = new EntityComponent(this);
+	public LightComponent lightComponent = new LightComponent(this);
 	public CamTargetComponent cameraComponent = new CamTargetComponent(this);
+
+	// only used during extraction
+	public transient MarkerExtractionGroup extractionGroup = MarkerExtractionGroup.NONE;
 
 	private BaseMarkerComponent getCurrentComponent()
 	{
@@ -147,6 +153,8 @@ public class Marker extends MapObject implements Tickable, XmlSerializable
 			case Cylinder:
 			case Volume:
 				return volumeComponent;
+			case Light:
+				return lightComponent;
 
 			case Root:
 			case Group:
@@ -355,6 +363,7 @@ public class Marker extends MapObject implements Tickable, XmlSerializable
 
 		m.entityComponent = entityComponent.deepCopy(m);
 		m.cameraComponent = cameraComponent.deepCopy(m);
+		m.lightComponent = lightComponent.deepCopy(m);
 
 		return m;
 	}
@@ -779,6 +788,7 @@ public class Marker extends MapObject implements Tickable, XmlSerializable
 		notifyListeners();
 	}
 
+	@Deprecated
 	public static Marker fromHeader(HeaderEntry h) throws HeaderParseException
 	{
 		Marker m = null;
@@ -859,6 +869,7 @@ public class Marker extends MapObject implements Tickable, XmlSerializable
 		return m;
 	}
 
+	@Deprecated
 	public HeaderEntry getHeaderEntry()
 	{
 		if (type == MarkerType.Root || type == MarkerType.Group)

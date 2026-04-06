@@ -89,7 +89,7 @@ public class TexPannerExtractor
 
 	private static void parsePannerLines(Map map, List<String> lines)
 	{
-		IterableListModel<TexturePanner> panners = map.scripts.texPanners;
+		IterableListModel<TexturePanner> panners = map.features.texPanners;
 		int panID = 0;
 
 		for (String line : lines) {
@@ -147,7 +147,7 @@ public class TexPannerExtractor
 
 	public static void print(PrintWriter pw, Map map)
 	{
-		for (TexturePanner panner : map.scripts.texPanners) {
+		for (TexturePanner panner : map.features.texPanners) {
 			if (panner.params.generate || panner.isNonzero()) {
 				PannerParams out = panner.params.getOutput();
 

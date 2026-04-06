@@ -5,8 +5,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
-import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.extract.HeaderEntry.HeaderParseException;
 import game.map.scripts.nextract.NewExtractor;
 
 public class ArrowSign extends ExtractedEntity
@@ -21,10 +19,6 @@ public class ArrowSign extends ExtractedEntity
 	public static final Matcher RegexMatcher = Pattern.compile(RegexString).matcher("");
 
 	private int pitch;
-
-	// required
-	public ArrowSign()
-	{}
 
 	@Override
 	public void fromSourceMatcher(NewExtractor extractor, Matcher matcher)
@@ -45,30 +39,9 @@ public class ArrowSign extends ExtractedEntity
 		m.entityComponent.angle.setAndEnable(pitch);
 	}
 
-	public ArrowSign(Marker m)
-	{
-		super(m);
-
-		pitch = m.entityComponent.angle.get();
-	}
-
 	@Override
 	public List<String> getLines()
 	{
 		return super.getLines();
-	}
-
-	@Override
-	public void addHeaderDefines(HeaderEntry h)
-	{
-		super.addHeaderDefines(h);
-		h.addDefine("ANGLE", pitch);
-		h.addDefine("PARAMS", makeParamList(h, "ANGLE"));
-	}
-
-	@Override
-	public void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException
-	{
-		m.entityComponent.angle.setAndEnable(h.getIntDefine("ANGLE"));
 	}
 }

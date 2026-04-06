@@ -97,6 +97,8 @@ import game.map.hit.Zone;
 import game.map.impex.ImportDialog;
 import game.map.impex.ImportDialog.ImportDialogResult;
 import game.map.marker.Marker;
+import game.map.scripts.OptionsPanel;
+import game.map.scripts.PannerListPanel;
 import game.map.shape.Model;
 import game.map.shape.TexturePanner;
 import game.map.shape.TransformMatrix;
@@ -141,12 +143,23 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 	public JRadioButton vertexRadioButton;
 	public JRadioButton pointRadioButton;
 
+	private static final int TAB_IDX_MODIFY = 0;
+	private static final int TAB_IDX_TEXTURE = 1;
+	private static final int TAB_IDX_PAINT = 2;
+	private static final int TAB_IDX_PANNERS = 3;
+	private static final int TAB_IDX_OPTIONS = 4;
+
 	private boolean ignoreTabChanges = false;
 	private JTabbedPane tabbedPane;
 	private MapObjectPanel objectPanel;
 
+	private PannerListPanel pannersTab;
+	private OptionsPanel optionsTab;
+
 	private OpenFileChooser importFileChooser;
 	private SaveFileChooser exportFileChooser;
+
+	private JColorChooser colorChooser;
 
 	private Listener logListener;
 
@@ -218,7 +231,11 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			public void windowClosing(WindowEvent e)
 			{
 				openDialogCount.increment();
-				closeRequested = (!editor.map.modified || promptForSave()) && (!ProjectDatabase.SpriteShading.modified || promptSaveShading());
+
+				boolean shadeOK = Environment.isDX() || !ProjectDatabase.SpriteShading.isModified() || promptSaveShading();
+				boolean mapOK = !editor.map.modified || promptSaveMap();
+
+				closeRequested = (shadeOK && mapOK);
 				if (!closeRequested)
 					openDialogCount.decrement();
 			}
@@ -229,6 +246,9 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 		importFileChooser = new OpenFileChooser(mapDir, "Import Geometry", "Importables", "prefab", "obj", "fbx", "gltf", "glb");
 		exportFileChooser = new SaveFileChooser(mapDir, "Export Geometry", null, "prefab", "obj");
+
+		colorChooser = new JColorChooser();
+		colorChooser.setPreviewPanel(new JPanel()); // no preview panel
 
 		commandMap = new HashMap<>();
 		for (GuiCommand cmd : GuiCommand.values())
@@ -324,14 +344,14 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	public void setMap(Map m)
 	{
-		tabbedPane.setSelectedIndex(0);
+		tabbedPane.setSelectedIndex(TAB_IDX_MODIFY);
 
 		loadTexturePreviews();
 		loadMapObjects();
 
 		objectPanel.setMap(m);
-
-		ScriptManager.instance().setMap(m);
+		pannersTab.setMap(m);
+		optionsTab.setMap(m);
 
 		hasBackgroundCheckbox.setSelected(m.hasBackground);
 		isStageCheckbox.setSelected(m.isStage);
@@ -344,19 +364,23 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			int index = 0;
 			switch (newMode) {
 				case Modify:
-					index = 0;
+					index = TAB_IDX_MODIFY;
 					break;
 				case Texture:
-					index = 1;
+					index = TAB_IDX_TEXTURE;
 					break;
 				case VertexPaint:
-					index = 2;
+					index = TAB_IDX_PAINT;
 					break;
-				case Scripts:
-					index = 3;
+				case Panners:
+					index = TAB_IDX_PANNERS;
+					break;
+				case Options:
+					index = TAB_IDX_OPTIONS;
 					break;
 				default:
-					index = 0;
+					Logger.logWarning("No valid tab for editor mode: " + newMode);
+					index = TAB_IDX_MODIFY;
 					break;
 			}
 
@@ -368,7 +392,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	public void showGUI()
 	{
-		setLightSetsVisible(false);
+		showAdvancedOptions(false);
 		setVisible(true);
 		setExtendedState(Frame.MAXIMIZED_BOTH);
 		SwingUtilities.invokeLater(() -> {
@@ -410,7 +434,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		return closeRequested;
 	}
 
-	public boolean promptForSave()
+	public boolean promptSaveMap()
 	{
 		int choice = SwingUtils.getConfirmDialog()
 			.setParent(this)
@@ -426,7 +450,6 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			case JOptionPane.NO_OPTION:
 				break;
 			case JOptionPane.CANCEL_OPTION:
-				closeRequested = false;
 				return false;
 		}
 
@@ -449,7 +472,6 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			case JOptionPane.NO_OPTION:
 				break;
 			case JOptionPane.CANCEL_OPTION:
-				closeRequested = false;
 				return false;
 		}
 
@@ -876,14 +898,14 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		JCheckBoxMenuItem checkbox;
 
 		checkbox = new JCheckBoxMenuItem("Show Light Sets");
-		EditorShortcut.DEBUG_TOGGLE_LIGHT_SETS.bindMenuCheckbox(editor, checkbox);
+		EditorShortcut.SHOW_ADVANCED_OPTIONS.bindMenuCheckbox(editor, checkbox);
 		menu.add(checkbox);
 	}
 
 	private static void createTab(JTabbedPane tabs, String name, Container contents)
 	{
 		JLabel lbl = SwingUtils.getLabel(name, 12);
-		lbl.setPreferredSize(new Dimension(60, 20));
+		lbl.setPreferredSize(new Dimension(50, 20));
 		lbl.setHorizontalAlignment(SwingConstants.CENTER);
 
 		tabs.addTab(null, contents);
@@ -900,10 +922,12 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		paintScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 		paintScrollPane.setBorder(null);
 
+		// TAB_IDX values are derived from order of creation here
 		createTab(tabbedPane, "Objects", createTransformTab());
 		createTab(tabbedPane, "Texture", createTextureTab());
 		createTab(tabbedPane, "Paint", paintScrollPane);
-		createTab(tabbedPane, "Scripts", ScriptManager.instance().createScriptsTab());
+		createTab(tabbedPane, "Panners", createPannersTab());
+		createTab(tabbedPane, "Options", createOptionsTab());
 
 		tabbedPane.addChangeListener((e) -> {
 			if (ignoreTabChanges)
@@ -913,17 +937,20 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			EditorMode mode;
 
 			switch (pane.getSelectedIndex()) {
-				case 0:
+				case TAB_IDX_MODIFY:
 					mode = EditorMode.Modify;
 					break;
-				case 1:
+				case TAB_IDX_TEXTURE:
 					mode = EditorMode.Texture;
 					break;
-				case 2:
+				case TAB_IDX_PAINT:
 					mode = EditorMode.VertexPaint;
 					break;
-				case 3:
-					mode = EditorMode.Scripts;
+				case TAB_IDX_PANNERS:
+					mode = EditorMode.Panners;
+					break;
+				case TAB_IDX_OPTIONS:
+					mode = EditorMode.Options;
 					break;
 				default:
 					mode = EditorMode.Modify;
@@ -961,13 +988,13 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		bg.add(vertexRadioButton);
 		bg.add(pointRadioButton);
 
-		JPanel selectionTypePanel = new JPanel(new MigLayout("fill"));
+		JPanel selectModePanel = new JPanel(new MigLayout("fill, ins 0 4 0 4"));
 
-		selectionTypePanel.add(SwingUtils.getLabel("Selection mode:", 12), "growx, wrap, gapbottom 4");
-		selectionTypePanel.add(objectRadioButton, "sg selection_type, growx, split 4");
-		selectionTypePanel.add(triangleRadioButton, "sg selection_type, growx");
-		selectionTypePanel.add(vertexRadioButton, "sg selection_type, growx");
-		selectionTypePanel.add(pointRadioButton, "sg selection_type, growx, wrap");
+		selectModePanel.add(SwingUtils.getLabel("Selection Mode", 14), "growx, wrap, gapbottom 4");
+		selectModePanel.add(objectRadioButton, "sg selection_type, growx, split 4");
+		selectModePanel.add(triangleRadioButton, "sg selection_type, growx");
+		selectModePanel.add(vertexRadioButton, "sg selection_type, growx");
+		selectModePanel.add(pointRadioButton, "sg selection_type, growx, wrap");
 
 		// create dialogs
 		uvOptionsPanel = new UVOptionsPanel();
@@ -977,11 +1004,8 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		objectPanel = new MapObjectPanel(this, editor, infoPanelContainer);
 
 		JPanel modifyTab = new JPanel();
-		modifyTab.setLayout(new MigLayout("fill, flowy, ins 4"));
-		modifyTab.add(selectionTypePanel, "grow");
-
-		//		modifyTab.add(objectPanel, "grow, pushy");
-		//		modifyTab.add(infoPanelContainer, "h 40%!, grow");
+		modifyTab.setLayout(new MigLayout("fill, flowy, ins 8 4 0 4"));
+		modifyTab.add(selectModePanel, "grow");
 
 		JScrollPane infoScrollPane = new JScrollPane(infoPanelContainer);
 		infoScrollPane.setBorder(null);
@@ -1086,6 +1110,25 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		objectPanel.loadMapObjects();
 	}
 
+	private JPanel createPannersTab()
+	{
+		pannersTab = new PannerListPanel();
+
+		return pannersTab;
+	}
+
+	private JPanel createOptionsTab()
+	{
+		optionsTab = new OptionsPanel();
+
+		return optionsTab;
+	}
+
+	public void updatePannersTab()
+	{
+		pannersTab.updateFields();
+	}
+
 	private JPanel createTextureTab()
 	{
 		texturePreviewPanel = new JPanel();
@@ -1098,9 +1141,9 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		JPanel textureTab = new JPanel();
 		textureTab.setLayout(new MigLayout("fillx, insets 8 8 0 8"));
 
-		textureTab.add(SwingUtils.getLabel("Selected Texture:", 14), "span, wrap");
+		textureTab.add(SwingUtils.getLabel("Selected Texture", 14), "span, wrap");
 		textureTab.add(currentTexturePanel, "span, wrap");
-		textureTab.add(SwingUtils.getLabel("Available Textures:", 14), "span, wrap");
+		textureTab.add(SwingUtils.getLabel("Available Textures", 14), "span, wrap");
 		textureTab.add(textureScrollPane, "span, grow, wrap");
 
 		return textureTab;
@@ -1222,7 +1265,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 				break;
 
 			case SHOW_CHOOSE_COLOR_DIALOG:
-				prompt_ChooseColor();
+				prompt_ChoosePaintColor();
 				break;
 
 			case SELECT_OBJECTS:
@@ -1245,29 +1288,29 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			// following commands are forwarded directly to the editor
 			/*
 			case SAVE_MAP:
-
+			
 			case COMPILE_SHAPE:
 			case COMPILE_COLLISION:
-
+			
 			case SHOW_MODELS:
 			case SHOW_COLLIDERS:
 			case SHOW_ZONES:
 			case SHOW_MARKERS:
-
+			
 			case RESET_CAMERAS:
 			case RESET_LAYOUT:
-
+			
 			case SEPARATE_VERTS:
 			case FUSE_VERTS:
 			case JOIN_MODELS:
 			case SPLIT_MODEL:
-
+			
 			case CONVERT_COLLIDER_TO_ZONE:
 			case CONVERT_ZONE_TO_COLLIDER:
-
+			
 			case CREATE_COLLIDER_GROUP:
 			case CREATE_ZONE_GROUP:
-
+			
 			case DEBUG_RECOMPUTE_BOUNDING_BOXES:
 			 */
 			default:
@@ -1278,7 +1321,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	public void changeMap(Map map)
 	{
-		if (!editor.map.modified || promptForSave()) {
+		if (!editor.map.modified || promptSaveMap()) {
 			editor.doNextFrame(() -> {
 				editor.action_OpenMap(map);
 			});
@@ -1287,7 +1330,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	private void prompt_OpenMap()
 	{
-		if (!editor.map.modified || promptForSave()) {
+		if (!editor.map.modified || promptSaveMap()) {
 			openDialogCount.increment();
 			File mapFile = SelectMapDialog.showPrompt(this);
 			openDialogCount.decrement();
@@ -1302,7 +1345,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	private void prompt_OpenMap(String mapName)
 	{
-		if (!editor.map.modified || promptForSave()) {
+		if (!editor.map.modified || promptSaveMap()) {
 			AssetHandle ah = AssetManager.getMap(mapName);
 			if (ah.exists()) {
 				editor.doNextFrame(() -> {
@@ -1717,13 +1760,28 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		}
 	}
 
-	private void prompt_ChooseColor()
+	public Color prompt_ChooseColor(String title, Color c)
 	{
-		openDialogCount.increment();
-		Color c = null;
-		c = JColorChooser.showDialog(this, "Choose Color", c);
-		openDialogCount.decrement();
+		colorChooser.setColor(c);
 
+		int result = SwingUtils.getOptionDialog()
+			.setParent(this)
+			.setCounter(openDialogCount)
+			.setTitle(title)
+			.setMessage(colorChooser)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose();
+
+		if (result == JOptionPane.OK_OPTION)
+			return colorChooser.getColor();
+		else
+			return null;
+	}
+
+	private void prompt_ChoosePaintColor()
+	{
+		Color c = prompt_ChooseColor("Choose Color", PaintManager.getSelectedColor());
 		if (c != null) {
 			PaintManager.setSelectedColor(c);
 			PaintManager.pushSelectedColor();
@@ -1860,10 +1918,9 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		currentTexturePanel.updateCount(texture);
 	}
 
-	public void setLightSetsVisible(boolean debugShowLightSets)
+	public void showAdvancedOptions(boolean debugShowLightSets)
 	{
-		ScriptManager.instance().setLightSetsVisible(debugShowLightSets);
-		objectPanel.setLightSetsVisible(debugShowLightSets);
+		objectPanel.showAdvancedOptions(debugShowLightSets);
 	}
 
 	public void setScrollSensitivity(int sensitivity)

@@ -27,7 +27,6 @@ import game.map.scripts.generators.Entrance.EntranceType;
 import game.map.scripts.generators.Exit;
 import game.map.scripts.generators.Exit.ExitType;
 import game.map.scripts.generators.Generator;
-import game.map.scripts.generators.Generator.GeneratorType;
 import game.map.scripts.generators.foliage.Foliage;
 import game.map.scripts.generators.foliage.Foliage.FoliageDataCategory;
 import game.map.scripts.generators.foliage.FoliageData;
@@ -37,6 +36,7 @@ import game.map.scripts.generators.foliage.FoliageVector;
 import game.map.shape.Model;
 import game.map.shape.TexturePanner;
 
+@Deprecated
 public class ScriptGenerator
 {
 	public final Map map;
@@ -102,10 +102,8 @@ public class ScriptGenerator
 		// NPCs
 		addEntities(entityList, lines);
 		addCameraTargets(lines);
-		addMusic(lines);
 		addPanners(lines);
 		addFoliage(lines);
-		addDarkness(lines);
 		addFog(lines);
 		addEntrances(lines);
 		addExits(lines);
@@ -132,11 +130,11 @@ public class ScriptGenerator
 			// header
 			pw.println("% Auto-generated script for " + map.name);
 			pw.println();
-		
+
 			for(String line : out)
 				pw.println(line);
 		}
-		
+
 		File[] matches = IOUtils.getFileWithin(MOD_MAP_PATCH, patchName, true);
 		File modPatch = (matches.length > 0) ? matches[0] : new File(MOD_MAP_PATCH + patchName);
 		if(!modPatch.exists())
@@ -165,23 +163,23 @@ public class ScriptGenerator
 
 	private void addInitScript(List<String> lines) throws InvalidInputException
 	{
-		boolean replaceTex = map.scripts.overrideTex.get() && !map.texName.equals(map.getExpectedTexFilename());
+		boolean replaceTex = map.features.overrideTex.get() && !map.texName.equals(map.getExpectedTexFilename());
 
-		if (!map.scripts.overrideShape.get() && !map.scripts.overrideHit.get() && !replaceTex)
+		if (!map.features.overrideShape.get() && !map.features.overrideHit.get() && !replaceTex)
 			return;
 
 		lines.add("b32 N(map_init)(void) {");
 
-		if (map.scripts.overrideShape.get()) {
-			String assetName = map.scripts.shapeOverrideName.get();
+		if (map.features.overrideShape.get()) {
+			String assetName = map.features.shapeOverrideName.get();
 			if (assetName.isEmpty() || !assetName.endsWith("_shape"))
 				throw new InvalidInputException("Geometry override assets must end in _shape: " + assetName);
 
 			lines.add(INDENT + "sprintf(wMapShapeName, \"" + assetName + "\"");
 		}
 
-		if (map.scripts.overrideHit.get()) {
-			String assetName = map.scripts.hitOverrideName.get();
+		if (map.features.overrideHit.get()) {
+			String assetName = map.features.hitOverrideName.get();
 			if (assetName.isEmpty() || !assetName.endsWith("_hit"))
 				throw new InvalidInputException("Collision override assets must end in _hit: " + assetName);
 
@@ -231,51 +229,33 @@ public class ScriptGenerator
 
 		lines.add(INDENT + "Set(GB_WorldLocation, GEN_MAP_LOCATION )");
 
-		lines.add("\tSet   *GB_WorldLocation  .Location:" + map.scripts.locationName.get());
+		lines.add("\tSet   *GB_WorldLocation  .Location:" + map.features.locationName.get());
+		/*
 		if (map.scripts.hasSpriteShading.get()) {
 			String profileName = map.scripts.shadingProfile.get().name.get();
 			lines.add("\tCall  SetSpriteShading   ( .Shading:" + profileName + " )");
 		}
+		*/
 		lines.add("\tCall  SetCamPerspective  ( .Cam:Default " + String.format("00000003 %08X %08X %08X )",
-			map.scripts.camVfov.get(), map.scripts.camNearClip.get(), map.scripts.camFarClip.get()));
+			map.features.camVfov.get(), map.features.camNearClip.get(), map.features.camFarClip.get()));
 		lines.add("\tCall  SetCamBGColor      ( .Cam:Default " + String.format("%08X %08X %08X )",
-			map.scripts.bgColorR.get(), map.scripts.bgColorG.get(), map.scripts.bgColorB.get()));
+			map.features.bgColorR.get(), map.features.bgColorG.get(), map.features.bgColorB.get()));
 		lines.add("\tCall  SetCamEnabled      ( .Cam:Default .True");
-		lines.add("\tCall  SetCamLeadPlayer   ( .Cam:Default " + (map.scripts.cameraLeadsPlayer.get() ? ".True" : ".False") + " )");
+		lines.add("\tCall  SetCamLeadPlayer   ( .Cam:Default " + (map.features.camLeadsPlayer.get() ? ".True" : ".False") + " )");
 		// make npcs
 		for (String execLine : mainHooks)
 			lines.add("\t" + execLine);
-		if (map.scripts.addCallbackBeforeEnterMap.get())
-			lines.add("\tExec  $Script_Main_Callback_BeforeEnterMap");
 		lines.add("\tExec  " + script_EnterMap);
-		if (map.scripts.addCallbackAfterEnterMap.get())
-			lines.add("\tExec  $Script_Main_Callback_AfterEnterMap");
 		// music
 		lines.add("\tReturn");
 		lines.add("\tEnd");
 		lines.add("}");
 		lines.add("");
-
-		if (map.scripts.addCallbackBeforeEnterMap.get()) {
-			callbackLines.add("#new:Script $Script_Main_Callback_BeforeEnterMap");
-			callbackLines.add("{");
-			callbackLines.add("\tReturn");
-			callbackLines.add("\tEnd");
-			callbackLines.add("}");
-		}
-
-		if (map.scripts.addCallbackAfterEnterMap.get()) {
-			callbackLines.add("#new:Script $Script_Main_Callback_AfterEnterMap");
-			callbackLines.add("{");
-			callbackLines.add("\tReturn");
-			callbackLines.add("\tEnd");
-			callbackLines.add("}");
-		}
 	}
 
 	private void addEntrances(List<String> lines) throws InvalidInputException
 	{
-		List<Generator> entranceList = map.scripts.generatorsTreeModel.getObjectsInCategory(GeneratorType.Entrance);
+		List<Generator> entranceList = null; //map.scripts.generatorsTreeModel.getObjectsInCategory(GeneratorType.Entrance);
 
 		// anything other than teleport
 		int numEntrances = 0;
@@ -435,7 +415,7 @@ public class ScriptGenerator
 	private List<String> getDoorBinds() throws InvalidInputException
 	{
 		List<String> lines = new ArrayList<>();
-		List<Generator> exitList = map.scripts.generatorsTreeModel.getObjectsInCategory(GeneratorType.Exit);
+		List<Generator> exitList = null; // map.scripts.generatorsTreeModel.getObjectsInCategory(GeneratorType.Exit);
 
 		for (Generator generator : exitList) {
 			Exit exit = (Exit) generator;
@@ -497,7 +477,7 @@ public class ScriptGenerator
 
 	private void addExits(List<String> lines) throws InvalidInputException
 	{
-		List<Generator> exitList = map.scripts.generatorsTreeModel.getObjectsInCategory(GeneratorType.Exit);
+		List<Generator> exitList = null; // map.scripts.generatorsTreeModel.getObjectsInCategory(GeneratorType.Exit);
 
 		// add 'exit script' for each exit
 		for (Generator generator : exitList) {
@@ -760,33 +740,10 @@ public class ScriptGenerator
 		return gridLines;
 	}
 
-	private void addMusic(List<String> lines)
-	{
-		lines.add("#new:Script " + script_SetupMusic);
-		lines.add("{");
-
-		if (map.scripts.hasMusic.get())
-			lines.add("\tCall  SetMusicTrack ( 00000000 .Song:" + map.scripts.songName.get() + " 00000000 00000008 )");
-		else
-			lines.add("\tCall  FadeOutMusic  ( 00000000 500` ) % usually between 500-1000");
-
-		if (map.scripts.hasAmbientSFX.get())
-			lines.add("\tCall  PlayAmbientSounds  ( .AmbientSounds:" + map.scripts.ambientSFX.get() + " )");
-		else
-			lines.add("\tCall  ClearAmbientSounds ( 250` )");
-
-		lines.add("\tReturn");
-		lines.add("\tEnd");
-		lines.add("}");
-		lines.add("");
-
-		mainHooks.add("Exec  " + script_SetupMusic);
-	}
-
 	private void addFoliage(List<String> lines) throws InvalidInputException
 	{
-		List<Generator> trees = map.scripts.generatorsTreeModel.getObjectsInCategory(GeneratorType.Tree);
-		List<Generator> bushes = map.scripts.generatorsTreeModel.getObjectsInCategory(GeneratorType.Bush);
+		List<Generator> trees = null; // map.scripts.generatorsTreeModel.getObjectsInCategory(GeneratorType.Tree);
+		List<Generator> bushes = null; // map.scripts.generatorsTreeModel.getObjectsInCategory(GeneratorType.Bush);
 
 		List<String> bindingLines = new ArrayList<>();
 
@@ -1056,24 +1013,15 @@ public class ScriptGenerator
 		bindingLines.add("Bind  " + boundScript + " .Trigger:PointBomb " + triggerCoordName + " 00000001 00000000");
 	}
 
-	private void addDarkness(List<String> lines)
-	{
-		if (!map.scripts.isDark.get())
-			return;
-
-		importResource("DarkRoom.mpat");
-		mainHooks.add("Exec  " + script_DarkRoom);
-	}
-
 	private void addFog(List<String> lines) throws InvalidInputException
 	{
-		if (!map.scripts.worldFogSettings.enabled.get() && !map.scripts.entityFogSettings.enabled.get())
+		if (!map.features.worldFog.enabled.get() && !map.features.entityFog.enabled.get())
 			return;
 
 		lines.add("#new:Function $Function_SetupFog");
 		lines.add("{");
 		lines.add("\tPUSH RA");
-		FogSettings fog = map.scripts.worldFogSettings;
+		FogSettings fog = map.features.worldFog;
 		if (fog.enabled.get()) {
 			lines.add("\tJAL       8011BB50");
 			lines.add("\tNOP");
@@ -1086,7 +1034,7 @@ public class ScriptGenerator
 			lines.add("\tJAL       8011BB88");
 			lines.add(String.format("\tADDIU     A3, R0, %X", fog.A.get()));
 		}
-		fog = map.scripts.entityFogSettings;
+		fog = map.features.entityFog;
 		if (fog.enabled.get()) {
 			lines.add("\tJAL       80122FEC");
 			lines.add("\tNOP");
@@ -1110,8 +1058,8 @@ public class ScriptGenerator
 	private void addPanners(List<String> lines) throws InvalidInputException
 	{
 		boolean hasPanners = false;
-		for (int i = 0; i < map.scripts.texPanners.size(); i++) {
-			TexturePanner panner = map.scripts.texPanners.get(i);
+		for (int i = 0; i < map.features.texPanners.size(); i++) {
+			TexturePanner panner = map.features.texPanners.get(i);
 			if (panner.params.generate || panner.isNonzero())
 				hasPanners = true;
 		}
@@ -1129,8 +1077,8 @@ public class ScriptGenerator
 				lines.add(String.format("\tCall     802C9000 	( ~Model:%s %X )", mdl.getName(), mdl.pannerID.get()));
 			}
 		}
-		for (int i = 0; i < map.scripts.texPanners.size(); i++) {
-			TexturePanner panner = map.scripts.texPanners.get(i);
+		for (int i = 0; i < map.features.texPanners.size(); i++) {
+			TexturePanner panner = map.features.texPanners.get(i);
 			if (panner.params.generate || panner.isNonzero()) {
 				lines.add("\tThread");
 				lines.add(String.format("\t\tSet  *Var[0] %X", panner.panID));

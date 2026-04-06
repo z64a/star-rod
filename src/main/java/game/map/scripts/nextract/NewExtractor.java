@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -22,9 +23,21 @@ import game.map.scripts.extract.HeaderEntry;
 import game.map.scripts.extract.HeaderEntry.HeaderParseException;
 import game.map.scripts.nextract.entity.ArrowSign;
 import game.map.scripts.nextract.entity.BasicEntity;
+import game.map.scripts.nextract.entity.BlueSwitch;
+import game.map.scripts.nextract.entity.BlueWarpPipe;
+import game.map.scripts.nextract.entity.Chest;
+import game.map.scripts.nextract.entity.CoinBlock;
 import game.map.scripts.nextract.entity.ExtractedEntity;
+import game.map.scripts.nextract.entity.HeartBlock;
+import game.map.scripts.nextract.entity.HiddenPanel;
+import game.map.scripts.nextract.entity.ItemBlock;
 import game.map.scripts.nextract.entity.ItemEntity;
 import game.map.scripts.nextract.entity.OptionalScriptEntity;
+import game.map.scripts.nextract.entity.SimpleSpring;
+import game.map.scripts.nextract.entity.SpinningFlower;
+import game.map.scripts.nextract.entity.SuperBlock;
+import game.map.scripts.nextract.entity.Tweester;
+import game.map.scripts.nextract.entity.WoodenCrate;
 import game.map.tree.MapObjectNode;
 import game.sprite.SpriteLoader;
 import util.Logger;
@@ -173,34 +186,33 @@ public class NewExtractor
 		if (fileText.contains("MakeEntity")) {
 			findAndReplace(BasicEntity.RegexMatcher, BasicEntity.class);
 			findAndReplace(OptionalScriptEntity.RegexMatcher, OptionalScriptEntity.class);
-			/*
 			findAndReplace(BlueSwitch.RegexMatcher, BlueSwitch.class);
 			findAndReplace(ItemBlock.RegexMatcher, ItemBlock.class);
 			findAndReplace(CoinBlock.RegexMatcher, CoinBlock.class);
 			findAndReplace(HeartBlock.RegexMatcher, HeartBlock.class);
 			findAndReplace(Chest.RegexMatcher, Chest.class);
-			*/
 			findAndReplace(ArrowSign.RegexMatcher, ArrowSign.class);
-			/*
 			findAndReplace(HiddenPanel.RegexMatcher, HiddenPanel.class);
 			findAndReplace(SimpleSpring.RegexMatcher, SimpleSpring.class);
 			findAndReplace(WoodenCrate.RegexMatcher, WoodenCrate.class);
 			findAndReplace(SpinningFlower.RegexMatcher, SpinningFlower.class);
 			findAndReplace(BlueWarpPipe.RegexMatcher, BlueWarpPipe.class);
 			findAndReplace(Tweester.RegexMatcher, Tweester.class);
-			*/
 		}
 
 		// special case for Super Blocks since they use macros
-		/*
 		if (fileText.contains("EVT_MAKE_SUPER_BLOCK"))
 			SuperBlock.scan(this);
-		*/
 
 		PathExtractor.findAndReplace(this);
 
+		//FIXME Tweester Paths?
+
 		if (fileText.contains("CreatePushBlockGrid"))
 			PushGridExtractor.findAndReplace(this);
+
+		if (fileText.contains("PlayEffect"))
+			EffectPosExtractor.findAndReplace(this);
 
 		if (fileText.contains("BombTrigger"))
 			BombPosExtractor.findAndReplace(this);
@@ -286,93 +298,118 @@ public class NewExtractor
 		return NameUtils.toExtractStyle("GEN_" + name);
 	}
 
-	public void addMarker(Marker marker)
+	public String getNiceItemName(String itemEnumName)
 	{
+		if (itemEnumName.startsWith("ITEM_")) {
+			itemEnumName = itemEnumName.substring("ITEM_".length());
+
+			return Arrays.stream(itemEnumName.toLowerCase().split("_"))
+				.filter(s -> !s.isEmpty())
+				.map(s -> Character.toUpperCase(s.charAt(0)) + s.substring(1))
+				.reduce("", String::concat);
+		}
+		else {
+			return null;
+		}
+	}
+
+	public static enum MarkerExtractionGroup
+	{
+		ENTRY ("Entrances"),
+		NPC ("NPCs"),
+		ENTITY ("Entities"),
+		EFFECT ("Effects"),
+		NONE (null);
+
+		private final String displayName;
+
+		MarkerExtractionGroup(String displayName)
+		{
+			this.displayName = displayName;
+		}
+
+		public String getDisplayName()
+		{
+			return displayName;
+		}
+	}
+
+	public void addMarker(Marker m)
+	{
+		switch (m.getType()) {
+			case Entry:
+				addMarker(m, MarkerExtractionGroup.ENTRY);
+				break;
+			case NPC:
+				addMarker(m, MarkerExtractionGroup.NPC);
+				break;
+			case BlockGrid:
+			case Entity:
+				addMarker(m, MarkerExtractionGroup.ENTITY);
+				break;
+			default:
+				addMarker(m, MarkerExtractionGroup.NONE);
+				break;
+		}
+	}
+
+	public void addMarker(Marker marker, MarkerExtractionGroup group)
+	{
+		marker.extractionGroup = group;
 		markers.add(marker);
 	}
 
 	public void addMarkers(Map map)
 	{
-		List<Marker> entryMarkers = new ArrayList<>();
-		List<Marker> npcMarkers = new ArrayList<>();
-		List<Marker> entityMarkers = new ArrayList<>();
-		List<Marker> otherMarkers = new ArrayList<>();
+		EnumMap<MarkerExtractionGroup, List<Marker>> grouped = new EnumMap<>(MarkerExtractionGroup.class);
+		for (MarkerExtractionGroup g : MarkerExtractionGroup.values()) {
+			grouped.put(g, new ArrayList<>());
+		}
 
 		HashSet<String> existingMarkerNames = new HashSet<>(map.getNameList(MapObjectType.MARKER, true));
 
 		for (Marker m : markers) {
-			// filter out any markers with conflicting names
 			if (existingMarkerNames.contains(m.getName())) {
 				Logger.logfWarning("%s already has Marker named %s", map.getName(), m.getName());
 				continue;
 			}
 
-			switch (m.getType()) {
-				case Entry:
-					entryMarkers.add(m);
-					break;
-				case NPC:
-					npcMarkers.add(m);
-					break;
-				case BlockGrid:
-				case Entity:
-					entityMarkers.add(m);
-					break;
-				default:
-					otherMarkers.add(m);
-					break;
-			}
+			grouped.get(m.extractionGroup).add(m);
 		}
 
 		MapObjectNode<Marker> rootNode = map.markerTree.getRoot();
 
-		if (entryMarkers.size() > 0) {
-			Marker group = Marker.createGroup("Entrances");
-			MapObjectNode<Marker> groupNode = group.getNode();
-			groupNode.parentNode = rootNode;
-			groupNode.childIndex = rootNode.getChildCount();
-			rootNode.add(groupNode);
+		// add groups
+		for (MarkerExtractionGroup group : MarkerExtractionGroup.values()) {
+			if (group == MarkerExtractionGroup.NONE)
+				continue;
 
-			for (Marker m : entryMarkers) {
-				m.getNode().parentNode = groupNode;
-				m.getNode().childIndex = groupNode.getChildCount();
-				groupNode.add(m.getNode());
+			List<Marker> groupList = grouped.get(group);
+
+			if (groupList == null || groupList.isEmpty())
+				continue;
+
+			Marker groupMarker = Marker.createGroup(group.getDisplayName());
+			MapObjectNode<Marker> groupNode = groupMarker.getNode();
+			addMarkerChild(rootNode, groupMarker);
+
+			for (Marker m : groupList) {
+				addMarkerChild(groupNode, m);
 			}
 		}
 
-		if (npcMarkers.size() > 0) {
-			Marker group = Marker.createGroup("NPCs");
-			MapObjectNode<Marker> groupNode = group.getNode();
-			groupNode.parentNode = rootNode;
-			groupNode.childIndex = rootNode.getChildCount();
-			rootNode.add(groupNode);
-
-			for (Marker m : npcMarkers) {
-				m.getNode().parentNode = groupNode;
-				m.getNode().childIndex = groupNode.getChildCount();
-				groupNode.add(m.getNode());
-			}
+		// add ungrouped
+		for (Marker m : grouped.get(MarkerExtractionGroup.NONE)) {
+			addMarkerChild(rootNode, m);
 		}
+	}
 
-		if (entityMarkers.size() > 0) {
-			Marker group = Marker.createGroup("Entities");
-			MapObjectNode<Marker> groupNode = group.getNode();
-			groupNode.parentNode = rootNode;
-			groupNode.childIndex = rootNode.getChildCount();
-			rootNode.add(groupNode);
-
-			for (Marker m : entityMarkers) {
-				m.getNode().parentNode = groupNode;
-				m.getNode().childIndex = groupNode.getChildCount();
-				groupNode.add(m.getNode());
-			}
-		}
-
-		for (Marker m : otherMarkers) {
-			m.getNode().parentNode = rootNode;
-			m.getNode().childIndex = rootNode.getChildCount();
-			rootNode.add(m.getNode());
-		}
+	private void addMarkerChild(MapObjectNode<Marker> parentNode, Marker marker)
+	{
+		MapObjectNode<Marker> childNode = marker.getNode();
+		childNode.parentNode = parentNode;
+		childNode.childIndex = parentNode.getChildCount();
+		parentNode.add(childNode);
 	}
 
 	private void processHeaderEntries(Map map)
@@ -390,9 +427,6 @@ public class NewExtractor
 				switch (subtype[0]) {
 					case "EntryList":
 						EntryListExtractor.parse(this, h);
-						break;
-					case "MapProperties":
-						MapPropertiesExtractor.parse(h, map);
 						break;
 					case "TexPanner":
 						TexPannerExtractor.parse(h, map);

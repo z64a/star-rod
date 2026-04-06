@@ -1,0 +1,72 @@
+package game.map.scripts.nextract.entity;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import game.map.marker.Marker;
+import game.map.scripts.nextract.NewExtractor;
+
+public class BlueSwitch extends ExtractedEntity
+{
+	/**
+	    Call(MakeEntity, Ref(Entity_BlueSwitch), 60, 115, 10, 0, MAKE_ENTITY_END)
+	    Call(AssignSwitchFlag, EVT_INDEX_OF_AREA_FLAG(AF_KPA133_HitWaterSwitch))
+	*/
+
+	private static final String TYPES = "(BlueSwitch|HugeBlueSwitch)";
+	private static final String RegexString = ExtractedEntity.INDENT +
+		"Call\\(MakeEntity, Ref\\(Entity_" + TYPES + "\\)" + ExtractedEntity.ARG.repeat(4) + ExtractedEntity.OPTIONAL_ARG + ",\\s*MAKE_ENTITY_END\\)" +
+		"(?:\\R\\s*Call\\(AssignSwitchFlag,\\s*EVT_INDEX_OF_AREA_FLAG\\((\\S+)\\)\\))?";
+	public static final Matcher RegexMatcher = Pattern.compile(RegexString).matcher("");
+
+	private boolean hasFlag;
+	private String flagName;
+
+	private boolean hasIndex;
+	private int index;
+
+	// required
+	public BlueSwitch()
+	{}
+
+	@Override
+	public void fromSourceMatcher(NewExtractor extractor, Matcher matcher)
+	{
+		indent = matcher.group(1);
+		type = matcher.group(2);
+		posX = Integer.decode(matcher.group(3));
+		posY = Integer.decode(matcher.group(4));
+		posZ = Integer.decode(matcher.group(5));
+		angle = Integer.decode(matcher.group(6));
+
+		hasIndex = (matcher.group(7) != null);
+		if (hasIndex) {
+			index = Integer.decode(matcher.group(7));
+		}
+
+		flagName = matcher.group(8);
+		hasFlag = (flagName != null);
+
+		setName(extractor.getNextName(type));
+
+		Marker m = super.getBaseMarker();
+		extractor.addMarker(m);
+
+		if (hasIndex)
+			m.entityComponent.index.setAndEnable(index);
+
+		if (hasFlag)
+			m.entityComponent.areaFlagName.setAndEnable(flagName);
+	}
+
+	public BlueSwitch(Marker m)
+	{
+		super(m);
+
+		hasIndex = m.entityComponent.index.isEnabled();
+		index = m.entityComponent.index.get();
+
+		hasFlag = m.entityComponent.areaFlagName.isEnabled();
+		flagName = m.entityComponent.areaFlagName.get();
+	}
+}

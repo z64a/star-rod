@@ -31,7 +31,7 @@ public class MapPropertiesExtractor
 				out = new StringBuilder(extractor.getFileText().length());
 
 			String locationName = LocationMatcher.group(1);
-			map.scripts.locationName.set(locationName);
+			map.features.locationName.set(locationName);
 
 			LocationMatcher.appendReplacement(out, "Set(GB_WorldLocation, GEN_MAP_LOCATION)");
 			LocationMatcher.appendTail(out);
@@ -41,21 +41,21 @@ public class MapPropertiesExtractor
 		}
 
 		/*
-		
+
 		ShadingMatcher.reset(workingText);
 		if (ShadingMatcher.find()) {
 			modified = true;
 			if (out == null)
 				out = new StringBuilder(extractor.getFileText().length());
-		
+
 			String profileName = ShadingMatcher.group(1);
 			map.scripts.hasSpriteShading.set(!"SHADING_NONE".equals(profileName));
-		
+
 			map.scripts.shadingProfile.set(null);
 			//TODO
-		
+
 			ShadingMatcher.appendReplacement(out, "Call(SetSpriteShading, MAP_SPRITE_SHADING)");
-		
+
 			if (modifiedLine) {
 				modified = true;
 			}
@@ -73,13 +73,13 @@ public class MapPropertiesExtractor
 	public static void print(PrintWriter pw, Map map)
 	{
 		HeaderEntry h = new HeaderEntry("MapProperties");
-		h.addDefine("MAP_LOCATION", map.scripts.locationName.get());
+		h.addDefine("MAP_LOCATION", map.features.locationName.get());
 		h.print(pw);
 	}
 
 	public static void parse(HeaderEntry h, Map map) throws HeaderParseException
 	{
 		String location = h.getDefine("MAP_LOCATION");
-		map.scripts.locationName.set(location);
+		map.features.locationName.set(location);
 	}
 }

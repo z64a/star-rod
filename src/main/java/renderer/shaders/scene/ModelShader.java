@@ -114,7 +114,7 @@ public final class ModelShader extends BaseShader
 			auxScroll.set(0, 0);
 		}
 		else
-			MapEditor.instance().map.scripts.texPanners.get(mdl.pannerID.get()).setShaderParams();
+			MapEditor.instance().map.features.texPanners.get(mdl.pannerID.get()).setShaderParams();
 	}
 
 	private static float calcScaleForShift(int shift)

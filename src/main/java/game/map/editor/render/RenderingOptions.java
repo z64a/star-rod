@@ -2,7 +2,7 @@ package game.map.editor.render;
 
 import game.map.editor.MapEditor.EditorMode;
 import game.map.editor.selection.SelectionManager.SelectionMode;
-import game.map.shading.ShadingProfile;
+import game.map.shading.RenderShadingProfile;
 import renderer.shaders.postprocess.PostProcessFX;
 
 public class RenderingOptions
@@ -30,7 +30,7 @@ public class RenderingOptions
 
 	public boolean useColliderColoring = false;
 
-	public ShadingProfile spriteShading = null;
+	public RenderShadingProfile spriteShading = null;
 
 	public boolean thumbnailMode = false;
 

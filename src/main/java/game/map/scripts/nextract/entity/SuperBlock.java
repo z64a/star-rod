@@ -5,8 +5,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
-import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.extract.HeaderEntry.HeaderParseException;
 import game.map.scripts.nextract.NewExtractor;
 
 public class SuperBlock extends ExtractedEntity
@@ -42,7 +40,7 @@ public class SuperBlock extends ExtractedEntity
 		block.angle = Integer.decode(SuperBlockMatcher.group(4));
 		block.setName(extractor.getNextName(block.type));
 
-		workingText = SuperBlockMatcher.replaceFirst("EVT_MAKE_SUPER_BLOCK(" + block.genName + "_PARAMS)");
+		workingText = SuperBlockMatcher.replaceFirst("EVT_MAKE_SUPER_BLOCK(" + block.genName + "_ARGS)");
 
 		SuperVarMatcher.reset(workingText);
 		if (!SuperVarMatcher.find())
@@ -85,23 +83,5 @@ public class SuperBlock extends ExtractedEntity
 	public List<String> getLines()
 	{
 		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public void addHeaderDefines(HeaderEntry h)
-	{
-		super.addHeaderDefines(h);
-
-		h.addDefine("PARAMS", makeParamList(h));
-
-		h.addDefine("VAR", varName);
-		h.addDefine("FLAG", flagName);
-	}
-
-	@Override
-	public void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException
-	{
-		m.entityComponent.mapVarName.setAndEnable(h.getDefine("VAR"));
-		m.entityComponent.gameFlagName.setAndEnable(h.getDefine("FLAG"));
 	}
 }

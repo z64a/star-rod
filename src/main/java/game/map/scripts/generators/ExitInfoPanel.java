@@ -12,12 +12,12 @@ import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.IShutdownListener;
 import game.map.editor.ui.BoundObjectPanel;
 import game.map.editor.ui.LabelWithTip;
-import game.map.editor.ui.ScriptManager;
 import game.map.marker.Marker.MarkerType;
 import game.map.scripts.generators.Exit.ExitType;
 import net.miginfocom.swing.MigLayout;
 import util.ui.StringField;
 
+@Deprecated
 public class ExitInfoPanel extends JPanel implements IShutdownListener
 {
 	private static ExitInfoPanel instance = null;
@@ -69,12 +69,11 @@ public class ExitInfoPanel extends JPanel implements IShutdownListener
 
 	private ExitInfoPanel()
 	{
-		nameField = new StringField((s) -> {
+		nameField = new StringField(SwingConstants.LEFT, (s) -> {
 			if (ignoreChanges || selectedExit == null)
 				return;
 			MapEditor.execute(selectedExit.overrideName.mutator(s));
 		});
-		nameField.setHorizontalAlignment(SwingConstants.LEFT);
 
 		cbHasCallback = new JCheckBox(" Add callback after using exit");
 		cbHasCallback.addActionListener((e) -> {
@@ -121,19 +120,17 @@ public class ExitInfoPanel extends JPanel implements IShutdownListener
 			MapEditor.execute(selectedExit.lockName.mutator(s));
 		});
 
-		destField = new StringField((s) -> {
+		destField = new StringField(SwingConstants.LEFT, (s) -> {
 			if (ignoreChanges || selectedExit == null)
 				return;
 			MapEditor.execute(selectedExit.destMap.mutator(s));
 		});
-		destField.setHorizontalAlignment(SwingConstants.LEFT);
 
-		destMarkerField = new StringField((s) -> {
+		destMarkerField = new StringField(SwingConstants.LEFT, (s) -> {
 			if (ignoreChanges || selectedExit == null)
 				return;
 			MapEditor.execute(selectedExit.destMarkerName.mutator(s));
 		});
-		destMarkerField.setHorizontalAlignment(SwingConstants.LEFT);
 
 		cbDestUseIndex = new JCheckBox("Interpret as ID");
 		cbDestUseIndex.setToolTipText("Should the name to the left be interpreted as a marker name or an ID number?");
@@ -268,8 +265,6 @@ public class ExitInfoPanel extends JPanel implements IShutdownListener
 
 			ignoreChanges = false;
 		}
-
-		ScriptManager.instance().updateGeneratorTree();
 	}
 
 	public void setExit(Exit exit)

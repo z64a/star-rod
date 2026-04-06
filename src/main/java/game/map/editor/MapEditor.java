@@ -98,7 +98,6 @@ import game.map.editor.commands.CreateObject;
 import game.map.editor.commands.CreateObjects;
 import game.map.editor.commands.FuseVertices;
 import game.map.editor.commands.HideObjectTree;
-import game.map.editor.commands.HideObjectTreeSimple;
 import game.map.editor.commands.HideObjects;
 import game.map.editor.commands.InvertNormals;
 import game.map.editor.commands.JoinHitObjects.JoinColliders;
@@ -141,11 +140,7 @@ import game.map.marker.Marker;
 import game.map.marker.Marker.MarkerType;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
-import game.map.scripts.generators.Exit;
-import game.map.scripts.generators.Generator;
-import game.map.scripts.generators.Generator.GeneratorType;
-import game.map.shading.ShadingLightSource;
-import game.map.shading.ShadingProfile;
+import game.map.shading.RenderShadingProfile;
 import game.map.shading.SpriteShadingEditor;
 import game.map.shape.Model;
 import game.map.shape.TransformMatrix;
@@ -223,7 +218,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		Texture ("Apply Textures"),
 		EditUVs ("Edit UVs"),
 		VertexPaint ("Paint Vertices"),
-		Scripts ("Edit Scripts");
+		Panners ("Edit Panners"),
+		Options ("Edit Scripts");
 
 		private final String name;
 
@@ -251,7 +247,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	private List<EditorObject> editorObjects;
 
-	public boolean debugShowLightSets = false;
+	public boolean showAdvancedOptions = false;
 
 	/**
 	 * Selection
@@ -333,31 +329,6 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	public CameraController dummyCameraController;
 
 	boolean usingTargetCam;
-
-	private static enum ChangeMapState
-	{
-		NONE,
-		CHOSE_MAP,
-		READY_TO_LOAD,
-		LOADING_MAP,
-		LOADING_FAILED,
-		EXITING,
-		CHECK_MAP,
-		OPEN_MAP,
-		ENTER_INIT,
-		ENTERING
-	}
-
-	private volatile ChangeMapState changeMapState = ChangeMapState.NONE;
-	private File destMapFile;
-	private Map destMap;
-	private String destMapName;
-	private String destMarkerName;
-	private String exitMarkerName;
-	private float mapChangeTimer;
-	private float screenFadeAmount = 0.0f;
-	private static final float EXIT_TIME = 0.5f;
-	private static final float ENTER_TIME = 0.5f;
 
 	/**
 	 * Viewports and glCanvas
@@ -1001,27 +972,25 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		generateFromPathsPreview.init();
 		drawGeometryPreview.init();
 
-		if (changeMapState == ChangeMapState.NONE) {
-			hDivRatio = 0.5f;
-			vDivRatio = 0.5f;
+		hDivRatio = 0.5f;
+		vDivRatio = 0.5f;
 
-			isPlayInEditorMode = false;
-			showEntityCollision = true;
-			pieIgnoreHiddenColliders = false;
-			pieIgnoreHiddenZones = false;
-			pieDrawCameraInfo = true;
-			pieEnableMapExits = true;
-			dummyCameraController = new CameraController();
-			usingTargetCam = false;
+		isPlayInEditorMode = false;
+		showEntityCollision = true;
+		pieIgnoreHiddenColliders = false;
+		pieIgnoreHiddenZones = false;
+		pieDrawCameraInfo = true;
+		pieEnableMapExits = true;
+		dummyCameraController = new CameraController();
+		usingTargetCam = false;
 
-			PLAY_IN_EDITOR_TOGGLE.setCheckbox(isPlayInEditorMode);
-			PIE_IGNORE_HIDDEN_COL.setCheckbox(pieIgnoreHiddenColliders);
-			PIE_IGNORE_HIDDEN_ZONE.setCheckbox(pieIgnoreHiddenZones);
-			PIE_SHOW_ACTIVE_CAMERA.setCheckbox(pieDrawCameraInfo);
-			PIE_ENABLE_MAP_EXITS.setCheckbox(pieEnableMapExits);
+		PLAY_IN_EDITOR_TOGGLE.setCheckbox(isPlayInEditorMode);
+		PIE_IGNORE_HIDDEN_COL.setCheckbox(pieIgnoreHiddenColliders);
+		PIE_IGNORE_HIDDEN_ZONE.setCheckbox(pieIgnoreHiddenZones);
+		PIE_SHOW_ACTIVE_CAMERA.setCheckbox(pieDrawCameraInfo);
+		PIE_ENABLE_MAP_EXITS.setCheckbox(pieEnableMapExits);
 
-			edgeHighlights = false;
-		}
+		edgeHighlights = false;
 
 		cursor3D = new CursorObject(new Vector3f(0.0f, 0.0f, 0.0f));
 
@@ -1038,40 +1007,38 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		uvViews[0] = perspectiveView;
 		uvViews[1] = uvEditView;
 
-		if (changeMapState == ChangeMapState.NONE) {
-			mainViewMode = ViewMode.FOUR;
-			setViewMode(mainViewMode);
-			resizeViews();
+		mainViewMode = ViewMode.FOUR;
+		setViewMode(mainViewMode);
+		resizeViews();
 
-			activeView = perspectiveView;
-			objectGrid = new Grid(false, 4);
-			uvGrid = new UVGrid(8);
-			grid = objectGrid;
-			gridEnabled = true;
-			gui.updateGridSize();
-			TOGGLE_GRID.setCheckbox(gridEnabled);
-			TOGGLE_GRID_TYPE.setCheckbox(!objectGrid.binary);
+		activeView = perspectiveView;
+		objectGrid = new Grid(false, 4);
+		uvGrid = new UVGrid(8);
+		grid = objectGrid;
+		gridEnabled = true;
+		gui.updateGridSize();
+		TOGGLE_GRID.setCheckbox(gridEnabled);
+		TOGGLE_GRID_TYPE.setCheckbox(!objectGrid.binary);
 
-			snapScaleToGrid = false;
-			SNAP_SCALE_GRID.setCheckbox(snapScaleToGrid);
+		snapScaleToGrid = false;
+		SNAP_SCALE_GRID.setCheckbox(snapScaleToGrid);
 
-			vertexSnap = false;
-			VERTEX_SNAP.setCheckbox(vertexSnap);
-			vertexSnapLimit = true;
-			VERTEX_SNAP_LIMIT.setCheckbox(vertexSnapLimit);
+		vertexSnap = false;
+		VERTEX_SNAP.setCheckbox(vertexSnap);
+		vertexSnapLimit = true;
+		VERTEX_SNAP_LIMIT.setCheckbox(vertexSnapLimit);
 
-			snapTranslation = true;
-			snapRotation = true;
-			snapScale = true;
-			SNAP_TRANSLATION.setCheckbox(snapTranslation);
-			SNAP_ROTATION.setCheckbox(snapRotation);
-			SNAP_SCALE.setCheckbox(snapScale);
+		snapTranslation = true;
+		snapRotation = true;
+		snapScale = true;
+		SNAP_TRANSLATION.setCheckbox(snapTranslation);
+		SNAP_ROTATION.setCheckbox(snapRotation);
+		SNAP_SCALE.setCheckbox(snapScale);
 
-			Marker.movePointsWithObject = true;
-			MOVE_MARKER_POINTS.setCheckbox(Marker.movePointsWithObject);
+		Marker.movePointsWithObject = true;
+		MOVE_MARKER_POINTS.setCheckbox(Marker.movePointsWithObject);
 
-			gui.updateSnapLabel();
-		}
+		gui.updateSnapLabel();
 
 		canDoNudgeTranslation = true;
 		doingNudgeTranslation = false;
@@ -1086,42 +1053,40 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		selectionManager = new SelectionManager(this);
 		commandManager = new CommandManager(UNDO_LIMIT, this::onModified);
 
-		if (changeMapState == ChangeMapState.NONE) {
-			showModels = true;
-			showColliders = true;
-			showZones = true;
-			showMarkers = true;
-			SHOW_MODELS.setCheckbox(showModels);
-			SHOW_COLLIDERS.setCheckbox(showColliders);
-			SHOW_ZONES.setCheckbox(showZones);
-			SHOW_MARKERS.setCheckbox(showMarkers);
+		showModels = true;
+		showColliders = true;
+		showZones = true;
+		showMarkers = true;
+		SHOW_MODELS.setCheckbox(showModels);
+		SHOW_COLLIDERS.setCheckbox(showColliders);
+		SHOW_ZONES.setCheckbox(showZones);
+		SHOW_MARKERS.setCheckbox(showMarkers);
 
-			showBoundingBoxes = false;
-			showNormals = false;
-			showAxes = true;
-			showGizmo = true;
-			thumbnailMode = false;
-			useColliderColoring = true;
-			SHOW_AABB.setCheckbox(showBoundingBoxes);
-			SHOW_NORMALS.setCheckbox(showNormals);
-			SHOW_AXES.setCheckbox(showAxes);
-			SHOW_GIZMO.setCheckbox(showGizmo);
-			SHOW_ENTITY_COLLISION.setCheckbox(showEntityCollision);
-			USE_COLLIDER_COLORS.setCheckbox(useColliderColoring);
+		showBoundingBoxes = false;
+		showNormals = false;
+		showAxes = true;
+		showGizmo = true;
+		thumbnailMode = false;
+		useColliderColoring = true;
+		SHOW_AABB.setCheckbox(showBoundingBoxes);
+		SHOW_NORMALS.setCheckbox(showNormals);
+		SHOW_AXES.setCheckbox(showAxes);
+		SHOW_GIZMO.setCheckbox(showGizmo);
+		SHOW_ENTITY_COLLISION.setCheckbox(showEntityCollision);
+		USE_COLLIDER_COLORS.setCheckbox(useColliderColoring);
 
-			useGameAspectRatio = false;
-			useMapBackgroundColor = true;
-			useMapCameraProperties = false;
-			useGeometryFlags = false;
-			useFiltering = false;
-			useTextureLOD = true;
-			USE_GAME_ASPECT_RATIO.setCheckbox(useGameAspectRatio);
-			USE_MAP_CAM_PROPERTIES.setCheckbox(useMapCameraProperties);
-			USE_MAP_BG_COLOR.setCheckbox(useMapBackgroundColor);
-			USE_GEOMETRY_FLAGS.setCheckbox(useGeometryFlags);
-			USE_FILTERING.setCheckbox(useFiltering);
-			USE_TEXTURE_LOD.setCheckbox(useTextureLOD);
-		}
+		useGameAspectRatio = false;
+		useMapBackgroundColor = true;
+		useMapCameraProperties = false;
+		useGeometryFlags = false;
+		useFiltering = false;
+		useTextureLOD = true;
+		USE_GAME_ASPECT_RATIO.setCheckbox(useGameAspectRatio);
+		USE_MAP_CAM_PROPERTIES.setCheckbox(useMapCameraProperties);
+		USE_MAP_BG_COLOR.setCheckbox(useMapBackgroundColor);
+		USE_GEOMETRY_FLAGS.setCheckbox(useGeometryFlags);
+		USE_FILTERING.setCheckbox(useFiltering);
+		USE_TEXTURE_LOD.setCheckbox(useTextureLOD);
 
 		// switch to modify mode, bootstrap if necessary
 		if (lastModeChange == null)
@@ -1419,8 +1384,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		if (doStepProfiling)
 			profiler.record("markers");
 
-		for (int i = 0; i < map.scripts.texPanners.getSize(); i++)
-			map.scripts.texPanners.get(i).tick(deltaTime);
+		for (int i = 0; i < map.features.texPanners.getSize(); i++)
+			map.features.texPanners.get(i).tick(deltaTime);
 
 		cursor3D.updateAnimation(deltaTime);
 
@@ -1455,7 +1420,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				break;
 			case VertexPaint:
 			case Texture:
-			case Scripts:
+			case Options:
 				selection = selectionManager.currentSelection;
 		}
 		return selection;
@@ -1847,7 +1812,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			Vector3f vec;
 			switch (editorMode) {
 				case Modify:
-				case Scripts:
+				case Options:
 					vec = activeView.camera.getTranslationVector(dx, dy);
 					updateCurrentDrag(selectionManager.currentSelection, vec, dx, dy);
 					break;
@@ -1970,7 +1935,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				}
 				break;
 
-			case Scripts:
+			case Options:
 				if (!selectionManager.currentSelection.transforming()) {
 					clickHitLMB = selectionManager.pickCurrentSelection(map, clickRayLMB, activeView, false, true);
 					dragBoxStartPoint = new Vector3f(clickRayLMB.origin);
@@ -2021,7 +1986,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				break;
 			case Texture:
 				break;
-			case Scripts:
+			case Options:
 				break;
 			case EditUVs:
 				break;
@@ -2052,8 +2017,9 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				startTranslateScale(selectionManager.uvSelection, clickHitLMB);
 				break;
 			case Texture:
+			case Panners:
 				break;
-			case Scripts:
+			case Options:
 				startTranslateScale(selectionManager.currentSelection, clickHitLMB);
 				break;
 			case VertexPaint:
@@ -2115,13 +2081,14 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				}
 				break;
 
-			case Scripts:
+			case Options:
 				selectionManager.currentSelection.endTransform();
 				rescaling = false;
 				draggingBox = false;
 				break;
 
 			case Texture:
+			case Panners:
 				break;
 			case VertexPaint:
 				finishPainting();
@@ -2143,7 +2110,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				if (!selectionManager.uvSelection.transforming())
 					clickHitRMB = selectionManager.pickUV(map, clickRayRMB, uvEditView, false);
 				break;
-			case Scripts:
+			case Options:
 				break;
 			case Texture:
 				PickHit hit = Map.pickObjectFromSet(clickRayRMB, map.modelTree);
@@ -2175,7 +2142,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		Selection<?> selection;
 		switch (editorMode) {
 			case Modify:
-			case Scripts:
+			case Options:
 				selection = selectionManager.currentSelection;
 				if (!selection.isEmpty() && !selection.transforming()) {
 					boolean allowClone = (editorMode == EditorMode.Modify);
@@ -2210,6 +2177,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				break;
 
 			case Texture:
+			case Panners:
 				break;
 			case VertexPaint:
 				break;
@@ -2221,7 +2189,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	{
 		switch (editorMode) {
 			case Modify:
-			case Scripts:
+			case Options:
 				selectionManager.currentSelection.endTransform();
 				rescaling = false;
 				break;
@@ -2230,6 +2198,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				rescaling = false;
 				break;
 			case Texture:
+			case Panners:
 				break;
 			case VertexPaint:
 				break;
@@ -2657,13 +2626,6 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				break;
 
 			case PLAY_IN_EDITOR_TOGGLE: {
-				if (changeMapState != ChangeMapState.NONE) {
-					// cant exit PIE during map transition
-					isPlayInEditorMode = true;
-					key.setCheckbox(isPlayInEditorMode);
-					break;
-				}
-
 				if (!isPlayInEditorMode) {
 					cursor3D.startPreviewMode();
 					isPlayInEditorMode = true;
@@ -2995,7 +2957,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				switch (editorMode) {
 					case Modify:
 					case Texture:
-					case Scripts:
+					case Options:
 					case VertexPaint:
 						if (mainViewMode == ViewMode.FOUR)
 							mainViewMode = ViewMode.ONE;
@@ -3029,12 +2991,12 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(closingEvent);
 				break;
 
-			case DEBUG_TOGGLE_LIGHT_SETS:
-				debugShowLightSets = !debugShowLightSets;
+			case SHOW_ADVANCED_OPTIONS:
+				showAdvancedOptions = !showAdvancedOptions;
 				if (!fromGui)
-					key.setCheckbox(debugShowLightSets);
+					key.setCheckbox(showAdvancedOptions);
 				SwingUtilities.invokeLater(() -> {
-					gui.setLightSetsVisible(debugShowLightSets);
+					gui.showAdvancedOptions(showAdvancedOptions);
 				});
 				break;
 
@@ -3048,9 +3010,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		Map collisionMap = getCollisionMap();
 
 		// update 'player'
-		boolean allowInput = (changeMapState != ChangeMapState.EXITING) && (changeMapState != ChangeMapState.ENTERING);
-		cursor3D.tickSimulation(keyboard, collisionMap, map, perspectiveView, deltaTime, (perspectiveView == activeView), allowInput,
-			false);
+		cursor3D.tickSimulation(keyboard, collisionMap, map, perspectiveView, deltaTime,
+			perspectiveView == activeView, true, false);
 
 		Vector3f start = cursor3D.getPosition();
 		PickRay traceBelowCursor = new PickRay(Channel.COLLISION, new Vector3f(start.x, start.y + 10, start.z), PickRay.DOWN,
@@ -3065,216 +3026,6 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		PickHit zoneHit = Map.pickObjectFromSet(traceBelowCursor, candidates, pieIgnoreHiddenZones);
 		if (zoneHit.dist < Float.MAX_VALUE)
 			zoneCam.controlData = ((Zone) zoneHit.obj).camData;
-
-		// update exit trigger + map transition state
-		updateMapTransition(traceBelowCursor);
-	}
-
-	private void updateMapTransition(PickRay traceBelowCursor)
-	{
-		if (!pieEnableMapExits) {
-			changeMapState = ChangeMapState.NONE;
-			screenFadeAmount = 0.0f;
-		}
-
-		switch (changeMapState) {
-			case NONE:
-				if (tryMapExit(traceBelowCursor))
-					changeMapState = ChangeMapState.CHOSE_MAP;
-			case LOADING_MAP:
-				break;
-
-			case CHOSE_MAP:
-				changeMapState = ChangeMapState.LOADING_MAP;
-				destMapFile = AssetManager.getMap(destMapName);
-				if (!destMapFile.exists()) {
-					changeMapState = ChangeMapState.LOADING_FAILED;
-					break;
-				}
-
-				if (!map.modified) {
-					changeMapState = ChangeMapState.READY_TO_LOAD;
-					break;
-				}
-
-				SwingUtilities.invokeLater(() -> {
-					if (gui.promptForSave())
-						changeMapState = ChangeMapState.READY_TO_LOAD;
-					else
-						changeMapState = ChangeMapState.LOADING_FAILED;
-				});
-				break;
-
-			case READY_TO_LOAD: {
-				// load map in worker thread
-				destMap = null;
-				Thread mapLoadThread = new Thread(() -> {
-					try {
-						destMap = Map.loadMap(destMapFile);
-					}
-					catch (Throwable t) {
-						Logger.logError("Can't load " + destMapName + ": " + t.getMessage());
-						changeMapState = ChangeMapState.LOADING_FAILED;
-					}
-				});
-				mapLoadThread.start();
-
-				mapChangeTimer = 0.0f;
-				MapObject obj = map.find(MapObjectType.MARKER, exitMarkerName);
-				Marker m = (Marker) obj;
-
-				// marker yaw coord system is rotated 90 degrees from player move yaw coord system.
-				// player yaw goes from xhat to zhat, marker goes from -zhat to xhat
-				float yaw = (float) Math.toRadians(180.0f + m.yaw.getAngle() - 90.0);
-				cursor3D.setMoveHeading(CursorObject.WALK_SPEED, yaw);
-
-				changeMapState = ChangeMapState.EXITING;
-			}
-				break;
-
-			case LOADING_FAILED:
-				screenFadeAmount = 0;
-				changeMapState = ChangeMapState.NONE;
-				cursor3D.setMoveHeading(0.0f, 0.0f);
-				break;
-
-			case EXITING: {
-				mapChangeTimer += deltaTime;
-				screenFadeAmount = MathUtil.lerp(mapChangeTimer, EXIT_TIME / 2, EXIT_TIME, 0.0f, 1.0f);
-
-				if (mapChangeTimer >= EXIT_TIME) {
-					mapChangeTimer = EXIT_TIME;
-					cursor3D.setMoveHeading(0.0f, 0.0f);
-
-					if (destMap != null) {
-						changeMapState = ChangeMapState.CHECK_MAP;
-						SwingUtilities.invokeLater(() -> {
-							destMap = checkForBackup(destMap);
-							changeMapState = ChangeMapState.OPEN_MAP;
-						});
-					}
-				}
-			}
-				break;
-			case CHECK_MAP:
-				// wait to check for backup
-				break;
-
-			case OPEN_MAP:
-				// eat a frame to ensure the viewport is rendered with complete fade before opening map
-				action_OpenMap(destMap);
-				cursor3D.startPreviewMode();
-				isPlayInEditorMode = true;
-
-				CommandBatch syncHidden = new CommandBatch("Set Visibility");
-				syncHidden.silence();
-				syncHidden.setModifiesData(false);
-				syncHidden.addCommand(new HideObjectTreeSimple("Models", map.modelTree, !showModels));
-				syncHidden.addCommand(new HideObjectTreeSimple("Colliders", map.colliderTree, !showColliders));
-				syncHidden.addCommand(new HideObjectTreeSimple("Zones", map.zoneTree, !showZones));
-				syncHidden.addCommand(new HideObjectTreeSimple("Markers", map.markerTree, !showMarkers));
-				commandManager.executeCommand(syncHidden);
-
-				changeMapState = ChangeMapState.ENTER_INIT;
-				break;
-
-			case ENTER_INIT:
-				// eat a frame to prevent the long deltaTime of action_OpenMap from messing up the ENTERING state
-				MapObject obj = map.find(MapObjectType.MARKER, destMarkerName);
-				if (obj != null) {
-					Marker m = (Marker) obj;
-					// marker yaw coord system is rotated 90 degrees from player move yaw coord system.
-					// player yaw goes from xhat to zhat, marker goes from -zhat to xhat
-					float yaw = (float) Math.toRadians(m.yaw.getAngle() - 90.0);
-					cursor3D.setMoveHeading(CursorObject.WALK_SPEED, yaw);
-					Vector3f entryPos = m.position.getVector();
-					cursor3D.setPosition(new Vector3f(
-						entryPos.x - 60.0f * (float) Math.cos(yaw),
-						entryPos.y,
-						entryPos.z - 60.0f * (float) Math.sin(yaw)));
-				}
-				else {
-					cursor3D.setPosition(new Vector3f(0.0f, 0.0f, 0.0f));
-					cursor3D.setMoveHeading(0.0f, 0.0f);
-				}
-				changeMapState = ChangeMapState.ENTERING;
-				mapChangeTimer = 0.0f;
-				// tryMapExit(traceBelowCursor); // prevents triggering the loading zone until you leave it
-				break;
-			case ENTERING:
-				screenFadeAmount = MathUtil.lerp(mapChangeTimer, 0, ENTER_TIME / 2, 1.0f, 0.0f);
-				mapChangeTimer += deltaTime;
-
-				if (mapChangeTimer >= ENTER_TIME) {
-					screenFadeAmount = 0.0f;
-					mapChangeTimer = 0.0f;
-					changeMapState = ChangeMapState.NONE;
-				}
-				break;
-		}
-	}
-
-	private boolean tryMapExit(PickRay traceBelowCursor)
-	{
-		boolean queued = false;
-
-		Exit closestValidExit = null;
-		float closestHitDist = Float.MAX_VALUE;
-		List<Generator> exitList = map.scripts.generatorsTreeModel.getObjectsInCategory(GeneratorType.Exit);
-		for (Generator generator : exitList) {
-			Exit exit = (Exit) generator;
-			String colliderName = exit.colliderName.get();
-			if (colliderName == null || colliderName.isEmpty())
-				continue; // invalid collider name
-
-			MapObject obj = map.find(MapObjectType.COLLIDER, colliderName);
-			if (obj == null)
-				continue; // no collider with name
-
-			PickHit hit = obj.tryPick(traceBelowCursor);
-			if (hit.dist == Float.MAX_VALUE)
-				continue; // did not hit
-
-			String destMapName = exit.destMap.get();
-			if (destMapName == null || destMapName.isEmpty())
-				continue; // invalid dest map name
-
-			String destMarkerName = exit.destMarkerName.get();
-			if (destMarkerName == null || destMarkerName.isEmpty())
-				continue; // invalid dest entry name
-
-			String exitMarkerName = exit.markerName.get();
-			if (exitMarkerName == null || exitMarkerName.isEmpty())
-				continue; // invalid exit marker name
-
-			if (hit.dist < closestHitDist) {
-				closestHitDist = hit.dist;
-				closestValidExit = exit;
-			}
-		}
-
-		if (closestValidExit != null) {
-			String newDestMapName = closestValidExit.destMap.get();
-			if (!newDestMapName.equals(destMapName)) {
-				destMapName = newDestMapName;
-				queued = true;
-			}
-
-			String newDestMarkerName = closestValidExit.destMarkerName.get();
-			if (!newDestMarkerName.equals(destMarkerName))
-				destMarkerName = newDestMarkerName;
-
-			String newExitMarkerName = closestValidExit.markerName.get();
-			if (!newExitMarkerName.equals(exitMarkerName))
-				exitMarkerName = newExitMarkerName;
-		}
-		else {
-			destMapName = null;
-			destMarkerName = null;
-			exitMarkerName = null;
-		}
-
-		return queued;
 	}
 
 	public boolean isPlayInEditorMode()
@@ -3416,27 +3167,18 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		execute(batch);
 	}
 
-	private ShadingProfile findShadingProfile()
-	{
-		if (map.scripts.hasSpriteShading.get())
-			return map.scripts.shadingProfile.get();
-		else
-			return null;
-	}
-
-	public RenderingOptions getRenderingOptions()
+	public RenderingOptions gatherRenderingOptions()
 	{
 		RenderingOptions opts = new RenderingOptions();
 		opts.canvasSizeX = prevCanvasSize.width;
 		opts.canvasSizeY = prevCanvasSize.height;
 		opts.editorMode = getEditorMode();
 		opts.selectionMode = selectionManager.getSelectionMode();
-		opts.worldFogEnabled = map.scripts.worldFogSettings.enabled.get();
-		opts.entityFogEnabled = map.scripts.entityFogSettings.enabled.get();
-		opts.spriteShading = findShadingProfile();
+		opts.worldFogEnabled = map.features.worldFog.enabled.get();
+		opts.entityFogEnabled = map.features.entityFog.enabled.get();
+		opts.spriteShading = new RenderShadingProfile(map);
 		opts.modelSurfaceMode = SurfaceMode.TEXTURED;
 		opts.postProcessFX = postProcessFX;
-		opts.screenFade = screenFadeAmount;
 		opts.time = (float) time;
 
 		opts.useFiltering = useFiltering;
@@ -3486,7 +3228,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 		RenderState.setTime(time);
 		Renderer.updateColors(time);
-		RenderingOptions opts = getRenderingOptions();
+		RenderingOptions opts = gatherRenderingOptions();
 		prepareVertexBuffers(opts);
 
 		// viewports
@@ -3900,8 +3642,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	{
 		shapeOverride = null;
 
-		if (map.scripts.overrideShape.get()) {
-			String overrideName = map.scripts.shapeOverrideName.get();
+		if (map.features.overrideShape.get()) {
+			String overrideName = map.features.shapeOverrideName.get();
 			if (overrideName == null || overrideName.isBlank()) {
 				Logger.logError("Override name is missing or empty.");
 				return;
@@ -3921,8 +3663,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	{
 		hitOverride = null;
 
-		if (map.scripts.overrideHit.get()) {
-			String overrideName = map.scripts.hitOverrideName.get();
+		if (map.features.overrideHit.get()) {
+			String overrideName = map.features.hitOverrideName.get();
 			if (overrideName == null || overrideName.isBlank()) {
 				Logger.logError("Override name is missing or empty.");
 				return;
@@ -3976,12 +3718,6 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			map.initializeAllObjects();
 			map.loadVarNames();
 
-			ShadingProfile profile = map.scripts.shadingProfile.get();
-			if (map.scripts.hasSpriteShading.get() && profile != null) {
-				for (ShadingLightSource source : profile.sources)
-					addEditorObject(source);
-			}
-
 			if (!thumbnailMode) {
 				final Map guiMap = newMap;
 				SwingUtilities.invokeLater(() -> {
@@ -4017,8 +3753,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	public void action_SaveShading()
 	{
 		try {
-			SpriteShadingEditor.saveShadingProfiles(ProjectDatabase.SpriteShading);
-			ProjectDatabase.SpriteShading.modified = false;
+			if (!Environment.isDX())
+				SpriteShadingEditor.save(ProjectDatabase.SpriteShading);
 		}
 		catch (Exception e) {
 			displayStackTrace(e);
@@ -4512,7 +4248,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			this.mode = mode;
 
 			switch (mode) {
-				case Scripts:
+				case Options:
 					additionalCommands.addCommand(selectionManager.new SetSelectionMode(SelectionMode.OBJECT));
 					break;
 				case EditUVs:
@@ -4578,8 +4314,10 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				case Texture:
 					break;
 
-				case Scripts:
+				case Panners:
+					break;
 
+				case Options:
 					break;
 
 				case EditUVs: {
@@ -4641,7 +4379,10 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				case Texture:
 					break;
 
-				case Scripts:
+				case Panners:
+					break;
+
+				case Options:
 					break;
 
 				case EditUVs:

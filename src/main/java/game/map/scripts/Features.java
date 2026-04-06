@@ -8,39 +8,31 @@ import java.util.function.Consumer;
 
 import org.w3c.dom.Element;
 
+import app.Environment;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
 import game.ProjectDatabase;
 import game.map.JsonFeatures.JsonMap;
 import game.map.JsonFeatures.JsonTexturePanner;
+import game.map.Map;
 import game.map.editor.MapEditor;
 import game.map.editor.UpdateProvider;
-import game.map.editor.ui.ScriptManager;
-import game.map.editor.ui.SimpleEditableJTree;
-import game.map.scripts.generators.Generator;
-import game.map.scripts.generators.Generator.GeneratorType;
-import game.map.shading.ShadingProfile;
-import game.map.shading.SpriteShadingData;
+import game.map.shading.EditableShadingData.EditableShadingProfile;
 import game.map.shape.TexturePanner;
-import game.map.tree.CategoryTreeModel;
-import game.map.tree.CategoryTreeModel.CategoryTreeNode;
+import util.ColorUtils;
 import util.IterableListModel;
+import util.Logger;
 import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlSerializable;
 import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
 
-public class ScriptData extends UpdateProvider implements XmlSerializable
+public class Features extends UpdateProvider implements XmlSerializable
 {
+	private final Map map;
+
 	public final IterableListModel<TexturePanner> texPanners;
-	public final CategoryTreeModel<GeneratorType, Generator> generatorsTreeModel;
-
-	private static final String callbackBeforeEnterKey = "BeforeEnter";
-	private static final String callbackAfterEnterKey = "AfterEnter";
-
-	public EditableField<Boolean> addCallbackBeforeEnterMap;
-	public EditableField<Boolean> addCallbackAfterEnterMap;
 
 	public EditableField<Boolean> overrideShape;
 	public EditableField<Boolean> overrideHit;
@@ -48,10 +40,10 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 
 	public EditableField<String> shapeOverrideName;
 	public EditableField<String> hitOverrideName;
-	// tex override uses texName from map
+	public EditableField<String> texOverrideName;
 
-	public FogSettings worldFogSettings;
-	public FogSettings entityFogSettings;
+	public FogSettings worldFog;
+	public FogSettings entityFog;
 
 	public EditableField<Integer> camVfov;
 	public EditableField<Integer> camNearClip;
@@ -60,46 +52,45 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 	public EditableField<Integer> bgColorG;
 	public EditableField<Integer> bgColorB;
 
-	public EditableField<Boolean> hasMusic;
-	public EditableField<String> songName;
-	public EditableField<Boolean> hasAmbientSFX;
-	public EditableField<String> ambientSFX;
 	public EditableField<String> locationName;
 
 	public EditableField<Boolean> hasSpriteShading;
-	public transient EditableField<ShadingProfile> shadingProfile;
+	public EditableField<String> shadingProfileName;
+	public EditableField<Integer> shadingBaseColor;
+	public EditableField<Integer> shadingOffset;
+	public transient boolean hasValidShadingProfile;
 
-	public EditableField<Boolean> cameraLeadsPlayer;
-	public EditableField<Boolean> isDark;
+	public EditableField<Boolean> camLeadsPlayer;
 
 	public final Consumer<Object> notifyGeneral = (o) -> {
-		notifyListeners(ScriptManager.tag_General);
+		notifyListeners(OptionsPanel.TAG_GENERAL);
 	};
 
 	public final Consumer<Object> notifyCamera = (o) -> {
-		notifyListeners(ScriptManager.tag_Camera);
+		notifyListeners(OptionsPanel.TAG_CAMERA);
 	};
 
-	public ScriptData()
+	public final Consumer<Object> notifyShading = (o) -> {
+		notifyListeners(OptionsPanel.TAG_SHADING);
+	};
+
+	public Features(Map map)
 	{
-		worldFogSettings = new FogSettings(this);
-		entityFogSettings = new FogSettings(this);
+		this.map = map;
+
+		worldFog = new FogSettings(this);
+		entityFog = new FogSettings(this);
 
 		texPanners = new IterableListModel<>();
 		for (int i = 0; i < 16; i++)
 			texPanners.addElement(new TexturePanner(i));
-
-		generatorsTreeModel = new CategoryTreeModel<>("Generators");
-
-		for (GeneratorType type : GeneratorType.values())
-			generatorsTreeModel.addCategory(type);
 
 		overrideShape = EditableFieldFactory.create(false)
 			.setCallback((o) -> {
 				if (!MapEditor.exists() || MapEditor.instance().isLoading())
 					return;
 				MapEditor.instance().loadOverrides();
-				notifyListeners(ScriptManager.tag_General);
+				notifyListeners(OptionsPanel.TAG_GENERAL);
 			}).setName(new StandardBoolName("Geometry Override")).build();
 
 		overrideHit = EditableFieldFactory.create(false)
@@ -107,7 +98,7 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 				if (!MapEditor.exists() || MapEditor.instance().isLoading())
 					return;
 				MapEditor.instance().loadOverrides();
-				notifyListeners(ScriptManager.tag_General);
+				notifyListeners(OptionsPanel.TAG_GENERAL);
 			}).setName(new StandardBoolName("Collision Override")).build();
 
 		overrideTex = EditableFieldFactory.create(true)
@@ -118,7 +109,7 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 				if (!MapEditor.exists() || MapEditor.instance().isLoading())
 					return;
 				MapEditor.instance().loadOverrides();
-				notifyListeners(ScriptManager.tag_General);
+				notifyListeners(OptionsPanel.TAG_GENERAL);
 			}).setName("Set Shape Override Name").build();
 
 		hitOverrideName = EditableFieldFactory.create("")
@@ -126,7 +117,7 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 				if (!MapEditor.exists() || MapEditor.instance().isLoading())
 					return;
 				MapEditor.instance().loadOverrides();
-				notifyListeners(ScriptManager.tag_General);
+				notifyListeners(OptionsPanel.TAG_GENERAL);
 			}).setName("Set Hit Override Name").build();
 
 		camVfov = EditableFieldFactory.create(25)
@@ -147,20 +138,8 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 		bgColorB = EditableFieldFactory.create(0)
 			.setCallback(notifyCamera).setName("Set Background Blue").build();
 
-		cameraLeadsPlayer = EditableFieldFactory.create(false)
+		camLeadsPlayer = EditableFieldFactory.create(false)
 			.setCallback(notifyCamera).setName(new StandardBoolName("Player-Leading Camera")).build();
-
-		hasMusic = EditableFieldFactory.create(false)
-			.setCallback(notifyGeneral).setName(new StandardBoolName("Music")).build();
-
-		songName = EditableFieldFactory.create("SONG_PLEASANT_PATH")
-			.setCallback(notifyGeneral).setName("Set Background Music").build();
-
-		hasAmbientSFX = EditableFieldFactory.create(false)
-			.setCallback(notifyGeneral).setName(new StandardBoolName("Ambient Sounds")).build();
-
-		ambientSFX = EditableFieldFactory.create("AMBIENT_WIND")
-			.setCallback(notifyGeneral).setName("Set Ambient Sounds").build();
 
 		locationName = EditableFieldFactory.create("LOCATION_GOOMBA_ROAD")
 			.setCallback(notifyGeneral).setName("Set Location").build();
@@ -169,35 +148,17 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 			.setCallback((o) -> {
 				if (!MapEditor.exists() || MapEditor.instance().isLoading())
 					return;
-				notifyListeners(ScriptManager.tag_Shading);
+				notifyListeners(OptionsPanel.TAG_SHADING);
 			}).setName(new StandardBoolName("Set Shading")).build();
 
-		shadingProfile = EditableFieldFactory.create((ShadingProfile) null)
-			.setCallback((o) -> {
-				if (!MapEditor.exists() || MapEditor.instance().isLoading())
-					return;
-				notifyListeners(ScriptManager.tag_Shading);
-			}).setName("Set Sprite Shading").build();
+		shadingProfileName = EditableFieldFactory.create("")
+			.setCallback(notifyShading).setName("Set Shading Profile").build();
 
-		isDark = EditableFieldFactory.create(false)
-			.setCallback(notifyGeneral).setName(new StandardBoolName("Darkness")).build();
+		shadingBaseColor = EditableFieldFactory.create(0xB4B4B4)
+			.setCallback(notifyShading).setName("Set Color").build();
 
-		addCallbackBeforeEnterMap = EditableFieldFactory.create(false)
-			.setCallback(notifyGeneral).setName(new StandardBoolName("Before EnterMap Callback")).build();
-
-		addCallbackAfterEnterMap = EditableFieldFactory.create(false)
-			.setCallback(notifyGeneral).setName(new StandardBoolName("After EnterMap Callback")).build();
-	}
-
-	public void addGenerator(String cmdName, SimpleEditableJTree generatorsTree, Generator generator)
-	{
-		MapEditor.execute(generatorsTreeModel.new AddObject(cmdName, generatorsTree, generator.type, generator));
-	}
-
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public void removeGenerator(String cmdName, SimpleEditableJTree generatorsTree, CategoryTreeNode toRemoveNode)
-	{
-		MapEditor.execute(generatorsTreeModel.new RemoveObject(cmdName, generatorsTree, toRemoveNode));
+		shadingOffset = EditableFieldFactory.create(30)
+			.setCallback(notifyShading).setName("Set Intensity").build();
 	}
 
 	public void toJson(JsonMap out)
@@ -212,43 +173,32 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 		out.camVfov = camVfov.get();
 		out.camNearClip = camNearClip.get();
 		out.camFarClip = camFarClip.get();
+		out.camLeadsPlayer = camLeadsPlayer.get();
 
 		out.bgColor = new int[] { bgColorR.get(), bgColorG.get(), bgColorB.get() };
 
-		out.fogWorld = worldFogSettings.pack();
-		out.fogEntity = entityFogSettings.pack();
-
-		//FIXME
-		/*
-		out.hasMusic = hasMusic.get();
-		out.songName = songName.get();
-		out.hasAmbientSFX = hasAmbientSFX.get();
-		out.ambientSFX = ambientSFX.get();
-		*/
+		out.fogWorld = worldFog.pack();
+		out.fogEntity = entityFog.pack();
 
 		out.locationName = locationName.get();
 
-		out.shadingProfile = (shadingProfile.get() != null)
-			? shadingProfile.get().name.get()
-			: SpriteShadingData.NO_SHADING_NAME;
+		out.hasSpriteShading = hasSpriteShading.get();
 
-		//FIXME
-		/*
-		out.cameraLeadsPlayer = cameraLeadsPlayer.get();
-		out.isDark = isDark.get();
-		
-		out.callbackBeforeEnter = addCallbackBeforeEnterMap.get();
-		out.callbackAfterEnter = addCallbackAfterEnterMap.get();
-		*/
+		if (out.hasSpriteShading) {
+			if (Environment.isDX()) {
+				out.shadingOffset = shadingOffset.get();
+				out.shadingBaseColor = ColorUtils.unpack(shadingBaseColor.get());
+			}
+			else {
+				out.shadingProfile = shadingProfileName.get();
+			}
+		}
 
 		List<JsonTexturePanner> list = new ArrayList<>();
 		for (TexturePanner panner : texPanners) {
 			list.add(panner.toJson());
 		}
 		out.texPanners = list.toArray(new JsonTexturePanner[0]);
-
-		//TODO
-		Generator.writeJson(out, this);
 	}
 
 	public void fromJson(JsonMap in)
@@ -264,6 +214,8 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 		camNearClip.set(in.camNearClip);
 		camFarClip.set(in.camFarClip);
 
+		camLeadsPlayer.set(in.camLeadsPlayer);
+
 		if (in.bgColor != null && in.bgColor.length == 3) {
 			bgColorR.set(in.bgColor[0]);
 			bgColorG.set(in.bgColor[1]);
@@ -271,42 +223,31 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 		}
 
 		if (in.fogWorld != null && in.fogWorld.length == 7)
-			worldFogSettings.load(in.fogWorld);
+			worldFog.load(in.fogWorld);
 
 		if (in.fogEntity != null && in.fogEntity.length == 7)
-			entityFogSettings.load(in.fogEntity);
-
-		/*
-		hasMusic.set(in.hasMusic);
-		songName.set(in.songName != null ? in.songName : "");
-
-		hasAmbientSFX.set(in.hasAmbientSFX);
-		ambientSFX.set(in.ambientSFX != null ? in.ambientSFX : "");
+			entityFog.load(in.fogEntity);
 
 		locationName.set(in.locationName != null ? in.locationName : "");
-		*/
 
-		hasSpriteShading.set(in.shadingProfile != null);
-		if (in.shadingProfile != null && !in.shadingProfile.equals(SpriteShadingData.NO_SHADING_NAME))
-			shadingProfile.set(ProjectDatabase.SpriteShading.getShadingProfile(in.shadingProfile));
-		else
-			shadingProfile.set((ShadingProfile) null);
+		hasSpriteShading.set(in.hasSpriteShading);
 
-		/*
-		cameraLeadsPlayer.set(in.cameraLeadsPlayer);
-		isDark.set(in.isDark);
-
-		addCallbackBeforeEnterMap.set(in.callbackBeforeEnter);
-		addCallbackAfterEnterMap.set(in.callbackAfterEnter);
-		 */
+		if (in.hasSpriteShading) {
+			if (Environment.isDX()) {
+				shadingBaseColor.set(ColorUtils.pack(in.shadingBaseColor));
+				shadingOffset.set(in.shadingOffset);
+			}
+			else {
+				if (in.shadingProfile != null)
+					shadingProfileName.set(in.shadingProfile);
+			}
+		}
 
 		texPanners.clear();
 		if (in.texPanners != null) {
 			for (JsonTexturePanner json : in.texPanners)
 				texPanners.addElement(TexturePanner.fromJson(json));
 		}
-
-		Generator.readJson(in, this);
 	}
 
 	@Override
@@ -320,32 +261,8 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 
 		Element optionsElem = xmr.getUniqueTag(scriptElem, TAG_OPTIONS);
 		if (optionsElem != null) {
-			if (xmr.hasAttribute(optionsElem, ATTR_CALLBACKS)) {
-				for (String s : xmr.readStringList(optionsElem, ATTR_CALLBACKS)) {
-					if (s.equals(callbackBeforeEnterKey))
-						addCallbackBeforeEnterMap.set(true);
-					else if (s.equals(callbackAfterEnterKey))
-						addCallbackAfterEnterMap.set(true);
-				}
-			}
-
-			if (xmr.hasAttribute(optionsElem, ATTR_DARK))
-				isDark.set(xmr.readBoolean(optionsElem, ATTR_DARK));
-
 			if (xmr.hasAttribute(optionsElem, ATTR_CAM_LEADS))
-				cameraLeadsPlayer.set(xmr.readBoolean(optionsElem, ATTR_CAM_LEADS));
-
-			if (xmr.hasAttribute(optionsElem, ATTR_HAS_MUSIC))
-				hasMusic.set(xmr.readBoolean(optionsElem, ATTR_HAS_MUSIC));
-
-			if (xmr.hasAttribute(optionsElem, ATTR_SONG))
-				songName.set(xmr.getAttribute(optionsElem, ATTR_SONG));
-
-			if (xmr.hasAttribute(optionsElem, ATTR_HAS_SOUNDS))
-				hasAmbientSFX.set(xmr.readBoolean(optionsElem, ATTR_HAS_SOUNDS));
-
-			if (xmr.hasAttribute(optionsElem, ATTR_SOUNDS))
-				ambientSFX.set(xmr.getAttribute(optionsElem, ATTR_SOUNDS));
+				camLeadsPlayer.set(xmr.readBoolean(optionsElem, ATTR_CAM_LEADS));
 
 			if (xmr.hasAttribute(optionsElem, ATTR_LOCATION))
 				locationName.set(xmr.getAttribute(optionsElem, ATTR_LOCATION));
@@ -354,13 +271,22 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 				hasSpriteShading.set(xmr.readBoolean(optionsElem, ATTR_HAS_SHADING));
 
 			String shadingName = null;
-			if (xmr.hasAttribute(optionsElem, ATTR_SHADING_NAME))
+			if (xmr.hasAttribute(optionsElem, ATTR_SHADING_NAME)) {
 				shadingName = xmr.getAttribute(optionsElem, ATTR_SHADING_NAME);
+				if (!Environment.isDX()) {
+					shadingProfileName.set(shadingName);
 
-			if (shadingName != null && !shadingName.isEmpty() && !shadingName.equals(SpriteShadingData.NO_SHADING_NAME))
-				shadingProfile.set(ProjectDatabase.SpriteShading.getShadingProfile(shadingName));
-			else
-				shadingProfile.set((ShadingProfile) null);
+					EditableShadingProfile profile = ProjectDatabase.SpriteShading.find(shadingName);
+					if (profile == null) {
+						Logger.logError("Could not find shading profile: " + shadingName);
+						hasValidShadingProfile = false;
+					}
+					else {
+						map.loadShadingProfile(profile);
+						hasValidShadingProfile = true;
+					}
+				}
+			}
 		}
 
 		Element overrideElem = xmr.getUniqueTag(scriptElem, TAG_OVERRIDE);
@@ -398,20 +324,16 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 			}
 
 			if (xmr.hasAttribute(camElem, ATTR_CAM_LEADS))
-				cameraLeadsPlayer.set(xmr.readBoolean(camElem, ATTR_CAM_LEADS));
+				camLeadsPlayer.set(xmr.readBoolean(camElem, ATTR_CAM_LEADS));
 		}
 
 		Element fogElem = xmr.getUniqueTag(scriptElem, TAG_FOG);
 		if (fogElem != null) {
 			if (xmr.hasAttribute(fogElem, ATTR_FOG_WORLD))
-				worldFogSettings.load(xmr.readIntArray(fogElem, ATTR_FOG_WORLD, 7));
+				worldFog.load(xmr.readIntArray(fogElem, ATTR_FOG_WORLD, 7));
 			if (xmr.hasAttribute(fogElem, ATTR_FOG_ENTITY))
-				entityFogSettings.load(xmr.readIntArray(fogElem, ATTR_FOG_ENTITY, 7));
+				entityFog.load(xmr.readIntArray(fogElem, ATTR_FOG_ENTITY, 7));
 		}
-
-		Element generatorsElem = xmr.getUniqueTag(scriptElem, TAG_GEN_LIST);
-		if (generatorsElem != null)
-			Generator.readXml(xmr, generatorsElem, this);
 	}
 
 	@Override
@@ -423,57 +345,28 @@ public class ScriptData extends UpdateProvider implements XmlSerializable
 			panner.toXML(xmw);
 		xmw.closeTag(pannersTag);
 
-		XmlTag generatorsTag = xmw.createTag(TAG_GEN_LIST, false);
-		xmw.openTag(generatorsTag);
-
-		Generator.writeXml(xmw, this);
-
-		xmw.closeTag(generatorsTag);
-
 		XmlTag camTag = xmw.createTag(TAG_CAMERA, true);
 		xmw.addInt(camTag, ATTR_CAM_VFOV, camVfov.get());
 		xmw.addInt(camTag, ATTR_CAM_NEAR, camNearClip.get());
 		xmw.addInt(camTag, ATTR_CAM_FAR, camFarClip.get());
 		xmw.addIntArray(camTag, ATTR_CAM_BGCOL, bgColorR.get(), bgColorG.get(), bgColorB.get());
-		xmw.addBoolean(camTag, ATTR_CAM_LEADS, cameraLeadsPlayer.get());
+		xmw.addBoolean(camTag, ATTR_CAM_LEADS, camLeadsPlayer.get());
 		xmw.printTag(camTag);
 
 		XmlTag fogTag = xmw.createTag(TAG_FOG, true);
-		xmw.addIntArray(fogTag, ATTR_FOG_WORLD, worldFogSettings.pack());
-		xmw.addIntArray(fogTag, ATTR_FOG_ENTITY, entityFogSettings.pack());
+		xmw.addIntArray(fogTag, ATTR_FOG_WORLD, worldFog.pack());
+		xmw.addIntArray(fogTag, ATTR_FOG_ENTITY, entityFog.pack());
 		xmw.printTag(fogTag);
 
 		XmlTag optionsTag = xmw.createTag(TAG_OPTIONS, true);
 
-		List<String> callbacks = new ArrayList<>();
-		if (addCallbackBeforeEnterMap.get())
-			callbacks.add(callbackBeforeEnterKey);
-		if (addCallbackAfterEnterMap.get())
-			callbacks.add(callbackAfterEnterKey);
-
-		if (callbacks.size() > 0)
-			xmw.addStringList(optionsTag, ATTR_CALLBACKS, callbacks);
-
 		xmw.addAttribute(optionsTag, ATTR_LOCATION, locationName.get());
 
-		xmw.addBoolean(optionsTag, ATTR_HAS_MUSIC, hasMusic.get());
-		if (hasMusic.get() && songName.get() != null && !songName.get().isEmpty())
-			xmw.addAttribute(optionsTag, ATTR_SONG, songName.get());
-
-		xmw.addBoolean(optionsTag, ATTR_HAS_SOUNDS, hasAmbientSFX.get());
-		xmw.addAttribute(optionsTag, ATTR_SOUNDS, ambientSFX.get());
-
 		xmw.addBoolean(optionsTag, ATTR_HAS_SHADING, hasSpriteShading.get());
-		String shadingName;
-		if (shadingProfile != null && shadingProfile.get() != null)
-			shadingName = shadingProfile.get().name.get();
-		else
-			shadingName = SpriteShadingData.NO_SHADING_NAME;
+		String shadingName = shadingProfileName.get();
 		if (shadingName != null && !shadingName.isEmpty())
 			xmw.addAttribute(optionsTag, ATTR_SHADING_NAME, shadingName);
 
-		if (isDark.get())
-			xmw.addBoolean(optionsTag, ATTR_DARK, true);
 		xmw.printTag(optionsTag);
 
 		if (overrideShape.get() || overrideHit.get() || overrideTex.get()) {

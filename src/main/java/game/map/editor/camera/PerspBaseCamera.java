@@ -3,7 +3,7 @@ package game.map.editor.camera;
 import common.Vector3f;
 import game.map.Axis;
 import game.map.editor.render.TextureManager;
-import game.map.scripts.ScriptData;
+import game.map.scripts.Features;
 import game.map.shape.TransformMatrix;
 import renderer.shaders.RenderState;
 import renderer.shaders.RenderState.PolygonMode;
@@ -102,11 +102,11 @@ public abstract class PerspBaseCamera extends MapEditCamera
 		float currentZfar = FAR_CLIP;
 
 		if (editor.usingInGameCameraProperties()) {
-			ScriptData scriptData = editor.map.scripts;
+			Features features = editor.map.features;
 			currentAspectRatio = 298.0f / 200.0f;
-			currentVfov = scriptData.camVfov.get();
-			currentZnear = scriptData.camNearClip.get();
-			currentZfar = scriptData.camFarClip.get();
+			currentVfov = features.camVfov.get();
+			currentZnear = features.camNearClip.get();
+			currentZfar = features.camFarClip.get();
 		}
 
 		projMatrix.perspective(currentVfov, currentAspectRatio, currentZnear, currentZfar);

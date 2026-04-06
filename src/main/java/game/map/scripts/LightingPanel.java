@@ -33,9 +33,7 @@ import util.ui.IntVectorPanel;
 import util.ui.ListAdapterComboboxModel;
 import util.ui.NameTextField;
 
-/**
- * Singleton JPanel for dipsplaying model lighting data.
- */
+@Deprecated
 public class LightingPanel extends JPanel implements IShutdownListener
 {
 	private LightSet lightSet;
@@ -74,7 +72,7 @@ public class LightingPanel extends JPanel implements IShutdownListener
 			MapEditor.execute(new SetLightingName(lightSet, newValue));
 		});
 
-		colorPanel = new IntVectorPanel(3, (index, newValue) -> {
+		colorPanel = new IntVectorPanel(false, 3, (index, newValue) -> {
 			if (ignoreChanges)
 				return;
 			MapEditor.execute(new SetAmbientChannel(lightSet, index, newValue));

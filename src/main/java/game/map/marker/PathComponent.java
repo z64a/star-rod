@@ -47,7 +47,7 @@ public class PathComponent extends BaseMarkerComponent
 	public PathComponent(Marker marker)
 	{
 		super(marker);
-		path = new PathData(marker, MarkerInfoPanel.tag_GeneralTab);
+		path = new PathData(marker, MarkerInfoPanel.TAG_GENERAL);
 	}
 
 	@Override

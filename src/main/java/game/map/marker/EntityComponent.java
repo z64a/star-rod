@@ -53,7 +53,7 @@ import util.xml.XmlWrapper.XmlWriter;
 public class EntityComponent extends BaseMarkerComponent
 {
 	private final Consumer<Object> notifyCallback = (o) -> {
-		parentMarker.updateListeners(MarkerInfoPanel.tag_EntityTab);
+		parentMarker.updateListeners(MarkerInfoPanel.TAG_ENTITY);
 	};
 
 	public EntityComponent(Marker parent)

@@ -22,11 +22,13 @@ import org.apache.commons.io.FilenameUtils;
 import org.w3c.dom.Element;
 
 import app.Directories;
+import app.Environment;
 import app.SwingUtils;
 import app.input.IOUtils;
 import assets.AssetManager;
 import common.commands.AbstractCommand;
 import common.commands.CommandBatch;
+import game.ProjectDatabase;
 import game.map.JsonFeatures.JsonMap;
 import game.map.JsonFeatures.JsonMarker;
 import game.map.MapObject.MapObjectType;
@@ -34,6 +36,7 @@ import game.map.editor.EditorObject;
 import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.MapEditorMetadata;
 import game.map.editor.commands.CreateObjects;
+import game.map.editor.commands.DeleteObjects;
 import game.map.editor.render.TextureManager;
 import game.map.editor.selection.PickRay;
 import game.map.editor.selection.PickRay.PickHit;
@@ -49,8 +52,10 @@ import game.map.mesh.AbstractMesh;
 import game.map.mesh.TexturedMesh;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
+import game.map.scripts.Features;
 import game.map.scripts.LightingPanel;
-import game.map.scripts.ScriptData;
+import game.map.shading.EditableShadingData.EditableShadingLight;
+import game.map.shading.EditableShadingData.EditableShadingProfile;
 import game.map.shape.LightSet;
 import game.map.shape.LightSet.LightSetDigest;
 import game.map.shape.Model;
@@ -61,6 +66,7 @@ import game.map.tree.MapObjectTreeModel;
 import game.map.tree.MarkerTreeModel;
 import game.map.tree.ModelTreeModel;
 import game.map.tree.ZoneTreeModel;
+import util.ColorUtils;
 import util.IterableListModel;
 import util.Logger;
 import util.identity.IdentityHashSet;
@@ -85,7 +91,7 @@ public class Map implements XmlSerializable
 	public MapObjectTreeModel<Zone> zoneTree;
 	public MapObjectTreeModel<Marker> markerTree;
 
-	public ScriptData scripts;
+	public Features features;
 
 	public IterableListModel<LightSet> lightSets;
 
@@ -115,8 +121,6 @@ public class Map implements XmlSerializable
 	public transient Queue<String> d_zoneNames;
 
 	// used by the editor for bookkeeping
-	//	public transient File source;
-	//	public transient File saveFile;
 	public transient boolean modified = false;
 	public transient BufferedImage bgImage = null;
 	public transient int glBackgroundTexID = -1;
@@ -173,11 +177,11 @@ public class Map implements XmlSerializable
 			for (Model mdl : modelTree.getList())
 				mdl.lights.set(lightSets.get(mdl.lightsIndex));
 
-			scripts = new ScriptData();
+			features = new Features(this);
 
 			Element scriptsElem = xmr.getUniqueTag(mapElem, TAG_SCRIPT_DATA);
 			if (scriptsElem != null)
-				scripts.fromXML(xmr, scriptsElem);
+				features.fromXML(xmr, scriptsElem);
 		}
 
 		Element editorElem = xmr.getUniqueTag(mapElem, TAG_EDITOR);
@@ -293,7 +297,7 @@ public class Map implements XmlSerializable
 
 			XmlTag scriptsTag = xmw.createTag(TAG_SCRIPT_DATA, false);
 			xmw.openTag(scriptsTag);
-			scripts.toXML(xmw);
+			features.toXML(xmw);
 			xmw.closeTag(scriptsTag);
 		}
 
@@ -320,7 +324,7 @@ public class Map implements XmlSerializable
 		lightSets.addElement(LightSet.createEmptySet());
 		modelTree.getRoot().getUserObject().lights.set(lightSets.get(0));
 
-		scripts = new ScriptData();
+		features = new Features(this);
 	}
 
 	private void setName(String name)
@@ -775,9 +779,60 @@ public class Map implements XmlSerializable
 			}
 			catch (IOException e) {
 				Logger.printStackTrace(e);
-				Logger.log("Could not read map variables from " + areaHeaderName);
+				Logger.log("Could not read map variables from " + mapHeaderName);
 			}
 		}
+	}
+
+	public void loadShadingProfile(EditableShadingProfile profile)
+	{
+		assert (!Environment.isDX());
+
+		features.shadingBaseColor.set(ColorUtils.pack(profile.ambient));
+		features.shadingOffset.set(profile.power);
+
+		int i = 1;
+		for (EditableShadingLight light : profile.lights) {
+			Marker m = new Marker("Light " + i, MarkerType.Light, light.pos[0], light.pos[1], light.pos[2], 0);
+			m.lightComponent.color.set(ColorUtils.pack(light.rgb));
+			m.lightComponent.falloffType = light.falloffType;
+			m.lightComponent.setByCoeff(light.falloff);
+			m.lightComponent.enabled.set(light.enabled);
+			markerTree.create(m);
+			i++;
+		}
+	}
+
+	public void changeShadingProfile(EditableShadingProfile profile)
+	{
+		assert (!Environment.isDX());
+
+		List<Marker> lights = new ArrayList<>();
+
+		int i = 1;
+		for (EditableShadingLight light : profile.lights) {
+			Marker m = new Marker("Light " + i, MarkerType.Light, light.pos[0], light.pos[1], light.pos[2], 0);
+			m.lightComponent.color.set(ColorUtils.pack(light.rgb));
+			m.lightComponent.falloffType = light.falloffType;
+			m.lightComponent.setByCoeff(light.falloff);
+			m.lightComponent.enabled.set(light.enabled);
+			lights.add(m);
+			i++;
+		}
+
+		List<Marker> toDelete = new ArrayList<>();
+		for (Marker m : markerTree) {
+			if (m.type == MarkerType.Light) {
+				toDelete.add(m);
+			}
+		}
+
+		CommandBatch batch = new CommandBatch("Load Lights");
+		batch.addCommand(features.shadingBaseColor.mutator(ColorUtils.pack(profile.ambient)));
+		batch.addCommand(features.shadingOffset.mutator(profile.power));
+		batch.addCommand(new DeleteObjects(toDelete));
+		batch.addCommand(new CreateObjects(lights));
+		MapEditor.execute(batch);
 	}
 
 	public static void validateObjectData(Map map)
@@ -1590,8 +1645,8 @@ public class Map implements XmlSerializable
 		try {
 			JsonMap in = JsonFeatures.fromJson(featuresJson);
 
-			scripts = new ScriptData();
-			scripts.fromJson(in);
+			features = new Features(this);
+			features.fromJson(in);
 
 			HashMap<Integer, Marker> idMap = new HashMap<>();
 
@@ -1610,46 +1665,46 @@ public class Map implements XmlSerializable
 				markerTree.create(m);
 			}
 
+			if (!Environment.isDX() && in.hasSpriteShading && in.shadingProfile != null) {
+				EditableShadingProfile profile = ProjectDatabase.SpriteShading.find(in.shadingProfile);
+				if (profile == null) {
+					Logger.logError("Could not find shading profile: " + in.shadingProfile);
+					features.hasValidShadingProfile = false;
+				}
+				else {
+					loadShadingProfile(profile);
+					features.hasValidShadingProfile = true;
+				}
+			}
+
 			loadedJson = true;
 		}
-		catch (IOException e) {
+		catch (
+
+		IOException e) {
 			Logger.logError(e.getMessage());
 		}
 	}
 
 	private void saveFeatures() throws IOException
 	{
-		//FIXME -- remove
-		/*
-		File genHeader = new File(projDir, "generated.h");
-		FileUtils.touch(genHeader);
-
-		try (PrintWriter pw = IOUtils.getBufferedPrintWriter(genHeader)) {
-			pw.println("#include \"star_rod_macros.h\"");
-			pw.println();
-
-			MapPropertiesExtractor.print(pw, this);
-			EntryListExtractor.print(pw, markerTree); //done
-			TexPannerExtractor.print(pw, this); // done
-
-			for (Marker m : markerTree) {
-				HeaderEntry h = m.getHeaderEntry();
-				if (h != null)
-					h.print(pw);
-			}
-		}
-		 */
-
 		File featuresJson = new File(projDir, "features.json");
 		FileUtils.touch(featuresJson);
 
 		JsonMap out = new JsonMap();
-		scripts.toJson(out);
+		features.toJson(out);
 
 		List<JsonMarker> jsonMarkers = new ArrayList<>();
 		for (Marker m : markerTree.asBreadthFirst()) {
-			if (m.type != MarkerType.Root)
-				jsonMarkers.add(m.toJson());
+			// do not emit root marker
+			if (m.type == MarkerType.Root)
+				continue;
+
+			// do not emit lights when used with pmret
+			if (!Environment.isDX() && m.type == MarkerType.Light)
+				continue;
+
+			jsonMarkers.add(m.toJson());
 		}
 		out.markers = jsonMarkers.toArray(new JsonMarker[0]);
 

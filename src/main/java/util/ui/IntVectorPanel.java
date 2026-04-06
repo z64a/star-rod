@@ -12,12 +12,12 @@ public class IntVectorPanel extends JPanel
 {
 	private IntTextField[] fields;
 
-	public IntVectorPanel(int dimension, BiConsumer<Integer, Integer> listener)
+	public IntVectorPanel(boolean hasPadding, int dimension, BiConsumer<Integer, Integer> listener)
 	{
-		this(dimension, SwingConstants.CENTER, listener);
+		this(hasPadding, dimension, SwingConstants.CENTER, listener);
 	}
 
-	public IntVectorPanel(int dimension, int alignment, BiConsumer<Integer, Integer> listener)
+	public IntVectorPanel(boolean hasPadding, int dimension, int alignment, BiConsumer<Integer, Integer> listener)
 	{
 		fields = new IntTextField[dimension];
 
@@ -27,11 +27,14 @@ public class IntVectorPanel extends JPanel
 			final int index = i;
 			fields[i] = new IntTextField((newValue) -> listener.accept(index, newValue));
 			fields[i].setHorizontalAlignment(alignment);
+			if (hasPadding)
+				SwingUtils.addVerticalBorderPadding(fields[i]);
+
 			add(fields[i], "growx, sg vec");
 		}
 	}
 
-	public void addBorderPaddings()
+	private void addBorderPaddings()
 	{
 		for (IntTextField field : fields)
 			SwingUtils.addVerticalBorderPadding(field);

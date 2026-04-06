@@ -8,8 +8,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import app.Directories;
+import app.Environment;
 import app.input.IOUtils;
-import game.map.shading.SpriteShadingData;
+import game.map.shading.EditableShadingData;
 import game.map.shading.SpriteShadingEditor;
 import util.CaseInsensitiveMap;
 
@@ -24,14 +25,12 @@ public class ProjectDatabase
 	public static DecompEnum EDoorSwings;
 	public static DecompEnum EItemSpawnModes;
 
-	public static DecompEnum ESongs;
-	public static DecompEnum EAmbientSounds;
 	public static DecompEnum EMoveType;
 	public static DecompEnum EBattleMessages;
 	public static DecompEnum TargetFlags;
 	public static DecompEnum ItemTypeFlags;
 
-	public static SpriteShadingData SpriteShading;
+	public static EditableShadingData SpriteShading;
 
 	private static List<SimpleItem> items;
 	private static List<String> savedFlags;
@@ -65,14 +64,12 @@ public class ProjectDatabase
 		ItemTypeFlags = decompEnums.get("ItemTypeFlags");
 		TargetFlags = decompEnums.get("TargetFlags");
 
-		ESongs = decompEnums.get("SongIDs");
-		EAmbientSounds = decompEnums.get("AmbientSounds");
-
 		EDoorSounds = decompEnums.get("DoorSounds");
 		EDoorSwings = decompEnums.get("DoorSwing");
 		EItemSpawnModes = decompEnums.get("ItemSpawnModes");
 
-		SpriteShading = SpriteShadingEditor.loadData();
+		if (!Environment.isDX())
+			SpriteShading = SpriteShadingEditor.load();
 
 		items = SimpleItem.readAll();
 

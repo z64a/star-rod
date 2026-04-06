@@ -13,12 +13,12 @@ import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.IShutdownListener;
 import game.map.editor.ui.BoundObjectPanel;
 import game.map.editor.ui.LabelWithTip;
-import game.map.editor.ui.ScriptManager;
 import game.map.marker.Marker.MarkerType;
 import game.map.scripts.generators.Entrance.EntranceType;
 import net.miginfocom.swing.MigLayout;
 import util.ui.StringField;
 
+@Deprecated
 public class EntranceInfoPanel extends JPanel implements IShutdownListener
 {
 	private static EntranceInfoPanel instance = null;
@@ -66,12 +66,11 @@ public class EntranceInfoPanel extends JPanel implements IShutdownListener
 
 	private EntranceInfoPanel()
 	{
-		nameField = new StringField((s) -> {
+		nameField = new StringField(SwingConstants.LEFT, (s) -> {
 			if (ignoreChanges || selectedEntrance == null)
 				return;
 			MapEditor.execute(selectedEntrance.overrideName.mutator(s));
 		});
-		nameField.setHorizontalAlignment(SwingConstants.LEFT);
 
 		cbHasCallback = new JCheckBox(" Add callback before using entrance");
 		cbHasCallback.addActionListener((e) -> {
@@ -229,8 +228,6 @@ public class EntranceInfoPanel extends JPanel implements IShutdownListener
 
 			ignoreChanges = false;
 		}
-
-		ScriptManager.instance().updateGeneratorTree();
 	}
 
 	public void setEntrance(Entrance entrance)

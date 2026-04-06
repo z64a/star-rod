@@ -55,16 +55,16 @@ import util.xml.XmlWrapper.XmlWriter;
 public class NpcComponent extends BaseMarkerComponent
 {
 	private final Consumer<Object> notifySpriteChange = (o) -> {
-		parentMarker.updateListeners(MarkerInfoPanel.tag_SetSprite);
+		parentMarker.updateListeners(MarkerInfoPanel.TAG_SPRITE);
 		parentMarker.npcComponent.needsReloading = true;
 	};
 
 	private final Consumer<Object> notifyAnimation = (o) -> {
-		parentMarker.updateListeners(MarkerInfoPanel.tag_SetSprite);
+		parentMarker.updateListeners(MarkerInfoPanel.TAG_SPRITE);
 	};
 
 	private final Consumer<Object> notifyMovement = (o) -> {
-		parentMarker.updateListeners(MarkerInfoPanel.tag_NPCMovementTab);
+		parentMarker.updateListeners(MarkerInfoPanel.TAG_TERRITORY);
 	};
 
 	public static enum MoveType
@@ -166,7 +166,7 @@ public class NpcComponent extends BaseMarkerComponent
 		wanderCenter = new SelectablePoint(wanderPoint, 2.0f);
 		detectCenter = new SelectablePoint(detectPoint, 2.0f);
 
-		patrolPath = new PathData(marker, MarkerInfoPanel.tag_NPCMovementTab, MAX_PATROL_PATH_POINTS);
+		patrolPath = new PathData(marker, MarkerInfoPanel.TAG_TERRITORY, MAX_PATROL_PATH_POINTS);
 	}
 
 	@Override
@@ -812,7 +812,7 @@ public class NpcComponent extends BaseMarkerComponent
 			previewSprite.loadTextures();
 		}
 
-		parentMarker.updateListeners(MarkerInfoPanel.tag_SetSprite);
+		parentMarker.updateListeners(MarkerInfoPanel.TAG_SPRITE);
 	}
 
 	public static final class SetWanderPos extends SetPointCoord
@@ -829,14 +829,14 @@ public class NpcComponent extends BaseMarkerComponent
 		public void exec()
 		{
 			super.exec();
-			m.updateListeners(MarkerInfoPanel.tag_NPCMovementTab);
+			m.updateListeners(MarkerInfoPanel.TAG_TERRITORY);
 		}
 
 		@Override
 		public void undo()
 		{
 			super.undo();
-			m.updateListeners(MarkerInfoPanel.tag_NPCMovementTab);
+			m.updateListeners(MarkerInfoPanel.TAG_TERRITORY);
 		}
 	}
 
@@ -854,14 +854,14 @@ public class NpcComponent extends BaseMarkerComponent
 		public void exec()
 		{
 			super.exec();
-			m.updateListeners(MarkerInfoPanel.tag_NPCMovementTab);
+			m.updateListeners(MarkerInfoPanel.TAG_TERRITORY);
 		}
 
 		@Override
 		public void undo()
 		{
 			super.undo();
-			m.updateListeners(MarkerInfoPanel.tag_NPCMovementTab);
+			m.updateListeners(MarkerInfoPanel.TAG_TERRITORY);
 		}
 	}
 
