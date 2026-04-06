@@ -13,6 +13,7 @@ import app.input.IOUtils;
 import game.map.shading.EditableShadingData;
 import game.map.shading.SpriteShadingEditor;
 import util.CaseInsensitiveMap;
+import util.Logger;
 
 public class ProjectDatabase
 {
@@ -74,6 +75,20 @@ public class ProjectDatabase
 		items = SimpleItem.readAll();
 
 		initialized = true;
+	}
+
+	public static boolean hasModifiedShadingData()
+	{
+		if (Environment.isDX() || SpriteShading == null)
+			return false;
+		try {
+			EditableShadingData onDisk = SpriteShadingEditor.load();
+			return onDisk == null || !SpriteShading.deepEquals(onDisk);
+		}
+		catch (Exception e) {
+			Logger.log("Error while checking sprite shading data: " + e.getMessage());
+			return false;
+		}
 	}
 
 	public static List<String> getSavedFlagNames()

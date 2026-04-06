@@ -232,7 +232,13 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			{
 				openDialogCount.increment();
 
-				boolean shadeOK = Environment.isDX() || !ProjectDatabase.SpriteShading.isModified() || promptSaveShading();
+				boolean shadeDirty = false;
+				if (!Environment.isDX()) {
+					editor.map.syncCurrentShadingToProfile();
+					shadeDirty = ProjectDatabase.hasModifiedShadingData();
+				}
+
+				boolean shadeOK = !shadeDirty || promptSaveShading();
 				boolean mapOK = !editor.map.modified || promptSaveMap();
 
 				closeRequested = (shadeOK && mapOK);

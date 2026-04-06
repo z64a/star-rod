@@ -3753,8 +3753,10 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	public void action_SaveShading()
 	{
 		try {
-			if (!Environment.isDX())
+			if (!Environment.isDX()) {
+				map.syncCurrentShadingToProfile();
 				SpriteShadingEditor.save(ProjectDatabase.SpriteShading);
+			}
 		}
 		catch (Exception e) {
 			displayStackTrace(e);

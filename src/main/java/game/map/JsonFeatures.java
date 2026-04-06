@@ -21,14 +21,14 @@ public abstract class JsonFeatures
 {
 	private static final Gson MAP_GSON = new GsonBuilder().setPrettyPrinting().create();
 
-	public static void toJson(JsonMap out, File file) throws IOException
+	public static void writeJson(JsonMap out, File file) throws IOException
 	{
 		try (Writer writer = new FileWriter(file)) {
 			MAP_GSON.toJson(out, writer);
 		}
 	}
 
-	public static JsonMap fromJson(File file) throws IOException
+	public static JsonMap readJson(File file) throws IOException
 	{
 		try (JsonReader reader = new JsonReader(new BufferedReader(new FileReader(file)))) {
 			return MAP_GSON.fromJson(reader, JsonMap.class);

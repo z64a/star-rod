@@ -24,14 +24,14 @@ public class SpriteShadingEditor
 {
 	private static final Gson SHADING_GSON = new GsonBuilder().setPrettyPrinting().create();
 
-	private static void toJson(JsonShadingGroup[] groups, File file) throws IOException
+	private static void writeJson(JsonShadingGroup[] groups, File file) throws IOException
 	{
 		try (Writer writer = new FileWriter(file)) {
 			SHADING_GSON.toJson(groups, writer);
 		}
 	}
 
-	private static JsonShadingGroup[] fromJson(File file) throws IOException
+	private static JsonShadingGroup[] readJson(File file) throws IOException
 	{
 		try (JsonReader jsonReader = new JsonReader(new BufferedReader(new FileReader(file)))) {
 			return SHADING_GSON.fromJson(jsonReader, JsonShadingGroup[].class);
@@ -72,7 +72,7 @@ public class SpriteShadingEditor
 		EditableShadingData profileData = null;
 
 		try {
-			JsonShadingGroup[] groups = fromJson(ah);
+			JsonShadingGroup[] groups = readJson(ah);
 			profileData = new EditableShadingData(groups);
 			Logger.logf("Loaded shading profiles.");
 		}
@@ -92,6 +92,6 @@ public class SpriteShadingEditor
 			throw new StarRodException("Could not find sprite shading definitions!");
 
 		JsonShadingGroup[] groups = spriteShading.toJson();
-		toJson(groups, ah);
+		writeJson(groups, ah);
 	}
 }

@@ -796,7 +796,7 @@ public class Map implements XmlSerializable
 			Marker m = new Marker("Light " + i, MarkerType.Light, light.pos[0], light.pos[1], light.pos[2], 0);
 			m.lightComponent.color.set(ColorUtils.pack(light.rgb));
 			m.lightComponent.falloffType = light.falloffType;
-			m.lightComponent.setByCoeff(light.falloff);
+			m.lightComponent.setByCoeff(light.falloffCoeff);
 			m.lightComponent.enabled.set(light.enabled);
 			markerTree.create(m);
 			i++;
@@ -814,7 +814,7 @@ public class Map implements XmlSerializable
 			Marker m = new Marker("Light " + i, MarkerType.Light, light.pos[0], light.pos[1], light.pos[2], 0);
 			m.lightComponent.color.set(ColorUtils.pack(light.rgb));
 			m.lightComponent.falloffType = light.falloffType;
-			m.lightComponent.setByCoeff(light.falloff);
+			m.lightComponent.setByCoeff(light.falloffCoeff);
 			m.lightComponent.enabled.set(light.enabled);
 			lights.add(m);
 			i++;
@@ -828,11 +828,53 @@ public class Map implements XmlSerializable
 		}
 
 		CommandBatch batch = new CommandBatch("Load Lights");
+		batch.addCommand(features.shadingProfileName.mutator(profile.name));
 		batch.addCommand(features.shadingBaseColor.mutator(ColorUtils.pack(profile.ambient)));
 		batch.addCommand(features.shadingOffset.mutator(profile.power));
 		batch.addCommand(new DeleteObjects(toDelete));
 		batch.addCommand(new CreateObjects(lights));
 		MapEditor.execute(batch);
+
+		// don't allow changes
+		MapEditor.instance().flushUndoRedo();
+	}
+
+	public EditableShadingProfile captureCurrentShadingProfile(String profileName)
+	{
+		assert (!Environment.isDX());
+
+		EditableShadingProfile profile = new EditableShadingProfile();
+		profile.name = profileName;
+		profile.ambient = ColorUtils.unpack(features.shadingBaseColor.get());
+		profile.power = features.shadingOffset.get();
+
+		for (Marker marker : markerTree) {
+			if (marker.type != MarkerType.Light)
+				continue;
+
+			EditableShadingLight light = new EditableShadingLight();
+			light.rgb = ColorUtils.unpack(marker.lightComponent.color.get());
+			light.pos = new int[] {
+					Math.round(marker.position.getX()),
+					Math.round(marker.position.getY()),
+					Math.round(marker.position.getZ())
+			};
+			light.falloffCoeff = marker.lightComponent.falloffCoeff;
+			light.falloffType = marker.lightComponent.falloffType;
+			light.enabled = marker.lightComponent.enabled.get();
+			profile.lights.add(light);
+		}
+
+		return profile;
+	}
+
+	public void syncCurrentShadingToProfile()
+	{
+		assert (!Environment.isDX());
+
+		String profileName = features.shadingProfileName.get();
+		EditableShadingProfile snapshot = captureCurrentShadingProfile(profileName);
+		ProjectDatabase.SpriteShading.update(profileName, snapshot);
 	}
 
 	public static void validateObjectData(Map map)
@@ -1643,7 +1685,7 @@ public class Map implements XmlSerializable
 			return;
 
 		try {
-			JsonMap in = JsonFeatures.fromJson(featuresJson);
+			JsonMap in = JsonFeatures.readJson(featuresJson);
 
 			features = new Features(this);
 			features.fromJson(in);
@@ -1708,6 +1750,6 @@ public class Map implements XmlSerializable
 		}
 		out.markers = jsonMarkers.toArray(new JsonMarker[0]);
 
-		JsonFeatures.toJson(out, featuresJson);
+		JsonFeatures.writeJson(out, featuresJson);
 	}
 }

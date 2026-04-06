@@ -1,21 +1,23 @@
 package game.map.shading;
 
-import java.awt.BorderLayout;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
 import java.util.Objects;
 
-import javax.swing.BorderFactory;
+import javax.swing.DropMode;
 import javax.swing.JButton;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTree;
-import javax.swing.event.TreeSelectionEvent;
+import javax.swing.TransferHandler;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 
 import game.map.shading.EditableShadingData.EditableShadingGroup;
 import game.map.shading.EditableShadingData.EditableShadingProfile;
+import net.miginfocom.swing.MigLayout;
 
 public class ShadingTreePanel extends JPanel
 {
@@ -54,7 +56,7 @@ public class ShadingTreePanel extends JPanel
 	private final JButton deleteButton;
 	private final JButton duplicateButton;
 
-	private ShadingTreePanel(EditableShadingData data)
+	public ShadingTreePanel(EditableShadingData data)
 	{
 		this.data = data;
 
@@ -66,46 +68,28 @@ public class ShadingTreePanel extends JPanel
 		deleteButton = new JButton("Delete");
 		duplicateButton = new JButton("Duplicate");
 
-		build();
-		bindEvents();
+		tree.addTreeSelectionListener(e -> refreshButtons());
+
+		createButton.addActionListener(e -> doCreate());
+		deleteButton.addActionListener(e -> doDelete());
+		duplicateButton.addActionListener(e -> doDuplicate());
+
 		refreshButtons();
-
-		//FIXME
-		//	setMinimumSize(new Dimension(460, 420));
-		//	setPreferredSize(new Dimension(560, 520));
-	}
-
-	private void build()
-	{
-		setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
 		tree.setRootVisible(true);
 		tree.setShowsRootHandles(true);
 		tree.expandRow(0);
 		tree.setSelectionRow(0);
+		tree.setDragEnabled(true);
+		tree.setDropMode(DropMode.ON_OR_INSERT);
+		tree.setTransferHandler(new TreeNodeReorderTransferHandler());
 
-		add(new JScrollPane(tree), BorderLayout.CENTER);
+		setLayout(new MigLayout("fill, ins 8"));
+		add(new JScrollPane(tree), "grow, wrap");
 
-		JPanel buttonPanel = new JPanel();
-		buttonPanel.add(createButton);
-		buttonPanel.add(deleteButton);
-		buttonPanel.add(duplicateButton);
-
-		add(buttonPanel, BorderLayout.SOUTH);
-	}
-
-	private void bindEvents()
-	{
-		tree.addTreeSelectionListener(this::onTreeSelectionChanged);
-
-		createButton.addActionListener(e -> doCreate());
-		deleteButton.addActionListener(e -> doDelete());
-		duplicateButton.addActionListener(e -> doDuplicate());
-	}
-
-	private void onTreeSelectionChanged(TreeSelectionEvent e)
-	{
-		refreshButtons();
+		add(createButton, "growx, sg but, split 3");
+		add(deleteButton, "growx, sg but");
+		add(duplicateButton, "growx, sg but");
 	}
 
 	private void refreshButtons()
@@ -135,10 +119,8 @@ public class ShadingTreePanel extends JPanel
 			TreePath path = new TreePath(newGroupNode.getPath());
 			tree.scrollPathToVisible(path);
 			tree.setSelectionPath(path);
-			return;
 		}
-
-		if (obj instanceof EditableShadingGroup selectedGroup) {
+		else if (obj instanceof EditableShadingGroup selectedGroup) {
 			EditableShadingProfile newProfile = createDefaultProfile(selectedGroup);
 			selectedGroup.profiles.add(newProfile);
 
@@ -180,10 +162,8 @@ public class ShadingTreePanel extends JPanel
 
 			TreePath path = new TreePath(parent.getPath());
 			tree.setSelectionPath(path);
-			return;
 		}
-
-		if (obj instanceof EditableShadingProfile selectedProfile) {
+		else if (obj instanceof EditableShadingProfile selectedProfile) {
 			DefaultMutableTreeNode parentNode = (DefaultMutableTreeNode) selectedNode.getParent();
 			Object parentObj = parentNode.getUserObject();
 
@@ -231,10 +211,8 @@ public class ShadingTreePanel extends JPanel
 			TreePath path = new TreePath(copyNode.getPath());
 			tree.scrollPathToVisible(path);
 			tree.setSelectionPath(path);
-			return;
 		}
-
-		if (obj instanceof EditableShadingProfile selectedProfile) {
+		else if (obj instanceof EditableShadingProfile selectedProfile) {
 			DefaultMutableTreeNode parentNode = (DefaultMutableTreeNode) selectedNode.getParent();
 			Object parentObj = parentNode.getUserObject();
 
@@ -252,6 +230,134 @@ public class ShadingTreePanel extends JPanel
 				tree.scrollPathToVisible(path);
 				tree.setSelectionPath(path);
 			}
+		}
+	}
+
+	private void syncDataFromTree()
+	{
+		data.groups.clear();
+		for (int i = 0; i < rootNode.getChildCount(); i++) {
+			DefaultMutableTreeNode groupNode = (DefaultMutableTreeNode) rootNode.getChildAt(i);
+			Object groupObj = groupNode.getUserObject();
+			if (!(groupObj instanceof EditableShadingGroup group))
+				continue;
+
+			group.profiles.clear();
+			for (int j = 0; j < groupNode.getChildCount(); j++) {
+				DefaultMutableTreeNode profileNode = (DefaultMutableTreeNode) groupNode.getChildAt(j);
+				Object profileObj = profileNode.getUserObject();
+				if (profileObj instanceof EditableShadingProfile profile)
+					group.profiles.add(profile);
+			}
+
+			data.groups.add(group);
+		}
+	}
+
+	private final class TreeNodeReorderTransferHandler extends TransferHandler
+	{
+		private static final DataFlavor NODE_FLAVOR = new DataFlavor(DefaultMutableTreeNode.class, "TreeNode");
+		private DefaultMutableTreeNode draggedNode;
+
+		@Override
+		protected Transferable createTransferable(javax.swing.JComponent c)
+		{
+			draggedNode = getSelectedNode();
+			if (draggedNode == null || draggedNode == rootNode)
+				return null;
+			return new Transferable() {
+				@Override
+				public DataFlavor[] getTransferDataFlavors()
+				{
+					return new DataFlavor[] { NODE_FLAVOR };
+				}
+
+				@Override
+				public boolean isDataFlavorSupported(DataFlavor flavor)
+				{
+					return NODE_FLAVOR.equals(flavor);
+				}
+
+				@Override
+				public Object getTransferData(DataFlavor flavor)
+				{
+					return draggedNode;
+				}
+			};
+		}
+
+		@Override
+		public int getSourceActions(javax.swing.JComponent c)
+		{
+			return MOVE;
+		}
+
+		@Override
+		public boolean canImport(TransferSupport support)
+		{
+			if (!support.isDrop() || !support.isDataFlavorSupported(NODE_FLAVOR))
+				return false;
+			if (draggedNode == null || draggedNode == rootNode)
+				return false;
+
+			JTree.DropLocation dl = (JTree.DropLocation) support.getDropLocation();
+			DefaultMutableTreeNode parent = getTargetParent(dl);
+			if (parent == null)
+				return false;
+			if (draggedNode.isNodeAncestor(parent))
+				return false;
+
+			Object draggedObj = draggedNode.getUserObject();
+			if (draggedObj instanceof EditableShadingGroup)
+				return parent == rootNode;
+			if (draggedObj instanceof EditableShadingProfile)
+				return parent.getUserObject() instanceof EditableShadingGroup;
+
+			return false;
+		}
+
+		@Override
+		public boolean importData(TransferSupport support)
+		{
+			if (!canImport(support))
+				return false;
+
+			JTree.DropLocation dl = (JTree.DropLocation) support.getDropLocation();
+			DefaultMutableTreeNode newParent = getTargetParent(dl);
+			if (newParent == null)
+				return false;
+
+			DefaultMutableTreeNode oldParent = (DefaultMutableTreeNode) draggedNode.getParent();
+			int oldIndex = oldParent.getIndex(draggedNode);
+
+			int index = dl.getChildIndex();
+			if (index < 0)
+				index = newParent.getChildCount();
+			if (oldParent == newParent && oldIndex < index)
+				index--;
+
+			treeModel.removeNodeFromParent(draggedNode);
+			treeModel.insertNodeInto(draggedNode, newParent, index);
+			tree.setSelectionPath(new TreePath(draggedNode.getPath()));
+			syncDataFromTree();
+			return true;
+		}
+
+		private DefaultMutableTreeNode getTargetParent(JTree.DropLocation dl)
+		{
+			TreePath path = dl.getPath();
+			if (path == null)
+				return null;
+
+			DefaultMutableTreeNode node = (DefaultMutableTreeNode) path.getLastPathComponent();
+			if (dl.getChildIndex() >= 0)
+				return node;
+
+			Object obj = node.getUserObject();
+			if (obj instanceof ShadingTreeRoot || obj instanceof EditableShadingGroup)
+				return node;
+
+			return (DefaultMutableTreeNode) node.getParent();
 		}
 	}
 
@@ -353,5 +459,13 @@ public class ShadingTreePanel extends JPanel
 		}
 
 		return candidate;
+	}
+
+	public EditableShadingProfile getSelectedProfile()
+	{
+		DefaultMutableTreeNode selectedNode = getSelectedNode();
+		if (selectedNode != null && selectedNode.getUserObject() instanceof EditableShadingProfile profile)
+			return profile;
+		return null;
 	}
 }

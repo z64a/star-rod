@@ -49,7 +49,7 @@ public class LightComponent extends BaseMarkerComponent
 	public FalloffType falloffType = FalloffType.Uniform;
 
 	// actual 'true' value, only changed by the editor indirectly
-	public double falloffCoeff;
+	public float falloffCoeff;
 
 	// derived value from falloffCoeff & falloffType on load -- this is what is actually edited
 	public double falloffDist;
@@ -172,7 +172,7 @@ public class LightComponent extends BaseMarkerComponent
 		out.lightComp.pos = new int[] { x, y, z };
 		out.lightComp.mode = falloffType;
 
-		out.lightComp.falloff = (float) falloffCoeff;
+		out.lightComp.falloff = falloffCoeff;
 	}
 
 	public void setByCoeff(float coeff)
@@ -184,7 +184,7 @@ public class LightComponent extends BaseMarkerComponent
 	public void setByDist(double dist)
 	{
 		falloffDist = dist;
-		falloffCoeff = dist2coeff(falloffType, dist);
+		falloffCoeff = (float) dist2coeff(falloffType, dist);
 	}
 
 	public static double coeff2dist(FalloffType type, double coeff)

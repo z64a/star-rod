@@ -1,8 +1,11 @@
 package game.map.scripts;
 
+import java.awt.Dimension;
+
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
@@ -10,10 +13,15 @@ import javax.swing.SwingConstants;
 import app.Environment;
 import app.SwingUtils;
 import common.commands.AbstractCommand;
+import game.ProjectDatabase;
 import game.map.Map;
 import game.map.editor.MapEditor;
 import game.map.editor.UpdateListener;
+import game.map.editor.ui.SwingGUI;
 import game.map.editor.ui.info.marker.ColorChoicePanel;
+import game.map.shading.EditableShadingData;
+import game.map.shading.EditableShadingData.EditableShadingProfile;
+import game.map.shading.ShadingTreePanel;
 import net.miginfocom.swing.MigLayout;
 import util.ui.IntTextField;
 import util.ui.IntVectorPanel;
@@ -203,35 +211,32 @@ public class OptionsPanel extends JPanel implements UpdateListener
 			if (ignoreChanges || map.features == null)
 				return;
 
-			//FIXME
-			/*
-			EditableShadingData workingCopy = map.features.shadingProfileName.deepCopy();
+			String profileName = map.features.shadingProfileName.get();
+			EditableShadingProfile capturedProfile = map.captureCurrentShadingProfile(profileName);
+			ProjectDatabase.SpriteShading.update(profileName, capturedProfile);
+
+			EditableShadingData workingCopy = ProjectDatabase.SpriteShading.deepCopy();
+
 			ShadingTreePanel panel = new ShadingTreePanel(workingCopy);
 			panel.setPreferredSize(new Dimension(500, 420));
-			
+
 			int result = SwingUtils.getOptionDialog()
-				.setParent(parent)
-				.setCounter(counter)
+				.setParent(this)
+				.setCounter(SwingGUI.instance().getDialogCounter())
 				.setTitle("Sprite Shading Profiles")
 				.setMessage(panel)
 				.setMessageType(JOptionPane.PLAIN_MESSAGE)
 				.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
 				.choose();
-			
-			return (result == JOptionPane.OK_OPTION) ? workingCopy : null;
-			*/
 
-			/*
-						int result = SwingUtils.getOptionDialog()
-							.setParent(this)
-							.setCounter(SwingGUI.instance().getDialogCounter())
-							.setTitle("Choose Shading Profile")
-							.setMessage(colorChooser)
-							.setMessageType(JOptionPane.PLAIN_MESSAGE)
-							.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
-							.choose();
-			*/
-			//TODO
+			if (result != JOptionPane.OK_OPTION)
+				return;
+
+			ProjectDatabase.SpriteShading.replaceWith(workingCopy);
+
+			EditableShadingProfile selectedProfile = panel.getSelectedProfile();
+			map.changeShadingProfile(selectedProfile);
+
 		});
 		SwingUtils.addBorderPadding(chooseProfileButton);
 

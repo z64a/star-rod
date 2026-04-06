@@ -12,7 +12,6 @@ import game.map.shading.SpriteShadingEditor.JsonShadingProfile;
 public class EditableShadingData
 {
 	protected final List<EditableShadingGroup> groups = new ArrayList<>();
-	private boolean modified = false;
 
 	// for deep copying
 	private EditableShadingData()
@@ -48,29 +47,16 @@ public class EditableShadingData
 		return null;
 	}
 
-	public EditableShadingProfile copy(String name)
-	{
-		EditableShadingProfile p = find(name);
-		return (p == null) ? null : p.deepCopy();
-	}
-
-	public boolean changed(String originalName, EditableShadingProfile editedCopy)
-	{
-		EditableShadingProfile current = find(originalName);
-		return current != null && !current.deepEquals(editedCopy);
-	}
-
-	public boolean update(String originalName, EditableShadingProfile editedCopy)
+	public boolean update(String originalName, EditableShadingProfile newProfile)
 	{
 		for (EditableShadingGroup group : groups) {
 			for (int i = 0; i < group.profiles.size(); i++) {
 				EditableShadingProfile current = group.profiles.get(i);
 				if (Objects.equals(current.name, originalName)) {
-					if (current.deepEquals(editedCopy))
+					if (current.deepEquals(newProfile))
 						return false;
 
-					group.profiles.set(i, editedCopy.deepCopy());
-					modified = true;
+					group.profiles.set(i, newProfile);
 					return true;
 				}
 			}
@@ -84,6 +70,30 @@ public class EditableShadingData
 		for (EditableShadingGroup group : groups)
 			copy.groups.add(group.deepCopy());
 		return copy;
+	}
+
+	public void replaceWith(EditableShadingData other)
+	{
+		groups.clear();
+		if (other != null) {
+			for (EditableShadingGroup group : other.groups)
+				groups.add(group.deepCopy());
+		}
+	}
+
+	public boolean deepEquals(EditableShadingData other)
+	{
+		if (other == null)
+			return false;
+		if (groups.size() != other.groups.size())
+			return false;
+
+		for (int i = 0; i < groups.size(); i++) {
+			if (!groups.get(i).deepEquals(other.groups.get(i)))
+				return false;
+		}
+
+		return true;
 	}
 
 	public static final class EditableShadingGroup
@@ -120,6 +130,23 @@ public class EditableShadingData
 			return copy;
 		}
 
+		public boolean deepEquals(EditableShadingGroup other)
+		{
+			if (other == null)
+				return false;
+			if (!Objects.equals(name, other.name))
+				return false;
+			if (profiles.size() != other.profiles.size())
+				return false;
+
+			for (int i = 0; i < profiles.size(); i++) {
+				if (!profiles.get(i).deepEquals(other.profiles.get(i)))
+					return false;
+			}
+
+			return true;
+		}
+
 		@Override
 		public String toString()
 		{
@@ -129,7 +156,7 @@ public class EditableShadingData
 
 	public static final class EditableShadingProfile
 	{
-		protected String name;
+		public String name;
 		public int[] ambient;
 		public int power;
 		public final List<EditableShadingLight> lights = new ArrayList<>();
@@ -207,19 +234,19 @@ public class EditableShadingData
 	{
 		public int[] rgb;
 		public int[] pos;
-		public float falloff;
+		public float falloffCoeff;
 		public FalloffType falloffType;
 		public boolean enabled;
 
 		// for deep copy
-		private EditableShadingLight()
+		public EditableShadingLight()
 		{}
 
 		private EditableShadingLight(JsonShadingLight jsonLight)
 		{
 			rgb = jsonLight.rgb == null ? null : jsonLight.rgb.clone();
 			pos = jsonLight.pos == null ? null : jsonLight.pos.clone();
-			falloff = jsonLight.falloff;
+			falloffCoeff = jsonLight.falloff;
 			falloffType = jsonLight.mode;
 			enabled = jsonLight.enabled == null ? true : jsonLight.enabled;
 		}
@@ -230,7 +257,7 @@ public class EditableShadingData
 
 			light.rgb = (rgb == null) ? null : rgb.clone();
 			light.pos = (pos == null) ? null : pos.clone();
-			light.falloff = falloff;
+			light.falloff = falloffCoeff;
 			light.mode = falloffType;
 
 			// omit when disabled
@@ -245,7 +272,7 @@ public class EditableShadingData
 			EditableShadingLight copy = new EditableShadingLight();
 			copy.rgb = (rgb == null) ? null : rgb.clone();
 			copy.pos = (pos == null) ? null : pos.clone();
-			copy.falloff = falloff;
+			copy.falloffCoeff = falloffCoeff;
 			copy.falloffType = falloffType;
 			copy.enabled = enabled;
 			return copy;
@@ -259,20 +286,16 @@ public class EditableShadingData
 			return enabled == other.enabled
 				&& Arrays.equals(rgb, other.rgb)
 				&& Arrays.equals(pos, other.pos)
-				&& Float.compare(falloff, other.falloff) == 0
+				&& Float.compare(falloffCoeff, other.falloffCoeff) == 0
 				&& Objects.equals(falloffType, other.falloffType);
 		}
 	}
 
-	public boolean isModified()
-	{
-		// TODO Auto-generated method stub
-		return false;
-	}
-
 	public JsonShadingGroup[] toJson()
 	{
-		// TODO Auto-generated method stub
-		return null;
+		JsonShadingGroup[] json = new JsonShadingGroup[groups.size()];
+		for (int i = 0; i < groups.size(); i++)
+			json[i] = groups.get(i).toJson();
+		return json;
 	}
 }
