@@ -218,15 +218,16 @@ public class OptionsPanel extends JPanel implements UpdateListener
 			EditableShadingData workingCopy = ProjectDatabase.SpriteShading.deepCopy();
 
 			ShadingTreePanel panel = new ShadingTreePanel(workingCopy);
-			panel.setPreferredSize(new Dimension(500, 420));
+			panel.setPreferredSize(new Dimension(400, 480));
 
 			int result = SwingUtils.getOptionDialog()
-				.setParent(this)
+				.setParent(SwingGUI.instance())
 				.setCounter(SwingGUI.instance().getDialogCounter())
 				.setTitle("Sprite Shading Profiles")
 				.setMessage(panel)
 				.setMessageType(JOptionPane.PLAIN_MESSAGE)
 				.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+				.setOptions("Select", "Cancel")
 				.choose();
 
 			if (result != JOptionPane.OK_OPTION)
@@ -235,7 +236,8 @@ public class OptionsPanel extends JPanel implements UpdateListener
 			ProjectDatabase.SpriteShading.replaceWith(workingCopy);
 
 			EditableShadingProfile selectedProfile = panel.getSelectedProfile();
-			map.changeShadingProfile(selectedProfile);
+			if (selectedProfile != null)
+				map.changeShadingProfile(selectedProfile);
 
 		});
 		SwingUtils.addBorderPadding(chooseProfileButton);
