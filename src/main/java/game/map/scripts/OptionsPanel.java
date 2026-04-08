@@ -284,7 +284,6 @@ public class OptionsPanel extends JPanel implements UpdateListener
 		add(camBackgroundColor, "span 3, growx, wrap");
 		add(cbLeadPlayer, "skip 1, span");
 
-		//JPanel fog = new JPanel(new MigLayout("fillx, ins 0, wrap 3", "[8][][50%]"));
 		SwingUtils.setFontSize(cbWorldFog, 14);
 		add(cbWorldFog, "gaptop 8, span");
 

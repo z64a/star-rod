@@ -208,6 +208,9 @@ public class NewExtractor
 
 		//FIXME Tweester Paths?
 
+		if (fileText.contains("FoliageDropList"))
+			FoliageDropExtractor.findAndReplace(this);
+
 		if (fileText.contains("CreatePushBlockGrid"))
 			PushGridExtractor.findAndReplace(this);
 
@@ -319,6 +322,7 @@ public class NewExtractor
 		NPC ("NPCs"),
 		ENTITY ("Entities"),
 		EFFECT ("Effects"),
+		FOLIAGE ("Foliage"),
 		NONE (null);
 
 		private final String displayName;

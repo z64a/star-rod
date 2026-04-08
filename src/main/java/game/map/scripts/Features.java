@@ -175,7 +175,7 @@ public class Features extends UpdateProvider implements XmlSerializable
 		out.camFarClip = camFarClip.get();
 		out.camLeadsPlayer = camLeadsPlayer.get();
 
-		out.bgColor = new int[] { bgColorR.get(), bgColorG.get(), bgColorB.get() };
+		out.camBackgroundColor = new int[] { bgColorR.get(), bgColorG.get(), bgColorB.get() };
 
 		out.fogWorld = worldFog.pack();
 		out.fogEntity = entityFog.pack();
@@ -216,10 +216,10 @@ public class Features extends UpdateProvider implements XmlSerializable
 
 		camLeadsPlayer.set(in.camLeadsPlayer);
 
-		if (in.bgColor != null && in.bgColor.length == 3) {
-			bgColorR.set(in.bgColor[0]);
-			bgColorG.set(in.bgColor[1]);
-			bgColorB.set(in.bgColor[2]);
+		if (in.camBackgroundColor != null && in.camBackgroundColor.length == 3) {
+			bgColorR.set(in.camBackgroundColor[0]);
+			bgColorG.set(in.camBackgroundColor[1]);
+			bgColorB.set(in.camBackgroundColor[2]);
 		}
 
 		if (in.fogWorld != null && in.fogWorld.length == 7)

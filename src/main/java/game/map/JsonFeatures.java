@@ -58,8 +58,8 @@ public abstract class JsonFeatures
 		public int camVfov;
 		public int camNearClip;
 		public int camFarClip;
+		public int[] camBackgroundColor;
 		public boolean camLeadsPlayer; //FIXME ??
-		public int[] bgColor;
 
 		public int[] fogWorld;
 		public int[] fogEntity;
