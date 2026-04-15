@@ -39,6 +39,7 @@ public class PathComponent extends BaseMarkerComponent
 	public final PathData path;
 
 	public EditableField<Boolean> showInterp = EditableFieldFactory.create(true)
+		.setCallback((v) -> parentMarker.updateListeners(MarkerInfoPanel.TAG_PATH))
 		.setName(new StandardBoolName("Show Interp")).build();
 
 	private float[] interpLens;
@@ -47,7 +48,7 @@ public class PathComponent extends BaseMarkerComponent
 	public PathComponent(Marker marker)
 	{
 		super(marker);
-		path = new PathData(marker, MarkerInfoPanel.TAG_GENERAL);
+		path = new PathData(marker, MarkerInfoPanel.TAG_PATH);
 	}
 
 	@Override

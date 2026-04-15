@@ -72,6 +72,7 @@ public class MarkerInfoPanel extends MapInfoPanel<Marker> implements ActionListe
 
 	// update-filtering tags
 	public static final String TAG_GENERAL = "General";
+	public static final String TAG_PATH = "Path";
 	public static final String TAG_TERRITORY = "Territory";
 	public static final String TAG_ENTITY = "Entity";
 	public static final String TAG_CAMERA = "Camera";
