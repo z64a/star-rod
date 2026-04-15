@@ -1,6 +1,7 @@
 package game.map.editor.ui.info.marker;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.ScrollPaneConstants;
@@ -19,6 +20,7 @@ public class PathSubpanel extends JPanel
 	private final MarkerInfoPanel parent;
 
 	private PathList pathList;
+	private JCheckBox cbShowInterp;
 
 	public PathSubpanel(MarkerInfoPanel parent)
 	{
@@ -30,15 +32,24 @@ public class PathSubpanel extends JPanel
 		});
 		SwingUtils.addBorderPadding(addPointButton);
 
+		cbShowInterp = new JCheckBox(" Show spline interp");
+		cbShowInterp.addActionListener((e) -> {
+			PathComponent comp = parent.getData().pathComponent;
+			boolean newValue = cbShowInterp.isSelected();
+
+			MapEditor.execute(comp.showInterp.mutator(newValue));
+		});
+
 		pathList = new PathList();
 
 		JScrollPane pathScrollPane = new JScrollPane(pathList);
 		pathScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 		pathScrollPane.setBorder(null);
 
-		setLayout(new MigLayout("fill, ins 0, wrap"));
-		add(pathScrollPane, "growy, pushy, growx");
-		add(addPointButton, "growx, center, w 50%!");
+		setLayout(new MigLayout("fill, ins 0"));
+		add(pathScrollPane, "growy, pushy, growx, span, wrap");
+		add(cbShowInterp, "growx, pushx");
+		add(addPointButton, "growx, pushx");
 	}
 
 	public void updateFields()
@@ -47,6 +58,8 @@ public class PathSubpanel extends JPanel
 
 		pathList.setModel(comp.path.points);
 		comp.path.markDegenerates();
+
+		cbShowInterp.setSelected(comp.showInterp.get());
 	}
 
 	public void updateDynamicFields(boolean force)

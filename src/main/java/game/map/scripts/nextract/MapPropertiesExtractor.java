@@ -26,9 +26,6 @@ public class MapPropertiesExtractor
 	private static final Matcher EntityFogDistMatcher = Pattern.compile(
 		"set_entity_fog_dist\\((\\d+), (\\d+)\\)").matcher("");
 
-	private static final Matcher CamBackColorMatcher = Pattern.compile(
-		"gCameras\\[CAM_DEFAULT\\]\\.bgColor\\[(\\d)\\] = (\\d+)").matcher("");
-
 	protected static void findAndReplace(Map map, NewExtractor extractor)
 	{
 		String workingText = extractor.getFileText();
@@ -118,40 +115,6 @@ public class MapPropertiesExtractor
 			while (EntityFogColorMatcher.find());
 
 			EntityFogColorMatcher.appendTail(out);
-			workingText = out.toString();
-			modified = true;
-		}
-
-		CamBackColorMatcher.reset(workingText);
-		if (CamBackColorMatcher.find()) {
-			StringBuilder out = new StringBuilder(workingText.length());
-
-			do {
-				int i = Integer.parseInt(CamBackColorMatcher.group(1));
-				int v = Integer.parseInt(CamBackColorMatcher.group(2));
-
-				String color = "X";
-				switch (i) {
-					case 0:
-						color = "R";
-						map.features.bgColorR.set(v);
-						break;
-					case 1:
-						color = "G";
-						map.features.bgColorG.set(v);
-						break;
-					case 2:
-						color = "B";
-						map.features.bgColorB.set(v);
-						break;
-				}
-
-				String newline = String.format("gCameras[CAM_DEFAULT].bgColor[%d] = GEN_CAM_BG_%s", i, color);
-				CamBackColorMatcher.appendReplacement(out, Matcher.quoteReplacement(newline));
-			}
-			while (CamBackColorMatcher.find());
-
-			CamBackColorMatcher.appendTail(out);
 			workingText = out.toString();
 			modified = true;
 		}

@@ -186,8 +186,6 @@ public class Extractor
 		if (fileText.contains("EVT_MAKE_SUPER_BLOCK"))
 			SuperBlock.scan(this);
 
-		OldPathExtractor.findAndReplace(this);
-
 		if (fileText.contains("CreatePushBlockGrid"))
 			OldPushGridExtractor.findAndReplace(this);
 

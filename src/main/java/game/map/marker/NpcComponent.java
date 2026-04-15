@@ -720,7 +720,7 @@ public class NpcComponent extends BaseMarkerComponent
 		int z = parentMarker.position.getZ();
 		y -= Sprite.WORLD_SCALE;
 
-		if (opts.spriteShading != null)
+		if (opts.spriteShading.enabled)
 			opts.spriteShading.setSpriteRenderingPos(camera, x, y, z, -renderYaw);
 
 		TransformMatrix mtx = TransformMatrix.identity();

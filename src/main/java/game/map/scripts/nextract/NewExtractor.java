@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -71,7 +72,9 @@ public class NewExtractor
 		File[] worldDirs = f.listFiles();
 		Arrays.sort(worldDirs);
 
+		// limit during testing
 		int COUNT = 0;
+		int LIMIT = -1; // 243;
 
 		for (File worldDir : worldDirs) {
 			if (worldDir.isDirectory() && worldDir.getName().matches("area_\\w+")) {
@@ -82,10 +85,9 @@ public class NewExtractor
 				for (File mapDir : mapDirs) {
 					if (mapDir.isDirectory() && mapDir.getName().startsWith(areaName)) {
 						new NewExtractor(mapDir.getName(), true);
-						//return; //FIXME -- only first map for now
-						COUNT++;
-						//if (COUNT >= 50)
-						//	return;
+
+						if (LIMIT > 0 && ++COUNT >= LIMIT)
+							return;
 					}
 				}
 			}
@@ -204,12 +206,17 @@ public class NewExtractor
 		if (fileText.contains("EVT_MAKE_SUPER_BLOCK"))
 			SuperBlock.scan(this);
 
-		PathExtractor.findAndReplace(this);
+		if (fileText.contains("Vec3f") || fileText.contains("TweesterPath"))
+			PathExtractor.findAndReplace(this);
 
-		//FIXME Tweester Paths?
+		if (fileText.contains("EVS_Main") && !map.getName().equals("sbk_99")) //FIXME sbk_99 lol
+			CamSetupExtractor.findAndReplace(map, this);
 
 		if (fileText.contains("FoliageDropList"))
 			FoliageDropExtractor.findAndReplace(this);
+
+		if (fileText.contains("FoliageVectorList"))
+			FoliageEffectExtractor.findAndReplace(this);
 
 		if (fileText.contains("CreatePushBlockGrid"))
 			PushGridExtractor.findAndReplace(this);
@@ -314,6 +321,48 @@ public class NewExtractor
 		else {
 			return null;
 		}
+	}
+
+	public class SavedVector
+	{
+		public final int x;
+		public final int y;
+		public final int z;
+		public final String name;
+
+		public SavedVector(int x, int y, int z, String name)
+		{
+			this.x = x;
+			this.y = y;
+			this.z = z;
+			this.name = name;
+		}
+
+		public boolean matches(int x, int y, int z)
+		{
+			return this.x == x && this.y == y && this.z == z;
+		}
+	}
+
+	private final HashMap<String, ArrayList<SavedVector>> savedVectorMap = new HashMap<>();
+
+	public void saveVectorName(String key, int x, int y, int z, String name)
+	{
+		savedVectorMap.computeIfAbsent(key, k -> new ArrayList<>()).add(new SavedVector(x, y, z, name));
+	}
+
+	public String findVectorName(String key, int x, int y, int z)
+	{
+		ArrayList<SavedVector> list = savedVectorMap.get(key);
+		if (list == null)
+			return null;
+
+		for (SavedVector vec : list) {
+			if (vec.matches(x, y, z))
+				return vec.name;
+		}
+
+		return null;
 	}
 
 	public static enum MarkerExtractionGroup

@@ -51,6 +51,7 @@ public class Features extends UpdateProvider implements XmlSerializable
 	public EditableField<Integer> bgColorR;
 	public EditableField<Integer> bgColorG;
 	public EditableField<Integer> bgColorB;
+	public boolean camEnabledLast; // hidden, required for matching
 
 	public EditableField<String> locationName;
 
@@ -138,10 +139,10 @@ public class Features extends UpdateProvider implements XmlSerializable
 		bgColorB = EditableFieldFactory.create(0)
 			.setCallback(notifyCamera).setName("Set Background Blue").build();
 
-		camLeadsPlayer = EditableFieldFactory.create(false)
+		camLeadsPlayer = EditableFieldFactory.create(true)
 			.setCallback(notifyCamera).setName(new StandardBoolName("Player-Leading Camera")).build();
 
-		locationName = EditableFieldFactory.create("LOCATION_GOOMBA_ROAD")
+		locationName = EditableFieldFactory.create("LOCATION_TOAD_TOWN")
 			.setCallback(notifyGeneral).setName("Set Location").build();
 
 		hasSpriteShading = EditableFieldFactory.create(false)
@@ -174,6 +175,7 @@ public class Features extends UpdateProvider implements XmlSerializable
 		out.camNearClip = camNearClip.get();
 		out.camFarClip = camFarClip.get();
 		out.camLeadsPlayer = camLeadsPlayer.get();
+		out.camEnabledLast = camEnabledLast ? null : false; // only keep if false
 
 		out.camBackgroundColor = new int[] { bgColorR.get(), bgColorG.get(), bgColorB.get() };
 
@@ -215,6 +217,7 @@ public class Features extends UpdateProvider implements XmlSerializable
 		camFarClip.set(in.camFarClip);
 
 		camLeadsPlayer.set(in.camLeadsPlayer);
+		camEnabledLast = (in.camEnabledLast != null) && in.camEnabledLast;
 
 		if (in.camBackgroundColor != null && in.camBackgroundColor.length == 3) {
 			bgColorR.set(in.camBackgroundColor[0]);

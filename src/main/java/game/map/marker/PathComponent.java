@@ -56,6 +56,8 @@ public class PathComponent extends BaseMarkerComponent
 		PathComponent copy = new PathComponent(copyParent);
 		for (PathPoint wp : path.points)
 			copy.path.points.addElement(new PathPoint(copy.path, wp.getX(), wp.getY(), wp.getZ()));
+
+		copy.showInterp.set(showInterp.get());
 		return copy;
 	}
 
@@ -386,6 +388,7 @@ public class PathComponent extends BaseMarkerComponent
 		return outPos;
 	}
 
+	@Deprecated
 	public void addHeaderDefines(HeaderEntry h)
 	{
 		List<String> lines = new ArrayList<>();
@@ -398,6 +401,7 @@ public class PathComponent extends BaseMarkerComponent
 		h.addDefine("PATH", lines);
 	}
 
+	@Deprecated
 	public void fromLines(Iterable<String> lines)
 	{
 		path.points.clear();

@@ -481,11 +481,13 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 
 		SpriteShader shader = ShaderManager.use(SpriteShader.class);
 
-		boolean useShading = (spriteShading != null);
-		shader.useShading.set(useShading);
-		if (useShading) {
+		if (spriteShading.enabled) {
+			shader.useShading.set(true);
 			spriteShading.calculateShaderParams(mtx);
 			spriteShading.setShaderParams(shader);
+		}
+		else {
+			shader.useShading.set(false);
 		}
 
 		face.asset.img.glBind(shader.texture);

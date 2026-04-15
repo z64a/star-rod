@@ -20,7 +20,7 @@ public class FoliageDropExtractor
 	private static final Matcher DropMatcher = Pattern.compile(
 		"(\\{[\\s\\S]*?" +
 			"\\.itemID\\s*=\\s*ITEM_(\\w+)\\s*,[\\s\\S]*?" +
-			"\\.pos\\s*=\\s*\\{\\s*([-\\d.]+)\\s*,\\s*([-\\d.]+)\\s*,\\s*([-\\d.]+)\\s*\\}[\\s\\S]*?" +
+			"\\.pos\\s*=\\s*\\{\\s*([-\\d.]+)(?:f)?\\s*,\\s*([-\\d.]+)(?:f)?\\s*,\\s*([-\\d.]+)(?:f)?\\s*\\}[\\s\\S]*?" +
 			"\\})"
 	).matcher("");
 
@@ -37,7 +37,7 @@ public class FoliageDropExtractor
 				out = new StringBuilder(extractor.getFileText().length());
 
 			String fullDeclStart = FoliageDropListMatcher.group(1);
-			String structName = FoliageDropListMatcher.group(2); // Tree1, Bush2, etc
+			String ownerName = FoliageDropListMatcher.group(2);
 			int count = Integer.parseInt(FoliageDropListMatcher.group(3));
 			String dropsBody = FoliageDropListMatcher.group(4);
 			String fullDeclEnd = FoliageDropListMatcher.group(5);
@@ -53,25 +53,28 @@ public class FoliageDropExtractor
 
 				String fullDrop = DropMatcher.group(1);
 				String itemName = DropMatcher.group(2);
-				float x = Float.parseFloat(DropMatcher.group(3));
-				float y = Float.parseFloat(DropMatcher.group(4));
-				float z = Float.parseFloat(DropMatcher.group(5));
 
-				String suffix = toPascalCase(itemName);
+				int x = (int) Float.parseFloat(DropMatcher.group(3));
+				int y = (int) Float.parseFloat(DropMatcher.group(4));
+				int z = (int) Float.parseFloat(DropMatcher.group(5));
+
+				String itemSuffix = toPascalCase(itemName);
 
 				String markerName;
 				if (count == 1)
-					markerName = structName + "_Drop_" + suffix;
+					markerName = ownerName + "_Drop_" + itemSuffix;
 				else
-					markerName = structName + "_Drop" + (dropIndex + 1) + "_" + suffix;
+					markerName = ownerName + "_Drop" + (dropIndex + 1) + "_" + itemSuffix;
 
 				Marker m = new Marker(markerName, MarkerType.Position, x, y, z, 0.0f);
 				extractor.addMarker(m, MarkerExtractionGroup.FOLIAGE);
 
+				extractor.saveVectorName(ownerName, x, y, z, markerName);
+
 				String genName = extractor.getGenName(markerName);
 
 				String replacedDrop = fullDrop.replaceFirst(
-					"\\.pos\\s*=\\s*\\{\\s*[-\\d.]+\\s*,\\s*[-\\d.]+\\s*,\\s*[-\\d.]+\\s*\\}",
+					"\\.pos\\s*=\\s*\\{\\s*[-\\d.]+(?:f)?\\s*,\\s*[-\\d.]+(?:f)?\\s*,\\s*[-\\d.]+(?:f)?\\s*\\}",
 					".pos = { " + genName + "_VEC }"
 				);
 

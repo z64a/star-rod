@@ -59,7 +59,8 @@ public abstract class JsonFeatures
 		public int camNearClip;
 		public int camFarClip;
 		public int[] camBackgroundColor;
-		public boolean camLeadsPlayer; //FIXME ??
+		public boolean camLeadsPlayer;
+		public Boolean camEnabledLast;
 
 		public int[] fogWorld;
 		public int[] fogEntity;
