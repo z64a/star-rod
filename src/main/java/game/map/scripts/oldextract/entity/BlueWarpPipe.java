@@ -1,10 +1,12 @@
-package game.map.scripts.nextract.entity;
+package game.map.scripts.extract.entity;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
-import game.map.scripts.nextract.NewExtractor;
+import game.map.scripts.extract.Extractor;
+import game.map.scripts.extract.HeaderEntry;
+import game.map.scripts.extract.HeaderEntry.HeaderParseException;
 
 public class BlueWarpPipe extends ExtractedEntity
 {
@@ -30,7 +32,7 @@ public class BlueWarpPipe extends ExtractedEntity
 	{}
 
 	@Override
-	public void fromSourceMatcher(NewExtractor extractor, Matcher matcher)
+	public void fromSourceMatcher(Extractor extractor, Matcher matcher)
 	{
 		indent = matcher.group(1);
 		type = matcher.group(2);
@@ -59,5 +61,28 @@ public class BlueWarpPipe extends ExtractedEntity
 		entryName = m.entityComponent.entryName.get();
 		scriptName = m.entityComponent.scriptName.get();
 		flagName = m.entityComponent.gameFlagName.get();
+	}
+
+	@Override
+	public void addHeaderDefines(HeaderEntry h)
+	{
+		super.addHeaderDefines(h);
+
+		h.addDefine("ENTRY", entryName);
+		h.addDefine("SCRIPT", scriptName);
+		h.addDefine("FLAG", flagName);
+
+		h.addDefine("PARAMS", h.namespace("XYZA") + ", "
+			+ h.namespace("ENTRY") + ", "
+			+ "Ref(" + h.namespace("SCRIPT") + "), "
+			+ "EVT_INDEX_OF_GAME_FLAG(" + h.namespace("FLAG") + ")");
+	}
+
+	@Override
+	public void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException
+	{
+		m.entityComponent.entryName.setAndEnable(h.getDefine("ENTRY"));
+		m.entityComponent.scriptName.setAndEnable(h.getDefine("SCRIPT"));
+		m.entityComponent.gameFlagName.setAndEnable(h.getDefine("FLAG"));
 	}
 }

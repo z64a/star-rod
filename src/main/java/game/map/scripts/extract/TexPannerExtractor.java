@@ -1,4 +1,4 @@
-package game.map.scripts.extract;
+package game.map.scripts.nextract;
 
 import static game.map.shape.TexturePanner.*;
 
@@ -12,6 +12,7 @@ import java.util.regex.Pattern;
 import game.map.Map;
 import game.map.MapObject.MapObjectType;
 import game.map.marker.FormatStringList;
+import game.map.scripts.extract.HeaderEntry;
 import game.map.scripts.extract.HeaderEntry.HeaderParseException;
 import game.map.shape.Model;
 import game.map.shape.TexturePanner;
@@ -26,7 +27,7 @@ public class TexPannerExtractor
 	private static final Matcher SetPannerMatcher = Pattern.compile(
 		"\\s*Call\\(SetTexPanner,\\s*MODEL_(\\w+),\\s*TEX_PANNER_(\\w+)\\)\\s*").matcher("");
 
-	protected static void findAndReplace(Map map, Extractor extractor)
+	protected static void findAndReplace(Map map, NewExtractor extractor)
 	{
 		String workingText = extractor.getFileText();
 		StringBuilder out = new StringBuilder(workingText.length());

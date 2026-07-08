@@ -1,10 +1,12 @@
-package game.map.scripts.nextract.entity;
+package game.map.scripts.extract.entity;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
-import game.map.scripts.nextract.NewExtractor;
+import game.map.scripts.extract.Extractor;
+import game.map.scripts.extract.HeaderEntry;
+import game.map.scripts.extract.HeaderEntry.HeaderParseException;
 
 public class HeartBlock extends ExtractedEntity
 {
@@ -25,7 +27,7 @@ public class HeartBlock extends ExtractedEntity
 	{}
 
 	@Override
-	public void fromSourceMatcher(NewExtractor extractor, Matcher matcher)
+	public void fromSourceMatcher(Extractor extractor, Matcher matcher)
 	{
 		indent = matcher.group(1);
 		type = matcher.group(2);
@@ -54,5 +56,26 @@ public class HeartBlock extends ExtractedEntity
 
 		hasStyle = m.entityComponent.style.isEnabled();
 		style = m.entityComponent.style.get();
+	}
+
+	@Override
+	public void addHeaderDefines(HeaderEntry h)
+	{
+		super.addHeaderDefines(h);
+
+		if (hasStyle) {
+			h.addDefine("STYLE", style);
+			h.addDefine("PARAMS", makeParamList(h, "STYLE"));
+		}
+		else {
+			h.addDefine("PARAMS", makeParamList(h));
+		}
+	}
+
+	@Override
+	public void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException
+	{
+		if (h.hasDefine("STYLE"))
+			m.entityComponent.style.setAndEnable(h.getIntDefine("STYLE"));
 	}
 }

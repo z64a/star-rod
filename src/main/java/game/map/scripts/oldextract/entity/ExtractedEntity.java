@@ -1,4 +1,4 @@
-package game.map.scripts.nextract.entity;
+package game.map.scripts.extract.entity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,8 +7,9 @@ import java.util.regex.Matcher;
 import game.entity.EntityInfo.EntityType;
 import game.map.marker.Marker;
 import game.map.marker.Marker.MarkerType;
+import game.map.scripts.extract.Extractor;
 import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.nextract.NewExtractor;
+import game.map.scripts.extract.HeaderEntry.HeaderParseException;
 import util.NameUtils;
 
 public abstract class ExtractedEntity
@@ -63,7 +64,7 @@ public abstract class ExtractedEntity
 	public List<String> getLines()
 	{
 		List<String> lines = new ArrayList<>();
-		lines.add(String.format("AUTO_ENTITY(%s)", genName.substring("GEN_".length())));
+		lines.add(String.format("EVT_MAKE_ENTITY(%s, %s_PARAMS)", type, genName));
 		return lines;
 	}
 
@@ -75,6 +76,13 @@ public abstract class ExtractedEntity
 		return sb.toString();
 	}
 
-	public abstract void fromSourceMatcher(NewExtractor extractor, Matcher matcher);
+	public void addHeaderDefines(HeaderEntry h)
+	{
+		h.addDefine("XYZA", "%d, %d, %d, %d", posX, posY, posZ, angle);
+	}
+
+	public abstract void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException;
+
+	public abstract void fromSourceMatcher(Extractor extractor, Matcher matcher);
 
 }

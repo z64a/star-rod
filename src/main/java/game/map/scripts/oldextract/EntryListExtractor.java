@@ -1,4 +1,4 @@
-package game.map.scripts.nextract;
+package game.map.scripts.extract;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -9,7 +9,6 @@ import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
 import game.map.marker.Marker.MarkerType;
-import game.map.scripts.extract.HeaderEntry;
 import game.map.scripts.extract.HeaderEntry.HeaderParseException;
 
 public abstract class EntryListExtractor
@@ -25,7 +24,7 @@ public abstract class EntryListExtractor
 			"(\\};)")
 		.matcher("");
 
-	protected static void findAndReplace(NewExtractor extractor)
+	protected static void findAndReplace(Extractor extractor)
 	{
 		String workingText = extractor.getFileText();
 		StringBuilder out = null;
@@ -54,7 +53,7 @@ public abstract class EntryListExtractor
 		}
 	}
 
-	public static void parse(NewExtractor extractor, HeaderEntry h) throws HeaderParseException
+	public static void parse(Extractor extractor, HeaderEntry h) throws HeaderParseException
 	{
 		for (String line : h.getBlockDefine("*")) {
 			// trim { and }, from each row

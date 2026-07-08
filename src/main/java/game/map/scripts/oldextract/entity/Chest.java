@@ -1,10 +1,13 @@
-package game.map.scripts.nextract.entity;
+package game.map.scripts.extract.entity;
 
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
-import game.map.scripts.nextract.NewExtractor;
+import game.map.scripts.extract.Extractor;
+import game.map.scripts.extract.HeaderEntry;
+import game.map.scripts.extract.HeaderEntry.HeaderParseException;
 
 public class Chest extends ExtractedEntity
 {
@@ -17,12 +20,9 @@ public class Chest extends ExtractedEntity
 	private static final String TYPES = "(Chest|GiantChest)";
 	private static final String RegexString = ExtractedEntity.INDENT +
 		"Call\\(MakeEntity, Ref\\(Entity_" + TYPES + "\\)" + ExtractedEntity.ARG.repeat(5) + ",\\s*MAKE_ENTITY_END\\)" +
-		"(?:\\R\\s*Call\\(AssignChestFlag,\\s*(\\S+)\\))?" +
-		"(?:\\R\\s*Call\\(AssignScript,\\s*Ref\\((\\S+)\\)\\))?";
+		"(?:\\n\\s*Call\\(AssignChestFlag,\\s*(\\S+)\\))?" +
+		"(?:\\n\\s*Call\\(AssignScript,\\s*Ref\\((\\S+)\\)\\))?";
 	public static final Matcher RegexMatcher = Pattern.compile(RegexString).matcher("");
-
-	private boolean hasItem;
-	private String itemName;
 
 	private boolean hasFlag;
 	private String flagName;
@@ -35,7 +35,7 @@ public class Chest extends ExtractedEntity
 	{}
 
 	@Override
-	public void fromSourceMatcher(NewExtractor extractor, Matcher matcher)
+	public void fromSourceMatcher(Extractor extractor, Matcher matcher)
 	{
 		indent = matcher.group(1);
 		type = matcher.group(2);
@@ -45,33 +45,16 @@ public class Chest extends ExtractedEntity
 		angle = Integer.decode(matcher.group(6));
 		// varargs itemID ignored, unused for real chests
 
-		itemName = matcher.group(7);
-		if (itemName.equals("0")) {
-			hasItem = false;
-			itemName = "ITEM_NONE";
-		}
-		else {
-			hasItem = true;
-		}
-
 		flagName = matcher.group(8);
 		hasFlag = (flagName != null);
 
 		scriptName = matcher.group(9);
 		hasScript = (scriptName != null);
 
-		String niceName = type;
-		if (flagName.contains("Chest_"))
-			niceName = flagName.substring(flagName.indexOf("Chest_"));
-
-		// setName(extractor.getNextName(niceName));
-		setName(niceName);
+		setName(extractor.getNextName(type));
 
 		Marker m = super.getBaseMarker();
 		extractor.addMarker(m);
-
-		if (hasItem)
-			m.entityComponent.itemName.setAndEnable(itemName);
 
 		if (hasFlag)
 			m.entityComponent.gameFlagName.setAndEnable(flagName);
@@ -84,13 +67,44 @@ public class Chest extends ExtractedEntity
 	{
 		super(m);
 
-		hasItem = m.entityComponent.itemName.isEnabled();
-		itemName = m.entityComponent.itemName.get();
-
 		hasFlag = m.entityComponent.gameFlagName.isEnabled();
 		flagName = m.entityComponent.gameFlagName.get();
 
 		hasScript = m.entityComponent.scriptName.isEnabled();
 		scriptName = m.entityComponent.scriptName.get();
+	}
+
+	@Override
+	public List<String> getLines()
+	{
+		List<String> lines = super.getLines();
+		if (hasFlag)
+			lines.add(String.format("Call(AssignChestFlag, %s_FLAG)", genName));
+		if (hasScript)
+			lines.add(String.format("Call(AssignScript, Ref(%s_SCRIPT))", genName));
+		return lines;
+	}
+
+	@Override
+	public void addHeaderDefines(HeaderEntry h)
+	{
+		super.addHeaderDefines(h);
+		h.addDefine("PARAMS", makeParamList(h));
+
+		if (hasFlag)
+			h.addDefine("FLAG", flagName);
+
+		if (hasScript)
+			h.addDefine("SCRIPT", scriptName);
+	}
+
+	@Override
+	public void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException
+	{
+		if (h.hasDefine("FLAG"))
+			m.entityComponent.gameFlagName.setAndEnable(h.getDefine("FLAG"));
+
+		if (h.hasDefine("SCRIPT"))
+			m.entityComponent.scriptName.setAndEnable(h.getDefine("SCRIPT"));
 	}
 }

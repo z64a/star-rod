@@ -1,4 +1,4 @@
-package game.map.scripts.nextract;
+package game.map.scripts.extract;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -18,7 +18,7 @@ public class LavaResetExtractor
 		"\\{\\.colliderID=COLLIDER_(\\w+),\\.pos=\\{(\\S+),(\\S+),(\\S+)\\}\\},")
 		.matcher("");
 
-	protected static void findAndReplace(NewExtractor extractor)
+	protected static void findAndReplace(Extractor extractor)
 	{
 		String workingText = extractor.getFileText();
 		StringBuilder out = null;

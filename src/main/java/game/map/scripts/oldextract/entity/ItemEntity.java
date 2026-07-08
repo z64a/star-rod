@@ -1,4 +1,4 @@
-package game.map.scripts.nextract.entity;
+package game.map.scripts.extract.entity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,7 +6,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
-import game.map.scripts.nextract.NewExtractor;
+import game.map.scripts.extract.Extractor;
+import game.map.scripts.extract.HeaderEntry;
+import game.map.scripts.extract.HeaderEntry.HeaderParseException;
 
 public class ItemEntity extends ExtractedEntity
 {
@@ -26,7 +28,7 @@ public class ItemEntity extends ExtractedEntity
 	{}
 
 	@Override
-	public void fromSourceMatcher(NewExtractor extractor, Matcher matcher)
+	public void fromSourceMatcher(Extractor extractor, Matcher matcher)
 	{
 		indent = matcher.group(1);
 		itemName = matcher.group(2);
@@ -40,14 +42,7 @@ public class ItemEntity extends ExtractedEntity
 			throw new IllegalArgumentException();
 
 		type = "Item";
-
-		String niceName = extractor.getNiceItemName(itemName);
-		if (niceName != null)
-			niceName = type + "_" + niceName;
-		else
-			niceName = type;
-
-		setName(extractor.getNextName(niceName));
+		setName(extractor.getNextName(type));
 
 		Marker m = super.getBaseMarker();
 		extractor.addMarker(m);
@@ -70,7 +65,30 @@ public class ItemEntity extends ExtractedEntity
 	public List<String> getLines()
 	{
 		List<String> lines = new ArrayList<>();
-		lines.add(String.format("AUTO_ENTITY(%s)", genName.substring("GEN_".length())));
+		lines.add(String.format("EVT_MAKE_ITEM_ENTITY(%s_PARAMS)", genName));
 		return lines;
+	}
+
+	@Override
+	public void addHeaderDefines(HeaderEntry h)
+	{
+		h.addDefine("PARAMS", "%s, %d, %d, %d, %s, %s", itemName, posX, posY, posZ, spawnMode, flagName);
+
+		h.addDefine("ITEM", itemName);
+		h.addDefine("SPAWN", spawnMode);
+		h.addDefine("FLAG", flagName);
+
+		h.addDefine("PARAMS", h.namespace("ITEM") + ", "
+			+ h.namespace("VEC") + ", "
+			+ h.namespace("SPAWN") + ", "
+			+ h.namespace("FLAG"));
+	}
+
+	@Override
+	public void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException
+	{
+		m.entityComponent.itemName.setAndEnable(h.getDefine("ITEM"));
+		m.entityComponent.spawnMode.setAndEnable(h.getDefine("SPAWN"));
+		m.entityComponent.gameFlagName.setAndEnable(h.getDefine("FLAG"));
 	}
 }

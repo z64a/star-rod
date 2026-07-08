@@ -1,10 +1,13 @@
-package game.map.scripts.nextract.entity;
+package game.map.scripts.extract.entity;
 
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
-import game.map.scripts.nextract.NewExtractor;
+import game.map.scripts.extract.Extractor;
+import game.map.scripts.extract.HeaderEntry;
+import game.map.scripts.extract.HeaderEntry.HeaderParseException;
 
 public class HiddenPanel extends ExtractedEntity
 {
@@ -16,7 +19,7 @@ public class HiddenPanel extends ExtractedEntity
 	private static final String TYPES = "(HiddenPanel)";
 	private static final String RegexString = ExtractedEntity.INDENT +
 		"Call\\(MakeEntity, Ref\\(Entity_" + TYPES + "\\)" + ExtractedEntity.ARG.repeat(5) + ",\\s*MAKE_ENTITY_END\\)" +
-		"(?:\\R\\s*Call\\(AssignPanelFlag" + ExtractedEntity.ARG + "\\))?";
+		"(?:\\n\\s*Call\\(AssignPanelFlag" + ExtractedEntity.ARG + "\\))?";
 	public static final Matcher RegexMatcher = Pattern.compile(RegexString).matcher("");
 
 	private String modelName;
@@ -28,7 +31,7 @@ public class HiddenPanel extends ExtractedEntity
 	{}
 
 	@Override
-	public void fromSourceMatcher(NewExtractor extractor, Matcher matcher)
+	public void fromSourceMatcher(Extractor extractor, Matcher matcher)
 	{
 		indent = matcher.group(1);
 		type = matcher.group(2);
@@ -59,5 +62,35 @@ public class HiddenPanel extends ExtractedEntity
 
 		hasFlag = m.entityComponent.gameFlagName.isEnabled();
 		flagName = m.entityComponent.gameFlagName.get();
+	}
+
+	@Override
+	public List<String> getLines()
+	{
+		List<String> lines = super.getLines();
+		if (hasFlag)
+			lines.add(String.format("Call(AssignPanelFlag, %s_FLAG)", genName));
+		return lines;
+	}
+
+	@Override
+	public void addHeaderDefines(HeaderEntry h)
+	{
+		super.addHeaderDefines(h);
+
+		h.addDefine("MODEL", modelName);
+		h.addDefine("PARAMS", makeParamList(h, "MODEL"));
+
+		if (hasFlag)
+			h.addDefine("FLAG", flagName);
+	}
+
+	@Override
+	public void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException
+	{
+		m.entityComponent.modelName.set(h.getDefine("MODEL"));
+
+		if (h.hasDefine("FLAG"))
+			m.entityComponent.gameFlagName.setAndEnable(h.getDefine("FLAG"));
 	}
 }

@@ -1,10 +1,13 @@
-package game.map.scripts.nextract.entity;
+package game.map.scripts.extract.entity;
 
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
-import game.map.scripts.nextract.NewExtractor;
+import game.map.scripts.extract.Extractor;
+import game.map.scripts.extract.HeaderEntry;
+import game.map.scripts.extract.HeaderEntry.HeaderParseException;
 
 public class WoodenCrate extends ExtractedEntity
 {
@@ -16,7 +19,7 @@ public class WoodenCrate extends ExtractedEntity
 	private static final String TYPES = "(WoodenCrate)";
 	private static final String RegexString = ExtractedEntity.INDENT +
 		"Call\\(MakeEntity, Ref\\(Entity_" + TYPES + "\\)" + ExtractedEntity.ARG.repeat(5) + ",\\s*MAKE_ENTITY_END\\)" +
-		"(?:\\R\\s*Call\\(AssignCrateFlag" + ExtractedEntity.ARG + "\\))?";
+		"(?:\\n\\s*Call\\(AssignCrateFlag" + ExtractedEntity.ARG + "\\))?";
 	public static final Matcher RegexMatcher = Pattern.compile(RegexString).matcher("");
 
 	private String itemName;
@@ -28,7 +31,7 @@ public class WoodenCrate extends ExtractedEntity
 	{}
 
 	@Override
-	public void fromSourceMatcher(NewExtractor extractor, Matcher matcher)
+	public void fromSourceMatcher(Extractor extractor, Matcher matcher)
 	{
 		indent = matcher.group(1);
 		type = matcher.group(2);
@@ -63,5 +66,41 @@ public class WoodenCrate extends ExtractedEntity
 
 		hasFlag = m.entityComponent.gameFlagName.isEnabled();
 		flagName = m.entityComponent.gameFlagName.get();
+	}
+
+	@Override
+	public List<String> getLines()
+	{
+		List<String> lines = super.getLines();
+		if (hasFlag)
+			lines.add(String.format("Call(AssignCrateFlag, %s_FLAG)", genName));
+		return lines;
+	}
+
+	@Override
+	public void addHeaderDefines(HeaderEntry h)
+	{
+		super.addHeaderDefines(h);
+
+		if (hasFlag)
+			h.addDefine("FLAG", flagName);
+
+		String rawItemName = itemName.equals("ITEM_NONE") ? "-1" : itemName;
+		h.addDefine("ITEM", rawItemName);
+
+		h.addDefine("PARAMS", makeParamList(h, "ITEM"));
+	}
+
+	@Override
+	public void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException
+	{
+		String itemName = h.getDefine("ITEM");
+		if (itemName.equals("-1"))
+			itemName = "ITEM_NONE";
+
+		m.entityComponent.itemName.set(itemName);
+
+		if (h.hasDefine("FLAG"))
+			m.entityComponent.gameFlagName.setAndEnable(h.getDefine("FLAG"));
 	}
 }

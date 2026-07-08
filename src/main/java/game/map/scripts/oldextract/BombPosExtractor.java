@@ -1,11 +1,10 @@
-package game.map.scripts.nextract;
+package game.map.scripts.extract;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
 import game.map.marker.Marker.MarkerType;
-import game.map.scripts.nextract.NewExtractor.MarkerExtractionGroup;
 
 public class BombPosExtractor
 {
@@ -22,7 +21,7 @@ public class BombPosExtractor
 			"\\s+\\.diameter = (\\S+),?"
 	).matcher("");
 
-	protected static void findAndReplace(NewExtractor extractor)
+	protected static void findAndReplace(Extractor extractor)
 	{
 		String workingText = extractor.getFileText();
 		StringBuilder out = null;
@@ -40,27 +39,10 @@ public class BombPosExtractor
 			float z = Float.parseFloat(BombPosMatcher.group(4));
 			float r = Float.parseFloat(BombPosMatcher.group(5)) / 2.0f;
 
-			String[] tokens = declaration.split(" ");
-			String name = tokens[1];
-			boolean isFoliage = false;
-
-			if (name.matches("N\\(\\S+\\)"))
-				name = name.substring(2, name.length() - 1);
-
-			if (name.startsWith("BombPos_"))
-				name = name.substring("BombPos_".length());
-
-			if (name.startsWith("Tree"))
-				isFoliage = true;
-
-			String markerName = "BombPos_" + name;
+			String markerName = extractor.getNextName("BombPos");
 			Marker m = new Marker(markerName, MarkerType.Sphere, x, y, z, 0);
 			m.volumeComponent.radius.set(r);
-
-			if (isFoliage)
-				extractor.addMarker(m, MarkerExtractionGroup.FOLIAGE);
-			else
-				extractor.addMarker(m);
+			extractor.addMarker(m);
 
 			String genName = extractor.getGenName(markerName);
 
