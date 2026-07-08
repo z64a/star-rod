@@ -1,8 +1,7 @@
-package game.map.scripts.nextract;
+package game.map.scripts.extract;
 
 import static game.map.shape.TexturePanner.*;
 
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -11,9 +10,6 @@ import java.util.regex.Pattern;
 
 import game.map.Map;
 import game.map.MapObject.MapObjectType;
-import game.map.marker.FormatStringList;
-import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.extract.HeaderEntry.HeaderParseException;
 import game.map.shape.Model;
 import game.map.shape.TexturePanner;
 import game.map.shape.TexturePanner.PannerParams;
@@ -27,7 +23,7 @@ public class TexPannerExtractor
 	private static final Matcher SetPannerMatcher = Pattern.compile(
 		"\\s*Call\\(SetTexPanner,\\s*MODEL_(\\w+),\\s*TEX_PANNER_(\\w+)\\)\\s*").matcher("");
 
-	protected static void findAndReplace(Map map, NewExtractor extractor)
+	protected static void findAndReplace(Map map, MapExtractor extractor)
 	{
 		String workingText = extractor.getFileText();
 		StringBuilder out = new StringBuilder(workingText.length());
@@ -143,35 +139,5 @@ public class TexPannerExtractor
 				}
 			}
 		}
-	}
-
-	public static void print(PrintWriter pw, Map map)
-	{
-		for (TexturePanner panner : map.features.texPanners) {
-			if (panner.params.generate || panner.isNonzero()) {
-				PannerParams out = panner.params.getOutput();
-
-				HeaderEntry h = new HeaderEntry("TexPanner");
-				FormatStringList lines = new FormatStringList();
-
-				lines.addf("    TEX_PAN_PARAMS_ID(TEX_PANNER_%X)", panner.panID);
-
-				if (out.useTexels || out.maxUV != DEFAULT_MAXIMUM)
-					lines.addf("    TEX_PAN_PARAMS_MAX(0x%X)", out.maxUV);
-
-				lines.addf("    TEX_PAN_PARAMS_STEP(%6d,%6d,%6d,%6d)", out.rate[0], out.rate[1], out.rate[2], out.rate[3]);
-				lines.addf("    TEX_PAN_PARAMS_FREQ(%6d,%6d,%6d,%6d)", out.freq[0], out.freq[1], out.freq[2], out.freq[3]);
-				lines.addf("    TEX_PAN_PARAMS_INIT(%6d,%6d,%6d,%6d)", out.init[0], out.init[1], out.init[2], out.init[3]);
-
-				h.addDefine(String.format("TEX_PANNER_%X", panner.panID), lines);
-
-				h.print(pw);
-			}
-		}
-	}
-
-	public static void parse(HeaderEntry h, Map map) throws HeaderParseException
-	{
-		parsePannerLines(map, h.getBlockDefine("*"));
 	}
 }

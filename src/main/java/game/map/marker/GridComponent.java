@@ -3,7 +3,6 @@ package game.map.marker;
 import static game.map.MapKey.*;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.function.Consumer;
 
 import org.w3c.dom.Element;
@@ -31,7 +30,6 @@ import game.map.editor.ui.info.MarkerInfoPanel;
 import game.map.marker.GridOccupant.OccupantType;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
-import game.map.scripts.extract.HeaderEntry;
 import game.map.shape.TransformMatrix;
 import renderer.buffers.LineRenderQueue;
 import renderer.buffers.TriangleRenderQueue;
@@ -551,66 +549,6 @@ public class GridComponent extends BaseMarkerComponent
 		{
 			super.undo();
 			occ.parentList.add(occ);
-		}
-	}
-
-	public void addHeaderDefines(HeaderEntry h)
-	{
-		h.addDefine("GRID_PARAMS", String.format("%d, %d, %d, %d, %d, %d, NULL",
-			gridIndex.get(), gridSizeX.get(), gridSizeZ.get(),
-			parentMarker.position.getX(), parentMarker.position.getY(), parentMarker.position.getZ()));
-
-		if (gridOccupants.size() > 0) {
-			FormatStringList lines = new FormatStringList();
-
-			int sizeX = gridSizeX.get();
-			int sizeZ = gridSizeZ.get();
-			int[][] grid = new int[sizeX][sizeZ];
-			for (int i = 0; i < sizeX; i++)
-				for (int j = 0; j < sizeZ; j++)
-					grid[i][j] = 0;
-
-			for (GridOccupant occ : gridOccupants) {
-				grid[occ.posX][occ.posZ] = occ.type.get().id;
-			}
-
-			// optimize generated script size using FillPushBlockZ
-			// find consecutive sequences of occupants as X varies
-			for (int j = 0; j < sizeZ; j++) {
-				for (int i = 0; i < sizeX; i++) {
-					int cur = grid[i][j];
-					if (cur == 0)
-						continue;
-
-					int end = i;
-					for (int k = i + 1; k < sizeX; k++) {
-						if (cur != grid[k][j]) {
-							break;
-						}
-						end = k;
-					}
-
-					String occupant;
-					if (cur == 1)
-						occupant = "PUSH_GRID_BLOCK";
-					else
-						occupant = "PUSH_GRID_OBSTRUCTION";
-
-					if (end != i) {
-						lines.addf("    Call(FillPushBlockZ, %d, %d, %d, %d, %s)",
-							gridIndex.get(), j, i, end, occupant);
-					}
-					else {
-						lines.addf("    Call(SetPushBlock, %d, %d, %d, %s)",
-							gridIndex.get(), i, j, occupant);
-					}
-					i = end;
-				}
-			}
-			h.addDefine("GRID_CONTENT", lines);
-		}
-		else {
-			h.addDefine("GRID_CONTENT", Collections.singletonList("Set(LVar0, LVar0)")); // 'NOP'
 		}
 	}
 }

@@ -1,4 +1,4 @@
-package game.map.scripts.nextract;
+package game.map.scripts.extract;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,32 +20,30 @@ import assets.AssetManager;
 import game.map.Map;
 import game.map.MapObject.MapObjectType;
 import game.map.marker.Marker;
-import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.extract.HeaderEntry.HeaderParseException;
-import game.map.scripts.nextract.entity.ArrowSign;
-import game.map.scripts.nextract.entity.BasicEntity;
-import game.map.scripts.nextract.entity.BlueSwitch;
-import game.map.scripts.nextract.entity.BlueWarpPipe;
-import game.map.scripts.nextract.entity.Chest;
-import game.map.scripts.nextract.entity.CoinBlock;
-import game.map.scripts.nextract.entity.ExtractedEntity;
-import game.map.scripts.nextract.entity.HeartBlock;
-import game.map.scripts.nextract.entity.HiddenPanel;
-import game.map.scripts.nextract.entity.ItemBlock;
-import game.map.scripts.nextract.entity.ItemEntity;
-import game.map.scripts.nextract.entity.OptionalScriptEntity;
-import game.map.scripts.nextract.entity.SimpleSpring;
-import game.map.scripts.nextract.entity.SpinningFlower;
-import game.map.scripts.nextract.entity.SuperBlock;
-import game.map.scripts.nextract.entity.Tweester;
-import game.map.scripts.nextract.entity.WoodenCrate;
+import game.map.scripts.extract.entity.ArrowSign;
+import game.map.scripts.extract.entity.BasicEntity;
+import game.map.scripts.extract.entity.BlueSwitch;
+import game.map.scripts.extract.entity.BlueWarpPipe;
+import game.map.scripts.extract.entity.Chest;
+import game.map.scripts.extract.entity.CoinBlock;
+import game.map.scripts.extract.entity.ExtractedEntity;
+import game.map.scripts.extract.entity.HeartBlock;
+import game.map.scripts.extract.entity.HiddenPanel;
+import game.map.scripts.extract.entity.ItemBlock;
+import game.map.scripts.extract.entity.ItemEntity;
+import game.map.scripts.extract.entity.OptionalScriptEntity;
+import game.map.scripts.extract.entity.SimpleSpring;
+import game.map.scripts.extract.entity.SpinningFlower;
+import game.map.scripts.extract.entity.SuperBlock;
+import game.map.scripts.extract.entity.Tweester;
+import game.map.scripts.extract.entity.WoodenCrate;
 import game.map.tree.MapObjectNode;
 import game.sprite.SpriteLoader;
 import util.Logger;
 import util.NameUtils;
 import util.Priority;
 
-public class NewExtractor
+public class MapExtractor
 {
 	// KNOWN PROBLEMS MATCHING:
 	// - mac_06 / EVS_Main -- two different GEN_TEX_PANNER_1 created
@@ -84,7 +82,7 @@ public class NewExtractor
 
 				for (File mapDir : mapDirs) {
 					if (mapDir.isDirectory() && mapDir.getName().startsWith(areaName)) {
-						new NewExtractor(mapDir.getName(), true);
+						new MapExtractor(mapDir.getName());
 
 						if (LIMIT > 0 && ++COUNT >= LIMIT)
 							return;
@@ -99,13 +97,11 @@ public class NewExtractor
 	protected HashSet<String> usedNames = new HashSet<>();
 	protected List<Marker> markers = new ArrayList<>();
 
-	private List<HeaderEntry> entries = new ArrayList<>();
-
 	// used when extracting data from source files
 	private String fileText;
 	public boolean fileModified = false;
 
-	public NewExtractor(String mapName, boolean fromSource) throws IOException
+	public MapExtractor(String mapName) throws IOException
 	{
 		Logger.log("Extracting data from " + mapName, Priority.IMPORTANT);
 
@@ -117,7 +113,7 @@ public class NewExtractor
 		SpriteLoader.loadAnimsMetadata(false);
 		Map map = Map.loadMap(mapFile);
 
-		extractToMap(map, fromSource);
+		extractToMap(map);
 
 		try {
 			map.saveMap();
@@ -128,25 +124,17 @@ public class NewExtractor
 		}
 	}
 
-	public NewExtractor(Map map, boolean fromSource) throws IOException
+	public MapExtractor(Map map) throws IOException
 	{
 		Logger.log("Extracting data for " + map.getName(), Priority.IMPORTANT);
-		extractToMap(map, fromSource);
+		extractToMap(map);
 	}
 
-	private void extractToMap(Map map, boolean fromSource) throws IOException
+	private void extractToMap(Map map) throws IOException
 	{
-		if (fromSource) {
-			for (File src : IOUtils.getFilesWithExtension(map.getProjDir(), ".c", true)) {
-				digest(map, src);
-			}
+		for (File src : IOUtils.getFilesWithExtension(map.getProjDir(), ".c", true)) {
+			digest(map, src);
 		}
-		else {
-			File header = new File(map.getProjDir(), "generated.h");
-			entries.addAll(HeaderEntry.parseFile(header));
-		}
-
-		processHeaderEntries(map);
 	}
 
 	public String getFileText()
@@ -158,11 +146,6 @@ public class NewExtractor
 	{
 		fileText = newText;
 		fileModified = true;
-	}
-
-	public void addHeaderEntry(HeaderEntry h)
-	{
-		entries.add(h);
 	}
 
 	private void digest(Map map, File src) throws IOException
@@ -463,38 +446,5 @@ public class NewExtractor
 		childNode.parentNode = parentNode;
 		childNode.childIndex = parentNode.getChildCount();
 		parentNode.add(childNode);
-	}
-
-	private void processHeaderEntries(Map map)
-	{
-		for (HeaderEntry h : entries) {
-			try {
-				String type = h.getProperty("type");
-				if (type == null) {
-					Logger.logError("HeaderEntry is missing type!");
-					return;
-				}
-
-				String[] subtype = type.split(":");
-
-				switch (subtype[0]) {
-					case "EntryList":
-						EntryListExtractor.parse(this, h);
-						break;
-					case "TexPanner":
-						TexPannerExtractor.parse(h, map);
-						break;
-					case "Marker":
-						Marker m = Marker.fromHeader(h);
-						addMarker(m);
-						break;
-				}
-			}
-			catch (HeaderParseException e) {
-				Logger.printStackTrace(e);
-			}
-		}
-
-		addMarkers(map);
 	}
 }

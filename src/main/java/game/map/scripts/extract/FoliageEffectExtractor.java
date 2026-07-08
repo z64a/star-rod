@@ -1,11 +1,11 @@
-package game.map.scripts.nextract;
+package game.map.scripts.extract;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
 import game.map.marker.Marker.MarkerType;
-import game.map.scripts.nextract.NewExtractor.MarkerExtractionGroup;
+import game.map.scripts.extract.MapExtractor.MarkerExtractionGroup;
 
 public class FoliageEffectExtractor
 {
@@ -21,7 +21,7 @@ public class FoliageEffectExtractor
 		"\\{\\s*([-\\d.]+)(?:f)?\\s*,\\s*([-\\d.]+)(?:f)?\\s*,\\s*([-\\d.]+)(?:f)?\\s*\\}"
 	).matcher("");
 
-	protected static void findAndReplace(NewExtractor extractor)
+	protected static void findAndReplace(MapExtractor extractor)
 	{
 		String workingText = extractor.getFileText();
 		StringBuilder out = null;

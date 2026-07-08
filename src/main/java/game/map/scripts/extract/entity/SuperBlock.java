@@ -1,11 +1,11 @@
-package game.map.scripts.nextract.entity;
+package game.map.scripts.extract.entity;
 
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
-import game.map.scripts.nextract.NewExtractor;
+import game.map.scripts.extract.MapExtractor;
 
 public class SuperBlock extends ExtractedEntity
 {
@@ -25,7 +25,7 @@ public class SuperBlock extends ExtractedEntity
 	public SuperBlock()
 	{}
 
-	public static void scan(NewExtractor extractor)
+	public static void scan(MapExtractor extractor)
 	{
 		String workingText = extractor.getFileText();
 		SuperBlockMatcher.reset(workingText);
@@ -74,7 +74,7 @@ public class SuperBlock extends ExtractedEntity
 	}
 
 	@Override
-	public void fromSourceMatcher(NewExtractor extractor, Matcher matcher)
+	public void fromSourceMatcher(MapExtractor extractor, Matcher matcher)
 	{
 		throw new UnsupportedOperationException();
 	}

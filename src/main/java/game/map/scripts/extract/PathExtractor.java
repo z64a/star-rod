@@ -1,4 +1,4 @@
-package game.map.scripts.nextract;
+package game.map.scripts.extract;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -32,13 +32,13 @@ public abstract class PathExtractor
 			"(\\s*TWEESTER_PATH_LOOP\\s*\\n\\};)"
 	).matcher("");
 
-	protected static void findAndReplace(NewExtractor extractor)
+	protected static void findAndReplace(MapExtractor extractor)
 	{
 		findAndReplace(extractor, PathMatcher, true, "_PATH");
 		findAndReplace(extractor, TweesterMatcher, false, "_PATH_FLAT");
 	}
 
-	private static void findAndReplace(NewExtractor extractor, Matcher matcher, boolean showInterp, String suffix)
+	private static void findAndReplace(MapExtractor extractor, Matcher matcher, boolean showInterp, String suffix)
 	{
 		StringBuilder out = null;
 		matcher.reset(extractor.getFileText());

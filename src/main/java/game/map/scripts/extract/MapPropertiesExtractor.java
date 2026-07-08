@@ -1,4 +1,4 @@
-package game.map.scripts.nextract;
+package game.map.scripts.extract;
 
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
@@ -26,7 +26,7 @@ public class MapPropertiesExtractor
 	private static final Matcher EntityFogDistMatcher = Pattern.compile(
 		"set_entity_fog_dist\\((\\d+), (\\d+)\\)").matcher("");
 
-	protected static void findAndReplace(Map map, NewExtractor extractor)
+	protected static void findAndReplace(Map map, MapExtractor extractor)
 	{
 		String workingText = extractor.getFileText();
 		MatchResult matchResult = null;

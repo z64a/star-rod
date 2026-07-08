@@ -286,6 +286,7 @@ public abstract class EntityInfo
 		}
 	}
 
+	@Deprecated
 	public static class EntityTypeData
 	{
 		public final String name;
@@ -386,6 +387,7 @@ public abstract class EntityInfo
 		}
 	}
 
+	@Deprecated
 	public static void main(String[] args) throws IOException
 	{
 		Environment.initialize();
@@ -393,6 +395,7 @@ public abstract class EntityInfo
 		Environment.exit();
 	}
 
+	@Deprecated
 	private static void printEntityTypeData(ByteBuffer fileBuffer) throws IOException
 	{
 		for (EntityType type : EntityType.values()) {

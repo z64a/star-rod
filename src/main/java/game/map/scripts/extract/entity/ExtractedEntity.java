@@ -1,4 +1,4 @@
-package game.map.scripts.nextract.entity;
+package game.map.scripts.extract.entity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,8 +7,7 @@ import java.util.regex.Matcher;
 import game.entity.EntityInfo.EntityType;
 import game.map.marker.Marker;
 import game.map.marker.Marker.MarkerType;
-import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.nextract.NewExtractor;
+import game.map.scripts.extract.MapExtractor;
 import util.NameUtils;
 
 public abstract class ExtractedEntity
@@ -67,14 +66,6 @@ public abstract class ExtractedEntity
 		return lines;
 	}
 
-	protected final String makeParamList(HeaderEntry h, String ... additionalParams)
-	{
-		StringBuilder sb = new StringBuilder(h.namespace("XYZA"));
-		for (String s : additionalParams)
-			sb.append(", ").append(h.namespace(s));
-		return sb.toString();
-	}
-
-	public abstract void fromSourceMatcher(NewExtractor extractor, Matcher matcher);
+	public abstract void fromSourceMatcher(MapExtractor extractor, Matcher matcher);
 
 }

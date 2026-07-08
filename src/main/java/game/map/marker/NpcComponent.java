@@ -10,7 +10,6 @@ import java.util.function.Consumer;
 
 import org.w3c.dom.Element;
 
-import app.StarRodException;
 import common.BaseCamera;
 import common.Vector3f;
 import common.commands.EditableField;
@@ -37,7 +36,6 @@ import game.map.editor.selection.PickRay.PickHit;
 import game.map.editor.selection.SelectablePoint;
 import game.map.editor.selection.SelectablePoint.SetPointCoord;
 import game.map.editor.ui.info.MarkerInfoPanel;
-import game.map.scripts.extract.HeaderEntry;
 import game.map.shape.TransformMatrix;
 import game.sprite.Sprite;
 import game.sprite.SpriteLoader;
@@ -863,187 +861,6 @@ public class NpcComponent extends BaseMarkerComponent
 			super.undo();
 			m.updateListeners(MarkerInfoPanel.TAG_TERRITORY);
 		}
-	}
-
-	public void addHeaderDefines(HeaderEntry h)
-	{
-		String isFlying = flying.get() ? "TRUE" : "FALSE";
-		String speedOverride;
-		if (overrideMovementSpeed.get())
-			speedOverride = String.format("OVERRIDE_MOVEMENT_SPEED(%f)", movementSpeedOverride.get());
-		else
-			speedOverride = "NO_OVERRIDE_MOVEMENT_SPEED";
-
-		FormatStringList lines = new FormatStringList();
-
-		if (moveType.get() == MoveType.Wander) {
-			lines.add("{");
-			lines.addf("    .wander = {");
-			lines.addf("        .centerPos   = { %d, %d, %d },",
-				wanderCenter.point.getX(), wanderCenter.point.getY(), wanderCenter.point.getZ());
-			if (useWanderCircle.get())
-				lines.addf("        .wanderSize  = { %d },", wanderRadius.get());
-			else
-				lines.addf("        .wanderSize  = { %d, %d },", wanderSizeX.get(), wanderSizeZ.get());
-			lines.addf("        .moveSpeedOverride = %s,", speedOverride);
-			lines.addf("        .wanderShape = %s,", useWanderCircle.get() ? "SHAPE_CYLINDER" : "SHAPE_RECT");
-		}
-		else if (moveType.get() == MoveType.Patrol) {
-			lines.add("{");
-			lines.addf("    .patrol = {");
-			lines.addf("        .numPoints = %d,", patrolPath.points.size());
-			lines.addf("        .points = {");
-			for (PathPoint wp : patrolPath.points) {
-				lines.addf("            { %d, %d, %d },", wp.point.getX(), wp.point.getY(), wp.point.getZ());
-			}
-			lines.addf("        },");
-			lines.addf("        .moveSpeedOverride = %s,", speedOverride);
-		}
-
-		if (moveType.get() != MoveType.Stationary) {
-			lines.addf("        .detectPos   = { %d, %d, %d },",
-				detectCenter.point.getX(), detectCenter.point.getY(), detectCenter.point.getZ());
-			if (useDetectCircle.get())
-				lines.addf("        .detectSize  = { %d },", detectRadius.get());
-			else
-				lines.addf("        .detectSize  = { %d, %d },", detectSizeX.get(), detectSizeZ.get());
-			lines.addf("        .detectShape = %s,", useDetectCircle.get() ? "SHAPE_CYLINDER" : "SHAPE_RECT");
-			lines.addf("        .isFlying = %s,", isFlying);
-			lines.addf("    },");
-			lines.addf("}");
-		}
-		else {
-			lines.addf("{}");
-		}
-
-		h.addDefine("TERRITORY", lines);
-
-		if (animName != null && !animName.isBlank())
-			h.addProperty("anim", animName);
-	}
-
-	public void parseTerritory(String territory)
-	{
-		String original = territory;
-		territory = territory.replaceAll("\\s", "");
-
-		assert (territory.startsWith("{"));
-		assert (territory.endsWith("}}"));
-
-		territory = territory.substring(1, territory.length() - 2);
-
-		// determine territory type
-		if (territory.startsWith(".patrol={"))
-			moveType.set(MoveType.Patrol);
-		else if (territory.startsWith(".wander={"))
-			moveType.set(MoveType.Wander);
-		else
-			throw new StarRodException("Cannot parse NPC territory: " + original);
-
-		territory = territory.substring(territory.indexOf("{") + 1);
-		if (territory.endsWith(","))
-			territory = territory.substring(0, territory.length() - 1);
-
-		String[] fields = territory.split(",(?=\\.\\w+\\s*=)");
-
-		for (String field : fields) {
-			String[] kv = field.split("=");
-			int[] coords;
-
-			switch (kv[0]) {
-				case ".isFlying":
-					flying.set("TRUE".equalsIgnoreCase(kv[1]));
-					break;
-				case ".moveSpeedOverride":
-					if (!"NO_OVERRIDE_MOVEMENT_SPEED".equals(kv[1])) {
-						assert (kv[1].matches("OVERRIDE_MOVEMENT_SPEED\\(\\S+\\)"));
-						float speed = Float.parseFloat(kv[1].substring("OVERRIDE_MOVEMENT_SPEED(".length(), kv[1].length() - 1));
-						overrideMovementSpeed.set(true);
-						movementSpeedOverride.set(speed);
-					}
-					break;
-				case ".wanderShape":
-					useWanderCircle.set("SHAPE_CYLINDER".equals(kv[1]));
-					break;
-				case ".centerPos":
-					coords = getIntVec(kv[1], "centerPos", 3);
-					wanderCenter.point.setPosition(coords[0], coords[1], coords[2]);
-					break;
-				case ".wanderSize":
-					if (useWanderCircle.get()) {
-						coords = getIntVec(kv[1], "wanderSize", -1);
-						wanderRadius.set(coords[0]);
-					}
-					else {
-						coords = getIntVec(kv[1], "wanderSize", 2);
-						wanderSizeX.set(coords[0]);
-						wanderSizeZ.set(coords[1]);
-					}
-					break;
-				case ".detectShape":
-					useDetectCircle.set("SHAPE_CYLINDER".equals(kv[1]));
-					break;
-				case ".detectPos":
-					coords = getIntVec(kv[1], "detectPos", 3);
-					detectCenter.point.setPosition(coords[0], coords[1], coords[2]);
-					break;
-				case ".detectSize":
-					if (useDetectCircle.get()) {
-						coords = getIntVec(kv[1], "detectSize", -1);
-						detectRadius.set(coords[0]);
-						if (coords.length > 1 && coords[1] != 0) {
-							detectHeight.set(coords[1]);
-						}
-					}
-					else {
-						coords = getIntVec(kv[1], "detectSize", 2);
-						detectSizeX.set(coords[0]);
-						detectSizeZ.set(coords[1]);
-					}
-					break;
-				case ".points":
-					// examples:
-					// {{200,0,75},{300,0,75},}
-					// {{-450,0,-160},{-378,0,-81},{-590,0,-100},{-464,0,-46},{-495,0,-147},}
-					assert (kv[1].matches("\\{\\{.+\\},\\}")) : kv[1];
-					String listString = kv[1].substring(2, kv[1].length() - 3);
-					String[] points = listString.split("\\},\\{");
-					for (String p : points) {
-						// have to add the {} so the function can strip them out
-						int[] point = getIntVec("{" + p + "}", "point", 3);
-						patrolPath.points.addElement(new PathPoint(patrolPath, point[0], point[1], point[2]));
-					}
-					break;
-				case ".numPoints":
-					break;
-				default:
-					throw new StarRodException(kv[0]);
-			}
-		}
-	}
-
-	private static int[] getIntVec(String s, String fieldName, int len)
-	{
-		assert (s.matches("\\{\\S+(,\\S+)*\\}")) : s;
-		s = s.substring(1, s.length() - 1);
-		String[] tokens = s.split(",");
-
-		// check predefined position name
-		if (tokens.length == 1 && "NPC_DISPOSE_LOCATION".equals(tokens[0]))
-			return new int[] { 0, -1000, 0 };
-
-		if (len > 0 && tokens.length != len)
-			throw new StarRodException("Wrong length for %s vector: %s (expected %d)", fieldName, s, len);
-
-		if (len < 0 && tokens.length != -len)
-			Logger.logfError("Wrong length for %s vector: %s (expected %d)", fieldName, s, len);
-
-		// convert the coords
-		int[] coords = new int[tokens.length];
-		for (int i = 0; i < tokens.length; i++) {
-			coords[i] = Integer.decode(tokens[i]);
-		}
-		return coords;
 	}
 
 	public void setAnimByName(String animName)

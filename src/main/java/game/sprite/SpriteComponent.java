@@ -481,7 +481,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 
 		SpriteShader shader = ShaderManager.use(SpriteShader.class);
 
-		if (spriteShading.enabled) {
+		if (spriteShading != null && spriteShading.enabled) {
 			shader.useShading.set(true);
 			spriteShading.calculateShaderParams(mtx);
 			spriteShading.setShaderParams(shader);
