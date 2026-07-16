@@ -6,6 +6,7 @@ import static util.Priority.STANDARD;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import javax.swing.SwingUtilities;
 
 public abstract class Logger
 {
@@ -99,13 +100,21 @@ public abstract class Logger
 		switch (p) {
 			case UPDATE:
 				// update messages are only intended for the progress listener
-				if (progressListener != null)
-					progressListener.post(msg);
+				if (progressListener != null) {
+					if (SwingUtilities.isEventDispatchThread())
+						progressListener.post(msg);
+					else
+						SwingUtilities.invokeLater(() -> progressListener.post(msg));
+				}
 				return;
 			case MILESTONE:
-				// progress listener also recieves milestone messages
-				if (progressListener != null)
-					progressListener.post(msg);
+				// progress listener also receives milestone messages
+				if (progressListener != null) {
+					if (SwingUtilities.isEventDispatchThread())
+						progressListener.post(msg);
+					else
+						SwingUtilities.invokeLater(() -> progressListener.post(msg));
+				}
 				break;
 			case WARNING:
 				text = "WARNING: " + text;
@@ -127,8 +136,12 @@ public abstract class Logger
 			return;
 
 		for (ListenerReference ref : listeners) {
-			if (!p.lessThan(ref.priority))
-				ref.listener.post(msg);
+			if (!p.lessThan(ref.priority)) {
+				if (SwingUtilities.isEventDispatchThread())
+					ref.listener.post(msg);
+				else
+					SwingUtilities.invokeLater(() -> ref.listener.post(msg));
+			}
 		}
 	}
 
