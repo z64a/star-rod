@@ -135,6 +135,8 @@ public class MapExtractor
 		for (File src : IOUtils.getFilesWithExtension(map.getProjDir(), ".c", true)) {
 			digest(map, src);
 		}
+
+		addMarkers(map);
 	}
 
 	public String getFileText()
@@ -194,6 +196,9 @@ public class MapExtractor
 
 		if (fileText.contains("EVS_Main") && !map.getName().equals("sbk_99")) //FIXME sbk_99 lol
 			CamSetupExtractor.findAndReplace(map, this);
+
+		if (fileText.contains("SetPanTarget"))
+			CamTargetExtractor.findAndReplace(this);
 
 		if (fileText.contains("FoliageDropList"))
 			FoliageDropExtractor.findAndReplace(this);
@@ -353,6 +358,7 @@ public class MapExtractor
 		ENTRY ("Entrances"),
 		NPC ("NPCs"),
 		ENTITY ("Entities"),
+		CAMERA ("Camera Targets"),
 		EFFECT ("Effects"),
 		FOLIAGE ("Foliage"),
 		NONE (null);
@@ -382,6 +388,9 @@ public class MapExtractor
 			case BlockGrid:
 			case Entity:
 				addMarker(m, MarkerExtractionGroup.ENTITY);
+				break;
+			case CamTarget:
+				addMarker(m, MarkerExtractionGroup.CAMERA);
 				break;
 			default:
 				addMarker(m, MarkerExtractionGroup.NONE);
