@@ -23,7 +23,6 @@ import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.IShutdownListener;
 import game.map.editor.ui.BoundObjectPanel;
 import game.map.editor.ui.LabelWithTip;
-import game.map.editor.ui.ScriptManager;
 import game.map.editor.ui.SimpleEditableJTree;
 import game.map.editor.ui.SimpleEditableJTree.DragAndDropMode;
 import game.map.editor.ui.SwingGUI;
@@ -38,6 +37,7 @@ import game.map.tree.CategoryTreeModel.CategoryTreeNode;
 import net.miginfocom.swing.MigLayout;
 import util.ui.StringField;
 
+@Deprecated
 public class FoliageInfoPanel extends JPanel implements IShutdownListener
 {
 	private static final Dimension POPUP_OPTION_SIZE = new Dimension(150, 24);
@@ -82,12 +82,11 @@ public class FoliageInfoPanel extends JPanel implements IShutdownListener
 	@SuppressWarnings("unchecked")
 	private FoliageInfoPanel()
 	{
-		nameField = new StringField((s) -> {
+		nameField = new StringField(SwingConstants.LEFT, (s) -> {
 			if (ignoreChanges || selected == null)
 				return;
 			MapEditor.execute(selected.overrideName.mutator(s));
 		});
-		nameField.setHorizontalAlignment(SwingConstants.LEFT);
 
 		colliderNamePanel = new BoundObjectPanel(MapObjectType.COLLIDER, "Collider",
 			"Interaction trigger for searching/smashing this foliage.", (s) -> {
@@ -217,8 +216,6 @@ public class FoliageInfoPanel extends JPanel implements IShutdownListener
 
 			ignoreChanges = false;
 		}
-
-		ScriptManager.instance().updateGeneratorTree();
 	}
 
 	public void setSelected(Foliage foliage)

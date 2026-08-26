@@ -146,22 +146,22 @@ public class AssetExtractor
 		map.desc = cfg.desc;
 
 		if (cfg.hasShapeOverride) {
-			map.scripts.overrideShape.set(true);
+			map.features.overrideShape.set(true);
 			String override = cfg.shapeName;
 			if (override.endsWith("_shape"))
 				override = override.substring(0, override.length() - "_shape".length());
-			map.scripts.shapeOverrideName.set(override);
+			map.features.shapeOverrideName.set(override);
 		}
 
 		if (cfg.hasHitOverride) {
-			map.scripts.overrideHit.set(true);
+			map.features.overrideHit.set(true);
 			String override = cfg.shapeName;
 			if (override.endsWith("_hit"))
 				override = override.substring(0, override.length() - "_hit".length());
-			map.scripts.hitOverrideName.set(override);
+			map.features.hitOverrideName.set(override);
 		}
 
-		map.scripts.overrideTex.set(cfg.hasTexOverride);
+		map.features.overrideTex.set(cfg.hasTexOverride);
 
 		if (cfg.shapeFile != null && cfg.shapeFile.exists()) {
 			new GeometryDecompiler(map, cfg.shapeFile);

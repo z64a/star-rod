@@ -26,7 +26,7 @@ import javax.swing.WindowConstants;
 import app.Environment;
 import app.SwingUtils;
 import game.map.editor.MapEditor;
-import game.map.editor.ui.ScriptManager;
+import game.map.editor.ui.SwingGUI;
 import game.map.shape.TexturePanner;
 import game.map.shape.TexturePanner.PannerParams;
 import game.map.shape.TexturePanner.SetTexPannerParams;
@@ -75,7 +75,7 @@ public class EditPannerDialog extends JDialog
 		cancelButton.addActionListener((e) -> {
 			selectedPanner.params.set(originalParams);
 			selectedPanner = null;
-			ScriptManager.instance().updatePannersTab();
+			SwingGUI.instance().updatePannersTab();
 			setVisible(false);
 		});
 
@@ -89,7 +89,7 @@ public class EditPannerDialog extends JDialog
 				// This is why a null check is needed in focusLost.
 				selectedPanner.params.set(originalParams);
 				selectedPanner = null;
-				ScriptManager.instance().updatePannersTab();
+				SwingGUI.instance().updatePannersTab();
 				setVisible(false);
 			}
 		});
@@ -129,7 +129,7 @@ public class EditPannerDialog extends JDialog
 		cbPannerGenerate = new JCheckBox(" Always generate");
 		cbPannerGenerate.addActionListener((e) -> {
 			selectedPanner.params.generate = cbPannerGenerate.isSelected();
-			ScriptManager.instance().updatePannersTab();
+			SwingGUI.instance().updatePannersTab();
 		});
 
 		cbUseTexels = new JCheckBox(" Use texel units");
@@ -142,7 +142,7 @@ public class EditPannerDialog extends JDialog
 			maxField.setValue(params.useTexels ? params.maxST : params.maxUV);
 			ignoreChanges = false;
 
-			ScriptManager.instance().updatePannersTab();
+			SwingGUI.instance().updatePannersTab();
 		});
 
 		setLayout(new MigLayout("ins 16, fill, hidemode 3, wrap"));
@@ -382,7 +382,7 @@ public class EditPannerDialog extends JDialog
 				slider.setValue(value);
 
 			callback.accept(value);
-			ScriptManager.instance().updatePannersTab();
+			SwingGUI.instance().updatePannersTab();
 
 			update = UpdateMode.NONE;
 		}

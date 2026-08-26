@@ -2,6 +2,7 @@ package game.map.tree;
 
 import static game.map.MapKey.*;
 
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -126,6 +127,24 @@ public abstract class MapObjectTreeModel<T extends MapObject> extends DefaultTre
 			for (int i = 0; i < node.getChildCount(); i++)
 				stack.push(node.getChildAt(i));
 			list.add(node.getUserObject());
+		}
+
+		return list;
+	}
+
+	public List<T> asBreadthFirst()
+	{
+		List<T> list = new LinkedList<>();
+		Queue<MapObjectNode<T>> queue = new ArrayDeque<>();
+
+		queue.add(getRoot());
+
+		while (!queue.isEmpty()) {
+			MapObjectNode<T> node = queue.poll();
+			list.add(node.getUserObject());
+
+			for (int i = 0; i < node.getChildCount(); i++)
+				queue.add(node.getChildAt(i));
 		}
 
 		return list;

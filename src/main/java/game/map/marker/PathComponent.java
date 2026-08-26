@@ -4,7 +4,6 @@ import static game.map.MapKey.*;
 import static org.lwjgl.opengl.GL11.GL_GREATER;
 import static org.lwjgl.opengl.GL11.GL_LEQUAL;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.w3c.dom.Element;
@@ -13,6 +12,8 @@ import common.Vector3f;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
+import game.map.JsonFeatures.JsonMarker;
+import game.map.JsonFeatures.JsonPathComp;
 import game.map.MutablePoint;
 import game.map.MutablePoint.PointBackup;
 import game.map.editor.camera.MapEditViewport;
@@ -22,7 +23,6 @@ import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;
 import game.map.editor.selection.SelectablePoint;
 import game.map.editor.ui.info.MarkerInfoPanel;
-import game.map.scripts.extract.HeaderEntry;
 import renderer.buffers.LineRenderQueue;
 import renderer.buffers.PointRenderQueue;
 import renderer.shaders.RenderState;
@@ -37,6 +37,7 @@ public class PathComponent extends BaseMarkerComponent
 	public final PathData path;
 
 	public EditableField<Boolean> showInterp = EditableFieldFactory.create(true)
+		.setCallback((v) -> parentMarker.updateListeners(MarkerInfoPanel.TAG_PATH))
 		.setName(new StandardBoolName("Show Interp")).build();
 
 	private float[] interpLens;
@@ -45,7 +46,7 @@ public class PathComponent extends BaseMarkerComponent
 	public PathComponent(Marker marker)
 	{
 		super(marker);
-		path = new PathData(marker, MarkerInfoPanel.tag_GeneralTab);
+		path = new PathData(marker, MarkerInfoPanel.TAG_PATH);
 	}
 
 	@Override
@@ -54,7 +55,42 @@ public class PathComponent extends BaseMarkerComponent
 		PathComponent copy = new PathComponent(copyParent);
 		for (PathPoint wp : path.points)
 			copy.path.points.addElement(new PathPoint(copy.path, wp.getX(), wp.getY(), wp.getZ()));
+
+		copy.showInterp.set(showInterp.get());
 		return copy;
+	}
+
+	@Override
+	protected void fromJson(JsonMarker in)
+	{
+		if (in.pathComp == null)
+			return;
+
+		showInterp.set(in.pathComp.showInterp);
+
+		if (in.pathComp.waypoints != null) {
+			for (int i = 0; i < in.pathComp.waypoints.length; i++) {
+				int[] wp = in.pathComp.waypoints[i];
+				if (wp == null || wp.length != 3) {
+					Logger.logError("PathComponent: waypoint " + i + " pos must have exactly 3 elements");
+					continue;
+				}
+				path.points.addElement(new PathPoint(path, wp[0], wp[1], wp[2]));
+			}
+		}
+	}
+
+	@Override
+	protected void toJson(JsonMarker out)
+	{
+		out.pathComp = new JsonPathComp();
+		out.pathComp.showInterp = showInterp.get();
+
+		out.pathComp.waypoints = new int[path.points.size()][];
+		for (int i = 0; i < path.points.size(); i++) {
+			PathPoint p = path.points.get(i);
+			out.pathComp.waypoints[i] = new int[] { p.getX(), p.getY(), p.getZ() };
+		}
 	}
 
 	@Override
@@ -349,33 +385,5 @@ public class PathComponent extends BaseMarkerComponent
 		outPos.z = ((az + bz) * curProgress) + pathPoints[i].z;
 
 		return outPos;
-	}
-
-	public void addHeaderDefines(HeaderEntry h)
-	{
-		List<String> lines = new ArrayList<>();
-
-		for (int i = 0; i < path.points.size(); i++) {
-			PathPoint wp = path.points.get(i);
-			lines.add(String.format("    { %4d, %4d, %4d },", wp.point.getX(), wp.point.getY(), wp.point.getZ()));
-		}
-
-		h.addDefine("PATH", lines);
-	}
-
-	public void fromLines(Iterable<String> lines)
-	{
-		path.points.clear();
-
-		for (String line : lines) {
-			// trim { and }, from each row
-			line = line.substring(line.indexOf("{") + 1, line.indexOf("}"));
-			String[] coords = line.split(",");
-			float x = Float.parseFloat(coords[0]);
-			float y = Float.parseFloat(coords[1]);
-			float z = Float.parseFloat(coords[2]);
-
-			path.points.addElement(new PathPoint(path, Math.round(x), Math.round(y), Math.round(z)));
-		}
 	}
 }

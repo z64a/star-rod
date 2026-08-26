@@ -2,7 +2,7 @@ package renderer.shaders.postprocess;
 
 import common.BaseCamera;
 import game.map.editor.MapEditor;
-import game.map.scripts.ScriptData;
+import game.map.scripts.Features;
 import renderer.shaders.components.UniformFloat;
 
 public class DepthShader extends PostProcessShader
@@ -25,9 +25,9 @@ public class DepthShader extends PostProcessShader
 		float far = BaseCamera.FAR_CLIP;
 
 		if (MapEditor.instance().usingInGameCameraProperties()) {
-			ScriptData scriptData = MapEditor.instance().map.scripts;
-			near = scriptData.camNearClip.get();
-			far = scriptData.camFarClip.get();
+			Features features = MapEditor.instance().map.features;
+			near = features.camNearClip.get();
+			far = features.camFarClip.get();
 		}
 
 		znear.set(near);

@@ -839,8 +839,8 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 		disableListener = false;
 	}
 
-	public void setLightSetsVisible(boolean debugShowLightSets)
+	public void showAdvancedOptions(boolean debugShowLightSets)
 	{
-		modelInfoPanel.setLightSetsVisible(debugShowLightSets);
+		modelInfoPanel.showAdvancedOptions(debugShowLightSets);
 	}
 }

@@ -33,7 +33,7 @@ public class PannerListPanel extends JPanel
 
 	public void setMap(Map m)
 	{
-		pannerList.setModel(m.scripts.texPanners);
+		pannerList.setModel(m.features.texPanners);
 		pannerList.setSelectedIndex(0);
 	}
 

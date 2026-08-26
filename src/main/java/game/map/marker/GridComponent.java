@@ -3,7 +3,6 @@ package game.map.marker;
 import static game.map.MapKey.*;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.function.Consumer;
 
 import org.w3c.dom.Element;
@@ -15,6 +14,8 @@ import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
 import game.entity.EntityInfo.EntityType;
 import game.map.BoundingBox;
+import game.map.JsonFeatures.JsonGridComp;
+import game.map.JsonFeatures.JsonMarker;
 import game.map.editor.MapEditor;
 import game.map.editor.camera.MapEditViewport;
 import game.map.editor.render.PresetColor;
@@ -29,7 +30,6 @@ import game.map.editor.ui.info.MarkerInfoPanel;
 import game.map.marker.GridOccupant.OccupantType;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
-import game.map.scripts.extract.HeaderEntry;
 import game.map.shape.TransformMatrix;
 import renderer.buffers.LineRenderQueue;
 import renderer.buffers.TriangleRenderQueue;
@@ -37,6 +37,7 @@ import renderer.shaders.RenderState;
 import renderer.shaders.RenderState.PolygonMode;
 import renderer.shaders.ShaderManager;
 import renderer.shaders.scene.MarkerShader;
+import util.Logger;
 import util.identity.IdentityArrayList;
 import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlTag;
@@ -45,7 +46,7 @@ import util.xml.XmlWrapper.XmlWriter;
 public class GridComponent extends BaseMarkerComponent
 {
 	private final Consumer<Object> notifyCallback = (o) -> {
-		parentMarker.updateListeners(MarkerInfoPanel.tag_GeneralTab);
+		parentMarker.updateListeners(MarkerInfoPanel.TAG_GENERAL);
 	};
 
 	public EditableField<Integer> gridIndex = EditableFieldFactory.create(0)
@@ -86,6 +87,49 @@ public class GridComponent extends BaseMarkerComponent
 		for (GridOccupant occ : gridOccupants)
 			copy.gridOccupants.add(occ.deepCopy(copy.gridOccupants));
 		return copy;
+	}
+
+	@Override
+	protected void fromJson(JsonMarker in)
+	{
+		if (in.gridComp == null)
+			return;
+
+		gridIndex.set(in.gridComp.gridIndex);
+		gridSizeX.set(in.gridComp.gridSizeX);
+		gridSizeZ.set(in.gridComp.gridSizeZ);
+		gridSpacing.set(in.gridComp.gridSpacing);
+		gridUseGravity.set(in.gridComp.gridUseGravity);
+
+		gridOccupants.clear();
+		if (in.gridComp.occupants != null) {
+			for (int i = 0; i < in.gridComp.occupants.length; i++) {
+				int[] occ = in.gridComp.occupants[i];
+				if (occ == null || occ.length != 3) {
+					Logger.logError("GridComponent: occupant " + i + " must have exactly 3 elements");
+					continue;
+				}
+				gridOccupants.add(new GridOccupant(gridOccupants, occ[0], occ[1], occ[2]));
+			}
+		}
+	}
+
+	@Override
+	protected void toJson(JsonMarker out)
+	{
+		out.gridComp = new JsonGridComp();
+
+		out.gridComp.gridIndex = gridIndex.get();
+		out.gridComp.gridSizeX = gridSizeX.get();
+		out.gridComp.gridSizeZ = gridSizeZ.get();
+		out.gridComp.gridSpacing = gridSpacing.get();
+		out.gridComp.gridUseGravity = gridUseGravity.get();
+
+		out.gridComp.occupants = new int[gridOccupants.size()][];
+		for (int i = 0; i < gridOccupants.size(); i++) {
+			GridOccupant occ = gridOccupants.get(i);
+			out.gridComp.occupants[i] = new int[] { occ.posX, occ.posZ, occ.type.get().id };
+		}
 	}
 
 	@Override
@@ -505,66 +549,6 @@ public class GridComponent extends BaseMarkerComponent
 		{
 			super.undo();
 			occ.parentList.add(occ);
-		}
-	}
-
-	public void addHeaderDefines(HeaderEntry h)
-	{
-		h.addDefine("GRID_PARAMS", String.format("%d, %d, %d, %d, %d, %d, NULL",
-			gridIndex.get(), gridSizeX.get(), gridSizeZ.get(),
-			parentMarker.position.getX(), parentMarker.position.getY(), parentMarker.position.getZ()));
-
-		if (gridOccupants.size() > 0) {
-			FormatStringList lines = new FormatStringList();
-
-			int sizeX = gridSizeX.get();
-			int sizeZ = gridSizeZ.get();
-			int[][] grid = new int[sizeX][sizeZ];
-			for (int i = 0; i < sizeX; i++)
-				for (int j = 0; j < sizeZ; j++)
-					grid[i][j] = 0;
-
-			for (GridOccupant occ : gridOccupants) {
-				grid[occ.posX][occ.posZ] = occ.type.get().id;
-			}
-
-			// optimize generated script size using FillPushBlockZ
-			// find consecutive sequences of occupants as X varies
-			for (int j = 0; j < sizeZ; j++) {
-				for (int i = 0; i < sizeX; i++) {
-					int cur = grid[i][j];
-					if (cur == 0)
-						continue;
-
-					int end = i;
-					for (int k = i + 1; k < sizeX; k++) {
-						if (cur != grid[k][j]) {
-							break;
-						}
-						end = k;
-					}
-
-					String occupant;
-					if (cur == 1)
-						occupant = "PUSH_GRID_BLOCK";
-					else
-						occupant = "PUSH_GRID_OBSTRUCTION";
-
-					if (end != i) {
-						lines.addf("    Call(FillPushBlockZ, %d, %d, %d, %d, %s)",
-							gridIndex.get(), j, i, end, occupant);
-					}
-					else {
-						lines.addf("    Call(SetPushBlock, %d, %d, %d, %s)",
-							gridIndex.get(), i, j, occupant);
-					}
-					i = end;
-				}
-			}
-			h.addDefine("GRID_CONTENT", lines);
-		}
-		else {
-			h.addDefine("GRID_CONTENT", Collections.singletonList("Set(LVar0, LVar0)")); // 'NOP'
 		}
 	}
 }

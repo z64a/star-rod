@@ -793,7 +793,7 @@ public class SelectionManager
 	public void testGizmoMouseover(EditorMode editorMode, PickRay mouseRay, MapEditViewport mouseViewport)
 	{
 		Selection<?> selection = null;
-		if (editorMode == EditorMode.Modify || editorMode == EditorMode.Scripts)
+		if (editorMode == EditorMode.Modify || editorMode == EditorMode.Options)
 			selection = currentSelection;
 		else if (editorMode == EditorMode.EditUVs)
 			selection = uvSelection;

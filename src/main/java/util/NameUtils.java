@@ -6,4 +6,9 @@ public abstract class NameUtils
 	{
 		return name.replaceAll("((?<=[a-z0-9])[A-Z]|(?!^)(?<!_)[A-Z](?=[a-z]))", "_$1").toUpperCase();
 	}
+
+	public static String toExtractStyle(String name)
+	{
+		return name.replaceAll("[^\\w\\s]", "").replaceAll("\\s+", "_");
+	}
 }

@@ -11,7 +11,7 @@ public class FlowerVolumeExtractor
 	private static final Matcher FlowerVolumeMatcher = Pattern.compile(
 		"EVT_FLOWER_SPAWN_REGION\\(\\s*(\\S+),\\s*(\\S+),\\s*(\\S+),\\s*(\\S+),\\s*(\\S+)\\s*\\)").matcher("");
 
-	protected static void findAndReplace(Extractor extractor)
+	protected static void findAndReplace(MapExtractor extractor)
 	{
 		String workingText = extractor.getFileText();
 		StringBuilder out = null;

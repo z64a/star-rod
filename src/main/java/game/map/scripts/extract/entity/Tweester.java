@@ -4,9 +4,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
-import game.map.scripts.extract.Extractor;
-import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.extract.HeaderEntry.HeaderParseException;
+import game.map.scripts.extract.MapExtractor;
 
 public class Tweester extends ExtractedEntity
 {
@@ -16,17 +14,21 @@ public class Tweester extends ExtractedEntity
 
 	private static final String TYPES = "(Tweester)";
 	private static final String RegexString = ExtractedEntity.INDENT +
-		"Call\\(MakeEntity, Ref\\(Entity_" + TYPES + "\\)" + ExtractedEntity.ARG.repeat(4) + ",\\s*Ref\\((\\S+)\\),\\s*MAKE_ENTITY_END\\)";
+		"Call\\(MakeEntity, Ref\\(Entity_" + TYPES + "\\)" + ExtractedEntity.ARG.repeat(4) + ",\\s*Ref\\((\\S+)\\),\\s*MAKE_ENTITY_END\\)" +
+		"(?:\\R\\s*Call\\(AssignScript,\\s*Ref\\((\\S+)\\)\\))?";
 	public static final Matcher RegexMatcher = Pattern.compile(RegexString).matcher("");
 
 	private String pathsName;
+
+	private boolean hasScript = false;
+	private String scriptName;
 
 	// required
 	public Tweester()
 	{}
 
 	@Override
-	public void fromSourceMatcher(Extractor extractor, Matcher matcher)
+	public void fromSourceMatcher(MapExtractor extractor, Matcher matcher)
 	{
 		indent = matcher.group(1);
 		type = matcher.group(2);
@@ -36,12 +38,18 @@ public class Tweester extends ExtractedEntity
 		angle = Integer.decode(matcher.group(6));
 		pathsName = matcher.group(7);
 
+		scriptName = matcher.group(8);
+		hasScript = (scriptName != null);
+
 		setName(extractor.getNextName(type));
 
 		Marker m = super.getBaseMarker();
 		extractor.addMarker(m);
 
 		m.entityComponent.pathsName.setAndEnable(pathsName);
+
+		if (hasScript)
+			m.entityComponent.scriptName.setAndEnable(scriptName);
 	}
 
 	public Tweester(Marker m)
@@ -49,20 +57,8 @@ public class Tweester extends ExtractedEntity
 		super(m);
 
 		pathsName = m.entityComponent.pathsName.get();
-	}
 
-	@Override
-	public void addHeaderDefines(HeaderEntry h)
-	{
-		super.addHeaderDefines(h);
-
-		h.addDefine("PATHS", pathsName);
-		h.addDefine("PARAMS", makeParamList(h, "PATHS"));
-	}
-
-	@Override
-	public void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException
-	{
-		m.entityComponent.pathsName.setAndEnable(h.getDefine("PATHS"));
+		hasScript = m.entityComponent.scriptName.isEnabled();
+		scriptName = m.entityComponent.scriptName.get();
 	}
 }

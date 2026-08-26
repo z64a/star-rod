@@ -63,10 +63,9 @@ public class BoundObjectPanel extends JPanel
 		this.markerType = markerType;
 		this.editCallback = editCallback;
 
-		field = new StringField((s) -> {
+		field = new StringField(SwingConstants.LEFT, (s) -> {
 			editCallback.accept(s);
 		});
-		field.setHorizontalAlignment(SwingConstants.LEFT);
 
 		JPopupMenu commandMenu = new JPopupMenu();
 		buildPopupMenu(commandMenu);

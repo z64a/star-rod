@@ -51,25 +51,6 @@ public class PaintManager
 		RGB, HSL
 	}
 
-	private static enum RenderModeOption
-	{
-		Flat("Flat Shading"),
-		Normal("Textured");
-
-		private final String name;
-
-		private RenderModeOption(String name)
-		{
-			this.name = name;
-		}
-
-		@Override
-		public String toString()
-		{
-			return name;
-		}
-	}
-
 	private static PaintVertexPanel paintVertexTab = null;
 	private static Deque<Color> recentColors = new LinkedList<>();
 
@@ -291,13 +272,10 @@ public class PaintManager
 
 	public static SurfaceMode getRenderMode()
 	{
-		if (paintVertexTab.rbFlatShaded.isSelected())
-			return SurfaceMode.SHADED;
-
-		if (paintVertexTab.rbTextured.isSelected())
+		if (paintVertexTab.cbShowTextures.isSelected())
 			return SurfaceMode.TEXTURED;
-
-		throw new IllegalStateException("No paint render mode is selected!");
+		else
+			return SurfaceMode.SHADED;
 	}
 
 	private static BrushFallOffType getFallOffType()
@@ -333,8 +311,7 @@ public class PaintManager
 		private PaintSlider forceSlider;
 		private JComboBox<BrushFallOffType> fallOffComboBox;
 
-		private JRadioButton rbFlatShaded;
-		private JRadioButton rbTextured;
+		private JCheckBox cbShowTextures;
 
 		private ColorModel selectedColorModel = ColorModel.RGB;
 		private Color selectedColor;
@@ -427,22 +404,20 @@ public class PaintManager
 			fallOffComboBox = new JComboBox<>(BrushFallOffType.values());
 			SwingUtils.addBorderPadding(fallOffComboBox);
 
-			rbFlatShaded = new JRadioButton(RenderModeOption.Flat.toString());
-			rbTextured = new JRadioButton(RenderModeOption.Normal.toString());
-			ButtonGroup renderModeGroup = new ButtonGroup();
-			renderModeGroup.add(rbFlatShaded);
-			renderModeGroup.add(rbTextured);
-			rbFlatShaded.setSelected(true);
-			SwingUtils.setFontSize(rbFlatShaded, 12);
-			SwingUtils.setFontSize(rbTextured, 12);
+			cbShowTextures = new JCheckBox(" Show textures while painting");
+			cbShowTextures.setVerticalAlignment(SwingConstants.CENTER);
 
-			JButton colorButton = new JButton("Open Color Picker");
-			gui.addButtonCommand(colorButton, GuiCommand.SHOW_CHOOSE_COLOR_DIALOG);
+			JButton pickerButton = new JButton("Open Color Picker");
+			SwingUtils.addBorderPadding(pickerButton);
+			gui.addButtonCommand(pickerButton, GuiCommand.SHOW_CHOOSE_COLOR_DIALOG);
 
 			Border border = BorderFactory.createEtchedBorder(EtchedBorder.LOWERED);
 
 			JPanel rgbaPanel = new JPanel(new MigLayout("fill, wrap, hidemode 3, ins 16 16 16 16"));
 			rgbaPanel.setBorder(border);
+
+			rgbaPanel.add(colorPreview, "span, split 2, h 96!, w 96!, gap 16 8 16 16");
+			rgbaPanel.add(getColorSwatchPanel());
 
 			rgbaPanel.add(SwingUtils.getLabel("Color Model:", 12), "span, split 3, gapright 10, gapbottom 16");
 			rgbaPanel.add(rgbButton, "gapleft 8, sg radio");
@@ -460,7 +435,7 @@ public class PaintManager
 
 			rgbaPanel.add(channelA, "grow");
 
-			rgbaPanel.add(colorButton, "span, center, gaptop 16");
+			rgbaPanel.add(pickerButton, "span, center, gaptop 16");
 
 			JPanel brushPanel = new JPanel(new MigLayout("fill, wrap, ins 16 16 16 16"));
 			brushPanel.setBorder(border);
@@ -473,15 +448,11 @@ public class PaintManager
 
 			JPanel renderingPanel = new JPanel(new MigLayout("ins 16 16 16 16"));
 			renderingPanel.setBorder(border);
-			renderingPanel.add(rbFlatShaded, "w 100!");
-			renderingPanel.add(rbTextured, "w 100!");
+			renderingPanel.add(cbShowTextures, "growx");
 
 			setLayout(new MigLayout("wrap, fillx, insets 8"));
-			add(SwingUtils.getLabel("Current Paint Color:", 14));
-			add(colorPreview, "span, split 2, h 96!, w 96!, gap 16 8 16 16");
-			add(getColorSwatchPanel());
+			add(SwingUtils.getLabel("Current Color", 14));
 
-			add(SwingUtils.getLabel("Choose Color", 14), "gapbottom 4");
 			add(rgbaPanel, "grow, gapbottom 16");
 
 			add(SwingUtils.getLabel("Brush Settings", 14), "gapbottom 4");

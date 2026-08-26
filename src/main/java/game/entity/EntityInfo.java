@@ -109,7 +109,7 @@ public abstract class EntityInfo
 		Munchlesia				(OVERLAY_JUNGLE_RUGGED, JanIwaOnly, 0x802BCC20, NO_SHADOW),
 		ArrowSign				(OVERLAY_JUNGLE_RUGGED, JanIwaOnly, 0x802BCD9C, NO_SHADOW, RequiredAngle),
 
-		Tweester				(OVERLAY_TOYBOX_DESERT, SbkOmoOnly, 0x802BCA74, NO_SHADOW, RequiredPaths), // FIELD_DEST_MAP | FIELD_DEST_ENTRY | FIELD_PATH_MARKER),
+		Tweester				(OVERLAY_TOYBOX_DESERT, SbkOmoOnly, 0x802BCA74, NO_SHADOW, RequiredPaths, RequiredScript), // FIELD_DEST_MAP | FIELD_DEST_ENTRY | FIELD_PATH_MARKER),
 		StarBoxLauncher			(OVERLAY_TOYBOX_DESERT, SbkOmoOnly, 0x802BCB44, NO_SHADOW, OptionalScript), // FIELD_TARGET_MARKER),
 
 		SavePoint				(COMMON, Block, 0x802E9A18, SQUARE_SHADOW),
@@ -123,8 +123,8 @@ public abstract class EntityInfo
 		HiddenRedBlock			(COMMON, Block, 0x802EA5D0, SQUARE_SHADOW, RequiredItem, OptionalGameFlag, OptionalScript), //  FIELD_FLAG | FIELD_ITEM | FIELD_HAS_SCRIPT),
 
 		Item					(DUMMY, Misc, -1, ROUND_SHADOW, RequiredItem, OptionalGameFlag, RequiredSpawnMode), //FIELD_FLAG | FIELD_ITEM | FIELD_ITEM_SPAWN), // logical entity, not actual one
-		Chest					(COMMON, Misc, 0x802EAE30, NO_SHADOW, OptionalGameFlag, OptionalScript), // FIELD_FLAG | FIELD_ITEM),
-		GiantChest				(COMMON, Misc, 0x802EAE0C, NO_SHADOW, OptionalGameFlag, OptionalScript), // FIELD_FLAG | FIELD_ITEM),
+		Chest					(COMMON, Misc, 0x802EAE30, NO_SHADOW, OptionalItem, OptionalGameFlag, OptionalScript), // FIELD_FLAG | FIELD_ITEM),
+		GiantChest				(COMMON, Misc, 0x802EAE0C, NO_SHADOW, OptionalItem, OptionalGameFlag, OptionalScript), // FIELD_FLAG | FIELD_ITEM),
 		WoodenCrate				(COMMON, Misc, 0x802EAED4, NO_SHADOW, RequiredItem, OptionalGameFlag), // FIELD_FLAG | FIELD_ITEM | FIELD_HAS_SCRIPT | FIELD_HAS_ITEM),
 		HiddenPanel				(COMMON, Misc, 0x802EAB04, NO_SHADOW, RequiredModel, OptionalGameFlag),
 		Signpost				(COMMON, Misc, 0x802EAFDC, NO_SHADOW, OptionalScript),
@@ -286,6 +286,7 @@ public abstract class EntityInfo
 		}
 	}
 
+	@Deprecated
 	public static class EntityTypeData
 	{
 		public final String name;
@@ -386,6 +387,7 @@ public abstract class EntityInfo
 		}
 	}
 
+	@Deprecated
 	public static void main(String[] args) throws IOException
 	{
 		Environment.initialize();
@@ -393,6 +395,7 @@ public abstract class EntityInfo
 		Environment.exit();
 	}
 
+	@Deprecated
 	private static void printEntityTypeData(ByteBuffer fileBuffer) throws IOException
 	{
 		for (EntityType type : EntityType.values()) {

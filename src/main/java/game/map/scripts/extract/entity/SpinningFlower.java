@@ -5,10 +5,7 @@ import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
 import game.map.marker.Marker.MarkerType;
-import game.map.scripts.extract.Extractor;
-import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.extract.HeaderEntry.HeaderParseException;
-import util.NameUtils;
+import game.map.scripts.extract.MapExtractor;
 
 public class SpinningFlower extends ExtractedEntity
 {
@@ -30,7 +27,7 @@ public class SpinningFlower extends ExtractedEntity
 	{}
 
 	@Override
-	public void fromSourceMatcher(Extractor extractor, Matcher matcher)
+	public void fromSourceMatcher(MapExtractor extractor, Matcher matcher)
 	{
 		indent = matcher.group(1);
 		type = matcher.group(2);
@@ -64,27 +61,5 @@ public class SpinningFlower extends ExtractedEntity
 
 		hasTarget = m.entityComponent.targetName.isEnabled();
 		targetName = m.entityComponent.targetName.get();
-	}
-
-	@Override
-	public void addHeaderDefines(HeaderEntry h)
-	{
-		super.addHeaderDefines(h);
-
-		if (hasTarget) {
-			String genTarget = NameUtils.toEnumStyle("GEN_" + targetName);
-			h.addDefine("TARGET", "%s_VEC", genTarget);
-			h.addDefine("PARAMS", makeParamList(h, "TARGET"));
-		}
-		else {
-			h.addDefine("PARAMS", makeParamList(h));
-		}
-	}
-
-	@Override
-	public void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException
-	{
-		if (h.hasDefine("TARGET"))
-			m.entityComponent.targetName.setAndEnable(h.getDefine("TARGET"));
 	}
 }

@@ -82,7 +82,7 @@ public class UVEditorViewport extends MapEditViewport
 	public void render(RenderingOptions opts, boolean isActive)
 	{
 		setViewport();
-		Renderer.setFogEnabled(editor.map.scripts, false);
+		Renderer.setFogEnabled(editor.map.features, false);
 
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

@@ -11,6 +11,9 @@ import common.Vector3f;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
+import game.map.JsonFeatures.JsonCamTargetComp;
+import game.map.JsonFeatures.JsonCameraZone;
+import game.map.JsonFeatures.JsonMarker;
 import game.map.Map;
 import game.map.MutablePoint;
 import game.map.MutablePoint.PointBackup;
@@ -38,7 +41,7 @@ import util.xml.XmlWrapper.XmlWriter;
 public class CamTargetComponent extends BaseMarkerComponent
 {
 	private final Consumer<Object> notifyCallback = (o) -> {
-		parentMarker.updateListeners(MarkerInfoPanel.tag_GeneralTab);
+		parentMarker.updateListeners(MarkerInfoPanel.TAG_GENERAL);
 	};
 
 	public EditableField<Boolean> useZone = EditableFieldFactory.create(false)
@@ -102,6 +105,54 @@ public class CamTargetComponent extends BaseMarkerComponent
 		copy.moveSpeed.set(moveSpeed.get());
 
 		return copy;
+	}
+
+	@Override
+	protected void fromJson(JsonMarker in)
+	{
+		if (in.camTargetComp == null)
+			return;
+
+		generatePan.set(in.camTargetComp.generatePan);
+		moveSpeed.set(in.camTargetComp.moveSpeed);
+
+		useZone.set(in.camTargetComp.useZone);
+
+		if (useZone.get()) {
+			overrideDist.set(in.camTargetComp.overrideDist);
+			boomLength.set(in.camTargetComp.boomLength);
+
+			overrideAngles.set(in.camTargetComp.overrideAngles);
+			boomPitch.set(in.camTargetComp.boomPitch);
+			viewPitch.set(in.camTargetComp.viewPitch);
+		}
+		else if (in.camTargetComp.cameraZone != null) {
+			controlData.fromJson(in.camTargetComp.cameraZone);
+		}
+	}
+
+	@Override
+	protected void toJson(JsonMarker out)
+	{
+		out.camTargetComp = new JsonCamTargetComp();
+
+		out.camTargetComp.generatePan = generatePan.get();
+		out.camTargetComp.moveSpeed = moveSpeed.get();
+
+		out.camTargetComp.useZone = useZone.get();
+
+		if (useZone.get()) {
+			out.camTargetComp.overrideDist = overrideDist.get();
+			out.camTargetComp.boomLength = boomLength.get();
+
+			out.camTargetComp.overrideAngles = overrideAngles.get();
+			out.camTargetComp.boomPitch = boomPitch.get();
+			out.camTargetComp.viewPitch = viewPitch.get();
+		}
+		else {
+			out.camTargetComp.cameraZone = new JsonCameraZone();
+			controlData.toJson(out.camTargetComp.cameraZone);
+		}
 	}
 
 	@Override

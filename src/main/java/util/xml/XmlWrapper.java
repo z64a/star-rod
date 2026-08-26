@@ -359,6 +359,13 @@ public class XmlWrapper
 			return found;
 		}
 
+		public boolean hasTag(Element elem, XmlKey key)
+		{
+			List<Element> tags = getTags(elem, key);
+
+			return tags.size() > 0;
+		}
+
 		public List<Element> getRequiredTags(Element elem, XmlKey key)
 		{
 			List<Element> tags = getTags(elem, key);

@@ -50,6 +50,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 	private JPanel groupPropertiesPanel;
 	private JPanel modelPropertiesPanel;
 
+	private JPanel prop60Subpanel;
 	private JCheckBox prop60Checkbox;
 	private HexTextField prop60aField;
 	private HexTextField prop60bField;
@@ -385,10 +386,12 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 		groupPropertiesPanel.add(lightSetLabel, "w 15%!, split 2");
 		groupPropertiesPanel.add(lightSetComboBox, "growx");
 
-		groupPropertiesPanel.add(prop60Checkbox, "split 4");
-		groupPropertiesPanel.add(new JLabel("Property 60"), "w 25%");
-		groupPropertiesPanel.add(prop60aField, "growx, sg prop60");
-		groupPropertiesPanel.add(prop60bField, "growx, sg prop60");
+		prop60Subpanel = new JPanel(new MigLayout("fill, wrap, ins 0, hidemode 3"));
+		prop60Subpanel.add(prop60Checkbox, "split 4");
+		prop60Subpanel.add(new JLabel("Property 60"), "w 25%");
+		prop60Subpanel.add(prop60aField, "growx, sg prop60");
+		prop60Subpanel.add(prop60bField, "growx, sg prop60");
+		groupPropertiesPanel.add(prop60Subpanel, "growx");
 
 		groupPropertiesPanel.add(hasMeshCheckbox, "split 2");
 		groupPropertiesPanel.add(new JLabel("Has Mesh"));
@@ -424,7 +427,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 			int pannerID = previewScrollUnitBox.getSelectedIndex() - 1;
 			if (pannerID < 0)
 				return;
-			TexturePanner panner = MapEditor.instance().map.scripts.texPanners.get(pannerID);
+			TexturePanner panner = MapEditor.instance().map.features.texPanners.get(pannerID);
 			if (panner != null)
 				SwingGUI.instance().prompt_EditTexPanner(panner);
 		});
@@ -539,9 +542,11 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 		modelPropertiesPanel.add(specialPropertiesPanel, "span");
 	}
 
-	public void setLightSetsVisible(boolean debugShowLightSets)
+	public void showAdvancedOptions(boolean show)
 	{
-		lightSetLabel.setVisible(debugShowLightSets);
-		lightSetComboBox.setVisible(debugShowLightSets);
+		lightSetLabel.setVisible(show);
+		lightSetComboBox.setVisible(show);
+
+		prop60Subpanel.setVisible(show);
 	}
 }

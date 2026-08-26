@@ -12,6 +12,8 @@ import common.commands.EditableField.EditableFieldFactory;
 import game.entity.EntityInfo.EntityParam;
 import game.entity.EntityInfo.EntityType;
 import game.entity.EntityInfo.ShadowType;
+import game.map.JsonFeatures.JsonEntityComp;
+import game.map.JsonFeatures.JsonMarker;
 import game.map.MapKey;
 import game.map.editor.camera.MapEditViewport;
 import game.map.editor.render.Renderer;
@@ -24,25 +26,6 @@ import game.map.editor.selection.PickRay.PickHit;
 import game.map.editor.ui.info.MarkerInfoPanel;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
-import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.extract.HeaderEntry.HeaderParseException;
-import game.map.scripts.extract.entity.ArrowSign;
-import game.map.scripts.extract.entity.BasicEntity;
-import game.map.scripts.extract.entity.BlueSwitch;
-import game.map.scripts.extract.entity.BlueWarpPipe;
-import game.map.scripts.extract.entity.Chest;
-import game.map.scripts.extract.entity.CoinBlock;
-import game.map.scripts.extract.entity.ExtractedEntity;
-import game.map.scripts.extract.entity.HeartBlock;
-import game.map.scripts.extract.entity.HiddenPanel;
-import game.map.scripts.extract.entity.ItemBlock;
-import game.map.scripts.extract.entity.ItemEntity;
-import game.map.scripts.extract.entity.OptionalScriptEntity;
-import game.map.scripts.extract.entity.SimpleSpring;
-import game.map.scripts.extract.entity.SpinningFlower;
-import game.map.scripts.extract.entity.SuperBlock;
-import game.map.scripts.extract.entity.Tweester;
-import game.map.scripts.extract.entity.WoodenCrate;
 import util.identity.IdentityArrayList;
 import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlTag;
@@ -51,7 +34,7 @@ import util.xml.XmlWrapper.XmlWriter;
 public class EntityComponent extends BaseMarkerComponent
 {
 	private final Consumer<Object> notifyCallback = (o) -> {
-		parentMarker.updateListeners(MarkerInfoPanel.tag_EntityTab);
+		parentMarker.updateListeners(MarkerInfoPanel.TAG_ENTITY);
 	};
 
 	public EntityComponent(Marker parent)
@@ -184,6 +167,97 @@ public class EntityComponent extends BaseMarkerComponent
 				field.set(xmr.readInt(entityElem, key));
 				field.setEnabled(true);
 			}
+		}
+	}
+
+	@Override
+	protected void fromJson(JsonMarker in)
+	{
+		if (in.entityComp == null)
+			return;
+
+		JsonEntityComp comp = in.entityComp;
+		type.set(comp.type);
+
+		readJsonStringField(comp.type, ATTR_NTT_ITEM, comp.itemName, itemName);
+		readJsonStringField(comp.type, ATTR_NTT_GAME_FLAG, comp.gameFlagName, gameFlagName);
+		readJsonStringField(comp.type, ATTR_NTT_AREA_FLAG, comp.areaFlagName, areaFlagName);
+		readJsonStringField(comp.type, ATTR_NTT_SCRIPT, comp.scriptName, scriptName);
+		readJsonStringField(comp.type, ATTR_NTT_MODEL, comp.modelName, modelName);
+		readJsonStringField(comp.type, ATTR_NTT_COLLIDER, comp.colliderName, colliderName);
+		readJsonStringField(comp.type, ATTR_NTT_TARGET, comp.targetName, targetName);
+		readJsonStringField(comp.type, ATTR_NTT_ENTRY, comp.entryName, entryName);
+		readJsonStringField(comp.type, ATTR_NTT_MAP_VAR, comp.mapVarName, mapVarName);
+		readJsonStringField(comp.type, ATTR_NTT_SPAWN_MODE, comp.spawnMode, spawnMode);
+		readJsonStringField(comp.type, ATTR_NTT_PATHS, comp.pathsName, pathsName);
+
+		readJsonIntField(comp.type, ATTR_NTT_INDEX, comp.index, index);
+		readJsonIntField(comp.type, ATTR_NTT_STYLE, comp.style, style);
+		readJsonIntField(comp.type, ATTR_NTT_ANGLE, comp.angle, angle);
+		readJsonIntField(comp.type, ATTR_NTT_LAUNCH_DIST, comp.launchDist, launchDist);
+	}
+
+	@Override
+	protected void toJson(JsonMarker out)
+	{
+		JsonEntityComp comp = new JsonEntityComp();
+		out.entityComp = comp;
+
+		comp.type = type.get();
+
+		writeJsonStringField(comp.type, ATTR_NTT_ITEM, itemName, val -> comp.itemName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_GAME_FLAG, gameFlagName, val -> comp.gameFlagName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_AREA_FLAG, areaFlagName, val -> comp.areaFlagName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_SCRIPT, scriptName, val -> comp.scriptName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_MODEL, modelName, val -> comp.modelName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_COLLIDER, colliderName, val -> comp.colliderName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_TARGET, targetName, val -> comp.targetName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_ENTRY, entryName, val -> comp.entryName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_MAP_VAR, mapVarName, val -> comp.mapVarName = val);
+		writeJsonStringField(comp.type, ATTR_NTT_SPAWN_MODE, spawnMode, val -> comp.spawnMode = val);
+		writeJsonStringField(comp.type, ATTR_NTT_PATHS, pathsName, val -> comp.pathsName = val);
+
+		writeJsonIntField(comp.type, ATTR_NTT_INDEX, index, val -> comp.index = val);
+		writeJsonIntField(comp.type, ATTR_NTT_STYLE, style, val -> comp.style = val);
+		writeJsonIntField(comp.type, ATTR_NTT_ANGLE, angle, val -> comp.angle = val);
+		writeJsonIntField(comp.type, ATTR_NTT_LAUNCH_DIST, launchDist, val -> comp.launchDist = val);
+	}
+
+	private void readJsonStringField(EntityType type, MapKey key, String jsonValue, EditableField<String> field)
+	{
+		if (type.hasParam(key)) {
+			EntityParam param = type.getParam(key);
+			field.setEnabled(param.required || jsonValue != null);
+			if (jsonValue != null)
+				field.set(jsonValue);
+		}
+	}
+
+	private void readJsonIntField(EntityType type, MapKey key, Integer jsonValue, EditableField<Integer> field)
+	{
+		if (type.hasParam(key)) {
+			EntityParam param = type.getParam(key);
+			field.setEnabled(param.required || jsonValue != null);
+			if (jsonValue != null)
+				field.set(jsonValue);
+		}
+	}
+
+	private void writeJsonStringField(EntityType type, MapKey key, EditableField<String> field, Consumer<String> setter)
+	{
+		if (type.hasParam(key)) {
+			EntityParam param = type.getParam(key);
+			if (param.required || field.isEnabled())
+				setter.accept(field.get());
+		}
+	}
+
+	private void writeJsonIntField(EntityType type, MapKey key, EditableField<Integer> field, Consumer<Integer> setter)
+	{
+		if (type.hasParam(key)) {
+			EntityParam param = type.getParam(key);
+			if (param.required || field.isEnabled())
+				setter.accept(field.get());
 		}
 	}
 
@@ -364,247 +438,6 @@ public class EntityComponent extends BaseMarkerComponent
 		if (opts.showEntityCollision) {
 			type.get().renderCollision(parentMarker.selected, (float) parentMarker.yaw.getAngle(),
 				parentMarker.position.getX(), parentMarker.position.getY(), parentMarker.position.getZ());
-		}
-	}
-
-	public void addHeaderDefines(HeaderEntry h)
-	{
-		ExtractedEntity e = null;
-
-		switch (type.get()) {
-			case SavePoint:
-			case Padlock:
-			case PadlockRedFrame:
-			case PadlockRedFace:
-			case PadlockBlueFace:
-			case CymbalPlant:
-			case PinkFlower:
-			case BellbellPlant:
-			case TrumpetPlant:
-			case Munchlesia:
-				e = new BasicEntity(parentMarker);
-				break;
-
-			case Hammer1Block:
-			case Hammer1BlockWideX:
-			case Hammer1BlockWideZ:
-			case Hammer1BlockTiny:
-			case Hammer2Block:
-			case Hammer2BlockWideX:
-			case Hammer2BlockWideZ:
-			case Hammer2BlockTiny:
-			case Hammer3Block:
-			case Hammer3BlockWideX:
-			case Hammer3BlockWideZ:
-			case Hammer3BlockTiny:
-			case BombableRock:
-			case BombableRockWide:
-			case Signpost:
-			case BoardedFloor:
-			case ScriptSpring:
-			case StarBoxLauncher:
-			case RedSwitch:
-			case GreenStompSwitch:
-			case BrickBlock:
-			case TriggerBlock:
-			case InertYellowBlock:
-			case PowBlock:
-				e = new OptionalScriptEntity(parentMarker);
-				break;
-
-			case ArrowSign:
-				e = new ArrowSign(parentMarker);
-				break;
-
-			case BlueSwitch:
-			case HugeBlueSwitch:
-				e = new BlueSwitch(parentMarker);
-				break;
-
-			case BlueWarpPipe:
-				e = new BlueWarpPipe(parentMarker);
-				break;
-
-			case Chest:
-			case GiantChest:
-				e = new Chest(parentMarker);
-				break;
-
-			case MulticoinBlock:
-				e = new CoinBlock(parentMarker);
-				break;
-
-			case HeartBlock:
-				e = new HeartBlock(parentMarker);
-				break;
-
-			case YellowBlock:
-			case HiddenYellowBlock:
-			case RedBlock:
-			case HiddenRedBlock:
-				e = new ItemBlock(parentMarker);
-				break;
-
-			case Item:
-				e = new ItemEntity(parentMarker);
-				break;
-
-			case SimpleSpring:
-				e = new SimpleSpring(parentMarker);
-				break;
-
-			case SpinningFlower:
-				e = new SpinningFlower(parentMarker);
-				break;
-
-			case Tweester:
-				e = new Tweester(parentMarker);
-				break;
-
-			case SuperBlock:
-				e = new SuperBlock(parentMarker);
-				break;
-
-			case WoodenCrate:
-				e = new WoodenCrate(parentMarker);
-				break;
-
-			case HiddenPanel:
-				e = new HiddenPanel(parentMarker);
-				break;
-
-			case PushBlock:
-				break;
-		}
-
-		if (e != null)
-			e.addHeaderDefines(h);
-	}
-
-	public void fromHeader(HeaderEntry h) throws HeaderParseException
-	{
-		String[] subtype = h.getProperty("type").split(":");
-
-		if (subtype.length != 3)
-			throw new HeaderParseException("Entity HeaderEntry is missing subtype!");
-
-		try {
-			type.set(EntityType.valueOf(subtype[2]));
-		}
-		catch (Exception e) {
-			throw new HeaderParseException("Could not parse Entity type: " + subtype[2]);
-		}
-
-		ExtractedEntity e = null;
-
-		switch (type.get()) {
-			case SavePoint:
-			case Padlock:
-			case PadlockRedFrame:
-			case PadlockRedFace:
-			case PadlockBlueFace:
-			case CymbalPlant:
-			case PinkFlower:
-			case BellbellPlant:
-			case TrumpetPlant:
-			case Munchlesia:
-				e = new BasicEntity(parentMarker);
-				break;
-
-			case Hammer1Block:
-			case Hammer1BlockWideX:
-			case Hammer1BlockWideZ:
-			case Hammer1BlockTiny:
-			case Hammer2Block:
-			case Hammer2BlockWideX:
-			case Hammer2BlockWideZ:
-			case Hammer2BlockTiny:
-			case Hammer3Block:
-			case Hammer3BlockWideX:
-			case Hammer3BlockWideZ:
-			case Hammer3BlockTiny:
-			case BombableRock:
-			case BombableRockWide:
-			case Signpost:
-			case BoardedFloor:
-			case ScriptSpring:
-			case StarBoxLauncher:
-			case RedSwitch:
-			case GreenStompSwitch:
-			case BrickBlock:
-			case TriggerBlock:
-			case InertYellowBlock:
-			case PowBlock:
-				e = new OptionalScriptEntity(parentMarker);
-				break;
-
-			case ArrowSign:
-				e = new ArrowSign(parentMarker);
-				break;
-
-			case BlueSwitch:
-			case HugeBlueSwitch:
-				e = new BlueSwitch(parentMarker);
-				break;
-
-			case BlueWarpPipe:
-				e = new BlueWarpPipe(parentMarker);
-				break;
-
-			case Chest:
-			case GiantChest:
-				e = new Chest(parentMarker);
-				break;
-
-			case MulticoinBlock:
-				e = new CoinBlock(parentMarker);
-				break;
-
-			case HeartBlock:
-				e = new HeartBlock(parentMarker);
-				break;
-
-			case YellowBlock:
-			case HiddenYellowBlock:
-			case RedBlock:
-			case HiddenRedBlock:
-				e = new ItemBlock(parentMarker);
-				break;
-
-			case Item:
-				e = new ItemEntity(parentMarker);
-				break;
-
-			case SimpleSpring:
-				e = new SimpleSpring(parentMarker);
-				break;
-
-			case SpinningFlower:
-				e = new SpinningFlower(parentMarker);
-				break;
-
-			case Tweester:
-				e = new Tweester(parentMarker);
-				break;
-
-			case SuperBlock:
-				e = new SuperBlock(parentMarker);
-				break;
-
-			case WoodenCrate:
-				e = new WoodenCrate(parentMarker);
-				break;
-
-			case HiddenPanel:
-				e = new HiddenPanel(parentMarker);
-				break;
-
-			case PushBlock:
-				break;
-		}
-
-		if (e != null) {
-			e.parseHeaderDefines(parentMarker, h);
 		}
 	}
 }

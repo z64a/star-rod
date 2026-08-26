@@ -5,8 +5,6 @@ import static game.map.MapKey.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -24,16 +22,21 @@ import org.apache.commons.io.FilenameUtils;
 import org.w3c.dom.Element;
 
 import app.Directories;
+import app.Environment;
 import app.SwingUtils;
 import app.input.IOUtils;
 import assets.AssetManager;
 import common.commands.AbstractCommand;
 import common.commands.CommandBatch;
+import game.ProjectDatabase;
+import game.map.JsonFeatures.JsonMap;
+import game.map.JsonFeatures.JsonMarker;
 import game.map.MapObject.MapObjectType;
 import game.map.editor.EditorObject;
 import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.MapEditorMetadata;
 import game.map.editor.commands.CreateObjects;
+import game.map.editor.commands.DeleteObjects;
 import game.map.editor.render.TextureManager;
 import game.map.editor.selection.PickRay;
 import game.map.editor.selection.PickRay.PickHit;
@@ -49,12 +52,10 @@ import game.map.mesh.AbstractMesh;
 import game.map.mesh.TexturedMesh;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
+import game.map.scripts.Features;
 import game.map.scripts.LightingPanel;
-import game.map.scripts.ScriptData;
-import game.map.scripts.extract.EntryListExtractor;
-import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.extract.MapPropertiesExtractor;
-import game.map.scripts.extract.TexPannerExtractor;
+import game.map.shading.EditableShadingData.EditableShadingLight;
+import game.map.shading.EditableShadingData.EditableShadingProfile;
 import game.map.shape.LightSet;
 import game.map.shape.LightSet.LightSetDigest;
 import game.map.shape.Model;
@@ -65,6 +66,7 @@ import game.map.tree.MapObjectTreeModel;
 import game.map.tree.MarkerTreeModel;
 import game.map.tree.ModelTreeModel;
 import game.map.tree.ZoneTreeModel;
+import util.ColorUtils;
 import util.IterableListModel;
 import util.Logger;
 import util.identity.IdentityHashSet;
@@ -79,6 +81,9 @@ public class Map implements XmlSerializable
 	private static final int latestVersion = 3;
 	private int instanceVersion = latestVersion;
 
+	private boolean loadedJson = false;
+	private boolean writeLegacyXML = false;
+
 	public MapEditorMetadata editorData = null;
 
 	public MapObjectTreeModel<Model> modelTree;
@@ -86,7 +91,7 @@ public class Map implements XmlSerializable
 	public MapObjectTreeModel<Zone> zoneTree;
 	public MapObjectTreeModel<Marker> markerTree;
 
-	public ScriptData scripts;
+	public Features features;
 
 	public IterableListModel<LightSet> lightSets;
 
@@ -116,8 +121,6 @@ public class Map implements XmlSerializable
 	public transient Queue<String> d_zoneNames;
 
 	// used by the editor for bookkeeping
-	//	public transient File source;
-	//	public transient File saveFile;
 	public transient boolean modified = false;
 	public transient BufferedImage bgImage = null;
 	public transient int glBackgroundTexID = -1;
@@ -159,18 +162,27 @@ public class Map implements XmlSerializable
 			xmr, mapElem, TAG_ZONES, TAG_ZONE, TAG_ZONE_TREE);
 		zoneTree = new ZoneTreeModel(zoneRoot);
 
-		MapObjectNode<Marker> markerRoot = readTree((elem) -> Marker.read(xmr, elem),
-			xmr, mapElem, TAG_MARKERS, TAG_MARKER, TAG_MARKER_TREE);
-		markerTree = new MarkerTreeModel(markerRoot);
+		if (!loadedJson) {
+			MapObjectNode<Marker> markerRoot;
 
-		for (Model mdl : modelTree.getList())
-			mdl.lights.set(lightSets.get(mdl.lightsIndex));
+			if (xmr.hasTag(mapElem, TAG_MARKERS)) {
+				markerRoot = readTree((elem) -> Marker.read(xmr, elem),
+					xmr, mapElem, TAG_MARKERS, TAG_MARKER, TAG_MARKER_TREE);
+			}
+			else {
+				markerRoot = Marker.createDefaultRoot().getNode();
+			}
+			markerTree = new MarkerTreeModel(markerRoot);
 
-		scripts = new ScriptData();
+			for (Model mdl : modelTree.getList())
+				mdl.lights.set(lightSets.get(mdl.lightsIndex));
 
-		Element scriptsElem = xmr.getUniqueTag(mapElem, TAG_SCRIPT_DATA);
-		if (scriptsElem != null)
-			scripts.fromXML(xmr, scriptsElem);
+			features = new Features(this);
+
+			Element scriptsElem = xmr.getUniqueTag(mapElem, TAG_SCRIPT_DATA);
+			if (scriptsElem != null)
+				features.fromXML(xmr, scriptsElem);
+		}
 
 		Element editorElem = xmr.getUniqueTag(mapElem, TAG_EDITOR);
 		if (editorElem != null) {
@@ -242,10 +254,12 @@ public class Map implements XmlSerializable
 		zoneTree.toXML(xmw);
 		xmw.closeTag(zoneTreeTag);
 
-		XmlTag markerTreeTag = xmw.createTag(TAG_MARKER_TREE, false);
-		xmw.openTag(markerTreeTag);
-		markerTree.toXML(xmw);
-		xmw.closeTag(markerTreeTag);
+		if (writeLegacyXML) {
+			XmlTag markerTreeTag = xmw.createTag(TAG_MARKER_TREE, false);
+			xmw.openTag(markerTreeTag);
+			markerTree.toXML(xmw);
+			xmw.closeTag(markerTreeTag);
+		}
 
 		XmlTag lightsetsTag = xmw.createTag(TAG_LIGHTSETS, false);
 		xmw.openTag(lightsetsTag);
@@ -274,16 +288,18 @@ public class Map implements XmlSerializable
 			z.toXML(xmw);
 		xmw.closeTag(zonesTag);
 
-		XmlTag markersTag = xmw.createTag(TAG_MARKERS, false);
-		xmw.openTag(markersTag);
-		for (Marker m : markerTree.getList())
-			m.toXML(xmw);
-		xmw.closeTag(markersTag);
+		if (writeLegacyXML) {
+			XmlTag markersTag = xmw.createTag(TAG_MARKERS, false);
+			xmw.openTag(markersTag);
+			for (Marker m : markerTree.getList())
+				m.toXML(xmw);
+			xmw.closeTag(markersTag);
 
-		XmlTag scriptsTag = xmw.createTag(TAG_SCRIPT_DATA, false);
-		xmw.openTag(scriptsTag);
-		scripts.toXML(xmw);
-		xmw.closeTag(scriptsTag);
+			XmlTag scriptsTag = xmw.createTag(TAG_SCRIPT_DATA, false);
+			xmw.openTag(scriptsTag);
+			features.toXML(xmw);
+			xmw.closeTag(scriptsTag);
+		}
 
 		xmw.closeTag(root);
 	}
@@ -308,7 +324,7 @@ public class Map implements XmlSerializable
 		lightSets.addElement(LightSet.createEmptySet());
 		modelTree.getRoot().getUserObject().lights.set(lightSets.get(0));
 
-		scripts = new ScriptData();
+		features = new Features(this);
 	}
 
 	private void setName(String name)
@@ -685,9 +701,12 @@ public class Map implements XmlSerializable
 
 		XmlReader xmr = new XmlReader(f);
 		map = new Map();
-		map.fromXML(xmr, xmr.getRootElement());
 
 		map.setName(deriveName(f));
+		map.tryLoadFeatures();
+
+		map.fromXML(xmr, xmr.getRootElement());
+
 		map.lastModified = f.lastModified();
 		validateObjectData(map);
 
@@ -760,9 +779,102 @@ public class Map implements XmlSerializable
 			}
 			catch (IOException e) {
 				Logger.printStackTrace(e);
-				Logger.log("Could not read map variables from " + areaHeaderName);
+				Logger.log("Could not read map variables from " + mapHeaderName);
 			}
 		}
+	}
+
+	public void loadShadingProfile(EditableShadingProfile profile)
+	{
+		assert (!Environment.isDX());
+
+		features.shadingBaseColor.set(ColorUtils.pack(profile.ambient));
+		features.shadingOffset.set(profile.power);
+
+		int i = 1;
+		for (EditableShadingLight light : profile.lights) {
+			Marker m = new Marker("Light " + i, MarkerType.Light, light.pos[0], light.pos[1], light.pos[2], 0);
+			m.lightComponent.color.set(ColorUtils.pack(light.rgb));
+			m.lightComponent.falloffType = light.falloffType;
+			m.lightComponent.setByCoeff(light.falloffCoeff);
+			m.lightComponent.enabled.set(light.enabled);
+			markerTree.create(m);
+			i++;
+		}
+	}
+
+	public void changeShadingProfile(EditableShadingProfile profile)
+	{
+		assert (!Environment.isDX());
+
+		List<Marker> lights = new ArrayList<>();
+
+		int i = 1;
+		for (EditableShadingLight light : profile.lights) {
+			Marker m = new Marker("Light " + i, MarkerType.Light, light.pos[0], light.pos[1], light.pos[2], 0);
+			m.lightComponent.color.set(ColorUtils.pack(light.rgb));
+			m.lightComponent.falloffType = light.falloffType;
+			m.lightComponent.setByCoeff(light.falloffCoeff);
+			m.lightComponent.enabled.set(light.enabled);
+			lights.add(m);
+			i++;
+		}
+
+		List<Marker> toDelete = new ArrayList<>();
+		for (Marker m : markerTree) {
+			if (m.type == MarkerType.Light) {
+				toDelete.add(m);
+			}
+		}
+
+		CommandBatch batch = new CommandBatch("Load Lights");
+		batch.addCommand(features.shadingProfileName.mutator(profile.name));
+		batch.addCommand(features.shadingBaseColor.mutator(ColorUtils.pack(profile.ambient)));
+		batch.addCommand(features.shadingOffset.mutator(profile.power));
+		batch.addCommand(new DeleteObjects(toDelete));
+		batch.addCommand(new CreateObjects(lights));
+		MapEditor.execute(batch);
+
+		// don't allow changes
+		MapEditor.instance().flushUndoRedo();
+	}
+
+	public EditableShadingProfile captureCurrentShadingProfile(String profileName)
+	{
+		assert (!Environment.isDX());
+
+		EditableShadingProfile profile = new EditableShadingProfile();
+		profile.name = profileName;
+		profile.ambient = ColorUtils.unpack(features.shadingBaseColor.get());
+		profile.power = features.shadingOffset.get();
+
+		for (Marker marker : markerTree) {
+			if (marker.type != MarkerType.Light)
+				continue;
+
+			EditableShadingLight light = new EditableShadingLight();
+			light.rgb = ColorUtils.unpack(marker.lightComponent.color.get());
+			light.pos = new int[] {
+					Math.round(marker.position.getX()),
+					Math.round(marker.position.getY()),
+					Math.round(marker.position.getZ())
+			};
+			light.falloffCoeff = marker.lightComponent.falloffCoeff;
+			light.falloffType = marker.lightComponent.falloffType;
+			light.enabled = marker.lightComponent.enabled.get();
+			profile.lights.add(light);
+		}
+
+		return profile;
+	}
+
+	public void syncCurrentShadingToProfile()
+	{
+		assert (!Environment.isDX());
+
+		String profileName = features.shadingProfileName.get();
+		EditableShadingProfile snapshot = captureCurrentShadingProfile(profileName);
+		ProjectDatabase.SpriteShading.update(profileName, snapshot);
 	}
 
 	public static void validateObjectData(Map map)
@@ -865,7 +977,7 @@ public class Map implements XmlSerializable
 		saveMapAs_impl(file, true);
 	}
 
-	private void saveMapAs_impl(File file, boolean generateHeader) throws Exception
+	private void saveMapAs_impl(File file, boolean saveFeatures) throws Exception
 	{
 		FileUtils.touch(file);
 		File tempFile = new File(file.getAbsolutePath() + ".temp");
@@ -893,9 +1005,8 @@ public class Map implements XmlSerializable
 		lastModified = file.lastModified();
 		modified = false;
 
-		if (generateHeader) {
-			tryInjectHeader();
-			writeHeader();
+		if (saveFeatures) {
+			saveFeatures();
 		}
 	}
 
@@ -1565,52 +1676,80 @@ public class Map implements XmlSerializable
 		return false;
 	}
 
-	private static final String INC_GEN = "#include \"generated.h\"";
-	private static final String INC_COM = "#include \"common.h\"";
-
-	private void tryInjectHeader() throws IOException
+	private void tryLoadFeatures()
 	{
-		File mapHeader = new File(projDir, name + ".h");
-		File genHeader = new File(projDir, "generated.h");
+		loadedJson = false;
 
-		if (!mapHeader.exists()) {
-			Logger.logError("Could not find header file for " + name);
+		File featuresJson = new File(projDir, "features.json");
+		if (!featuresJson.exists())
 			return;
+
+		try {
+			JsonMap in = JsonFeatures.readJson(featuresJson);
+
+			features = new Features(this);
+			features.fromJson(in);
+
+			HashMap<Integer, Marker> idMap = new HashMap<>();
+
+			markerTree = new MarkerTreeModel();
+			MapObjectNode<Marker> root = markerTree.getRoot();
+
+			for (JsonMarker jsonMarker : in.markers) {
+				Marker m = new Marker(jsonMarker);
+				idMap.put(jsonMarker.id, m);
+
+				if (jsonMarker.parent == null)
+					m.getNode().parentNode = root;
+				else
+					m.getNode().parentNode = idMap.get(jsonMarker.parent).getNode();
+
+				markerTree.create(m);
+			}
+
+			if (!Environment.isDX() && in.hasSpriteShading && in.shadingProfile != null) {
+				EditableShadingProfile profile = ProjectDatabase.SpriteShading.find(in.shadingProfile);
+				if (profile == null) {
+					Logger.logError("Could not find shading profile: " + in.shadingProfile);
+					features.hasValidShadingProfile = false;
+				}
+				else {
+					loadShadingProfile(profile);
+					features.hasValidShadingProfile = true;
+				}
+			}
+
+			loadedJson = true;
 		}
+		catch (
 
-		String headerText = Files.readString(mapHeader.toPath());
-		if (headerText.contains(INC_GEN))
-			return;
-
-		// try injecting on the line after "common.h", else append to the end
-		if (headerText.contains(INC_COM))
-			headerText = headerText.replace(INC_COM, INC_COM + "\n" + INC_GEN);
-		else
-			headerText += "\n#include \"generated.h\"";
-
-		Files.writeString(mapHeader.toPath(), headerText);
-		FileUtils.touch(genHeader);
+		IOException e) {
+			Logger.logError(e.getMessage());
+		}
 	}
 
-	private void writeHeader() throws IOException
+	private void saveFeatures() throws IOException
 	{
-		File genHeader = new File(projDir, "generated.h");
-		FileUtils.touch(genHeader);
+		File featuresJson = new File(projDir, "features.json");
+		FileUtils.touch(featuresJson);
 
-		try (PrintWriter pw = IOUtils.getBufferedPrintWriter(genHeader)) {
-			pw.println("/* auto-generated, do not edit */");
-			pw.println("#include \"star_rod_macros.h\"");
-			pw.println();
+		JsonMap out = new JsonMap();
+		features.toJson(out);
 
-			MapPropertiesExtractor.print(pw, this);
-			EntryListExtractor.print(pw, markerTree);
-			TexPannerExtractor.print(pw, this);
+		List<JsonMarker> jsonMarkers = new ArrayList<>();
+		for (Marker m : markerTree.asBreadthFirst()) {
+			// do not emit root marker
+			if (m.type == MarkerType.Root)
+				continue;
 
-			for (Marker m : markerTree) {
-				HeaderEntry h = m.getHeaderEntry();
-				if (h != null)
-					h.print(pw);
-			}
+			// do not emit lights when used with pmret
+			if (!Environment.isDX() && m.type == MarkerType.Light)
+				continue;
+
+			jsonMarkers.add(m.toJson());
 		}
+		out.markers = jsonMarkers.toArray(new JsonMarker[0]);
+
+		JsonFeatures.writeJson(out, featuresJson);
 	}
 }

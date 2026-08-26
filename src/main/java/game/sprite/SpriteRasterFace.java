@@ -85,7 +85,7 @@ public class SpriteRasterFace
 		asset = img;
 		resolved = true;
 
-		filename = (img == null) ? "" : img.getName();
+		filename = (img == null) ? "" : img.getFilename();
 	}
 
 	public void assignPal(SpritePalette selectedPal)

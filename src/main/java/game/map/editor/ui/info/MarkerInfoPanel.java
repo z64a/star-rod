@@ -21,6 +21,7 @@ import game.map.editor.ui.SwingGUI;
 import game.map.editor.ui.info.marker.CamTargetSubpanel;
 import game.map.editor.ui.info.marker.EntitySubpanel;
 import game.map.editor.ui.info.marker.GridSubpanel;
+import game.map.editor.ui.info.marker.LightSubpanel;
 import game.map.editor.ui.info.marker.NpcSubpanel;
 import game.map.editor.ui.info.marker.PathSubpanel;
 import game.map.editor.ui.info.marker.TerritoryTab;
@@ -39,39 +40,48 @@ import util.ui.NameTextField;
 
 public class MarkerInfoPanel extends MapInfoPanel<Marker> implements ActionListener
 {
+	// components common to all markers
 	private JTabbedPane tabs;
-	private JPanel leafPanel;
-
 	private NameTextField nameField;
+
+	// components common to all non-group markers
+	private JPanel leafPanel;
 	private JComboBox<MarkerType> markerTypeBox;
 	private IntTextField posXField;
 	private IntTextField posYField;
 	private IntTextField posZField;
 	private FloatTextField angleField;
-
 	private JLabel heightAboveGroundLabel;
 
+	// type-specific subpanels
 	private Container subpanelContainer;
 	private VolumeSubpanel volumeSubpanel;
 	private GridSubpanel gridSubpanel;
 	private PathSubpanel pathSubpanel;
 	private EntitySubpanel entitySubpanel;
+	private LightSubpanel lightSubpanel;
+	private CamTargetSubpanel cameraSubpanel;
 	private NpcSubpanel npcSubpanel;
 
-	private boolean movementTabAvailable = false;
+	// tabs
+	private boolean territoryTabVisible = false;
 	private TerritoryTab territoryTab;
 
+	//FIXME -- remove
 	//private MarkerCameraTab cameraTab;
 
-	private CamTargetSubpanel cameraSubpanel;
+	// update-filtering tags
+	public static final String TAG_GENERAL = "General";
+	public static final String TAG_PATH = "Path";
+	public static final String TAG_TERRITORY = "Territory";
+	public static final String TAG_ENTITY = "Entity";
+	public static final String TAG_CAMERA = "Camera";
+	public static final String TAG_SPRITE = "Sprite";
+	public static final String TAG_SHADING = "Shading";
 
-	// update tags (not used much)
-
-	public static final String tag_GeneralTab = "GeneralTab";
-	public static final String tag_NPCMovementTab = "NPCMovementTab";
-	public static final String tag_EntityTab = "EntityTab";
-	public static final String tag_CameraTab = "CameraTab";
-	public static final String tag_SetSprite = "SetSprite";
+	// shared layout constraints
+	public static final String FIELD_NAME_WIDTH = "15%!";
+	public static final String FOUR_COLUMNS = "[" + FIELD_NAME_WIDTH + "][sg xyz][sg xyz][sg xyz]";
 
 	public MarkerInfoPanel()
 	{
@@ -85,9 +95,6 @@ public class MarkerInfoPanel extends MapInfoPanel<Marker> implements ActionListe
 		setLayout(new MigLayout("fill, ins 0"));
 		add(tabs, "span, grow, pushy");
 	}
-
-	public static final String FIELD_NAME_WIDTH = "18%!";
-	public static final String FOUR_COLUMNS = "[" + FIELD_NAME_WIDTH + "][sg xyz][sg xyz][sg xyz]";
 
 	private JPanel createGeneralTab()
 	{
@@ -146,6 +153,7 @@ public class MarkerInfoPanel extends MapInfoPanel<Marker> implements ActionListe
 		gridSubpanel = new GridSubpanel(this);
 		volumeSubpanel = new VolumeSubpanel(this);
 		entitySubpanel = new EntitySubpanel(this);
+		lightSubpanel = new LightSubpanel(this);
 		cameraSubpanel = new CamTargetSubpanel(this);
 
 		JPanel commonMarkerPanel = new JPanel();
@@ -227,6 +235,10 @@ public class MarkerInfoPanel extends MapInfoPanel<Marker> implements ActionListe
 					subpanelContainer.add(entitySubpanel, "growx");
 					entitySubpanel.onUpdateFields();
 					break;
+				case Light:
+					subpanelContainer.add(lightSubpanel, "growx");
+					lightSubpanel.updateFields();
+					break;
 				case CamTarget:
 					subpanelContainer.add(cameraSubpanel, "growx");
 					cameraSubpanel.updateFields();
@@ -239,15 +251,15 @@ public class MarkerInfoPanel extends MapInfoPanel<Marker> implements ActionListe
 
 			// npc movement tab visibility
 			if (getData().getType() == MarkerType.NPC) {
-				if (!movementTabAvailable) {
+				if (!territoryTabVisible) {
 					tabs.addTab("Territory", territoryTab);
-					movementTabAvailable = true;
+					territoryTabVisible = true;
 				}
 			}
 			else {
-				if (movementTabAvailable) {
+				if (territoryTabVisible) {
 					tabs.remove(territoryTab);
-					movementTabAvailable = false;
+					territoryTabVisible = false;
 				}
 			}
 		}

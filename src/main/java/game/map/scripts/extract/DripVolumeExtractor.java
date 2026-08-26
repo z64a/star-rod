@@ -15,7 +15,7 @@ public class DripVolumeExtractor
 			"\\s+\\.endY\\s*=\\s*(\\S+),")
 		.matcher("");
 
-	protected static void findAndReplace(Extractor extractor)
+	protected static void findAndReplace(MapExtractor extractor)
 	{
 		String workingText = extractor.getFileText();
 		StringBuilder out = null;

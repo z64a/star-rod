@@ -7,9 +7,7 @@ import java.util.regex.Matcher;
 import game.entity.EntityInfo.EntityType;
 import game.map.marker.Marker;
 import game.map.marker.Marker.MarkerType;
-import game.map.scripts.extract.Extractor;
-import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.extract.HeaderEntry.HeaderParseException;
+import game.map.scripts.extract.MapExtractor;
 import util.NameUtils;
 
 public abstract class ExtractedEntity
@@ -53,7 +51,7 @@ public abstract class ExtractedEntity
 	public void setName(String newName)
 	{
 		this.name = newName;
-		genName = NameUtils.toEnumStyle("GEN_" + name);
+		genName = NameUtils.toExtractStyle("GEN_" + name);
 	}
 
 	public String getIndent()
@@ -64,25 +62,10 @@ public abstract class ExtractedEntity
 	public List<String> getLines()
 	{
 		List<String> lines = new ArrayList<>();
-		lines.add(String.format("EVT_MAKE_ENTITY(%s, %s_PARAMS)", type, genName));
+		lines.add(String.format("AUTO_ENTITY(%s)", genName.substring("GEN_".length())));
 		return lines;
 	}
 
-	protected final String makeParamList(HeaderEntry h, String ... additionalParams)
-	{
-		StringBuilder sb = new StringBuilder(h.namespace("XYZA"));
-		for (String s : additionalParams)
-			sb.append(", ").append(h.namespace(s));
-		return sb.toString();
-	}
-
-	public void addHeaderDefines(HeaderEntry h)
-	{
-		h.addDefine("XYZA", "%d, %d, %d, %d", posX, posY, posZ, angle);
-	}
-
-	public abstract void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException;
-
-	public abstract void fromSourceMatcher(Extractor extractor, Matcher matcher);
+	public abstract void fromSourceMatcher(MapExtractor extractor, Matcher matcher);
 
 }

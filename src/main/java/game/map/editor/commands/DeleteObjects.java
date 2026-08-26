@@ -2,6 +2,7 @@ package game.map.editor.commands;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import common.commands.AbstractCommand;
@@ -11,7 +12,13 @@ import game.map.editor.selection.Selection;
 
 public class DeleteObjects extends AbstractCommand
 {
-	private final ArrayList<MapObject> deleteList;
+	private final List<? extends MapObject> deleteList;
+
+	public DeleteObjects(List<? extends MapObject> list)
+	{
+		super("Delete Objects");
+		deleteList = list;
+	}
 
 	public DeleteObjects(Selection<MapObject> selection)
 	{

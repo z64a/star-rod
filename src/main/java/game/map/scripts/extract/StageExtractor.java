@@ -19,6 +19,7 @@ import game.map.Map;
 import util.Logger;
 import util.NameUtils;
 
+//FIXME
 public class StageExtractor
 {
 	public static void main(String[] args) throws IOException
@@ -104,7 +105,7 @@ public class StageExtractor
 				pw.println("#include \"star_rod_macros.h\"");
 				pw.println();
 
-				TexPannerExtractor.print(pw, map);
+				//FIXME TexPannerExtractor.print(pw, map);
 			}
 		}
 
@@ -150,6 +151,6 @@ public class StageExtractor
 
 	public String getGenName(String name)
 	{
-		return NameUtils.toEnumStyle("GEN_" + name);
+		return NameUtils.toExtractStyle("GEN_" + name);
 	}
 }

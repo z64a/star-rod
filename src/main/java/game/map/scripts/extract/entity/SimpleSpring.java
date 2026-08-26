@@ -4,9 +4,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
-import game.map.scripts.extract.Extractor;
-import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.extract.HeaderEntry.HeaderParseException;
+import game.map.scripts.extract.MapExtractor;
 
 public class SimpleSpring extends ExtractedEntity
 {
@@ -26,7 +24,7 @@ public class SimpleSpring extends ExtractedEntity
 	{}
 
 	@Override
-	public void fromSourceMatcher(Extractor extractor, Matcher matcher)
+	public void fromSourceMatcher(MapExtractor extractor, Matcher matcher)
 	{
 		indent = matcher.group(1);
 		type = matcher.group(2);
@@ -49,20 +47,5 @@ public class SimpleSpring extends ExtractedEntity
 		super(m);
 
 		launchHeight = m.entityComponent.launchDist.get();
-	}
-
-	@Override
-	public void addHeaderDefines(HeaderEntry h)
-	{
-		super.addHeaderDefines(h);
-
-		h.addDefine("HEIGHT", launchHeight);
-		h.addDefine("PARAMS", makeParamList(h, "HEIGHT"));
-	}
-
-	@Override
-	public void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException
-	{
-		m.entityComponent.launchDist.setAndEnable(h.getIntDefine("HEIGHT"));
 	}
 }

@@ -111,6 +111,16 @@ public abstract class Environment
 		return isDeluxe;
 	}
 
+	public static boolean isDX()
+	{
+		return false; //TODO
+	}
+
+	public static boolean usingTexturePool()
+	{
+		return isDX(); //TODO
+	}
+
 	public static String getVersionString()
 	{
 		return versionString;

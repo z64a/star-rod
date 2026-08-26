@@ -18,7 +18,7 @@ public class PushGridExtractor
 
 	private static final Matcher CallMatcher = Pattern.compile("Call\\((.+)\\)").matcher("");
 
-	protected static void findAndReplace(Extractor extractor)
+	protected static void findAndReplace(MapExtractor extractor)
 	{
 		String workingText = extractor.getFileText();
 		StringBuilder out = null;
@@ -117,7 +117,6 @@ public class PushGridExtractor
 						break;
 					case "SetPushBlockFallEffect":
 						m.gridComponent.gridUseGravity.set(true);
-						newLines.append("\n").append(line);
 						break;
 				}
 			}

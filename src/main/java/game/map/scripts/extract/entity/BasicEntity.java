@@ -4,9 +4,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import game.map.marker.Marker;
-import game.map.scripts.extract.Extractor;
-import game.map.scripts.extract.HeaderEntry;
-import game.map.scripts.extract.HeaderEntry.HeaderParseException;
+import game.map.scripts.extract.MapExtractor;
 
 public class BasicEntity extends ExtractedEntity
 {
@@ -22,12 +20,8 @@ public class BasicEntity extends ExtractedEntity
 		"Call\\(MakeEntity, Ref\\(Entity_" + TYPES + "\\)" + ExtractedEntity.ARG.repeat(4) + ",\\s*MAKE_ENTITY_END\\)";
 	public static final Matcher RegexMatcher = Pattern.compile(RegexString).matcher("");
 
-	// required
-	public BasicEntity()
-	{}
-
 	@Override
-	public void fromSourceMatcher(Extractor extractor, Matcher matcher)
+	public void fromSourceMatcher(MapExtractor extractor, Matcher matcher)
 	{
 		indent = matcher.group(1);
 		type = matcher.group(2);
@@ -41,20 +35,4 @@ public class BasicEntity extends ExtractedEntity
 		Marker m = super.getBaseMarker();
 		extractor.addMarker(m);
 	}
-
-	public BasicEntity(Marker m)
-	{
-		super(m);
-	}
-
-	@Override
-	public void addHeaderDefines(HeaderEntry h)
-	{
-		super.addHeaderDefines(h);
-		h.addDefine("PARAMS", makeParamList(h));
-	}
-
-	@Override
-	public void parseHeaderDefines(Marker m, HeaderEntry h) throws HeaderParseException
-	{}
 }

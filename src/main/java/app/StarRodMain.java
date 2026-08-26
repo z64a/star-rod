@@ -38,7 +38,6 @@ import javax.swing.WindowConstants;
 
 import org.apache.commons.io.FilenameUtils;
 
-import app.config.Options;
 import app.input.InvalidInputException;
 import assets.AssetHandle;
 import assets.AssetManager;
@@ -51,7 +50,6 @@ import game.map.compiler.CollisionCompiler;
 import game.map.compiler.GeometryCompiler;
 import game.map.editor.MapEditor;
 import game.map.scripts.ScriptGenerator;
-import game.map.scripts.extract.Extractor;
 import game.message.editor.MessageEditor;
 import game.sprite.editor.SpriteEditor;
 import game.texture.editor.ImageEditor;
@@ -185,14 +183,6 @@ public class StarRodMain extends StarRodFrame
 		});
 		buttons.add(themesMenuButton);
 
-		JButton extractDataButton = new JButton("Extract Map Data");
-		trySetIcon(extractDataButton, ExpectedAsset.ICON_EXTRACT);
-		SwingUtils.setFontSize(extractDataButton, 12);
-		extractDataButton.addActionListener((e) -> {
-			action_extractMapData();
-		});
-		buttons.add(extractDataButton);
-
 		// not ready
 		/*
 		JButton captureThumbnailsButton = new JButton("Capture Thumbnails");
@@ -292,7 +282,7 @@ public class StarRodMain extends StarRodFrame
 		add(imageEditorButton, "grow");
 
 		add(themesMenuButton, "grow");
-		add(extractDataButton, "grow");
+		add(new JLabel(""), "grow");
 
 		add(openConfigDirButton, "grow");
 		add(openProjectDirButton, "grow");
@@ -400,42 +390,6 @@ public class StarRodMain extends StarRodFrame
 			CountDownLatch editorClosedSignal = new CountDownLatch(1);
 			new ThemesEditor(editorClosedSignal);
 			editorClosedSignal.await();
-		});
-	}
-
-	private void action_extractMapData()
-	{
-		new EditorWorker(() -> {
-			if (!Environment.projectConfig.getBoolean(Options.ExtractedMapData)) {
-				int choice = SwingUtils.getConfirmDialog()
-					.setTitle("Extraction Warning")
-					.setMessage("This action will modify the source files of almost every map.",
-						"Consider creating a backup or committing any changes before proceeding.",
-						"Are you ready to begin extracting?")
-					.setMessageType(JOptionPane.WARNING_MESSAGE)
-					.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
-					.choose();
-
-				if (choice == JOptionPane.YES_OPTION) {
-					Logger.log("Extracting map data...", Priority.MILESTONE);
-					Extractor.extractAll();
-
-					SwingUtils.getMessageDialog()
-						.setTitle("All Data Extracted")
-						.setMessage("Complete!")
-						.setMessageType(JOptionPane.PLAIN_MESSAGE)
-						.show();
-
-					Environment.projectConfig.setBoolean(Options.ExtractedMapData, true);
-					Environment.projectConfig.saveConfigFile();
-				}
-			}
-			else {
-				SwingUtils.getWarningDialog()
-					.setTitle("Data Already Extracted")
-					.setMessage("Map data has already been extracted for this project.")
-					.show();
-			}
 		});
 	}
 

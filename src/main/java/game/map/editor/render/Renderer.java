@@ -26,7 +26,7 @@ import game.map.mesh.AbstractMesh;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
 import game.map.scripts.FogSettings;
-import game.map.scripts.ScriptData;
+import game.map.scripts.Features;
 import game.map.shape.Model;
 import game.map.shape.ModelRenderer.RenderableModel;
 import game.map.shape.TransformMatrix;
@@ -707,20 +707,20 @@ public class Renderer implements IShutdownListener
 		LineRenderQueue.render(true);
 	}
 
-	public static void setFogEnabled(ScriptData scripts, boolean enabled)
+	public static void setFogEnabled(Features features, boolean enabled)
 	{
 		ModelShader modelShader = ShaderManager.get(ModelShader.class);
 		EntityShader entityShader = ShaderManager.get(EntityShader.class);
 		FogSettings fog;
 
 		if (enabled) {
-			fog = scripts.worldFogSettings;
+			fog = features.worldFog;
 			modelShader.useProgram(true);
 			modelShader.enableFog.set(fog.enabled.get());
 			modelShader.fogDist.set(fog.start.get(), fog.end.get());
 			modelShader.fogColor.set(fog.R.get(), fog.G.get(), fog.B.get(), fog.A.get());
 
-			fog = scripts.entityFogSettings;
+			fog = features.entityFog;
 			entityShader.useProgram(true);
 			entityShader.enableFog.set(fog.enabled.get());
 			entityShader.fogDist.set(fog.start.get(), fog.end.get());

@@ -377,7 +377,7 @@ public class CursorObject extends EditorObject
 		double dot = nx*dir.x + nz*dir.z;
 		// okay way:
 		double dot = Vector3f.dot(dir, normalDir);
-
+		
 		pos.x += length * (dir.x - normalDir.x * dot);
 		pos.z += length * (dir.z - normalDir.z * dot);
 		 */
@@ -847,7 +847,7 @@ public class CursorObject extends EditorObject
 		if (guide.sprite != null) {
 			float renderYaw = camera.getYaw() + faceAngle;
 
-			if (opts.spriteShading != null)
+			if (opts.spriteShading.enabled)
 				opts.spriteShading.setSpriteRenderingPos(camera, x, y, z, -renderYaw);
 
 			mtx = TransformMatrix.identity();

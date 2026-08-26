@@ -128,7 +128,7 @@ public enum EditorShortcut
 	SWITCH				(Modifier.SHFT, KeyEvent.VK_ESCAPE),
 	QUIT				(KeyEvent.VK_ESCAPE),
 
-	DEBUG_TOGGLE_LIGHT_SETS		();
+	SHOW_ADVANCED_OPTIONS		();
 	// @formatter:on
 
 	private enum Modifier

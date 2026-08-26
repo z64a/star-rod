@@ -20,7 +20,7 @@ import game.map.editor.render.RenderingOptions.SurfaceMode;
 import game.map.editor.render.SortedRenderable;
 import game.map.editor.selection.SelectionManager;
 import game.map.hit.CameraZoneData;
-import game.map.scripts.ScriptData;
+import game.map.scripts.Features;
 import game.map.shape.TransformMatrix;
 import renderer.FrameBuffer;
 import renderer.buffers.DeferredLineRenderer;
@@ -173,7 +173,7 @@ public class PerspectiveViewport extends MapEditViewport
 		else
 			opts.modelSurfaceMode = wireframeMode ? SurfaceMode.WIREFRAME : SurfaceMode.TEXTURED;
 
-		boolean onlyDrawModels = (opts.editorMode != EditorMode.Modify && opts.editorMode != EditorMode.Scripts);
+		boolean onlyDrawModels = (opts.editorMode != EditorMode.Modify && opts.editorMode != EditorMode.Options);
 
 		if (opts.screenFade >= 1.0f) {
 			glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -181,14 +181,14 @@ public class PerspectiveViewport extends MapEditViewport
 			return;
 		}
 
-		ScriptData scriptData = editor.map.scripts;
+		Features features = editor.map.features;
 		if (editor.useMapBackgroundColor)
-			glClearColor(scriptData.bgColorR.get() / 255.0f, scriptData.bgColorG.get() / 255.0f, scriptData.bgColorB.get() / 255.0f, 1.0f);
+			glClearColor(features.bgColorR.get() / 255.0f, features.bgColorG.get() / 255.0f, features.bgColorB.get() / 255.0f, 1.0f);
 		else
 			glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		Renderer.setFogEnabled(editor.map.scripts, editor.usingInGameCameraProperties());
+		Renderer.setFogEnabled(editor.map.features, editor.usingInGameCameraProperties());
 
 		if (!wireframeMode && (editor.map.hasBackground || !editor.useMapBackgroundColor))
 			camera.drawBackground();
@@ -220,12 +220,8 @@ public class PerspectiveViewport extends MapEditViewport
 		if (!onlyDrawModels)
 			renderer.drawMarkers(opts, editor.map.markerTree, this);
 
-		if (!opts.thumbnailMode) {
+		if (!opts.thumbnailMode)
 			editor.cursor3D.render(this, opts, camera.pos);
-
-			if (opts.spriteShading != null)
-				opts.spriteShading.render(this, opts, camera.pos);
-		}
 
 		if (doPerspProfiling)
 			profiler.record("markers");
@@ -269,7 +265,7 @@ public class PerspectiveViewport extends MapEditViewport
 		// draw various editor helpers and hints
 		switch (opts.editorMode) {
 			case Modify:
-			case Scripts:
+			case Options:
 				editor.selectionManager.currentSelection.render(renderer, this);
 				break;
 			case VertexPaint:

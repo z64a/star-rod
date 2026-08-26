@@ -18,8 +18,8 @@ import javax.swing.JColorChooser;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
-import game.map.editor.MapEditor;
 import common.commands.AbstractCommand;
+import game.map.editor.MapEditor;
 import game.map.editor.ui.SwingGUI;
 import game.map.scripts.LightingPanel;
 import game.map.shape.LightSet.DeleteLight;
@@ -127,11 +127,11 @@ public class Light
 		{
 			this.light = light;
 
-			colorPanel = new IntVectorPanel(3, (index, newValue) -> {
+			colorPanel = new IntVectorPanel(true, 3, (index, newValue) -> {
 				MapEditor.execute(new SetLightColorChannel(light, index, newValue));
 			});
 
-			dirPanel = new IntVectorPanel(3, (index, newValue) -> {
+			dirPanel = new IntVectorPanel(true, 3, (index, newValue) -> {
 				MapEditor.execute(new SetLightDirectionComponent(light, index, newValue));
 			});
 

@@ -14,6 +14,7 @@ import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
 
+@Deprecated
 public class Foliage extends Generator
 {
 	public static enum FoliageType

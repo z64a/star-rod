@@ -33,7 +33,6 @@ import game.map.scripts.generators.Generator;
 import game.map.scripts.generators.Generator.GeneratorType;
 import game.map.scripts.generators.foliage.Foliage;
 import game.map.scripts.generators.foliage.Foliage.FoliageDataCategory;
-import game.map.scripts.generators.foliage.Foliage.FoliageType;
 import game.map.scripts.generators.foliage.FoliageData;
 import game.map.scripts.generators.foliage.FoliageInfoPanel;
 import game.map.tree.CategoryTreeModel;
@@ -41,6 +40,7 @@ import game.map.tree.CategoryTreeModel.CategoryTreeCellRenderer;
 import game.map.tree.CategoryTreeModel.CategoryTreeNode;
 import net.miginfocom.swing.MigLayout;
 
+@Deprecated
 public class GeneratorsPanel extends JPanel implements IShutdownListener
 {
 	private Map map;
@@ -127,7 +127,6 @@ public class GeneratorsPanel extends JPanel implements IShutdownListener
 
 				if (selectedNode != null && selectedNode.getUserObject() instanceof Generator) {
 					Generator toRemove = (Generator) selectedNode.getUserObject();
-					map.scripts.removeGenerator("Delete " + toRemove.type.getName(), generatorsTree, selectedNode);
 				}
 			}
 		});
@@ -174,9 +173,6 @@ public class GeneratorsPanel extends JPanel implements IShutdownListener
 		for (EntranceType type : EntranceType.values()) {
 			item = new JMenuItem("Add " + type.toString());
 			item.setPreferredSize(POPUP_OPTION_SIZE);
-			item.addActionListener(e -> {
-				panel.map.scripts.addGenerator("Add " + type.toString() + " Entrance", panel.generatorsTree, new Entrance(type));
-			});
 			menu.add(item);
 		}
 
@@ -193,9 +189,6 @@ public class GeneratorsPanel extends JPanel implements IShutdownListener
 		for (ExitType type : ExitType.values()) {
 			item = new JMenuItem("Add " + type.toString());
 			item.setPreferredSize(POPUP_OPTION_SIZE);
-			item.addActionListener(e -> {
-				panel.map.scripts.addGenerator("Add " + type.toString() + " Exit", panel.generatorsTree, new Exit(type));
-			});
 			menu.add(item);
 		}
 
@@ -211,9 +204,6 @@ public class GeneratorsPanel extends JPanel implements IShutdownListener
 
 		item = new JMenuItem("Add Tree");
 		item.setPreferredSize(POPUP_OPTION_SIZE);
-		item.addActionListener(e -> {
-			panel.map.scripts.addGenerator("Add Tree", panel.generatorsTree, new Foliage(FoliageType.Tree));
-		});
 		menu.add(item);
 
 		return menu;
@@ -228,9 +218,6 @@ public class GeneratorsPanel extends JPanel implements IShutdownListener
 
 		item = new JMenuItem("Add Bush");
 		item.setPreferredSize(POPUP_OPTION_SIZE);
-		item.addActionListener(e -> {
-			panel.map.scripts.addGenerator("Add Bush", panel.generatorsTree, new Foliage(FoliageType.Bush));
-		});
 		menu.add(item);
 
 		return menu;
@@ -248,7 +235,6 @@ public class GeneratorsPanel extends JPanel implements IShutdownListener
 		item.addActionListener(e -> {
 			if (panel.popupNode != null) {
 				Generator original = (Generator) panel.popupNode.getUserObject();
-				panel.map.scripts.addGenerator("Duplicate " + original.type.getName(), panel.generatorsTree, original.deepCopy());
 			}
 		});
 		menu.add(item);
@@ -258,7 +244,6 @@ public class GeneratorsPanel extends JPanel implements IShutdownListener
 		item.addActionListener(e -> {
 			if (panel.popupNode != null) {
 				Generator toRemove = (Generator) panel.popupNode.getUserObject();
-				panel.map.scripts.removeGenerator("Delete " + toRemove.type.getName(), panel.generatorsTree, panel.popupNode);
 			}
 		});
 		menu.add(item);
@@ -270,7 +255,6 @@ public class GeneratorsPanel extends JPanel implements IShutdownListener
 	{
 		map = m;
 		generatorsTree.clearSelection();
-		generatorsTree.setModel(m.scripts.generatorsTreeModel);
 		setSelectedNode(null);
 	}
 

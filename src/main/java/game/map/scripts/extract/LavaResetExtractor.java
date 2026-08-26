@@ -18,7 +18,7 @@ public class LavaResetExtractor
 		"\\{\\.colliderID=COLLIDER_(\\w+),\\.pos=\\{(\\S+),(\\S+),(\\S+)\\}\\},")
 		.matcher("");
 
-	protected static void findAndReplace(Extractor extractor)
+	protected static void findAndReplace(MapExtractor extractor)
 	{
 		String workingText = extractor.getFileText();
 		StringBuilder out = null;

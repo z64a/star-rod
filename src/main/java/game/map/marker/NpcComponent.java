@@ -3,19 +3,25 @@ package game.map.marker;
 import static game.map.MapKey.*;
 import static org.lwjgl.opengl.GL11.*;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
 
 import org.w3c.dom.Element;
 
-import app.StarRodException;
 import common.BaseCamera;
 import common.Vector3f;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
 import game.map.Axis;
+import game.map.JsonFeatures.JsonDetectData;
+import game.map.JsonFeatures.JsonMarker;
+import game.map.JsonFeatures.JsonNpcComp;
+import game.map.JsonFeatures.JsonPatrolData;
+import game.map.JsonFeatures.JsonSpriteData;
+import game.map.JsonFeatures.JsonWanderData;
 import game.map.MutablePoint;
 import game.map.MutablePoint.PointBackup;
 import game.map.editor.camera.MapEditViewport;
@@ -30,7 +36,6 @@ import game.map.editor.selection.PickRay.PickHit;
 import game.map.editor.selection.SelectablePoint;
 import game.map.editor.selection.SelectablePoint.SetPointCoord;
 import game.map.editor.ui.info.MarkerInfoPanel;
-import game.map.scripts.extract.HeaderEntry;
 import game.map.shape.TransformMatrix;
 import game.sprite.Sprite;
 import game.sprite.SpriteLoader;
@@ -48,16 +53,16 @@ import util.xml.XmlWrapper.XmlWriter;
 public class NpcComponent extends BaseMarkerComponent
 {
 	private final Consumer<Object> notifySpriteChange = (o) -> {
-		parentMarker.updateListeners(MarkerInfoPanel.tag_SetSprite);
+		parentMarker.updateListeners(MarkerInfoPanel.TAG_SPRITE);
 		parentMarker.npcComponent.needsReloading = true;
 	};
 
 	private final Consumer<Object> notifyAnimation = (o) -> {
-		parentMarker.updateListeners(MarkerInfoPanel.tag_SetSprite);
+		parentMarker.updateListeners(MarkerInfoPanel.TAG_SPRITE);
 	};
 
 	private final Consumer<Object> notifyMovement = (o) -> {
-		parentMarker.updateListeners(MarkerInfoPanel.tag_NPCMovementTab);
+		parentMarker.updateListeners(MarkerInfoPanel.TAG_TERRITORY);
 	};
 
 	public static enum MoveType
@@ -68,6 +73,7 @@ public class NpcComponent extends BaseMarkerComponent
 	}
 
 	private static final double SPRITE_TICK_RATE = 1.0 / 30.0;
+	private static final int MAX_PATROL_PATH_POINTS = 10;
 
 	private transient SpriteLoader spriteLoader;
 	private transient double spriteTime = 0.0;
@@ -130,6 +136,10 @@ public class NpcComponent extends BaseMarkerComponent
 	public EditableField<Integer> detectRadius = EditableFieldFactory.create(0)
 		.setCallback(notifyMovement).setName("Set Detection Radius").build();
 
+	// required to match certain NPCs in pmret, does nothing
+	public EditableField<Integer> detectHeight = EditableFieldFactory.create(0)
+		.setCallback(notifyMovement).setName("Set Detection Height").build();
+
 	public SelectablePoint detectCenter;
 	public SelectablePoint wanderCenter;
 
@@ -154,7 +164,7 @@ public class NpcComponent extends BaseMarkerComponent
 		wanderCenter = new SelectablePoint(wanderPoint, 2.0f);
 		detectCenter = new SelectablePoint(detectPoint, 2.0f);
 
-		patrolPath = new PathData(marker, MarkerInfoPanel.tag_NPCMovementTab, 10);
+		patrolPath = new PathData(marker, MarkerInfoPanel.TAG_TERRITORY, MAX_PATROL_PATH_POINTS);
 	}
 
 	@Override
@@ -171,6 +181,136 @@ public class NpcComponent extends BaseMarkerComponent
 		copy.needsReloading = true;
 
 		return copy;
+	}
+
+	@Override
+	protected void fromJson(JsonMarker in)
+	{
+		if (in.npcComp == null)
+			return;
+
+		JsonNpcComp comp = in.npcComp;
+
+		moveType.set(comp.moveType);
+		flying.set(comp.flying);
+
+		if (comp.sprite != null) {
+			spriteID.set(comp.sprite.id);
+			paletteID.set(comp.sprite.palette);
+			animIndex.set(comp.sprite.anim);
+			animName = comp.sprite.animName;
+			flipX = comp.sprite.flipX;
+			flipY = comp.sprite.flipY;
+		}
+
+		// detect volume
+		if (comp.detect != null) {
+			if (comp.detect.center != null && comp.detect.center.length == 3) {
+				detectCenter.point.setPosition(comp.detect.center);
+			}
+
+			useDetectCircle.set(comp.detect.useCircle);
+
+			if (comp.detect.useCircle) {
+				detectRadius.set(comp.detect.radius);
+				detectHeight.set(comp.detect.height);
+			}
+			else {
+				detectSizeX.set(comp.detect.sizeX);
+				detectSizeZ.set(comp.detect.sizeZ);
+			}
+		}
+
+		// moveType == Wander
+		if (moveType.get() == MoveType.Wander && comp.wander != null) {
+			if (comp.wander.center != null && comp.wander.center.length == 3) {
+				wanderCenter.point.setPosition(comp.wander.center);
+			}
+
+			useWanderCircle.set(comp.wander.useCircle);
+
+			if (comp.wander.useCircle) {
+				wanderRadius.set(comp.wander.radius);
+			}
+			else {
+				wanderSizeX.set(comp.wander.sizeX);
+				wanderSizeZ.set(comp.wander.sizeZ);
+			}
+
+			overrideMovementSpeed.set(comp.wander.overrideSpeed);
+			if (comp.wander.overrideSpeed)
+				movementSpeedOverride.set(comp.wander.speed);
+		}
+
+		// moveType == Patrol
+		else if (moveType.get() == MoveType.Patrol && comp.patrol != null) {
+			patrolPath.points.clear();
+			if (comp.patrol.points != null) {
+				for (int i = 0; i < comp.patrol.points.length && i < MAX_PATROL_PATH_POINTS; i++) {
+					int[] p = comp.patrol.points[i];
+					if (p != null && p.length == 3) {
+						patrolPath.points.addElement(new PathPoint(patrolPath, p[0], p[1], p[2]));
+					}
+				}
+			}
+
+			overrideMovementSpeed.set(comp.patrol.overrideSpeed);
+			if (comp.patrol.overrideSpeed)
+				movementSpeedOverride.set(comp.patrol.speed);
+		}
+	}
+
+	@Override
+	protected void toJson(JsonMarker out)
+	{
+		out.npcComp = new JsonNpcComp();
+
+		out.npcComp.moveType = moveType.get();
+		out.npcComp.flying = flying.get();
+
+		JsonSpriteData sprite = new JsonSpriteData();
+		out.npcComp.sprite = sprite;
+		sprite.id = spriteID.get();
+		sprite.palette = paletteID.get();
+		sprite.anim = animIndex.get();
+		sprite.animName = animName;
+		sprite.flipX = flipX;
+		sprite.flipY = flipY;
+
+		JsonDetectData detect = new JsonDetectData();
+		out.npcComp.detect = detect;
+		detect.center = detectCenter.point.toArray();
+		detect.useCircle = useDetectCircle.get();
+		detect.radius = detectRadius.get();
+		detect.height = detectHeight.get();
+		detect.sizeX = detectSizeX.get();
+		detect.sizeZ = detectSizeZ.get();
+
+		if (moveType.get() == MoveType.Wander) {
+			JsonWanderData wander = new JsonWanderData();
+			out.npcComp.wander = wander;
+			wander.center = wanderCenter.point.toArray();
+			wander.useCircle = useWanderCircle.get();
+			wander.radius = wanderRadius.get();
+			wander.sizeX = wanderSizeX.get();
+			wander.sizeZ = wanderSizeZ.get();
+			wander.overrideSpeed = overrideMovementSpeed.get();
+			wander.speed = movementSpeedOverride.get();
+		}
+		else if (moveType.get() == MoveType.Patrol) {
+			JsonPatrolData patrol = new JsonPatrolData();
+			out.npcComp.patrol = patrol;
+			patrol.overrideSpeed = overrideMovementSpeed.get();
+			patrol.speed = movementSpeedOverride.get();
+
+			List<int[]> points = new ArrayList<>();
+			for (PathPoint p : patrolPath.points) {
+				points.add(new int[] { p.getX(), p.getY(), p.getZ() });
+				if (points.size() == MAX_PATROL_PATH_POINTS)
+					break;
+			}
+			patrol.points = points.toArray(new int[0][]);
+		}
 	}
 
 	@Override
@@ -578,7 +718,7 @@ public class NpcComponent extends BaseMarkerComponent
 		int z = parentMarker.position.getZ();
 		y -= Sprite.WORLD_SCALE;
 
-		if (opts.spriteShading != null)
+		if (opts.spriteShading.enabled)
 			opts.spriteShading.setSpriteRenderingPos(camera, x, y, z, -renderYaw);
 
 		TransformMatrix mtx = TransformMatrix.identity();
@@ -670,7 +810,7 @@ public class NpcComponent extends BaseMarkerComponent
 			previewSprite.loadTextures();
 		}
 
-		parentMarker.updateListeners(MarkerInfoPanel.tag_SetSprite);
+		parentMarker.updateListeners(MarkerInfoPanel.TAG_SPRITE);
 	}
 
 	public static final class SetWanderPos extends SetPointCoord
@@ -687,14 +827,14 @@ public class NpcComponent extends BaseMarkerComponent
 		public void exec()
 		{
 			super.exec();
-			m.updateListeners(MarkerInfoPanel.tag_NPCMovementTab);
+			m.updateListeners(MarkerInfoPanel.TAG_TERRITORY);
 		}
 
 		@Override
 		public void undo()
 		{
 			super.undo();
-			m.updateListeners(MarkerInfoPanel.tag_NPCMovementTab);
+			m.updateListeners(MarkerInfoPanel.TAG_TERRITORY);
 		}
 	}
 
@@ -712,193 +852,15 @@ public class NpcComponent extends BaseMarkerComponent
 		public void exec()
 		{
 			super.exec();
-			m.updateListeners(MarkerInfoPanel.tag_NPCMovementTab);
+			m.updateListeners(MarkerInfoPanel.TAG_TERRITORY);
 		}
 
 		@Override
 		public void undo()
 		{
 			super.undo();
-			m.updateListeners(MarkerInfoPanel.tag_NPCMovementTab);
+			m.updateListeners(MarkerInfoPanel.TAG_TERRITORY);
 		}
-	}
-
-	public void addHeaderDefines(HeaderEntry h)
-	{
-		String isFlying = flying.get() ? "TRUE" : "FALSE";
-		String speedOverride;
-		if (overrideMovementSpeed.get())
-			speedOverride = String.format("OVERRIDE_MOVEMENT_SPEED(%f)", movementSpeedOverride.get());
-		else
-			speedOverride = "NO_OVERRIDE_MOVEMENT_SPEED";
-
-		FormatStringList lines = new FormatStringList();
-
-		if (moveType.get() == MoveType.Wander) {
-			lines.add("{");
-			lines.addf("    .wander = {");
-			lines.addf("        .centerPos   = { %d, %d, %d },",
-				wanderCenter.point.getX(), wanderCenter.point.getY(), wanderCenter.point.getZ());
-			if (useWanderCircle.get())
-				lines.addf("        .wanderSize  = { %d },", wanderRadius.get());
-			else
-				lines.addf("        .wanderSize  = { %d, %d },", wanderSizeX.get(), wanderSizeZ.get());
-			lines.addf("        .moveSpeedOverride = %s,", speedOverride);
-			lines.addf("        .wanderShape = %s,", useWanderCircle.get() ? "SHAPE_CYLINDER" : "SHAPE_RECT");
-		}
-		else if (moveType.get() == MoveType.Patrol) {
-			lines.add("{");
-			lines.addf("    .patrol = {");
-			lines.addf("        .numPoints = %d,", patrolPath.points.size());
-			lines.addf("        .points = {");
-			for (PathPoint wp : patrolPath.points) {
-				lines.addf("            { %d, %d, %d },", wp.point.getX(), wp.point.getY(), wp.point.getZ());
-			}
-			lines.addf("        },");
-			lines.addf("        .moveSpeedOverride = %s,", speedOverride);
-		}
-
-		if (moveType.get() != MoveType.Stationary) {
-			lines.addf("        .detectPos   = { %d, %d, %d },",
-				detectCenter.point.getX(), detectCenter.point.getY(), detectCenter.point.getZ());
-			if (useDetectCircle.get())
-				lines.addf("        .detectSize  = { %d },", detectRadius.get());
-			else
-				lines.addf("        .detectSize  = { %d, %d },", detectSizeX.get(), detectSizeZ.get());
-			lines.addf("        .detectShape = %s,", useDetectCircle.get() ? "SHAPE_CYLINDER" : "SHAPE_RECT");
-			lines.addf("        .isFlying = %s,", isFlying);
-			lines.addf("    },");
-			lines.addf("}");
-		}
-		else {
-			lines.addf("{}");
-		}
-
-		h.addDefine("TERRITORY", lines);
-
-		if (animName != null && !animName.isBlank())
-			h.addProperty("anim", animName);
-	}
-
-	public void parseTerritory(String territory)
-	{
-		String original = territory;
-		territory = territory.replaceAll("\\s", "");
-
-		assert (territory.startsWith("{"));
-		assert (territory.endsWith("}}"));
-
-		territory = territory.substring(1, territory.length() - 2);
-
-		// determine territory type
-		if (territory.startsWith(".patrol={"))
-			moveType.set(MoveType.Patrol);
-		else if (territory.startsWith(".wander={"))
-			moveType.set(MoveType.Wander);
-		else
-			throw new StarRodException("Cannot parse NPC territory: " + original);
-
-		territory = territory.substring(territory.indexOf("{") + 1);
-		if (territory.endsWith(","))
-			territory = territory.substring(0, territory.length() - 1);
-
-		String[] fields = territory.split(",(?=\\.\\w+\\s*=)");
-
-		for (String field : fields) {
-			String[] kv = field.split("=");
-			int[] coords;
-
-			switch (kv[0]) {
-				case ".isFlying":
-					flying.set("TRUE".equalsIgnoreCase(kv[1]));
-					break;
-				case ".moveSpeedOverride":
-					if (!"NO_OVERRIDE_MOVEMENT_SPEED".equals(kv[1])) {
-						assert (kv[1].matches("OVERRIDE_MOVEMENT_SPEED\\(\\S+\\)"));
-						float speed = Float.parseFloat(kv[1].substring("OVERRIDE_MOVEMENT_SPEED(".length(), kv[1].length() - 1));
-						overrideMovementSpeed.set(true);
-						movementSpeedOverride.set(speed);
-					}
-					break;
-				case ".wanderShape":
-					useWanderCircle.set("SHAPE_CYLINDER".equals(kv[1]));
-					break;
-				case ".centerPos":
-					coords = getIntVec(kv[1], "centerPos", 3);
-					wanderCenter.point.setPosition(coords[0], coords[1], coords[2]);
-					break;
-				case ".wanderSize":
-					if (useWanderCircle.get()) {
-						coords = getIntVec(kv[1], "wanderSize", -1);
-						wanderRadius.set(coords[0]);
-					}
-					else {
-						coords = getIntVec(kv[1], "wanderSize", 2);
-						wanderSizeX.set(coords[0]);
-						wanderSizeZ.set(coords[1]);
-					}
-					break;
-				case ".detectShape":
-					useDetectCircle.set("SHAPE_CYLINDER".equals(kv[1]));
-					break;
-				case ".detectPos":
-					coords = getIntVec(kv[1], "detectPos", 3);
-					detectCenter.point.setPosition(coords[0], coords[1], coords[2]);
-					break;
-				case ".detectSize":
-					if (useDetectCircle.get()) {
-						coords = getIntVec(kv[1], "detectSize", -1);
-						detectRadius.set(coords[0]);
-					}
-					else {
-						coords = getIntVec(kv[1], "detectSize", 2);
-						detectSizeX.set(coords[0]);
-						detectSizeZ.set(coords[1]);
-					}
-					break;
-				case ".points":
-					// examples:
-					// {{200,0,75},{300,0,75},}
-					// {{-450,0,-160},{-378,0,-81},{-590,0,-100},{-464,0,-46},{-495,0,-147},}
-					assert (kv[1].matches("\\{\\{.+\\},\\}")) : kv[1];
-					String listString = kv[1].substring(2, kv[1].length() - 3);
-					String[] points = listString.split("\\},\\{");
-					for (String p : points) {
-						// have to add the {} so the function can strip them out
-						int[] point = getIntVec("{" + p + "}", "point", 3);
-						patrolPath.points.addElement(new PathPoint(patrolPath, point[0], point[1], point[2]));
-					}
-					break;
-				case ".numPoints":
-					break;
-				default:
-					throw new StarRodException(kv[0]);
-			}
-		}
-	}
-
-	private static int[] getIntVec(String s, String fieldName, int len)
-	{
-		assert (s.matches("\\{\\S+(,\\S+)*\\}")) : s;
-		s = s.substring(1, s.length() - 1);
-		String[] tokens = s.split(",");
-
-		// check predefined position name
-		if (tokens.length == 1 && "NPC_DISPOSE_LOCATION".equals(tokens[0]))
-			return new int[] { 0, -1000, 0 };
-
-		if (len > 0 && tokens.length != len)
-			throw new StarRodException("Wrong length for %s vector: %s (expected %d)", fieldName, s, len);
-
-		if (len < 0 && tokens.length != -len)
-			Logger.logfError("Wrong length for %s vector: %s (expected %d)", fieldName, s, len);
-
-		// convert the coords
-		int[] coords = new int[tokens.length];
-		for (int i = 0; i < tokens.length; i++) {
-			coords[i] = Integer.decode(tokens[i]);
-		}
-		return coords;
 	}
 
 	public void setAnimByName(String animName)
