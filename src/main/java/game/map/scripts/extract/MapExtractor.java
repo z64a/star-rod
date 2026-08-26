@@ -197,8 +197,8 @@ public class MapExtractor
 		if (fileText.contains("EVS_Main") && !map.getName().equals("sbk_99")) //FIXME sbk_99 lol
 			CamSetupExtractor.findAndReplace(map, this);
 
-		if (fileText.contains("SetPanTarget"))
-			CamTargetExtractor.findAndReplace(this);
+	//	if (fileText.contains("SetPanTarget"))
+	//		CamTargetExtractor.findAndReplace(this);
 
 		if (fileText.contains("FoliageDropList"))
 			FoliageDropExtractor.findAndReplace(this);
