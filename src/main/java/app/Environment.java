@@ -58,6 +58,7 @@ public abstract class Environment
 	private static final String FN_PROJ_CONFIG = "star_rod.cfg";
 	private static final String FN_BASEROM = "ver/us/baserom.z64";
 	private static final String FN_SPLAT = "splat.yaml";
+	private static final String FN_LAYOUT = "layout.yaml";
 
 	public static ImageIcon ICON_DEFAULT = loadIconResource(ResourceType.Icon, "icon.png");
 	public static ImageIcon ICON_ERROR = null;
@@ -521,12 +522,12 @@ public abstract class Environment
 
 		// resolve asset dirs
 		try {
-			assetDirectories = getAssetDirs(projectDir, decompCfg);
+			assetDirectories = getAssetDirs(projectDir, versionDir, decompCfg);
 		}
 		catch (IOException e) {
 			Logger.printStackTrace(e);
-			showErrorMessage("Splat Read Exception",
-				"IOException while attempting to read splat file: %n%s %n%s", decompCfg.getAbsolutePath(),
+			showErrorMessage("Asset Stack Read Exception",
+				"IOException while attempting to read the asset stack in: %n%s %n%s", versionDir.getAbsolutePath(),
 				e.getMessage());
 			return false;
 		}
@@ -622,20 +623,40 @@ public abstract class Environment
 		return romBytes;
 	}
 
-	private static List<File> getAssetDirs(File directory, File splatFile) throws IOException
+	/**
+	 * The project's asset layers, highest priority first, from its layout file, or its splat
+	 * file for a project without one.
+	 */
+	private static List<File> getAssetDirs(File directory, File versionDir, File splatFile) throws IOException
 	{
-		Map<String, Object> topLevelMap = new Yaml().load(new FileInputStream(splatFile));
+		File layoutFile = new File(versionDir, FN_LAYOUT);
+		File configFile = layoutFile.exists() ? layoutFile : splatFile;
+
+		Map<String, Object> topLevelMap;
+		try (FileInputStream in = new FileInputStream(configFile)) {
+			topLevelMap = new Yaml().load(in);
+		}
 
 		@SuppressWarnings("unchecked")
-		List<String> assetDirNames = (List<String>) topLevelMap.get("asset_stack");
-
-		File assetsDir = new File(directory, "assets");
+		List<String> assetStack = (List<String>) topLevelMap.get("asset_stack");
 
 		List<File> assetDirectories = new ArrayList<>();
-		for (String dirName : assetDirNames) {
-			assetDirectories.add(new File(assetsDir, dirName));
+		for (String layer : assetStack) {
+			assetDirectories.add(getAssetDir(directory, layer));
 		}
 		return assetDirectories;
+	}
+
+	/**
+	 * A layer of the asset stack. Layers are directories from the project root, such as src or
+	 * assets/us; older projects name them within assets instead, as in mod or us.
+	 */
+	private static File getAssetDir(File directory, String layer)
+	{
+		File fromRoot = new File(directory, layer);
+		if (layer.contains("/") || fromRoot.isDirectory())
+			return fromRoot;
+		return new File(new File(directory, "assets"), layer);
 	}
 
 	public static boolean isWindows()
