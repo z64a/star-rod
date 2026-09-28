@@ -249,7 +249,7 @@ public class Sbn
 	}
 
 	/** Reads ASCII up to the first NUL, without trailing spaces. */
-	private static String readString(byte[] bytes, int offset, int length)
+	static String readString(byte[] bytes, int offset, int length)
 	{
 		int end = offset;
 		while (end < offset + length && bytes[end] != 0)

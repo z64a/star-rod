@@ -53,6 +53,23 @@ public abstract class Presets
 			}
 		}
 
+		private Addresses(Addresses other)
+		{
+			byName.putAll(other.byName);
+			byAddress.putAll(other.byAddress);
+		}
+
+		/** A copy that also has the instruments of a bank the engine loads into an auxiliary slot. */
+		public Addresses withAuxiliary(int index, SoundBank bank)
+		{
+			Addresses copy = new Addresses(this);
+			for (int i = 0; i < bank.instruments.size(); i++) {
+				copy.byName.put(bank.instruments.get(i).wav, index << 4 | i);
+				copy.byAddress.put(index << 4 | i, bank.instruments.get(i).wav);
+			}
+			return copy;
+		}
+
 		int[] address(File source, String user, String wav, int envelope)
 		{
 			Integer address = byName.get(wav);
