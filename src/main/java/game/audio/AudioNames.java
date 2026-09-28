@@ -1,0 +1,75 @@
+package game.audio;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import app.Resource;
+import app.Resource.ResourceType;
+
+/** Names of the vanilla songs and ambient sounds, and the C identifiers generated from names. */
+public abstract class AudioNames
+{
+	private static final Pattern ENUM_ENTRY = Pattern.compile("([0-9A-Fa-f]+)\\s*=\\s*(\\w+)");
+	private static final Pattern UNUSED = Pattern.compile("Unused_[0-9A-F]{2}");
+
+	private static final Map<Integer, String> songs = readEnum("songs.enum");
+	private static final Map<Integer, String> ambients = readEnum("ambient_sounds.enum");
+
+	public static String getSongName(int id)
+	{
+		return songs.getOrDefault(id, String.format("Unused_%02X", id));
+	}
+
+	public static String getAmbientName(int id)
+	{
+		return ambients.getOrDefault(id, String.format("Unused_%02X", id));
+	}
+
+	/** Names of files in the order the vanilla SBN stores them. */
+	public static List<String> getFileOrder()
+	{
+		return Resource.getText(ResourceType.Audio, "FileOrder.txt");
+	}
+
+	/** Placeholder names are kept in the tables but get no C identifier. */
+	public static boolean isUnused(String name)
+	{
+		return UNUSED.matcher(name).matches();
+	}
+
+	/** Prefixes a PascalCase name and converts it to upper snake case, so HuffNPuff1 becomes HUFF_N_PUFF_1. */
+	public static String toCName(String prefix, String name)
+	{
+		StringBuilder sb = new StringBuilder(prefix);
+		for (int i = 0; i < name.length(); i++) {
+			char c = name.charAt(i);
+			if (i > 0 && isBoundary(name.charAt(i - 1), c, i + 1 < name.length() ? name.charAt(i + 1) : 0))
+				sb.append('_');
+			sb.append(Character.toUpperCase(c));
+		}
+		return sb.toString();
+	}
+
+	private static boolean isBoundary(char prev, char c, char next)
+	{
+		if (Character.isLowerCase(prev))
+			return Character.isUpperCase(c) || Character.isDigit(c);
+		if (Character.isDigit(prev))
+			return Character.isUpperCase(c) && Character.isLowerCase(next);
+		return Character.isUpperCase(prev) && Character.isUpperCase(c) && Character.isLowerCase(next);
+	}
+
+	private static Map<Integer, String> readEnum(String resource)
+	{
+		Map<Integer, String> names = new HashMap<>();
+		for (String line : Resource.getText(ResourceType.Audio, resource)) {
+			Matcher m = ENUM_ENTRY.matcher(line.trim());
+			if (m.lookingAt())
+				names.put(Integer.parseInt(m.group(1), 16), m.group(2));
+		}
+		return names;
+	}
+}
