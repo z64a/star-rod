@@ -165,7 +165,7 @@ public final class SfxXml
 				throw error(manifest, element, "src must be sfx/<file>.xml: " + sound.source);
 			File effectXml = layers.getFile(sound.source);
 			if (effectXml == null)
-				throw error(manifest, element, "src file does not exist: " + sound.source);
+				e.complain("there is no " + sound.source + " file in any layer");
 			sound.file = effectXml;
 			readEffect(sound, effectXml.toPath(), addresses);
 			if (routingElement == null)
@@ -741,7 +741,9 @@ public final class SfxXml
 
 	private static SfxFormatException locationError(Path source, Element element, String message)
 	{
-		return new SfxFormatException(source.normalize() + ": " + (element == null ? "" : element.getTagName() + ": ") + message);
+		String label = element == null ? "" : element.getTagName()
+			+ (element.hasAttribute("name") ? " '" + element.getAttribute("name") + "'" : "") + ": ";
+		return new SfxFormatException(source.normalize() + ": " + label + message);
 	}
 
 	/** Writes the sources of a vanilla archive: SoundEffects.xml, sfx/Envelopes.xml, and a file per sequence. */

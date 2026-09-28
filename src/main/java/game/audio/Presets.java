@@ -74,7 +74,7 @@ public abstract class Presets
 		{
 			Integer address = byName.get(wav);
 			if (address == null)
-				throw new InputFileException(source, "%s uses %s, which is not an instrument of a bank in Banks.xml", user,
+				throw new InputFileException(source, "%s: no bank in Banks.xml has an instrument named %s", user,
 					wav);
 			return new int[] { address >> 4 & 0xF0 | envelope, address & 0xFF };
 		}
@@ -99,7 +99,7 @@ public abstract class Presets
 				continue;
 			}
 
-			int[] address = addresses.address(p.source(), "preset " + p.name(), p.wav(), p.envelope());
+			int[] address = addresses.address(p.source(), "Instrument '" + p.name() + "'", p.wav(), p.envelope());
 			bb.put((byte) address[0]).put((byte) address[1]).put((byte) p.volume()).put((byte) p.pan());
 			bb.put((byte) p.reverb()).put((byte) p.coarseTune()).put((byte) p.fineTune()).put((byte) 0);
 		}
@@ -118,7 +118,7 @@ public abstract class Presets
 				continue;
 			}
 
-			int[] address = addresses.address(d.source(), "drum " + d.name(), d.wav(), d.envelope());
+			int[] address = addresses.address(d.source(), "Drum '" + d.name() + "'", d.wav(), d.envelope());
 			bb.put((byte) address[0]).put((byte) address[1]).putShort((short) d.keyBase());
 			bb.put((byte) d.volume()).put((byte) d.pan()).put((byte) d.reverb()).put((byte) d.randTune());
 			bb.put((byte) d.randVolume()).put((byte) d.randPan()).put((byte) d.randReverb()).put((byte) 0);

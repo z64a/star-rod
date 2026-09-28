@@ -350,19 +350,20 @@ public abstract class AudioTasks
 			sbn.extra = readFile(extra);
 
 		for (Song song : songs) {
+			String songUser = "Song '" + song.name() + "'";
 			int[] entry = new int[4];
-			entry[0] = find(sbn, index, song.source(), "song " + song.name(), song.bgm(), "BGM");
+			entry[0] = find(sbn, index, song.source(), songUser, song.bgm(), "BGM");
 			for (int i = 0; i < AUX_BANK_KEYS.length; i++) {
 				if (song.bk()[i] != null) {
-					entry[i + 1] = find(sbn, index, song.source(), "song " + song.name(), song.bk()[i], "BK");
-					checkAuxBank(song.source(), "song " + song.name(), sbn.files.get(entry[i + 1]));
+					entry[i + 1] = find(sbn, index, song.source(), songUser, song.bk()[i], "BK");
+					checkAuxBank(song.source(), songUser, sbn.files.get(entry[i + 1]));
 				}
 			}
 			sbn.songs.add(entry);
 		}
 
 		for (Bank bank : banks) {
-			int file = find(sbn, index, bank.source(), "bank " + bank.file(), bank.file(), "BK");
+			int file = find(sbn, index, bank.source(), "Bank '" + bank.file() + "'", bank.file(), "BK");
 			sbn.banks.add(new int[] { file, bank.index(), bank.group() });
 		}
 
@@ -487,7 +488,7 @@ public abstract class AudioTasks
 		// the presets, drums, and sounds name banks by instrument, so the table must be complete first
 		for (Bank bank : bankTable) {
 			if (sources.stream().noneMatch(source -> source.type() == bkType && source.name().equals(bank.file())))
-				throw new InputFileException(bank.source(), "bank %s uses %s, which does not exist", bank.file(), bank.file());
+				throw new InputFileException(bank.source(), missing("Bank '" + bank.file() + "'", bank.file(), "BK"));
 		}
 
 		Presets.Addresses addresses = new Presets.Addresses(bankTable, banks);
@@ -592,10 +593,22 @@ public abstract class AudioTasks
 	{
 		Integer i = index.get(file);
 		if (i == null)
-			throw new InputFileException(source, "%s uses %s, which does not exist", user, file);
+			throw new InputFileException(source, missing(user, file, type));
 		if (!sbn.files.get(i).type.equals(type))
-			throw new InputFileException(source, "%s uses %s, which is not a %s file", user, file, type);
+			throw new InputFileException(source, "%s: %s is not a %s file", user, file, type);
 		return i;
+	}
+
+	/** The error for a table entry that names a file no layer has. */
+	private static String missing(String user, String file, String type)
+	{
+		String name = baseName(file);
+		String what = switch (type) {
+			case "BK" -> "bank/" + name + " directory or bank/" + name + ".bk file";
+			case "MSEQ" -> "mseq/" + name + ".xml or mseq/" + name + ".mseq file";
+			default -> DIRS.get(Sbn.TYPES.indexOf(type)) + "/" + file + " file";
+		};
+		return user + ": there is no " + what + " in any layer";
 	}
 
 	private static SfxArchive decodeSef(Sbn.Member sef)
@@ -686,7 +699,7 @@ public abstract class AudioTasks
 	private static void checkAuxBank(File source, String user, Sbn.Member bank)
 	{
 		if (getBankHeaderSize(bank) > AUX_BANK_BUFFER)
-			throw new InputFileException(source, "%s uses bank %s as an auxiliary bank, but its header is 0x%X bytes and "
+			throw new InputFileException(source, "%s: bank %s is used as an auxiliary bank, but its header is 0x%X bytes and "
 				+ "the engine reserves 0x%X", user, bank.name, getBankHeaderSize(bank), AUX_BANK_BUFFER);
 	}
 
