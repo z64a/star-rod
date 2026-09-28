@@ -154,7 +154,8 @@ tasks {
             attributes["Main-Class"] = bootMain
             attributes["App-Version"] = appVersion
             attributes["Build-Branch"] = versioning.info.branchId
-            attributes["Build-Commit"] = versioning.info.commit
+            // a build without git history, such as a Nix build, passes -PbuildCommit instead
+            attributes["Build-Commit"] = (findProperty("buildCommit") as String?) ?: versioning.info.commit
             if (versioning.info.tag != null)
                 attributes["Build-Tag"] = versioning.info.tag
         }

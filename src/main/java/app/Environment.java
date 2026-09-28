@@ -122,6 +122,21 @@ public abstract class Environment
 		return isDX(); //TODO
 	}
 
+	/** Prints the version and build commit from the jar's manifest, without starting up. */
+	public static void printVersion()
+	{
+		try {
+			Attributes attr = new Manifest(Environment.class.getClassLoader().getResourceAsStream("META-INF/MANIFEST.MF")).getMainAttributes();
+			System.out.println("VERSION=" + attr.getValue("App-Version"));
+			String commit = attr.getValue("Build-Commit");
+			if (commit != null && !commit.isEmpty())
+				System.out.println("COMMIT=" + commit);
+		}
+		catch (IOException | NullPointerException e) {
+			exitWithError("Could not read MANIFEST.MF: " + e);
+		}
+	}
+
 	public static String getVersionString()
 	{
 		return versionString;

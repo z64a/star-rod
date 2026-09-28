@@ -64,6 +64,11 @@ public class StarRodMain extends StarRodFrame
 {
 	public static void main(String[] args) throws InterruptedException
 	{
+		if (args.length > 0 && args[0].equalsIgnoreCase("-Version")) {
+			Environment.printVersion();
+			return;
+		}
+
 		boolean isCommandLine = args.length > 0 || GraphicsEnvironment.isHeadless();
 
 		if (isCommandLine) {
