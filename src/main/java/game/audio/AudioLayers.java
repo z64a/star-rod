@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.apache.commons.io.FileUtils;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.error.YAMLException;
 
@@ -91,6 +92,62 @@ public class AudioLayers
 			}
 		}
 		return null;
+	}
+
+	/** The highest layer's copy of a directory, or null if no layer has it or a sidecar deletes it. Every file in it counts as read. */
+	public File getDirectory(String path)
+	{
+		if (isDeleted(path))
+			return null;
+
+		for (File layer : layers) {
+			File dir = new File(AssetSubdir.AUDIO.get(layer), path);
+			if (dir.isDirectory()) {
+				inputs.addAll(FileUtils.listFiles(dir, null, true));
+				return dir;
+			}
+		}
+		return null;
+	}
+
+	/** A directory that shares its layer with a file of the same item, or null. */
+	public File findConflict(String dirPath, String filePath)
+	{
+		if (isDeleted(dirPath) || isDeleted(filePath))
+			return null;
+
+		for (File layer : layers) {
+			File dir = new File(AssetSubdir.AUDIO.get(layer), dirPath);
+			if (dir.isDirectory() && new File(AssetSubdir.AUDIO.get(layer), filePath).isFile())
+				return dir;
+		}
+		return null;
+	}
+
+	/** Sorted names of the subdirectories of a directory, across all layers. */
+	public List<String> listDirectories(String dir)
+	{
+		Set<String> names = new TreeSet<>();
+		for (File layer : layers) {
+			File[] dirs = new File(AssetSubdir.AUDIO.get(layer), dir).listFiles(File::isDirectory);
+			if (dirs != null) {
+				for (File d : dirs)
+					names.add(d.getName());
+			}
+		}
+
+		names.removeIf(name -> isDeleted(dir + "/" + name));
+		return new ArrayList<>(names);
+	}
+
+	/** The position of the layer that holds a file, where 0 is the highest priority. */
+	public int getPriority(File file)
+	{
+		for (int i = 0; i < layers.size(); i++) {
+			if (file.toPath().startsWith(AssetSubdir.AUDIO.get(layers.get(i)).toPath()))
+				return i;
+		}
+		throw new IllegalArgumentException(file + " is not in an asset layer");
 	}
 
 	/** Sorted names of the files with an extension in a directory, across all layers. */
