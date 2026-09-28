@@ -35,6 +35,7 @@ public abstract class AudioTasks
 	/** The files at the start of the INIT resource list, which the engine looks up by position. */
 	private static final List<String> FIXED_FILES = List.of("sfx/DAT1.sef", "per/SET1.per", "prg/SET1.prg");
 	private static final int RESOURCE_COUNT = 0x18;
+	private static final int SEF_RESOURCE = 0;
 	private static final int PER_RESOURCE = 1;
 	private static final int PRG_RESOURCE = 2;
 	private static final int FIRST_AMBIENT_RESOURCE = 3;
@@ -51,7 +52,6 @@ public abstract class AudioTasks
 	 * bytes larger and its SoundManager 0x20 bytes larger.
 	 */
 	private static final int HEAP_FIXED_ALLOCATIONS = 0x3A9A0 + 0x300 + 0x20;
-	private static final int SEF_ALLOCATION = 0x5200;
 	private static final int AUX_BANK_BUFFER = 0x840;
 	private static final int VANILLA_HEAP_SIZE = 0x5B000;
 
@@ -89,7 +89,7 @@ public abstract class AudioTasks
 		catch (InputFileException e) {
 			fail(e.getSourceFile(), e.getMessage());
 		}
-		catch (IOException e) {
+		catch (IOException | SfxFormatException e) {
 			fail(null, e.getMessage());
 		}
 		return count;
@@ -147,7 +147,8 @@ public abstract class AudioTasks
 				banks.put(names[i], bank);
 				bank.dump(new File(new File(audioDir, dir), file.name));
 			}
-			else if (i != sbn.resources.get(PER_RESOURCE) && i != sbn.resources.get(PRG_RESOURCE)) {
+			else if (i != sbn.resources.get(SEF_RESOURCE) && i != sbn.resources.get(PER_RESOURCE)
+				&& i != sbn.resources.get(PRG_RESOURCE)) {
 				FileUtils.writeByteArrayToFile(new File(new File(audioDir, dir), names[i]), file.data);
 			}
 		}
@@ -163,6 +164,15 @@ public abstract class AudioTasks
 			new File(audioDir, "Presets.xml"));
 		Presets.dumpDrums(sbnFile, sbn.files.get(sbn.resources.get(PER_RESOURCE)).data, addresses,
 			new File(audioDir, "Drums.xml"));
+
+		try {
+			SfxBinary.DecodeResult sfx = SfxBinary.decode(sbn.files.get(sbn.resources.get(SEF_RESOURCE)).data);
+			sfx.warnings().forEach(System.out::println);
+			SfxXml.write(sfx.archive(), audioDir, addresses);
+		}
+		catch (SfxFormatException e) {
+			throw new InputFileException(sbnFile, e.getMessage());
+		}
 
 		dumpSongs(sbnFile, sbn, names, new File(audioDir, "Songs.xml"));
 		dumpBanks(sbnFile, sbn, names, new File(audioDir, "Banks.xml"));
@@ -276,7 +286,8 @@ public abstract class AudioTasks
 		Ambient ambient = AudioTables.readAmbient(layers);
 
 		Sbn sbn = new Sbn();
-		Map<String, Integer> index = readFiles(layers, sbn, banks);
+		SfxArchive[] sfx = new SfxArchive[1];
+		Map<String, Integer> index = readFiles(layers, sbn, banks, sfx);
 
 		File extra = layers.getFile(EXTRA_FILE);
 		if (extra != null)
@@ -323,9 +334,10 @@ public abstract class AudioTasks
 			sbn.resources.set(RADIO_BANK_RESOURCE, bank);
 		}
 
+		String soundHeader = soundHeader(sfx[0] != null ? sfx[0] : decodeSef(sbn.files.get(sbn.resources.get(SEF_RESOURCE))));
 		String songHeader = songHeader(songs);
 		String ambientHeader = ambientHeader(ambient);
-		String configHeader = configHeader(sbn, new File(outDir, "audio.sbn"));
+		String configHeader = configHeader(sbn);
 
 		byte[] bytes = sbn.write();
 		File sbnOut = new File(outDir, "audio.sbn");
@@ -335,6 +347,7 @@ public abstract class AudioTasks
 
 		FileUtils.forceMkdir(outDir);
 		FileUtils.writeByteArrayToFile(sbnOut, bytes);
+		writeIfChanged(new File(outDir, "sound_ids.h"), soundHeader);
 		writeIfChanged(new File(outDir, "song_ids.h"), songHeader);
 		writeIfChanged(new File(outDir, "ambient_ids.h"), ambientHeader);
 		writeIfChanged(new File(outDir, "audio_config.h"), configHeader);
@@ -343,9 +356,10 @@ public abstract class AudioTasks
 
 	/**
 	 * Reads every audio file in the layers into the archive, returning file indices by file name. Banks
-	 * and the preset files are built from their sources.
+	 * and the preset files are built from their sources. The sound effect archive built from the
+	 * tables, if any, is stored in sfx[0].
 	 */
-	private static Map<String, Integer> readFiles(AudioLayers layers, Sbn sbn, List<Bank> bankTable)
+	private static Map<String, Integer> readFiles(AudioLayers layers, Sbn sbn, List<Bank> bankTable, SfxArchive[] sfx)
 	{
 		Map<String, Integer> vanillaOrder = new HashMap<>();
 		for (String name : AudioNames.getFileOrder()) {
@@ -359,13 +373,15 @@ public abstract class AudioTasks
 		int bkType = Sbn.TYPES.indexOf("BK");
 		boolean presets = usesTables(layers, "Presets.xml", "prg/SET1.prg");
 		boolean drums = usesTables(layers, "Drums.xml", "per/SET1.per");
+		boolean sounds = usesTables(layers, "SoundEffects.xml", "sfx/DAT1.sef");
 
 		List<Source> sources = new ArrayList<>();
 		for (int type = 0; type < DIRS.size(); type++) {
 			String dir = DIRS.get(type);
 			for (String name : layers.listFiles(dir, "." + Sbn.TYPES.get(type).toLowerCase())) {
 				boolean generated = presets && dir.equals("prg") && name.equals("SET1.prg")
-					|| drums && dir.equals("per") && name.equals("SET1.per");
+					|| drums && dir.equals("per") && name.equals("SET1.per")
+					|| sounds && dir.equals("sfx") && name.equals("DAT1.sef");
 				if (type != bkType && !generated) {
 					File file = layers.getFile(dir + "/" + name);
 					sources.add(new Source(type, name, file, readFile(file)));
@@ -412,6 +428,12 @@ public abstract class AudioTasks
 			sources.add(new Source(bkType, name + ".bk", xml, bank.build(System.out::println)));
 		}
 
+		// the presets, drums, and sounds name banks by instrument, so the table must be complete first
+		for (Bank bank : bankTable) {
+			if (sources.stream().noneMatch(source -> source.type() == bkType && source.name().equals(bank.file())))
+				throw new InputFileException(bank.source(), "bank %s uses %s, which does not exist", bank.file(), bank.file());
+		}
+
 		Presets.Addresses addresses = new Presets.Addresses(bankTable, banks);
 		if (presets) {
 			File table = lastOf(layers.getTables("Presets.xml"));
@@ -422,6 +444,12 @@ public abstract class AudioTasks
 			File table = lastOf(layers.getTables("Drums.xml"));
 			sources.add(new Source(Sbn.TYPES.indexOf("PER"), "SET1.per", table,
 				Presets.writeDrums(AudioTables.readDrums(layers), addresses)));
+		}
+
+		if (sounds) {
+			File table = lastOf(layers.getTables("SoundEffects.xml"));
+			sfx[0] = SfxXml.read(layers, addresses);
+			sources.add(new Source(Sbn.TYPES.indexOf("SEF"), "DAT1.sef", table, SfxBinary.encode(sfx[0])));
 		}
 
 		sources.sort(Comparator.comparingInt(Source::type)
@@ -479,6 +507,33 @@ public abstract class AudioTasks
 		return i;
 	}
 
+	private static SfxArchive decodeSef(Sbn.Member sef)
+	{
+		File file = new File("sfx/DAT1.sef");
+		try {
+			SfxArchive sfx = SfxBinary.decode(sef.data).archive();
+			sfx.sounds.values().forEach(sound -> sound.file = file);
+			return sfx;
+		}
+		catch (SfxFormatException e) {
+			throw new InputFileException(file, e.getMessage());
+		}
+	}
+
+	private static String soundHeader(SfxArchive sfx)
+	{
+		StringBuilder sb = new StringBuilder(HEADER_COMMENT).append("#pragma once\n\nenum SoundIDs {\n");
+		sb.append(String.format("    %s= 0x%08X,\n", pad("SOUND_NONE", 44), 0));
+		Map<String, String> owners = new HashMap<>();
+		for (SfxArchive.Sound sound : sfx.sounds.values()) {
+			if (!AudioNames.isPlaceholderSound(sound.name)) {
+				String name = cName("SOUND_", sound.name, sound.file, owners);
+				sb.append(String.format("    %s= 0x%08X,\n", pad(name, 44), sound.id));
+			}
+		}
+		return sb.append("};\n").toString();
+	}
+
 	private static String songHeader(Song[] songs)
 	{
 		StringBuilder sb = new StringBuilder(HEADER_COMMENT).append("#pragma once\n\nenum SongIDs {\n");
@@ -512,23 +567,20 @@ public abstract class AudioTasks
 
 	/**
 	 * The audio heap holds the engine's fixed allocations plus the file list, song list, resource list,
-	 * bank headers (not their samples, which stream from the cartridge), and the sound effect archive
-	 * buffer, each rounded up to 16 bytes. The size is at least the vanilla heap.
+	 * bank headers (not their samples, which stream from the cartridge), and the sound effect archive,
+	 * each rounded up to 16 bytes. The size is at least the vanilla heap.
 	 */
-	private static String configHeader(Sbn sbn, File sbnOut)
+	private static String configHeader(Sbn sbn)
 	{
+		int sefSize = align(sbn.files.get(sbn.resources.get(SEF_RESOURCE)).data.length);
 		int required = HEAP_FIXED_ALLOCATIONS + align(sbn.files.size() * 8) + align((sbn.songs.size() + 1) * 8)
-			+ align((sbn.resources.size() + 1) * 2) + SEF_ALLOCATION;
+			+ align((sbn.resources.size() + 1) * 2) + sefSize;
 		for (int[] bank : sbn.banks)
 			required += getBankHeaderSize(sbn.files.get(bank[0]));
 
-		int sef = sbn.files.get(sbn.resources.get(0)).data.length;
-		if (sef > SEF_ALLOCATION)
-			throw new InputFileException(sbnOut, "the sound effect archive is 0x%X bytes, but the engine reads at most 0x%X",
-				sef, SEF_ALLOCATION);
-
 		int size = Math.max(VANILLA_HEAP_SIZE, (required + 0xFFF) & ~0xFFF);
-		return HEADER_COMMENT + "#pragma once\n\n#define AUDIO_HEAP_SIZE " + String.format("0x%X", size) + "\n";
+		return HEADER_COMMENT + "#pragma once\n\n#define AUDIO_HEAP_SIZE " + String.format("0x%X", size)
+			+ "\n#define AUDIO_SEF_SIZE " + String.format("0x%X", sefSize) + "\n";
 	}
 
 	/** The part of a bank the engine loads into memory: everything except the samples. */
@@ -592,12 +644,13 @@ public abstract class AudioTasks
 
 	/**
 	 * Compares two archives byte for byte, except the size field of bank entries, which the engine does
-	 * not read, and bank samples, which are compared by their decoded audio.
+	 * not read, bank samples, which are compared by their decoded audio, and the sound effect archive, which
+	 * is compared by content.
 	 */
 	public static void verify(File built, File reference) throws IOException
 	{
-		byte[] actual = readFile(built);
-		byte[] expected = readFile(reference);
+		byte[] actual = withCanonicalSef(built, readFile(built));
+		byte[] expected = withCanonicalSef(reference, readFile(reference));
 		Sbn actualSbn = Sbn.read(built, actual);
 		Sbn sbn = Sbn.read(reference, expected);
 
@@ -658,6 +711,24 @@ public abstract class AudioTasks
 		if (audioIdentical > 0)
 			System.out.printf("%d instruments: %d byte-identical, %d with identical audio but different bytes%n",
 				identical + audioIdentical, identical, audioIdentical);
+	}
+
+	/**
+	 * Rewrites the sound effect archive in its canonical layout. Vanilla lays sounds out in an order that
+	 * the sources do not keep, so archives are compared by content.
+	 */
+	private static byte[] withCanonicalSef(File file, byte[] bytes)
+	{
+		Sbn sbn = Sbn.read(file, bytes);
+		int index = sbn.resources.get(SEF_RESOURCE);
+		try {
+			byte[] sef = SfxBinary.encode(SfxBinary.decode(sbn.files.get(index).data).archive());
+			sbn.files.set(index, Sbn.Member.read(file, sef, 0));
+		}
+		catch (SfxFormatException e) {
+			throw new InputFileException(file, e.getMessage());
+		}
+		return sbn.write();
 	}
 
 	private static String describe(Sbn sbn, ByteBuffer archive, int position)

@@ -28,7 +28,8 @@ import assets.AssetSubdir;
 public class AudioLayers
 {
 	public static final List<String> TABLES = List.of(
-		"Songs.xml", "Banks.xml", "AmbientSounds.xml", "SoundEffects.xml", "Presets.xml", "Drums.xml");
+		"Songs.xml", "Banks.xml", "AmbientSounds.xml", "SoundEffects.xml", "Presets.xml", "Drums.xml",
+		"sfx/Envelopes.xml");
 
 	private static final String SIDECAR = ".meta";
 

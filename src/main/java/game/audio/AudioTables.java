@@ -20,7 +20,7 @@ import util.xml.XmlKey;
 import util.xml.XmlWrapper.XmlReader;
 
 /**
- * The song, bank, and ambient sound tables. Each is an XML file that can exist in several layers of
+ * The audio tables (songs, banks, ambient sounds, sound effects, presets, drums, and envelopes). Each is an XML file that can exist in several layers of
  * the asset stack. Entries are keyed by name; the highest layer's entry replaces the whole entry of
  * the same name below it, and delete="true" removes it.
  */
@@ -29,7 +29,7 @@ public abstract class AudioTables
 	public enum Key implements XmlKey
 	{
 		// @formatter:off
-		Sounds, Sound, SongList, Song, BankList, Bank, AmbientSounds, AmbientSound, Radio, Station,
+		Sounds, Sound, Envelopes, Envelope, SongList, Song, BankList, Bank, AmbientSounds, AmbientSound, Radio, Station,
 		id, name, delete, bgm, bk1, bk2, bk3, group, index, mseq, bank, player,
 		Instruments, Instrument, Drums, Drum, wav, envelope, volume, pan, reverb, coarseTune, fineTune,
 		keyBase, randTune, randVolume, randPan, randReverb

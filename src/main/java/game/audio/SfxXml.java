@@ -43,7 +43,7 @@ import util.xml.XmlWrapper.XmlWriter;
 
 /**
  * The sound effect sources: SoundEffects.xml, a table with an entry per sound that holds an inline one-shot
- * or names a sequence file under sfx/, and sfx/Envelopes.xml, which holds the press envelopes that
+ * or names a sequence file under sfx/, and sfx/Envelopes.xml, a table of the press envelopes that
  * sequences select by name.
  */
 public final class SfxXml
@@ -111,9 +111,7 @@ public final class SfxXml
 			archive.sounds.put(id, sound);
 		}
 
-		File envelopes = layers.getFile(ENVELOPES);
-		if (envelopes != null)
-			readEnvelopes(archive, envelopes.toPath());
+		readEnvelopes(layers, archive);
 
 		SfxValidator.validate(archive);
 		return archive;
@@ -556,24 +554,18 @@ public final class SfxXml
 		return routing;
 	}
 
-	private static void readEnvelopes(SfxArchive archive, Path envelopeXml)
+	private static void readEnvelopes(AudioLayers layers, SfxArchive archive)
 	{
-		XmlReader reader = parseDocument(envelopeXml);
-		Element root = requireRoot(reader, envelopeXml, TAG_ENVELOPES);
-		checkAttributes(envelopeXml, root);
-		Set<String> names = new HashSet<>();
+		if (layers.getTables(ENVELOPES).isEmpty())
+			return;
 
-		for (Element element : childElements(envelopeXml, root)) {
-			if (!element.getTagName().equals(TAG_ENVELOPE.toString()))
-				throw unknownElement(envelopeXml, root, element);
-			checkAttributes(envelopeXml, element, ATTR_NAME);
-			String name = readIdentifier(reader, envelopeXml, element, ATTR_NAME, true);
-			if (!names.add(name))
-				throw error(envelopeXml, element, "duplicate envelope name: " + name);
-			Envelope envelope = new Envelope(name);
-			envelope.file = envelopeXml.toFile();
+		for (Entry e : AudioTables.merge(layers, ENVELOPES, AudioTables.Key.Envelopes, AudioTables.Key.Envelope).values()) {
+			Path source = e.xmr.getSourceFile().toPath();
+			checkAttributes(source, e.elem, ATTR_NAME, ATTR_DELETE);
+			Envelope envelope = new Envelope(readIdentifier(e.xmr, source, e.elem, ATTR_NAME, true));
+			envelope.file = source.toFile();
 
-			envelope.commands.addAll(EnvelopeProgram.readCommands(reader, element));
+			envelope.commands.addAll(EnvelopeProgram.readCommands(e.xmr, e.elem));
 			archive.envelopes.add(envelope);
 		}
 	}
