@@ -44,6 +44,7 @@ import assets.AssetManager;
 import assets.ExpectedAsset;
 import common.BaseEditor;
 import game.audio.AudioTasks;
+import game.audio.booth.AudioBooth;
 import game.globals.editor.GlobalsEditor;
 import game.map.Map;
 import game.map.compiler.BuildException;
@@ -183,6 +184,14 @@ public class StarRodMain extends StarRodFrame
 			action_openImageEditor();
 		});
 		buttons.add(imageEditorButton);
+
+		JButton audioBoothButton = new JButton("Audio Booth");
+		SwingUtils.addBorderPadding(audioBoothButton);
+		SwingUtils.setFontSize(audioBoothButton, 12);
+		audioBoothButton.addActionListener((e) -> {
+			action_openAudioBooth();
+		});
+		buttons.add(audioBoothButton);
 
 		JButton themesMenuButton = new JButton("Choose Theme");
 		trySetIcon(themesMenuButton, ExpectedAsset.ICON_THEMES);
@@ -390,6 +399,15 @@ public class StarRodMain extends StarRodFrame
 		new EditorWorker(() -> {
 			BaseEditor editor = new ImageEditor();
 			editor.launch();
+		});
+	}
+
+	private void action_openAudioBooth()
+	{
+		new EditorWorker(() -> {
+			CountDownLatch editorClosedSignal = new CountDownLatch(1);
+			new AudioBooth(editorClosedSignal);
+			editorClosedSignal.await();
 		});
 	}
 
