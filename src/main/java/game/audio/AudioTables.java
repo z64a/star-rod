@@ -30,7 +30,9 @@ public abstract class AudioTables
 	{
 		// @formatter:off
 		SongList, Song, BankList, Bank, AmbientSounds, AmbientSound, Radio, Station,
-		id, name, delete, bgm, bk1, bk2, bk3, group, index, mseq, bank, player
+		id, name, delete, bgm, bk1, bk2, bk3, group, index, mseq, bank, player,
+		Instruments, Instrument, Drums, Drum, wav, envelope, volume, pan, reverb, coarseTune, fineTune,
+		keyBase, randTune, randVolume, randPan, randReverb
 		// @formatter:on
 	}
 
@@ -41,6 +43,11 @@ public abstract class AudioTables
 	public static final int AMBIENT_SLOTS = 16;
 	public static final int RADIO_ID = 0x10;
 	public static final int RADIO_STATIONS = 4;
+	public static final int MAX_PRESET_ID = 0x3F;
+	public static final int MAX_DRUM_ID = 71;
+	public static final int DEFAULT_VOLUME = 0x7F;
+	public static final int DEFAULT_PAN = 64;
+	public static final int DEFAULT_KEY_BASE = 4800;
 
 	private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z][A-Za-z0-9_]*");
 
@@ -55,6 +62,16 @@ public abstract class AudioTables
 	{}
 
 	public record Radio(String name, String bank, String[] mseq, File source)
+	{}
+
+	/** An instrument that songs select by ID: a bank instrument with its own volume, pan, reverb, and tuning. */
+	public record Preset(String name, int id, String wav, int envelope, int volume, int pan, int reverb, int coarseTune,
+		int fineTune, File source)
+	{}
+
+	/** A percussion instrument that songs select by ID. */
+	public record Drum(String name, int id, String wav, int envelope, int keyBase, int volume, int pan, int reverb,
+		int randTune, int randVolume, int randPan, int randReverb, File source)
 	{}
 
 	public static class Ambient
@@ -86,6 +103,16 @@ public abstract class AudioTables
 		{
 			xmr.requiresAttribute(elem, key);
 			return xmr.getAttribute(elem, key);
+		}
+
+		private int readInt(Key key, int defaultValue, int min, int max)
+		{
+			return AudioXml.readInt(xmr, elem, key, defaultValue, min, max);
+		}
+
+		private int readHex(Key key, int defaultValue, int min, int max)
+		{
+			return optional(key) == null ? defaultValue : AudioXml.readHex(xmr, elem, key, min, max);
 		}
 
 		private void complain(String message)
@@ -152,6 +179,41 @@ public abstract class AudioTables
 		for (Entry e : entries.values())
 			banks.add(new Bank(e.name, slots.get(e.name) >> 4, slots.get(e.name) & 0xF, e.xmr.getSourceFile()));
 		return banks;
+	}
+
+	/** Presets indexed by ID, with null for unused IDs. */
+	public static Preset[] readPresets(AudioLayers layers)
+	{
+		Map<String, Entry> entries = merge(layers, "Presets.xml", Key.Instruments, Key.Instrument);
+		assignIds(entries, MAX_PRESET_ID);
+
+		Preset[] presets = new Preset[entries.values().stream().mapToInt(e -> e.id).max().orElse(-1) + 1];
+		for (Entry e : entries.values()) {
+			checkIdentifier(e);
+			presets[e.id] = new Preset(e.name, e.id, e.required(Key.wav), e.readInt(Key.envelope, 0, 0, 3),
+				e.readHex(Key.volume, DEFAULT_VOLUME, 0, 255), e.readInt(Key.pan, DEFAULT_PAN, -128, 127),
+				e.readInt(Key.reverb, 0, 0, 255), e.readInt(Key.coarseTune, 0, -128, 127),
+				e.readInt(Key.fineTune, 0, -128, 127), e.xmr.getSourceFile());
+		}
+		return presets;
+	}
+
+	/** Drums indexed by ID, with null for unused IDs. */
+	public static Drum[] readDrums(AudioLayers layers)
+	{
+		Map<String, Entry> entries = merge(layers, "Drums.xml", Key.Drums, Key.Drum);
+		assignIds(entries, MAX_DRUM_ID);
+
+		Drum[] drums = new Drum[entries.values().stream().mapToInt(e -> e.id).max().orElse(-1) + 1];
+		for (Entry e : entries.values()) {
+			checkIdentifier(e);
+			drums[e.id] = new Drum(e.name, e.id, e.required(Key.wav), e.readInt(Key.envelope, 0, 0, 3),
+				e.readInt(Key.keyBase, DEFAULT_KEY_BASE, 0, 0xFFFF), e.readHex(Key.volume, DEFAULT_VOLUME, 0, 255),
+				e.readInt(Key.pan, DEFAULT_PAN, -128, 127), e.readInt(Key.reverb, 0, 0, 255),
+				e.readInt(Key.randTune, 0, 0, 255), e.readHex(Key.randVolume, 0, 0, 255),
+				e.readInt(Key.randPan, 0, 0, 255), e.readInt(Key.randReverb, 0, 0, 255), e.xmr.getSourceFile());
+		}
+		return drums;
 	}
 
 	public static Ambient readAmbient(AudioLayers layers)
