@@ -96,7 +96,7 @@ public class SoundLibrary
 		File binary = layers.getFile("bank/" + name + ".bk");
 		if (binary != null && (dir == null || layers.getPriority(binary) < layers.getPriority(dir)))
 			return SoundBank.read(binary, name, readFile(binary));
-		return SoundBank.load(name, new File(dir, SoundBank.XML_FILE));
+		return SoundBank.load(layers, name);
 	}
 
 	private static byte[] readFile(File file)

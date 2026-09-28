@@ -12,7 +12,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.apache.commons.io.FileUtils;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.error.YAMLException;
 
@@ -95,7 +94,7 @@ public class AudioLayers
 		return null;
 	}
 
-	/** The highest layer's copy of a directory, or null if no layer has it or a sidecar deletes it. Every file in it counts as read. */
+	/** The highest layer's copy of a directory, or null if no layer has it or a sidecar deletes it. */
 	public File getDirectory(String path)
 	{
 		if (isDeleted(path))
@@ -103,10 +102,8 @@ public class AudioLayers
 
 		for (File layer : layers) {
 			File dir = new File(AssetSubdir.AUDIO.get(layer), path);
-			if (dir.isDirectory()) {
-				inputs.addAll(FileUtils.listFiles(dir, null, true));
+			if (dir.isDirectory())
 				return dir;
-			}
 		}
 		return null;
 	}

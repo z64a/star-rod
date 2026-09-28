@@ -251,9 +251,14 @@ public class SoundBank
 		return samples;
 	}
 
-	/** Reads SoundBank.xml and the WAV files next to it. */
-	public static SoundBank load(String name, File xmlFile)
+	/** Reads bank/NAME/SoundBank.xml and its WAV files, each from the highest layer that has it. */
+	public static SoundBank load(AudioLayers layers, String name)
 	{
+		File xmlFile = layers.getFile(directory(name) + XML_FILE);
+		if (xmlFile == null)
+			throw new InputFileException(new File(directory(name)), "Bank '%s': there is no %s%s file in any layer", name,
+				directory(name), XML_FILE);
+
 		if (name.length() > 4)
 			throw new InputFileException(xmlFile, "a bank name must be 4 characters or fewer: %s", name);
 
@@ -314,13 +319,12 @@ public class SoundBank
 			bank.instruments.add(ins);
 		}
 
-		File dir = xmlFile.getParentFile();
 		for (Instrument ins : bank.instruments) {
-			Wav attack = Wav.read(new File(dir, ins.wav + ".wav"), ins.loopWav != null);
+			Wav attack = Wav.read(wavFile(layers, xmlFile, name, ins.wav), ins.loopWav != null);
 			ins.sampleRate = attack.sampleRate();
 			ins.attack = attack.samples();
 			if (ins.loopWav != null) {
-				File loopFile = new File(dir, ins.loopWav + ".wav");
+				File loopFile = wavFile(layers, xmlFile, name, ins.loopWav);
 				Wav loop = Wav.read(loopFile, false);
 				if (loop.sampleRate() != attack.sampleRate())
 					throw new InputFileException(loopFile, "the sample rate is %d, but %s.wav is %d", loop.sampleRate(),
@@ -329,6 +333,20 @@ public class SoundBank
 			}
 		}
 		return bank;
+	}
+
+	private static String directory(String bank)
+	{
+		return "bank/" + bank + "/";
+	}
+
+	private static File wavFile(AudioLayers layers, File xmlFile, String bank, String wav)
+	{
+		File file = layers.getFile(directory(bank) + wav + ".wav");
+		if (file == null)
+			throw new InputFileException(xmlFile, "Bank '%s': there is no %s%s.wav file in any layer", bank, directory(bank),
+				wav);
+		return file;
 	}
 
 	/**

@@ -471,11 +471,8 @@ public abstract class AudioTasks
 				continue;
 			}
 
-			File xml = new File(dir, SoundBank.XML_FILE);
-			if (!xml.isFile())
-				throw new InputFileException(xml, "file not found");
-
-			SoundBank bank = SoundBank.load(name, xml);
+			SoundBank bank = SoundBank.load(layers, name);
+			File xml = layers.getFile("bank/" + name + "/" + SoundBank.XML_FILE);
 			for (SoundBank.Instrument ins : bank.instruments) {
 				String other = sampleOwners.put(ins.wav, name);
 				if (other != null)
