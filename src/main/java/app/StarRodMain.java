@@ -43,6 +43,7 @@ import assets.AssetHandle;
 import assets.AssetManager;
 import assets.ExpectedAsset;
 import common.BaseEditor;
+import game.audio.AudioTasks;
 import game.globals.editor.GlobalsEditor;
 import game.map.Map;
 import game.map.compiler.BuildException;
@@ -66,7 +67,10 @@ public class StarRodMain extends StarRodFrame
 		boolean isCommandLine = args.length > 0 || GraphicsEnvironment.isHeadless();
 
 		if (isCommandLine) {
-			Environment.initialize(true);
+			if (AudioTasks.isAudioTask(args))
+				Environment.initializeAudio();
+			else
+				Environment.initialize(true);
 			runCommandLine(args);
 			Environment.exit();
 		}
@@ -579,6 +583,12 @@ public class StarRodMain extends StarRodFrame
 					catch (IOException e) {
 						Logger.printStackTrace(e);
 					}
+					break;
+
+				case "-DUMPAUDIO":
+				case "-BUILDAUDIO":
+				case "-VERIFYAUDIO":
+					i += AudioTasks.run(args, i);
 					break;
 
 				default:

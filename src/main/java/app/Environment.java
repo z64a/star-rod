@@ -262,7 +262,7 @@ public abstract class Environment
 			LoadingBar.show("Loading Project", true);
 			boolean validProject = loadProject(projDir);
 			if (!validProject)
-				exit();
+				exit(1);
 		}
 		catch (Throwable t) {
 			StarRodMain.handleEarlyCrash(t);
@@ -272,6 +272,31 @@ public abstract class Environment
 		}
 
 		initialized = true;
+	}
+
+	/** Sets up only what the audio tasks need: the asset stack of the decomp project in the current directory. */
+	public static void initializeAudio()
+	{
+		commandLine = true;
+
+		File decompCfg = new File("./ver/us/", FN_SPLAT);
+		if (!decompCfg.isFile())
+			exitWithError("The current directory is not a decomp project: could not find " + decompCfg.getPath());
+
+		try {
+			assetDirectories = getAssetDirs(new File("."), decompCfg.getParentFile(), decompCfg);
+		}
+		catch (IOException | RuntimeException e) {
+			exitWithError(decompCfg.getPath() + ": could not read the asset stack: " + e);
+		}
+
+		initialized = true;
+	}
+
+	private static void exitWithError(String message)
+	{
+		System.err.println(message);
+		exit(1);
 	}
 
 	public static void exit()
@@ -639,6 +664,8 @@ public abstract class Environment
 
 		@SuppressWarnings("unchecked")
 		List<String> assetStack = (List<String>) topLevelMap.get("asset_stack");
+		if (assetStack == null || assetStack.isEmpty())
+			throw new IOException("asset_stack is missing or empty");
 
 		List<File> assetDirectories = new ArrayList<>();
 		for (String layer : assetStack) {
