@@ -42,6 +42,8 @@ public abstract class AudioTasks
 	private static final int FIRST_AMBIENT_RESOURCE = 3;
 	private static final int FIRST_RADIO_RESOURCE = 0x13;
 	private static final int RADIO_BANK_RESOURCE = 0x17;
+	/** Ambient sounds above the radio's ID follow the vanilla resources. */
+	private static final int FIRST_EXTRA_AMBIENT_RESOURCE = RESOURCE_COUNT;
 	/** The auxiliary bank slot the engine loads the radio bank into. */
 	public static final int RADIO_BANK_SLOT = 2;
 
@@ -222,14 +224,20 @@ public abstract class AudioTasks
 
 	private static void checkFixedFiles(File sbnFile, Sbn sbn, String[] names)
 	{
-		if (sbn.resources.size() != RESOURCE_COUNT)
-			throw new InputFileException(sbnFile, "the INIT resource list has %d entries, expected %d",
+		if (sbn.resources.size() < RESOURCE_COUNT)
+			throw new InputFileException(sbnFile, "the INIT resource list has %d entries, expected at least %d",
 				sbn.resources.size(), RESOURCE_COUNT);
 		for (int i = 0; i < FIXED_FILES.size(); i++) {
 			int file = sbn.resources.get(i);
 			if (file == Sbn.NO_FILE || !FIXED_FILES.get(i).endsWith("/" + names[file]))
 				throw new InputFileException(sbnFile, "INIT resource %d must be %s", i, FIXED_FILES.get(i));
 		}
+	}
+
+	private static int ambientResource(int id)
+	{
+		return id < AudioTables.RADIO_ID ? FIRST_AMBIENT_RESOURCE + id
+			: FIRST_EXTRA_AMBIENT_RESOURCE + id - AudioTables.RADIO_ID - 1;
 	}
 
 	private static String nameOf(File sbnFile, Sbn sbn, String[] names, int file, String type)
@@ -289,8 +297,10 @@ public abstract class AudioTasks
 			XmlTag root = xmw.createTag(Key.AmbientSounds, false);
 			xmw.openTag(root);
 
-			for (int id = 0; id < AudioTables.AMBIENT_SLOTS; id++) {
-				int file = sbn.resources.get(FIRST_AMBIENT_RESOURCE + id);
+			for (int id = 0; id <= AudioTables.MAX_AMBIENT_ID && ambientResource(id) < sbn.resources.size(); id++) {
+				if (id == AudioTables.RADIO_ID)
+					continue;
+				int file = sbn.resources.get(ambientResource(id));
 				if (file == Sbn.NO_FILE)
 					continue;
 				XmlTag tag = xmw.createTag(Key.AmbientSound, true);
@@ -366,17 +376,18 @@ public abstract class AudioTasks
 			sbn.resources.add(Sbn.NO_FILE);
 
 		for (var sound : ambient.sounds) {
-			if (sound != null)
-				sbn.resources.set(FIRST_AMBIENT_RESOURCE + sound.id(),
-					find(sbn, index, sound.source(), "ambient sound " + sound.name(), sound.mseq(), "MSEQ"));
+			int resource = ambientResource(sound.id());
+			while (sbn.resources.size() <= resource)
+				sbn.resources.add(Sbn.NO_FILE);
+			sbn.resources.set(resource, find(sbn, index, sound.source(), "AmbientSound '" + sound.name() + "'", sound.mseq(), "MSEQ"));
 		}
 		if (ambient.radio != null) {
 			var radio = ambient.radio;
 			for (int i = 0; i < AudioTables.RADIO_STATIONS; i++)
 				sbn.resources.set(FIRST_RADIO_RESOURCE + i,
-					find(sbn, index, radio.source(), "radio " + radio.name(), radio.mseq()[i], "MSEQ"));
-			int bank = find(sbn, index, radio.source(), "radio " + radio.name(), radio.bank(), "BK");
-			checkAuxBank(radio.source(), "radio " + radio.name(), sbn.files.get(bank));
+					find(sbn, index, radio.source(), "Radio '" + radio.name() + "'", radio.mseq()[i], "MSEQ"));
+			int bank = find(sbn, index, radio.source(), "Radio '" + radio.name() + "'", radio.bank(), "BK");
+			checkAuxBank(radio.source(), "Radio '" + radio.name() + "'", sbn.files.get(bank));
 			sbn.resources.set(RADIO_BANK_RESOURCE, bank);
 		}
 
@@ -633,7 +644,7 @@ public abstract class AudioTasks
 		StringBuilder sb = new StringBuilder(HEADER_COMMENT).append("#pragma once\n\nenum AmbientSounds {\n");
 		Map<String, String> owners = new HashMap<>();
 		for (var sound : ambient.sounds) {
-			if (sound == null || AudioNames.isUnused(sound.name()))
+			if (AudioNames.isUnused(sound.name()))
 				continue;
 			String name = cName("AMBIENT_", sound.name(), sound.source(), owners);
 			sb.append(String.format("    %s= %d,\n", pad(name, 24), sound.id()));

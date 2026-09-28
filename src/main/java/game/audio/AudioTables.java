@@ -40,8 +40,9 @@ public abstract class AudioTables
 	public static final int MAX_BANKS = 79;
 	public static final int MIN_BANK_GROUP = 2;
 	public static final int MAX_BANK_GROUP = 6;
-	public static final int AMBIENT_SLOTS = 16;
+	/** Ambient IDs 0 to 15 are the vanilla sounds and 16 is the radio; IDs above it are added to the INIT resource list. */
 	public static final int RADIO_ID = 0x10;
+	public static final int MAX_AMBIENT_ID = 0xFF;
 	public static final int RADIO_STATIONS = 4;
 	public static final int MAX_PRESET_ID = 0x3F;
 	public static final int MAX_DRUM_ID = 71;
@@ -76,7 +77,8 @@ public abstract class AudioTables
 
 	public static class Ambient
 	{
-		public final AmbientSound[] sounds = new AmbientSound[AMBIENT_SLOTS];
+		/** In order of ID. */
+		public final List<AmbientSound> sounds = new ArrayList<>();
 		public Radio radio;
 	}
 
@@ -247,9 +249,10 @@ public abstract class AudioTables
 			ambient.radio = new Radio(e.name, e.required(Key.bank), mseq, e.xmr.getSourceFile());
 		}
 
-		assignIds(sounds, AMBIENT_SLOTS - 1);
+		assignIds(sounds, MAX_AMBIENT_ID, RADIO_ID);
 		for (Entry e : sounds.values())
-			ambient.sounds[e.id] = new AmbientSound(e.name, e.id, mseqFile(e.required(Key.mseq)), e.xmr.getSourceFile());
+			ambient.sounds.add(new AmbientSound(e.name, e.id, mseqFile(e.required(Key.mseq)), e.xmr.getSourceFile()));
+		ambient.sounds.sort(Comparator.comparingInt(AmbientSound::id));
 		return ambient;
 	}
 
@@ -300,8 +303,8 @@ public abstract class AudioTables
 		return merged;
 	}
 
-	/** Gives each entry without an ID the lowest free one, going through the entries by name. */
-	private static void assignIds(Map<String, Entry> entries, int maxId)
+	/** Gives each entry without an ID the lowest free one, going through the entries by name. IDs in reserved are never used. */
+	private static void assignIds(Map<String, Entry> entries, int maxId, int... reserved)
 	{
 		Map<Integer, Entry> used = new HashMap<>();
 		for (Entry e : entries.values()) {
@@ -309,6 +312,8 @@ public abstract class AudioTables
 				continue;
 			if (e.id > maxId)
 				e.complain(String.format("ID %X is above the maximum of %X", e.id, maxId));
+			if (contains(reserved, e.id))
+				e.complain(String.format("ID %X is reserved", e.id));
 			Entry other = used.put(e.id, e);
 			if (other != null)
 				e.complain(String.format("ID %X is already used by '%s'", e.id, other.name));
@@ -318,13 +323,18 @@ public abstract class AudioTables
 		for (Entry e : sorted(entries)) {
 			if (e.id != null)
 				continue;
-			while (used.containsKey(next))
+			while (used.containsKey(next) || contains(reserved, next))
 				next++;
 			if (next > maxId)
 				e.complain("there are no free IDs");
 			e.id = next;
 			used.put(next, e);
 		}
+	}
+
+	private static boolean contains(int[] values, int value)
+	{
+		return Arrays.stream(values).anyMatch(v -> v == value);
 	}
 
 	private static List<Entry> sorted(Map<String, Entry> entries)

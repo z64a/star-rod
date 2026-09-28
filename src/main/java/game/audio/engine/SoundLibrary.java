@@ -169,10 +169,8 @@ public class SoundLibrary
 	public Map<String, String> listMseqs()
 	{
 		Map<String, String> uses = new HashMap<>();
-		for (AudioTables.AmbientSound sound : ambient.sounds) {
-			if (sound != null)
-				uses.put(baseName(sound.mseq()), sound.name());
-		}
+		for (AudioTables.AmbientSound sound : ambient.sounds)
+			uses.put(baseName(sound.mseq()), sound.name());
 		if (ambient.radio != null) {
 			for (int i = 0; i < ambient.radio.mseq().length; i++)
 				uses.put(baseName(ambient.radio.mseq()[i]), ambient.radio.name() + " " + i);
