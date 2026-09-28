@@ -79,7 +79,7 @@ public abstract class Presets
 			return new int[] { address >> 4 & 0xF0 | envelope, address & 0xFF };
 		}
 
-		String name(File source, String user, int bank, int patch)
+		public String name(File source, String user, int bank, int patch)
 		{
 			String wav = byAddress.get((bank >> 4 & 7) << 8 | patch);
 			if (wav == null)

@@ -593,6 +593,7 @@ public class StarRodMain extends StarRodFrame
 				case "-DUMPAUDIO":
 				case "-BUILDAUDIO":
 				case "-VERIFYAUDIO":
+				case "-RENDERAUDIO":
 					i += AudioTasks.run(args, i);
 					break;
 

@@ -55,7 +55,7 @@ public class Mseq
 	private static final Attr LOOP = new Attr(Key.loopID, 0, 1);
 
 	/** The commands of the stream. The tag of a command is the name of its Op. */
-	private enum Op implements XmlKey
+	public enum Op implements XmlKey
 	{
 		// @formatter:off
 		Delay(new Attr(Key.duration, 1, 0x877)),
@@ -81,7 +81,7 @@ public class Mseq
 	}
 
 	/** The values are in the order of the attributes of the op; a SetInstrument also has a wav. */
-	private record Command(Op op, int[] values, String wav)
+	public record Command(Op op, int[] values, String wav)
 	{
 		Command(Op op, int... values)
 		{
@@ -89,7 +89,7 @@ public class Mseq
 		}
 	}
 
-	private record Ramp(int track, boolean isVolume, int time, int delta, int goal)
+	public record Ramp(int track, boolean isVolume, int time, int delta, int goal)
 	{}
 
 	public static final String EXTENSION = ".mseq";
@@ -117,6 +117,16 @@ public class Mseq
 	private int firstVoice;
 	private final List<Ramp> ramps = new ArrayList<>();
 	private final List<Command> commands = new ArrayList<>();
+
+	public List<Command> commands()
+	{
+		return commands;
+	}
+
+	public List<Ramp> ramps()
+	{
+		return ramps;
+	}
 
 	/** Reads an MSEQ file. */
 	public static Mseq decode(File source, byte[] data, Presets.Addresses addresses)

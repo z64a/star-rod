@@ -23,10 +23,11 @@ import game.audio.AudioTables.Ambient;
 import game.audio.AudioTables.Bank;
 import game.audio.AudioTables.Key;
 import game.audio.AudioTables.Song;
+import game.audio.engine.AudioRender;
 import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
 
-/** The -DumpAudio, -BuildAudio and -VerifyAudio command line tasks. */
+/** The -DumpAudio, -BuildAudio, -VerifyAudio and -RenderAudio command line tasks. */
 public abstract class AudioTasks
 {
 	/** Asset directory of each file type in Sbn.TYPES. */
@@ -42,7 +43,7 @@ public abstract class AudioTasks
 	private static final int FIRST_RADIO_RESOURCE = 0x13;
 	private static final int RADIO_BANK_RESOURCE = 0x17;
 	/** The auxiliary bank slot the engine loads the radio bank into. */
-	private static final int RADIO_BANK_SLOT = 2;
+	public static final int RADIO_BANK_SLOT = 2;
 
 	private static final String EXTRA_FILE = "sbn_extra.bin";
 	private static final int MAX_SBN_SIZE = 0x1000000;
@@ -74,7 +75,7 @@ public abstract class AudioTasks
 	public static boolean isAudioTask(String[] args)
 	{
 		return args.length > 0 && switch (args[0].toUpperCase()) {
-			case "-DUMPAUDIO", "-BUILDAUDIO", "-VERIFYAUDIO" -> true;
+			case "-DUMPAUDIO", "-BUILDAUDIO", "-VERIFYAUDIO", "-RENDERAUDIO" -> true;
 			default -> false;
 		};
 	}
@@ -86,16 +87,25 @@ public abstract class AudioTasks
 	public static int run(String[] args, int index)
 	{
 		String task = args[index].toUpperCase();
-		int count = task.equals("-BUILDAUDIO") ? 1 : 2;
+		int count = switch (task) {
+			case "-BUILDAUDIO" -> 1;
+			case "-RENDERAUDIO" -> 3;
+			default -> 2;
+		};
 
 		try {
 			if (args.length <= index + count)
-				throw new IOException(args[index] + " expects " + (count == 1 ? "<out dir>" : "two arguments"));
+				throw new IOException(args[index] + " expects " + switch (count) {
+					case 1 -> "<out dir>";
+					case 3 -> "<sfx|mseq|sample> <name> <out.wav>";
+					default -> "two arguments";
+				});
 
 			File first = new File(args[index + 1]);
 			switch (task) {
 				case "-DUMPAUDIO" -> dump(first, new File(args[index + 2]));
 				case "-BUILDAUDIO" -> build(first);
+				case "-RENDERAUDIO" -> AudioRender.render(args[index + 1], args[index + 2], new File(args[index + 3]));
 				default -> verify(first, new File(args[index + 2]));
 			}
 		}
@@ -548,7 +558,7 @@ public abstract class AudioTasks
 	 * is replaced by the tables, but a binary in the same layer or above them is an error, as
 	 * entries can't merge into it.
 	 */
-	private static boolean usesTables(AudioLayers layers, String table, String binary)
+	public static boolean usesTables(AudioLayers layers, String table, String binary)
 	{
 		List<File> tables = layers.getTables(table);
 		File file = layers.getFile(binary);
