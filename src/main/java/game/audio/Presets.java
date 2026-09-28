@@ -53,7 +53,7 @@ public abstract class Presets
 			}
 		}
 
-		private int[] address(File source, String user, String wav, int envelope)
+		int[] address(File source, String user, String wav, int envelope)
 		{
 			Integer address = byName.get(wav);
 			if (address == null)
@@ -62,7 +62,7 @@ public abstract class Presets
 			return new int[] { address >> 4 & 0xF0 | envelope, address & 0xFF };
 		}
 
-		private String name(File source, String user, int bank, int patch)
+		String name(File source, String user, int bank, int patch)
 		{
 			String wav = byAddress.get((bank >> 4 & 7) << 8 | patch);
 			if (wav == null)

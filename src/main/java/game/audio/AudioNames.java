@@ -17,6 +17,7 @@ public abstract class AudioNames
 
 	private static final Map<Integer, String> songs = readEnum("songs.enum");
 	private static final Map<Integer, String> ambients = readEnum("ambient_sounds.enum");
+	private static final Map<Integer, String> sounds = readEnum("sounds.enum");
 	private static final Map<String, String> samples = readSamples();
 
 	public static String getSongName(int id)
@@ -27,6 +28,19 @@ public abstract class AudioNames
 	public static String getAmbientName(int id)
 	{
 		return ambients.getOrDefault(id, String.format("Unused_%02X", id));
+	}
+
+	/** The name of a sound effect. A sound without a vanilla name is called Unk_ and its ID in hex. */
+	public static String getSoundName(int id)
+	{
+		String name = sounds.get(id);
+		return name == null || name.startsWith("Empty_") ? String.format("Unk_%04X", id) : name;
+	}
+
+	/** Names that stand in for slots without a real name get no C identifier. */
+	public static boolean isPlaceholderSound(String name)
+	{
+		return name.startsWith("Empty_") || name.startsWith("Unused_") || name.startsWith("Unk_") || name.startsWith("Invalid_");
 	}
 
 	/** The name of a vanilla sound bank sample, given as the bank name, an underscore, and the instrument index in hex. */

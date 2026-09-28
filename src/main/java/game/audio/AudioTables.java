@@ -29,7 +29,7 @@ public abstract class AudioTables
 	public enum Key implements XmlKey
 	{
 		// @formatter:off
-		SongList, Song, BankList, Bank, AmbientSounds, AmbientSound, Radio, Station,
+		Sounds, Sound, SongList, Song, BankList, Bank, AmbientSounds, AmbientSound, Radio, Station,
 		id, name, delete, bgm, bk1, bk2, bk3, group, index, mseq, bank, player,
 		Instruments, Instrument, Drums, Drum, wav, envelope, volume, pan, reverb, coarseTune, fineTune,
 		keyBase, randTune, randVolume, randPan, randReverb
@@ -80,12 +80,12 @@ public abstract class AudioTables
 		public Radio radio;
 	}
 
-	private static class Entry
+	static class Entry
 	{
-		private final String name;
-		private final XmlReader xmr;
-		private final Element elem;
-		private Integer id;
+		final String name;
+		final XmlReader xmr;
+		final Element elem;
+		Integer id;
 
 		private Entry(String name, XmlReader xmr, Element elem)
 		{
@@ -115,7 +115,7 @@ public abstract class AudioTables
 			return optional(key) == null ? defaultValue : AudioXml.readHex(xmr, elem, key, min, max);
 		}
 
-		private void complain(String message)
+		void complain(String message)
 		{
 			xmr.complain(elem.getTagName() + " '" + name + "': " + message);
 		}
@@ -253,7 +253,7 @@ public abstract class AudioTables
 		return ambient;
 	}
 
-	private static Map<String, Entry> merge(AudioLayers layers, String table, Key root, Key... tags)
+	static Map<String, Entry> merge(AudioLayers layers, String table, Key root, Key... tags)
 	{
 		List<File> files = layers.getTables(table);
 		if (files.isEmpty())
@@ -326,7 +326,7 @@ public abstract class AudioTables
 		return entries.values().stream().sorted(Comparator.comparing(e -> e.name)).toList();
 	}
 
-	private static void checkIdentifier(Entry e)
+	static void checkIdentifier(Entry e)
 	{
 		if (!IDENTIFIER.matcher(e.name).matches())
 			e.complain("the name must start with a letter and contain only letters, digits, and underscores");
