@@ -240,7 +240,7 @@ public abstract class AudioTables
 				if (player < 0 || player >= RADIO_STATIONS || mseq[player] != null)
 					e.complain("Station player must be a unique number from 0 to " + (RADIO_STATIONS - 1));
 				e.xmr.requiresAttribute(station, Key.mseq);
-				mseq[player] = e.xmr.getAttribute(station, Key.mseq);
+				mseq[player] = mseqFile(e.xmr.getAttribute(station, Key.mseq));
 			}
 			if (Arrays.asList(mseq).contains(null))
 				e.complain("there must be " + RADIO_STATIONS + " stations");
@@ -249,8 +249,14 @@ public abstract class AudioTables
 
 		assignIds(sounds, AMBIENT_SLOTS - 1);
 		for (Entry e : sounds.values())
-			ambient.sounds[e.id] = new AmbientSound(e.name, e.id, e.required(Key.mseq), e.xmr.getSourceFile());
+			ambient.sounds[e.id] = new AmbientSound(e.name, e.id, mseqFile(e.required(Key.mseq)), e.xmr.getSourceFile());
 		return ambient;
+	}
+
+	/** Ambient sounds name an MSEQ with or without its extension. */
+	private static String mseqFile(String name)
+	{
+		return name.endsWith(Mseq.EXTENSION) ? name : name + Mseq.EXTENSION;
 	}
 
 	static Map<String, Entry> merge(AudioLayers layers, String table, Key root, Key... tags)

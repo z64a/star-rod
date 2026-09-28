@@ -41,6 +41,8 @@ public abstract class AudioTasks
 	private static final int FIRST_AMBIENT_RESOURCE = 3;
 	private static final int FIRST_RADIO_RESOURCE = 0x13;
 	private static final int RADIO_BANK_RESOURCE = 0x17;
+	/** The auxiliary bank slot the engine loads the radio bank into. */
+	private static final int RADIO_BANK_SLOT = 2;
 
 	private static final String EXTRA_FILE = "sbn_extra.bin";
 	private static final int MAX_SBN_SIZE = 0x1000000;
@@ -62,6 +64,9 @@ public abstract class AudioTasks
 	/** The heap size of the unmodified game. */
 	private static final int VANILLA_HEAP_SIZE = 0x56000;
 	private static final int AUX_BANK_BUFFER = 0x840;
+
+	private record Source(int type, String name, File file, byte[] data)
+	{}
 
 	private static final Key[] AUX_BANK_KEYS = { Key.bk1, Key.bk2, Key.bk3 };
 
@@ -145,7 +150,7 @@ public abstract class AudioTasks
 		}
 		checkFixedFiles(sbnFile, sbn, names);
 
-		// banks and the two preset files are written as sources; every other file is copied
+		// banks, the preset files, and ambient sequences are written as sources; every other file is copied
 		Map<String, SoundBank> banks = new HashMap<>();
 		for (int i = 0; i < names.length; i++) {
 			Sbn.Member file = sbn.files.get(i);
@@ -155,8 +160,8 @@ public abstract class AudioTasks
 				banks.put(names[i], bank);
 				bank.dump(new File(new File(audioDir, dir), file.name));
 			}
-			else if (i != sbn.resources.get(SEF_RESOURCE) && i != sbn.resources.get(PER_RESOURCE)
-				&& i != sbn.resources.get(PRG_RESOURCE)) {
+			else if (!file.type.equals("MSEQ") && i != sbn.resources.get(SEF_RESOURCE)
+				&& i != sbn.resources.get(PER_RESOURCE) && i != sbn.resources.get(PRG_RESOURCE)) {
 				FileUtils.writeByteArrayToFile(new File(new File(audioDir, dir), names[i]), file.data);
 			}
 		}
@@ -172,6 +177,24 @@ public abstract class AudioTasks
 			new File(audioDir, "Presets.xml"));
 		Presets.dumpDrums(sbnFile, sbn.files.get(sbn.resources.get(PER_RESOURCE)).data, addresses,
 			new File(audioDir, "Drums.xml"));
+
+		Presets.Addresses mseqAddresses = addresses;
+		int radio = sbn.resources.get(RADIO_BANK_RESOURCE);
+		if (radio != Sbn.NO_FILE && banks.containsKey(names[radio]))
+			mseqAddresses = addresses.withAuxiliary(RADIO_BANK_SLOT, banks.get(names[radio]));
+		for (int i = 0; i < names.length; i++) {
+			Sbn.Member file = sbn.files.get(i);
+			if (!file.type.equals("MSEQ"))
+				continue;
+			try {
+				File out = new File(new File(audioDir, "mseq"), baseName(names[i]) + ".xml");
+				FileUtils.forceMkdirParent(out);
+				Mseq.decode(sbnFile, file.data, mseqAddresses).write(out);
+			}
+			catch (InputFileException e) {
+				throw new InputFileException(sbnFile, "file %d (%s): %s", i, names[i], e.getMessage());
+			}
+		}
 
 		try {
 			SfxBinary.DecodeResult sfx = SfxBinary.decode(sbn.files.get(sbn.resources.get(SEF_RESOURCE)).data);
@@ -203,7 +226,12 @@ public abstract class AudioTasks
 	{
 		if (!sbn.files.get(file).type.equals(type))
 			throw new InputFileException(sbnFile, "file %d is used as a %s file but is not one", file, type);
-		return names[file];
+		return type.equals("MSEQ") ? baseName(names[file]) : names[file];
+	}
+
+	private static String baseName(String file)
+	{
+		return file.substring(0, file.lastIndexOf('.'));
 	}
 
 	private static void dumpSongs(File sbnFile, Sbn sbn, String[] names, File out) throws IOException
@@ -295,7 +323,7 @@ public abstract class AudioTasks
 
 		Sbn sbn = new Sbn();
 		SfxArchive[] sfx = new SfxArchive[1];
-		Map<String, Integer> index = readFiles(layers, sbn, banks, sfx);
+		Map<String, Integer> index = readFiles(layers, sbn, banks, ambient, sfx);
 
 		File extra = layers.getFile(EXTRA_FILE);
 		if (extra != null)
@@ -367,7 +395,8 @@ public abstract class AudioTasks
 	 * and the preset files are built from their sources. The sound effect archive built from the
 	 * tables, if any, is stored in sfx[0].
 	 */
-	private static Map<String, Integer> readFiles(AudioLayers layers, Sbn sbn, List<Bank> bankTable, SfxArchive[] sfx)
+	private static Map<String, Integer> readFiles(AudioLayers layers, Sbn sbn, List<Bank> bankTable, Ambient ambient,
+		SfxArchive[] sfx)
 	{
 		Map<String, Integer> vanillaOrder = new HashMap<>();
 		for (String name : AudioNames.getFileOrder()) {
@@ -375,10 +404,8 @@ public abstract class AudioTasks
 				vanillaOrder.put(name.strip(), vanillaOrder.size());
 		}
 
-		record Source(int type, String name, File file, byte[] data)
-		{}
-
 		int bkType = Sbn.TYPES.indexOf("BK");
+		int mseqType = Sbn.TYPES.indexOf("MSEQ");
 		boolean presets = usesTables(layers, "Presets.xml", "prg/SET1.prg");
 		boolean drums = usesTables(layers, "Drums.xml", "per/SET1.per");
 		boolean sounds = usesTables(layers, "SoundEffects.xml", "sfx/DAT1.sef");
@@ -390,7 +417,7 @@ public abstract class AudioTasks
 				boolean generated = presets && dir.equals("prg") && name.equals("SET1.prg")
 					|| drums && dir.equals("per") && name.equals("SET1.per")
 					|| sounds && dir.equals("sfx") && name.equals("DAT1.sef");
-				if (type != bkType && !generated) {
+				if (type != bkType && type != mseqType && !generated) {
 					File file = layers.getFile(dir + "/" + name);
 					sources.add(new Source(type, name, file, readFile(file)));
 				}
@@ -443,6 +470,9 @@ public abstract class AudioTasks
 		}
 
 		Presets.Addresses addresses = new Presets.Addresses(bankTable, banks);
+		Presets.Addresses mseqAddresses = ambient.radio != null && banks.containsKey(ambient.radio.bank())
+			? addresses.withAuxiliary(RADIO_BANK_SLOT, banks.get(ambient.radio.bank())) : addresses;
+		sources.addAll(readMseqs(layers, mseqAddresses));
 		if (presets) {
 			File table = lastOf(layers.getTables("Presets.xml"));
 			sources.add(new Source(Sbn.TYPES.indexOf("PRG"), "SET1.prg", table,
@@ -474,6 +504,38 @@ public abstract class AudioTasks
 			sbn.files.add(file);
 		}
 		return index;
+	}
+
+	/** Ambient sequences come from mseq/NAME.xml sources or mseq/NAME.mseq binaries; the higher layer wins. */
+	private static List<Source> readMseqs(AudioLayers layers, Presets.Addresses addresses)
+	{
+		Set<String> names = new TreeSet<>();
+		for (String file : layers.listFiles("mseq", ".mseq"))
+			names.add(baseName(file));
+		for (String file : layers.listFiles("mseq", ".xml"))
+			names.add(baseName(file));
+
+		List<Source> sources = new ArrayList<>();
+		for (String name : names) {
+			File xml = layers.getFile("mseq/" + name + ".xml");
+			File binary = layers.getFile("mseq/" + name + Mseq.EXTENSION);
+			if (xml != null && binary != null) {
+				int xmlPriority = layers.getPriority(xml);
+				int binaryPriority = layers.getPriority(binary);
+				if (xmlPriority == binaryPriority)
+					throw new InputFileException(binary, "the layer has both %s.xml and %s; use only one", name,
+						binary.getName());
+				if (xmlPriority < binaryPriority)
+					binary = null;
+				else
+					xml = null;
+			}
+
+			File file = xml != null ? xml : binary;
+			byte[] data = xml != null ? Mseq.read(xml).encode(xml, addresses) : readFile(binary);
+			sources.add(new Source(Sbn.TYPES.indexOf("MSEQ"), name + Mseq.EXTENSION, file, data));
+		}
+		return sources;
 	}
 
 	private static File lastOf(List<File> files)
@@ -652,13 +714,13 @@ public abstract class AudioTasks
 
 	/**
 	 * Compares two archives byte for byte, except the size field of bank entries, which the engine does
-	 * not read, bank samples, which are compared by their decoded audio, and the sound effect archive, which
-	 * is compared by content.
+	 * not read, bank samples, which are compared by their decoded audio, and the sound effect archive and ambient
+	 * sequences, which are compared by content.
 	 */
 	public static void verify(File built, File reference) throws IOException
 	{
-		byte[] actual = withCanonicalSef(built, readFile(built));
-		byte[] expected = withCanonicalSef(reference, readFile(reference));
+		byte[] actual = withCanonicalForms(built, readFile(built));
+		byte[] expected = withCanonicalForms(reference, readFile(reference));
 		Sbn actualSbn = Sbn.read(built, actual);
 		Sbn sbn = Sbn.read(reference, expected);
 
@@ -722,10 +784,11 @@ public abstract class AudioTasks
 	}
 
 	/**
-	 * Rewrites the sound effect archive in its canonical layout. Vanilla lays sounds out in an order that
-	 * the sources do not keep, so archives are compared by content.
+	 * Rewrites the sound effect archive in its canonical layout and clears the bits of ambient sequences that
+	 * the engine ignores. Vanilla lays sounds out in an order that the sources do not keep, so archives are
+	 * compared by content.
 	 */
-	private static byte[] withCanonicalSef(File file, byte[] bytes)
+	private static byte[] withCanonicalForms(File file, byte[] bytes)
 	{
 		Sbn sbn = Sbn.read(file, bytes);
 		int index = sbn.resources.get(SEF_RESOURCE);
@@ -735,6 +798,10 @@ public abstract class AudioTasks
 		}
 		catch (SfxFormatException e) {
 			throw new InputFileException(file, e.getMessage());
+		}
+		for (int i = 0; i < sbn.files.size(); i++) {
+			if (sbn.files.get(i).type.equals("MSEQ"))
+				sbn.files.set(i, Sbn.Member.read(file, Mseq.canonical(file, sbn.files.get(i).data), 0));
 		}
 		return sbn.write();
 	}
