@@ -17,6 +17,7 @@ public abstract class AudioNames
 
 	private static final Map<Integer, String> songs = readEnum("songs.enum");
 	private static final Map<Integer, String> ambients = readEnum("ambient_sounds.enum");
+	private static final Map<String, String> samples = readSamples();
 
 	public static String getSongName(int id)
 	{
@@ -26,6 +27,12 @@ public abstract class AudioNames
 	public static String getAmbientName(int id)
 	{
 		return ambients.getOrDefault(id, String.format("Unused_%02X", id));
+	}
+
+	/** The name of a vanilla sound bank sample, given as the bank name, an underscore, and the instrument index in hex. */
+	public static String getSampleName(String rawName)
+	{
+		return samples.getOrDefault(rawName, rawName);
 	}
 
 	/** Names of files in the order the vanilla SBN stores them. */
@@ -60,6 +67,17 @@ public abstract class AudioNames
 		if (Character.isDigit(prev))
 			return Character.isUpperCase(c) && Character.isLowerCase(next);
 		return Character.isUpperCase(prev) && Character.isUpperCase(c) && Character.isLowerCase(next);
+	}
+
+	private static Map<String, String> readSamples()
+	{
+		Map<String, String> names = new HashMap<>();
+		for (String line : Resource.getText(ResourceType.Audio, "Samples.txt")) {
+			String[] columns = line.trim().split("\\s+");
+			if (columns.length == 2 && !columns[0].startsWith("#"))
+				names.put(columns[0], columns[1]);
+		}
+		return names;
 	}
 
 	private static Map<Integer, String> readEnum(String resource)
