@@ -335,7 +335,7 @@ public class Map implements XmlSerializable
 
 	private static String getAreaAffix(String name)
 	{
-		String affix = name.substring(0, 3);
+		String affix = name.substring(0, Math.min(3, name.length()));
 		while (affix.endsWith("_")) {
 			affix = affix.substring(0, affix.length() - 1);
 		}
