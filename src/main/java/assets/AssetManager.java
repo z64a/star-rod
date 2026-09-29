@@ -89,9 +89,13 @@ public class AssetManager
 		return AssetSubdir.MAP_GEOM + mapName + EXT_MAP;
 	}
 
+	/** A map's source from the highest layer that has it, or a handle that doesn't exist if a sidecar deletes it. */
 	public static AssetHandle getMap(String mapName)
 	{
 		String path = getMapSourcePath(mapName);
+		if (new Sidecars(Environment.assetDirectories).isDeleted(path))
+			return new AssetHandle(getTopLevelAssetDir(), path);
+
 		for (File assetDir : Environment.assetDirectories) {
 			AssetHandle ah = new AssetHandle(assetDir, path);
 			if (ah.exists())
@@ -170,7 +174,7 @@ public class AssetManager
 		return getAssetMap(AssetSubdir.PLR_SPRITE_PAL, EXT_PNG);
 	}
 
-	/** Every map source in the asset stack, sorted by map name. */
+	/** Every map source in the asset stack that no sidecar deletes, sorted by map name. */
 	public static Collection<AssetHandle> getMapSources() throws IOException
 	{
 		if (!game.map.Map.hasAreaDirs()) {
@@ -182,6 +186,7 @@ public class AssetManager
 		}
 
 		Map<String, AssetHandle> assetMap = new TreeMap<>();
+		Sidecars sidecars = new Sidecars(Environment.assetDirectories);
 
 		for (File stackDir : Environment.assetDirectories) {
 			// maps in their own directories sit two levels below these, as in world/area/kmr/kmr_02
@@ -196,7 +201,7 @@ public class AssetManager
 					for (File mapDir : mapDirs) {
 						String relPath = parent + group.getName() + "/" + mapDir.getName() + "/" + MAP_SOURCE_NAME + EXT_MAP;
 						AssetHandle ah = new AssetHandle(stackDir, relPath);
-						if (ah.isFile())
+						if (ah.isFile() && !sidecars.isDeleted(relPath))
 							assetMap.putIfAbsent(mapDir.getName(), ah);
 					}
 				}
