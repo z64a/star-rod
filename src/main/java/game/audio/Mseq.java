@@ -21,7 +21,7 @@ import util.xml.XmlWrapper.XmlWriter;
 /**
  * An ambient sequence (MSEQ): a stream of timed commands for up to nine instrument tracks and a drum track,
  * plus a list of volume and tuning ramps. On disk it is an XML file, and in the archive it is an MSEQ file.
- * Instruments are named by sample, and the banks in Banks.xml (and the radio bank, which is the auxiliary
+ * Instruments are named by sample, and the banks in banks.xml (and the radio bank, which is the auxiliary
  * bank in slot 2) say where each sample is.
  */
 public class Mseq

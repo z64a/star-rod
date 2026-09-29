@@ -43,10 +43,20 @@ public abstract class AudioNames
 		return name.startsWith("Empty_") || name.startsWith("Unused_") || name.startsWith("Unk_") || name.startsWith("Invalid_");
 	}
 
-	/** The name of a vanilla sound bank sample, given as the bank name, an underscore, and the instrument index in hex. */
-	public static String getSampleName(String rawName)
+	/**
+	 * The file name stem of a vanilla sound bank sample, given the bank's name and the sample's raw name,
+	 * which is the bank name, an underscore, and the instrument index in hex.
+	 */
+	public static String getSampleName(String bank, String rawName)
 	{
-		return samples.getOrDefault(rawName, rawName);
+		String name = samples.getOrDefault(rawName, rawName);
+		return toFileName(name.replaceFirst("^" + Pattern.quote(bank) + "_[0-9A-F]{2}_", ""));
+	}
+
+	/** Converts a PascalCase name to lower snake case for use as a file name, so HuffNPuff1 becomes huff_n_puff_1. */
+	public static String toFileName(String name)
+	{
+		return toCName("", name).toLowerCase();
 	}
 
 	/** Names of files in the order the vanilla SBN stores them. */

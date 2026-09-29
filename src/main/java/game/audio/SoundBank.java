@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.HexFormat;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.w3c.dom.Element;
 
@@ -28,7 +30,7 @@ import util.xml.XmlWrapper.XmlWriter;
 
 /**
  * A sound bank: up to 16 instruments and the envelopes they share. On disk it is a directory with
- * SoundBank.xml and a mono WAV file for each sample, and in the archive it is a BK file.
+ * sound_bank.xml and a mono WAV file for each sample, and in the archive it is a BK file.
  *
  * An instrument that has a loop uses two WAV files, the attack and the loop. The instrument keeps the
  * codebook, trailing samples, and padding of the file it was dumped from in its Encoding tag. While the
@@ -45,7 +47,7 @@ public class SoundBank
 		// @formatter:on
 	}
 
-	public static final String XML_FILE = "SoundBank.xml";
+	public static final String XML_FILE = "sound_bank.xml";
 	public static final int MAX_INSTRUMENTS = 16;
 	public static final int LOOP_FOREVER = -1;
 
@@ -53,6 +55,7 @@ public class SoundBank
 	private static final int INSTRUMENT_SIZE = 0x30;
 	private static final int LOOP_STATE_SIZE = 0x20;
 	private static final int CODEBOOK_UNIT = 0x20;
+	private static final String LOOP_SUFFIX = "_loop";
 
 	public static class Instrument
 	{
@@ -72,6 +75,13 @@ public class SoundBank
 		public int padding;
 
 		private Envelope envelope;
+
+		private void setName(String name)
+		{
+			wav = name;
+			if (loopWav != null)
+				loopWav = name + LOOP_SUFFIX;
+		}
 
 		private short[] samples()
 		{
@@ -121,6 +131,33 @@ public class SoundBank
 		}
 	}
 
+	/**
+	 * Gives the samples of vanilla banks names that are unique across every bank: a sample whose name
+	 * (or whose loop's name) is also used by another sample gets the lowercase name of its bank as a prefix.
+	 */
+	public static void separateNames(File source, Collection<SoundBank> banks)
+	{
+		Map<String, Integer> counts = new HashMap<>();
+		for (SoundBank bank : banks) {
+			for (Instrument ins : bank.instruments) {
+				counts.merge(ins.wav, 1, Integer::sum);
+				if (ins.loopWav != null)
+					counts.merge(ins.loopWav, 1, Integer::sum);
+			}
+		}
+
+		Set<String> names = new HashSet<>();
+		for (SoundBank bank : banks) {
+			String prefix = bank.name.toLowerCase() + "_";
+			for (Instrument ins : bank.instruments) {
+				if (counts.get(ins.wav) > 1 || ins.loopWav != null && counts.get(ins.loopWav) > 1)
+					ins.setName(prefix + ins.wav);
+				if (!names.add(ins.wav) || ins.loopWav != null && !names.add(ins.loopWav))
+					throw new InputFileException(source, "bank %s has more than one sample named %s", bank.name, ins.wav);
+			}
+		}
+	}
+
 	private static SoundBank read(String name, byte[] data)
 	{
 		ByteBuffer bb = ByteBuffer.wrap(data);
@@ -157,11 +194,11 @@ public class SoundBank
 			short[] samples = Vadpcm.decode(data, wavOffset, frames, ins.codebook);
 
 			String raw = String.format("%s_%02X", name, i);
-			ins.wav = AudioNames.getSampleName(raw);
+			ins.wav = AudioNames.getSampleName(name, raw);
 			if (hasLoop) {
 				if (loopStart > loopEnd || loopEnd > samples.length)
 					throw new IllegalArgumentException("instrument " + i + " has a loop outside its samples");
-				ins.loopWav = AudioNames.getSampleName(raw + "_Loop");
+				ins.loopWav = ins.wav + LOOP_SUFFIX;
 				ins.attack = Arrays.copyOfRange(samples, 0, loopStart);
 				ins.loop = Arrays.copyOfRange(samples, loopStart, loopEnd);
 				ins.tail = Arrays.copyOfRange(samples, loopEnd, samples.length);
@@ -177,6 +214,15 @@ public class SoundBank
 			bank.instruments.add(ins);
 		}
 
+		// unnamed samples share a name, so a sample whose name repeats gets its index
+		Map<String, Long> repeats = bank.instruments.stream()
+			.collect(Collectors.groupingBy(ins -> ins.wav, Collectors.counting()));
+		for (int i = 0; i < count; i++) {
+			Instrument ins = bank.instruments.get(i);
+			if (repeats.get(ins.wav) > 1)
+				ins.setName(String.format("%s_%02x", ins.wav, i));
+		}
+
 		bank.envelopes.addAll(envelopeAt.values());
 		for (int i = 0; i < bank.envelopes.size(); i++)
 			bank.envelopes.get(i).name = "env" + (i + 1);
@@ -185,7 +231,7 @@ public class SoundBank
 		return bank;
 	}
 
-	/** Writes SoundBank.xml and the WAV files into a directory. */
+	/** Writes sound_bank.xml and the WAV files into a directory. */
 	public void dump(File dir) throws IOException
 	{
 		for (Instrument ins : instruments) {
@@ -251,7 +297,7 @@ public class SoundBank
 		return samples;
 	}
 
-	/** Reads bank/NAME/SoundBank.xml and its WAV files, each from the highest layer that has it. */
+	/** Reads bank/NAME/sound_bank.xml and its WAV files, each from the highest layer that has it. */
 	public static SoundBank load(AudioLayers layers, String name)
 	{
 		File xmlFile = layers.getFile(directory(name) + XML_FILE);

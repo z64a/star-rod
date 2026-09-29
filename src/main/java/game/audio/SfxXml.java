@@ -42,14 +42,14 @@ import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
 
 /**
- * The sound effect sources: SoundEffects.xml, a table with an entry per sound that holds an inline one-shot
- * or names a sequence file under sfx/, and sfx/Envelopes.xml, a table of the press envelopes that
+ * The sound effect sources: sound_effects.xml, a table with an entry per sound that holds an inline one-shot
+ * or names a sequence file under sfx/, and sfx/envelopes.xml, a table of the press envelopes that
  * sequences select by name.
  */
 public final class SfxXml
 {
-	private static final String TABLE = "SoundEffects.xml";
-	private static final String ENVELOPES = "sfx/Envelopes.xml";
+	private static final String TABLE = "sound_effects.xml";
+	private static final String ENVELOPES = "sfx/envelopes.xml";
 	private static final int MAX_ID = 0x63FF;
 
 	private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z_][A-Za-z0-9_.-]*");
@@ -205,7 +205,7 @@ public final class SfxXml
 					spawnedElement = child;
 					break;
 				case TAG_ROUTING:
-					throw error(effectXml, child, "logical sound routing belongs in SoundEffects.xml, not the effect file");
+					throw error(effectXml, child, "logical sound routing belongs in sound_effects.xml, not the effect file");
 				default:
 					throw unknownElement(effectXml, root, child);
 			}
@@ -746,14 +746,17 @@ public final class SfxXml
 		return new SfxFormatException(source.normalize() + ": " + label + message);
 	}
 
-	/** Writes the sources of a vanilla archive: SoundEffects.xml, sfx/Envelopes.xml, and a file per sequence. */
+	/** Writes the sources of a vanilla archive: sound_effects.xml, sfx/envelopes.xml, and a file per sequence. */
 	public static void write(SfxArchive archive, File audioDir, Presets.Addresses addresses) throws IOException
 	{
 		File table = new File(audioDir, TABLE);
 		Dump dump = new Dump(addresses, table);
+		Set<String> sources = new HashSet<>(List.of(ENVELOPES));
 		for (Sound sound : archive.sounds.values()) {
 			if (!sound.isEmpty() && !sound.canInlineOneShot()) {
-				sound.source = "sfx/" + sound.name + ".xml";
+				sound.source = "sfx/" + AudioNames.toFileName(sound.name) + ".xml";
+				if (!sources.add(sound.source))
+					throw new SfxFormatException(table + ": sound " + sound.name + " has the same file name as another sound: " + sound.source);
 				FileUtils.forceMkdirParent(new File(audioDir, sound.source));
 				dump.writeEffectXml(new File(audioDir, sound.source), sound);
 			}

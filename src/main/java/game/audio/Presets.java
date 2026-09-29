@@ -17,7 +17,7 @@ import util.xml.XmlWrapper.XmlWriter;
 
 /**
  * The PRG file (instrument presets) and the PER file (drums). Both refer to instruments by bank and
- * patch bytes; in XML they name the sample, and the banks listed in Banks.xml say where it is.
+ * patch bytes; in XML they name the sample, and the banks listed in banks.xml say where it is.
  */
 public abstract class Presets
 {
@@ -30,7 +30,7 @@ public abstract class Presets
 	private static final int DEFAULT_BANK = 0x20;
 	private static final int DEFAULT_PATCH = 0x10;
 
-	/** The instruments of the banks listed in Banks.xml, by sample name and by address. */
+	/** The instruments of the banks listed in banks.xml, by sample name and by address. */
 	public static class Addresses
 	{
 		private final Map<String, Integer> byName = new HashMap<>();
@@ -74,7 +74,7 @@ public abstract class Presets
 		{
 			Integer address = byName.get(wav);
 			if (address == null)
-				throw new InputFileException(source, "%s: no bank in Banks.xml has an instrument named %s", user,
+				throw new InputFileException(source, "%s: no bank in banks.xml has an instrument named %s", user,
 					wav);
 			return new int[] { address >> 4 & 0xF0 | envelope, address & 0xFF };
 		}
@@ -83,7 +83,7 @@ public abstract class Presets
 		{
 			String wav = byAddress.get((bank >> 4 & 7) << 8 | patch);
 			if (wav == null)
-				throw new InputFileException(source, "%s uses bank %02X patch %02X, which no bank in Banks.xml provides", user,
+				throw new InputFileException(source, "%s uses bank %02X patch %02X, which no bank in banks.xml provides", user,
 					bank, patch);
 			return wav;
 		}

@@ -126,7 +126,7 @@ public abstract class AudioTables
 	/** Songs indexed by ID. Unused IDs below the highest one repeat the lowest song. */
 	public static Song[] readSongs(AudioLayers layers)
 	{
-		Map<String, Entry> entries = merge(layers, "Songs.xml", Key.SongList, Key.Song);
+		Map<String, Entry> entries = merge(layers, "songs.xml", Key.SongList, Key.Song);
 		assignIds(entries, MAX_SONG_ID);
 
 		Song[] songs = new Song[entries.values().stream().mapToInt(e -> e.id).max().orElse(-1) + 1];
@@ -137,7 +137,7 @@ public abstract class AudioTables
 		}
 
 		Song filler = Arrays.stream(songs).filter(s -> s != null).findFirst()
-			.orElseThrow(() -> new InputFileException(new File("Songs.xml"), "there are no songs"));
+			.orElseThrow(() -> new InputFileException(new File("songs.xml"), "there are no songs"));
 		Arrays.setAll(songs, i -> songs[i] == null ? filler : songs[i]);
 		return songs;
 	}
@@ -145,7 +145,7 @@ public abstract class AudioTables
 	/** Always-loaded banks in table order. */
 	public static List<Bank> readBanks(AudioLayers layers)
 	{
-		Map<String, Entry> entries = merge(layers, "Banks.xml", Key.BankList, Key.Bank);
+		Map<String, Entry> entries = merge(layers, "banks.xml", Key.BankList, Key.Bank);
 
 		Map<String, Integer> slots = new HashMap<>();
 		Set<Integer> used = new HashSet<>();
@@ -162,7 +162,7 @@ public abstract class AudioTables
 		}
 
 		if (entries.size() > MAX_BANKS)
-			throw new InputFileException(new File("Banks.xml"), "there are " + entries.size()
+			throw new InputFileException(new File("banks.xml"), "there are " + entries.size()
 				+ " banks, but the engine loads at most " + MAX_BANKS);
 
 		int next = MIN_BANK_GROUP << 4;
@@ -186,7 +186,7 @@ public abstract class AudioTables
 	/** Presets indexed by ID, with null for unused IDs. */
 	public static Preset[] readPresets(AudioLayers layers)
 	{
-		Map<String, Entry> entries = merge(layers, "Presets.xml", Key.Instruments, Key.Instrument);
+		Map<String, Entry> entries = merge(layers, "presets.xml", Key.Instruments, Key.Instrument);
 		assignIds(entries, MAX_PRESET_ID);
 
 		Preset[] presets = new Preset[entries.values().stream().mapToInt(e -> e.id).max().orElse(-1) + 1];
@@ -203,7 +203,7 @@ public abstract class AudioTables
 	/** Drums indexed by ID, with null for unused IDs. */
 	public static Drum[] readDrums(AudioLayers layers)
 	{
-		Map<String, Entry> entries = merge(layers, "Drums.xml", Key.Drums, Key.Drum);
+		Map<String, Entry> entries = merge(layers, "drums.xml", Key.Drums, Key.Drum);
 		assignIds(entries, MAX_DRUM_ID);
 
 		Drum[] drums = new Drum[entries.values().stream().mapToInt(e -> e.id).max().orElse(-1) + 1];
@@ -220,7 +220,7 @@ public abstract class AudioTables
 
 	public static Ambient readAmbient(AudioLayers layers)
 	{
-		Map<String, Entry> entries = merge(layers, "AmbientSounds.xml", Key.AmbientSounds, Key.AmbientSound, Key.Radio);
+		Map<String, Entry> entries = merge(layers, "ambient_sounds.xml", Key.AmbientSounds, Key.AmbientSound, Key.Radio);
 
 		Ambient ambient = new Ambient();
 		Map<String, Entry> sounds = new LinkedHashMap<>();

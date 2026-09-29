@@ -45,7 +45,7 @@ public class AudioRender
 		SfxArchive.Sound sound = archive.sounds.values().stream().filter(s -> s.name.equals(name)).findFirst()
 			.orElseGet(() -> id == null ? null : archive.sounds.get(id));
 		if (sound == null)
-			throw new InputFileException(new File("SoundEffects.xml"), "there is no sound effect named %s", name);
+			throw new InputFileException(new File("sound_effects.xml"), "there is no sound effect named %s", name);
 
 		SfxPlayer player = new SfxPlayer(engine, library);
 		player.attach();

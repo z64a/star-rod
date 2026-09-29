@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -147,7 +148,8 @@ public abstract class AudioTasks
 		if (existing != null && existing.length > 0)
 			throw new InputFileException(audioDir, "the output directory is not empty");
 
-		// bgm and mseq files share names in the archive, so their names start with the file index
+		// bgm and mseq files are named after the song or ambient sound that uses them
+		Map<Integer, String> owners = fileOwners(sbn);
 		String[] names = new String[sbn.files.size()];
 		Set<String> seen = new HashSet<>();
 		for (int i = 0; i < names.length; i++) {
@@ -155,22 +157,27 @@ public abstract class AudioTasks
 			if (!file.name.matches("[A-Za-z0-9_-]+"))
 				throw new InputFileException(sbnFile, "file %d has an invalid name '%s'", i, file.name);
 
-			boolean numbered = file.type.equals("BGM") || file.type.equals("MSEQ");
-			names[i] = (numbered ? String.format("%02X_", i) : "") + file.name + "." + file.type.toLowerCase();
+			boolean owned = file.type.equals("BGM") || file.type.equals("MSEQ");
+			String stem = owned ? AudioNames.toFileName(owners.getOrDefault(i, String.format("Unlisted_%02X", i))) : file.name;
+			names[i] = stem + "." + file.type.toLowerCase();
 			if (!seen.add(names[i]))
 				throw new InputFileException(sbnFile, "file %d has the same name as another file: %s", i, names[i]);
 		}
 		checkFixedFiles(sbnFile, sbn, names);
 
 		// banks, the preset files, and ambient sequences are written as sources; every other file is copied
-		Map<String, SoundBank> banks = new HashMap<>();
+		Map<String, SoundBank> banks = new LinkedHashMap<>();
+		for (int i = 0; i < names.length; i++) {
+			if (sbn.files.get(i).type.equals("BK"))
+				banks.put(names[i], SoundBank.read(sbnFile, sbn.files.get(i).name, sbn.files.get(i).data));
+		}
+		SoundBank.separateNames(sbnFile, banks.values());
+
 		for (int i = 0; i < names.length; i++) {
 			Sbn.Member file = sbn.files.get(i);
 			String dir = DIRS.get(Sbn.TYPES.indexOf(file.type));
 			if (file.type.equals("BK")) {
-				SoundBank bank = SoundBank.read(sbnFile, file.name, file.data);
-				banks.put(names[i], bank);
-				bank.dump(new File(new File(audioDir, dir), file.name));
+				banks.get(names[i]).dump(new File(new File(audioDir, dir), file.name));
 			}
 			else if (!file.type.equals("MSEQ") && i != sbn.resources.get(SEF_RESOURCE)
 				&& i != sbn.resources.get(PER_RESOURCE) && i != sbn.resources.get(PRG_RESOURCE)) {
@@ -186,9 +193,9 @@ public abstract class AudioTasks
 			table.add(new AudioTables.Bank(names[bank[0]], bank[2], bank[1], sbnFile));
 		Presets.Addresses addresses = new Presets.Addresses(table, banks);
 		Presets.dumpPresets(sbnFile, sbn.files.get(sbn.resources.get(PRG_RESOURCE)).data, addresses,
-			new File(audioDir, "Presets.xml"));
+			new File(audioDir, "presets.xml"));
 		Presets.dumpDrums(sbnFile, sbn.files.get(sbn.resources.get(PER_RESOURCE)).data, addresses,
-			new File(audioDir, "Drums.xml"));
+			new File(audioDir, "drums.xml"));
 
 		Presets.Addresses mseqAddresses = addresses;
 		int radio = sbn.resources.get(RADIO_BANK_RESOURCE);
@@ -217,9 +224,9 @@ public abstract class AudioTasks
 			throw new InputFileException(sbnFile, e.getMessage());
 		}
 
-		dumpSongs(sbnFile, sbn, names, new File(audioDir, "Songs.xml"));
-		dumpBanks(sbnFile, sbn, names, new File(audioDir, "Banks.xml"));
-		dumpAmbient(sbnFile, sbn, names, new File(audioDir, "AmbientSounds.xml"));
+		dumpSongs(sbnFile, sbn, names, new File(audioDir, "songs.xml"));
+		dumpBanks(sbnFile, sbn, names, new File(audioDir, "banks.xml"));
+		dumpAmbient(sbnFile, sbn, names, new File(audioDir, "ambient_sounds.xml"));
 	}
 
 	private static void checkFixedFiles(File sbnFile, Sbn sbn, String[] names)
@@ -232,6 +239,33 @@ public abstract class AudioTasks
 			if (file == Sbn.NO_FILE || !FIXED_FILES.get(i).endsWith("/" + names[file]))
 				throw new InputFileException(sbnFile, "INIT resource %d must be %s", i, FIXED_FILES.get(i));
 		}
+	}
+
+	/**
+	 * The name of the song or ambient sound that each BGM or MSEQ file is named after: the first entry by ID
+	 * that uses it, preferring entries that are not placeholders. A radio station is named after the radio and its player.
+	 */
+	private static Map<Integer, String> fileOwners(Sbn sbn)
+	{
+		Map<Integer, String> owners = new HashMap<>();
+		for (int id = 0; id < sbn.songs.size(); id++)
+			claim(owners, sbn, sbn.songs.get(id)[0], AudioNames.getSongName(id));
+		for (int id = 0; id <= AudioTables.MAX_AMBIENT_ID && ambientResource(id) < sbn.resources.size(); id++) {
+			if (id != AudioTables.RADIO_ID)
+				claim(owners, sbn, sbn.resources.get(ambientResource(id)), AudioNames.getAmbientName(id));
+		}
+		for (int player = 0; player < AudioTables.RADIO_STATIONS && FIRST_RADIO_RESOURCE + player < sbn.resources.size(); player++) {
+			claim(owners, sbn, sbn.resources.get(FIRST_RADIO_RESOURCE + player),
+				AudioNames.getAmbientName(AudioTables.RADIO_ID) + "_" + player);
+		}
+		return owners;
+	}
+
+	private static void claim(Map<Integer, String> owners, Sbn sbn, int file, String name)
+	{
+		String owner = owners.get(file);
+		if (file < sbn.files.size() && (owner == null || AudioNames.isUnused(owner) && !AudioNames.isUnused(name)))
+			owners.put(file, name);
 	}
 
 	private static int ambientResource(int id)
@@ -428,9 +462,9 @@ public abstract class AudioTasks
 
 		int bkType = Sbn.TYPES.indexOf("BK");
 		int mseqType = Sbn.TYPES.indexOf("MSEQ");
-		boolean presets = usesTables(layers, "Presets.xml", "prg/SET1.prg");
-		boolean drums = usesTables(layers, "Drums.xml", "per/SET1.per");
-		boolean sounds = usesTables(layers, "SoundEffects.xml", "sfx/DAT1.sef");
+		boolean presets = usesTables(layers, "presets.xml", "prg/SET1.prg");
+		boolean drums = usesTables(layers, "drums.xml", "per/SET1.per");
+		boolean sounds = usesTables(layers, "sound_effects.xml", "sfx/DAT1.sef");
 
 		List<Source> sources = new ArrayList<>();
 		for (int type = 0; type < DIRS.size(); type++) {
@@ -493,18 +527,18 @@ public abstract class AudioTasks
 			? addresses.withAuxiliary(RADIO_BANK_SLOT, banks.get(ambient.radio.bank())) : addresses;
 		sources.addAll(readMseqs(layers, mseqAddresses));
 		if (presets) {
-			File table = lastOf(layers.getTables("Presets.xml"));
+			File table = lastOf(layers.getTables("presets.xml"));
 			sources.add(new Source(Sbn.TYPES.indexOf("PRG"), "SET1.prg", table,
 				Presets.writePresets(AudioTables.readPresets(layers), addresses)));
 		}
 		if (drums) {
-			File table = lastOf(layers.getTables("Drums.xml"));
+			File table = lastOf(layers.getTables("drums.xml"));
 			sources.add(new Source(Sbn.TYPES.indexOf("PER"), "SET1.per", table,
 				Presets.writeDrums(AudioTables.readDrums(layers), addresses)));
 		}
 
 		if (sounds) {
-			File table = lastOf(layers.getTables("SoundEffects.xml"));
+			File table = lastOf(layers.getTables("sound_effects.xml"));
 			sfx[0] = SfxXml.read(layers, addresses);
 			sources.add(new Source(Sbn.TYPES.indexOf("SEF"), "DAT1.sef", table, SfxBinary.encode(sfx[0])));
 		}

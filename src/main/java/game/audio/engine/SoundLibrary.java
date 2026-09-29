@@ -82,7 +82,7 @@ public class SoundLibrary
 		addresses = new Presets.Addresses(bankTable, files);
 		ambientAddresses = ambient.radio != null && files.containsKey(ambient.radio.bank())
 			? addresses.withAuxiliary(AudioTasks.RADIO_BANK_SLOT, files.get(ambient.radio.bank())) : addresses;
-		if (!layers.getTables("Drums.xml").isEmpty())
+		if (!layers.getTables("drums.xml").isEmpty())
 			drums = AudioTables.readDrums(layers);
 	}
 
@@ -127,7 +127,7 @@ public class SoundLibrary
 	}
 
 	/**
-	 * The instrument at a bank and patch address of the engine, or null if no bank in Banks.xml provides
+	 * The instrument at a bank and patch address of the engine, or null if no bank in banks.xml provides
 	 * it. Bank set 2 is the engine's silent default instrument.
 	 */
 	public Instrument getInstrument(int bank, int patch)
@@ -151,7 +151,7 @@ public class SoundLibrary
 	/** Reads the merged sound effect table, or the binary archive if a layer supplies one. */
 	public SfxArchive readSfx()
 	{
-		if (AudioTasks.usesTables(layers, "SoundEffects.xml", SEF_FILE))
+		if (AudioTasks.usesTables(layers, "sound_effects.xml", SEF_FILE))
 			return SfxXml.read(layers, addresses);
 
 		File file = layers.getFile(SEF_FILE);

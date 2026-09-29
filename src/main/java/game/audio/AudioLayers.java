@@ -5,6 +5,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,8 +28,14 @@ import assets.AssetSubdir;
 public class AudioLayers
 {
 	public static final List<String> TABLES = List.of(
-		"Songs.xml", "Banks.xml", "AmbientSounds.xml", "SoundEffects.xml", "Presets.xml", "Drums.xml",
-		"sfx/Envelopes.xml");
+		"songs.xml", "banks.xml", "ambient_sounds.xml", "sound_effects.xml", "presets.xml", "drums.xml",
+		"sfx/envelopes.xml");
+
+	/** Names that tables and bank sources went by before they were snake case, with their current paths. */
+	private static final Map<String, String> RENAMED = Map.of(
+		"Songs.xml", "songs.xml", "Banks.xml", "banks.xml", "AmbientSounds.xml", "ambient_sounds.xml",
+		"SoundEffects.xml", "sound_effects.xml", "Presets.xml", "presets.xml", "Drums.xml", "drums.xml",
+		"sfx/Envelopes.xml", "sfx/envelopes.xml");
 
 	private static final String SIDECAR = ".meta";
 
@@ -53,11 +60,28 @@ public class AudioLayers
 		return inputs;
 	}
 
-	/** Errors if a sidecar deletes a table file. */
+	/** Errors if a sidecar deletes a table file, or a layer has a file under a name from before the names were snake case. */
 	public void checkTables()
 	{
+		for (File layer : layers) {
+			File audio = AssetSubdir.AUDIO.get(layer);
+			RENAMED.forEach((oldPath, newPath) -> checkRenamed(audio, oldPath, newPath));
+			String[] banks = new File(audio, "bank").list();
+			if (banks != null) {
+				for (String bank : banks)
+					checkRenamed(audio, "bank/" + bank + "/SoundBank.xml", "bank/" + bank + "/sound_bank.xml");
+			}
+		}
 		for (String table : TABLES)
 			getTables(table);
+	}
+
+	private static void checkRenamed(File audio, String oldPath, String newPath)
+	{
+		File file = new File(audio, oldPath);
+		String[] siblings = file.getParentFile().list();
+		if (siblings != null && Arrays.asList(siblings).contains(file.getName()))
+			throw new InputFileException(file, "this file must be named %s", newPath);
 	}
 
 	/** Copies of a table in every layer that has one, lowest priority first. */
