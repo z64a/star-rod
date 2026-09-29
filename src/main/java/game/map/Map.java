@@ -364,8 +364,11 @@ public class Map implements XmlSerializable
 		if (name.contains("_bt"))
 			return "battle/common/stage/area_" + areaAffix + "/" + name + "/";
 
-		// the map's code can sit in any area, not only the one its name begins with
+		// the map's code can sit in any area, not only the one its name begins with, which is checked first
 		if (hasAreaDirs()) {
+			if (Directories.PROJ_SRC.file(getAreaPath(areaAffix) + name).isDirectory())
+				return getAreaPath(areaAffix) + name + "/";
+
 			File[] areaDirs = Directories.PROJ_SRC_WORLD.file("area").listFiles(File::isDirectory);
 			for (File areaDir : areaDirs) {
 				if (new File(areaDir, name).isDirectory())

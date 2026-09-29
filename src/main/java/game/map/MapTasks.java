@@ -89,9 +89,10 @@ public class MapTasks
 
 			File stamp = new File(outDir, name + ".stamp");
 			String stampText = buildInfo + source.getPath() + "\n";
-			if (!isUpToDate(stamp, stampText, outDir, name, source, features))
+			if (!isUpToDate(stamp, stampText, outDir, name, source, features)) {
 				compile(Map.loadMap(source), outDir);
-			FileUtils.writeStringToFile(stamp, stampText, StandardCharsets.UTF_8);
+				FileUtils.writeStringToFile(stamp, stampText, StandardCharsets.UTF_8);
+			}
 		}
 
 		writeDepfile(new File(outDir, "maps.d"), outputs, inputs);

@@ -72,8 +72,11 @@ public class StarRodMain extends StarRodFrame
 		boolean isCommandLine = args.length > 0 || GraphicsEnvironment.isHeadless();
 
 		if (isCommandLine) {
-			if (AudioTasks.isAudioTask(args) || MapTasks.isMapTask(args))
-				Environment.initializeBuildTask();
+			if (AudioTasks.isAudioTask(args))
+				Environment.initializeBuildTask(true);
+			else if (MapTasks.isMapTask(args))
+				// -BuildMaps is handed its map sources, so it skips reading the asset stack
+				Environment.initializeBuildTask(!args[0].equalsIgnoreCase("-BuildMaps"));
 			else
 				Environment.initialize(true);
 			runCommandLine(args);

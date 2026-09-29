@@ -302,10 +302,10 @@ public abstract class Environment
 	}
 
 	/**
-	 * Sets up only what the audio and map tasks need: the decomp project in the current directory and its asset
-	 * stack.
+	 * Sets up only what the audio and map tasks need: the decomp project in the current directory, and its asset
+	 * stack if readAssetStack is set.
 	 */
-	public static void initializeBuildTask()
+	public static void initializeBuildTask(boolean readAssetStack)
 	{
 		commandLine = true;
 		// the map compilers report every map they write, which would bury the build's own output
@@ -315,11 +315,13 @@ public abstract class Environment
 		if (!decompCfg.isFile())
 			exitWithError("The current directory is not a decomp project: could not find " + decompCfg.getPath());
 
-		try {
-			assetDirectories = getAssetDirs(new File("."), decompCfg.getParentFile(), decompCfg);
-		}
-		catch (IOException | RuntimeException e) {
-			exitWithError(decompCfg.getPath() + ": could not read the asset stack: " + e);
+		if (readAssetStack) {
+			try {
+				assetDirectories = getAssetDirs(new File("."), decompCfg.getParentFile(), decompCfg);
+			}
+			catch (IOException | RuntimeException e) {
+				exitWithError(decompCfg.getPath() + ": could not read the asset stack: " + e);
+			}
 		}
 
 		projectDirectory = new File(".").getAbsoluteFile();
