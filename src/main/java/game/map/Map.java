@@ -96,7 +96,6 @@ public class Map implements XmlSerializable
 	public IterableListModel<LightSet> lightSets;
 
 	private String name;
-	private String areaName;
 	private String areaAffix;
 	private File projDir;
 
@@ -330,14 +329,50 @@ public class Map implements XmlSerializable
 	private void setName(String name)
 	{
 		this.name = name;
-		areaAffix = name.substring(0, 3);
+		areaAffix = getAreaAffix(name);
+		projDir = Directories.PROJ_SRC.file(getSourcePath(name));
+	}
 
-		while (areaAffix.endsWith("_")) {
-			areaAffix = areaAffix.substring(0, areaAffix.length() - 1);
+	private static String getAreaAffix(String name)
+	{
+		String affix = name.substring(0, 3);
+		while (affix.endsWith("_")) {
+			affix = affix.substring(0, affix.length() - 1);
 		}
+		return affix;
+	}
 
-		areaName = "area_" + areaAffix;
-		projDir = Directories.PROJ_SRC_WORLD.file(areaName + "/" + name);
+	/** Whether the project keeps each area's code in src/world/area/, which is the layout of papermario-dx. */
+	public static boolean hasAreaDirs()
+	{
+		return Directories.PROJ_SRC_WORLD.file("area").isDirectory();
+	}
+
+	/** The directory of an area's code, relative to src. */
+	private static String getAreaPath(String areaAffix)
+	{
+		return hasAreaDirs() ? "world/area/" + areaAffix + "/" : "world/area_" + areaAffix + "/";
+	}
+
+	/**
+	 * The directory holding a map's code, relative to src. In papermario-dx, map sources sit at the same
+	 * path within an asset layer.
+	 */
+	public static String getSourcePath(String name)
+	{
+		String areaAffix = getAreaAffix(name);
+		if (name.contains("_bt"))
+			return "battle/common/stage/area_" + areaAffix + "/" + name + "/";
+
+		// the map's code can sit in any area, not only the one its name begins with
+		if (hasAreaDirs()) {
+			File[] areaDirs = Directories.PROJ_SRC_WORLD.file("area").listFiles(File::isDirectory);
+			for (File areaDir : areaDirs) {
+				if (new File(areaDir, name).isDirectory())
+					return "world/area/" + areaDir.getName() + "/" + name + "/";
+			}
+		}
+		return getAreaPath(areaAffix) + name + "/";
 	}
 
 	public String getName()
@@ -727,8 +762,8 @@ public class Map implements XmlSerializable
 
 	public void loadVarNames()
 	{
-		String areaHeaderName = String.format("%s/%s.h", areaName, areaAffix);
-		File areaHeader = Directories.PROJ_SRC_WORLD.file(areaHeaderName);
+		String areaHeaderName = getAreaPath(areaAffix) + areaAffix + ".h";
+		File areaHeader = Directories.PROJ_SRC.file(areaHeaderName);
 
 		areaByteNames.clear();
 		areaFlagNames.clear();
@@ -755,8 +790,8 @@ public class Map implements XmlSerializable
 			}
 		}
 
-		String mapHeaderName = String.format("%s/%s/%s.h", areaName, name, name);
-		File mapHeader = Directories.PROJ_SRC_WORLD.file(mapHeaderName);
+		String mapHeaderName = getSourcePath(name) + name + ".h";
+		File mapHeader = Directories.PROJ_SRC.file(mapHeaderName);
 
 		mapVarNames.clear();
 		mapFlagNames.clear();
@@ -944,6 +979,9 @@ public class Map implements XmlSerializable
 		if (firstDot >= 0) {
 			name = name.substring(0, firstDot);
 		}
+		// a map source in its own directory takes the directory's name
+		if (name.equals(Directories.MAP_SOURCE_NAME))
+			return f.getParentFile().getName();
 		return name;
 	}
 

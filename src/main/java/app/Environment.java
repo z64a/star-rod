@@ -289,10 +289,15 @@ public abstract class Environment
 		initialized = true;
 	}
 
-	/** Sets up only what the audio tasks need: the asset stack of the decomp project in the current directory. */
-	public static void initializeAudio()
+	/**
+	 * Sets up only what the audio and map tasks need: the decomp project in the current directory and its asset
+	 * stack.
+	 */
+	public static void initializeBuildTask()
 	{
 		commandLine = true;
+		// the map compilers report every map they write, which would bury the build's own output
+		Logger.setDefaultOuputPriority(Priority.WARNING);
 
 		File decompCfg = new File("./ver/us/", FN_SPLAT);
 		if (!decompCfg.isFile())
@@ -304,6 +309,10 @@ public abstract class Environment
 		catch (IOException | RuntimeException e) {
 			exitWithError(decompCfg.getPath() + ": could not read the asset stack: " + e);
 		}
+
+		projectDirectory = new File(".").getAbsoluteFile();
+		Directories.setProjectDirectory(projectDirectory.getAbsolutePath());
+		gameVersion = decompCfg.getParentFile().getName();
 
 		initialized = true;
 	}
@@ -322,6 +331,12 @@ public abstract class Environment
 	public static void exit(int status)
 	{
 		System.exit(status);
+	}
+
+	/** The build directory of the project's game version, such as ver/us/build. */
+	public static File getBuildDirectory()
+	{
+		return new File(projectDirectory, "ver/" + gameVersion + "/build");
 	}
 
 	public static boolean isCommandLine()

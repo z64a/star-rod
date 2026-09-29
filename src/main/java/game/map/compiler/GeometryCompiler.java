@@ -14,7 +14,6 @@ import javax.swing.ListModel;
 
 import org.apache.commons.io.FileUtils;
 
-import app.Directories;
 import app.input.IOUtils;
 import assets.AssetManager;
 import game.map.BoundingBox;
@@ -74,8 +73,15 @@ public class GeometryCompiler
 
 	public GeometryCompiler(Map map) throws IOException
 	{
-		File build_dec = new File(AssetManager.getMapBuildDir(), map.getName() + "_shape.bin");
+		this(map, new File(AssetManager.getMapBuildDir(), map.getName() + "_shape.bin"),
+			new File(AssetManager.getMapHeaderDir(), map.getName() + "_shape.h"));
+	}
 
+	/** Compiles the map's geometry to build_dec, and writes the index of each model to headerFile. */
+	public GeometryCompiler(Map map, File build_dec, File headerFile) throws IOException
+	{
+		FileUtils.forceMkdir(build_dec.getParentFile());
+		FileUtils.forceMkdir(headerFile.getParentFile());
 		Logger.log("Compiling map geometry to " + build_dec.getPath());
 
 		if (build_dec.exists())
@@ -164,7 +170,6 @@ public class GeometryCompiler
 			throw new BuildException("Build failed: " + mapType + " size exceeds engine limit.\n" + breakdown);
 		}
 
-		File headerFile = Directories.PROJ_INCLUDE_MAPFS.file(map.getName() + "_shape.h");
 		try (PrintWriter pw = IOUtils.getBufferedPrintWriter(headerFile)) {
 			for (Model mdl : map.modelTree.getList()) {
 				pw.printf("#define %-23s 0x%X%n", "MODEL_" + mdl.getName(), mdl.getNode().getTreeIndex());

@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Predicate;
@@ -77,19 +78,56 @@ public class AssetManager
 		return AssetSubdir.MAP_TEX.getModDir();
 	}
 
+	/**
+	 * A map source's path within an asset layer. In papermario-dx, each map has a directory at the path of its
+	 * code under src, and other projects keep every map in mapfs/geom.
+	 */
+	public static String getMapSourcePath(String mapName)
+	{
+		if (game.map.Map.hasAreaDirs())
+			return game.map.Map.getSourcePath(mapName) + MAP_SOURCE_NAME + EXT_MAP;
+		return AssetSubdir.MAP_GEOM + mapName + EXT_MAP;
+	}
+
 	public static AssetHandle getMap(String mapName)
 	{
-		return get(AssetSubdir.MAP_GEOM, mapName + EXT_MAP);
+		String path = getMapSourcePath(mapName);
+		for (File assetDir : Environment.assetDirectories) {
+			AssetHandle ah = new AssetHandle(assetDir, path);
+			if (ah.exists())
+				return ah;
+		}
+		return new AssetHandle(getTopLevelAssetDir(), path);
 	}
 
-	public static File getSaveMapFile(String mapName)
+	/** Where a map source is saved: in the top asset layer. */
+	public static AssetHandle getSaveMapFile(String mapName)
 	{
-		return new File(getMapBuildDir(), mapName + EXT_MAP);
+		return new AssetHandle(getTopLevelAssetDir(), getMapSourcePath(mapName));
 	}
 
+	/** Where the editor keeps a crash or backup copy of a map, beside the source it saves. */
+	public static File getMapRecoveryFile(String mapName, String suffix)
+	{
+		File source = getSaveMapFile(mapName);
+		String baseName = source.getName().substring(0, source.getName().length() - EXT_MAP.length());
+		return new File(source.getParentFile(), baseName + suffix + EXT_MAP);
+	}
+
+	/** Where compiled maps go. In papermario-dx, that is the build directory, where the build puts them. */
 	public static File getMapBuildDir()
 	{
+		if (game.map.Map.hasAreaDirs())
+			return new File(Environment.getBuildDirectory(), "include/mapfs");
 		return AssetSubdir.MAP_GEOM.getModDir();
+	}
+
+	/** Where the headers of compiled maps go. */
+	public static File getMapHeaderDir()
+	{
+		if (game.map.Map.hasAreaDirs())
+			return getMapBuildDir();
+		return PROJ_INCLUDE_MAPFS.toFile();
 	}
 
 	public static AssetHandle getBackground(String bgName)
@@ -132,13 +170,40 @@ public class AssetManager
 		return getAssetMap(AssetSubdir.PLR_SPRITE_PAL, EXT_PNG);
 	}
 
+	/** Every map source in the asset stack, sorted by map name. */
 	public static Collection<AssetHandle> getMapSources() throws IOException
 	{
-		return getAssets(AssetSubdir.MAP_GEOM, EXT_MAP, (p) -> {
-			// skip crash and backup files
-			String filename = p.getFileName().toString();
-			return !(filename.endsWith(MAP_CRASH_SUFFIX) || filename.endsWith(MAP_BACKUP_SUFFIX));
-		});
+		if (!game.map.Map.hasAreaDirs()) {
+			return getAssets(AssetSubdir.MAP_GEOM, EXT_MAP, (p) -> {
+				// skip crash and backup files
+				String filename = p.getFileName().toString();
+				return !(filename.endsWith(MAP_CRASH_SUFFIX + EXT_MAP) || filename.endsWith(MAP_BACKUP_SUFFIX + EXT_MAP));
+			});
+		}
+
+		Map<String, AssetHandle> assetMap = new TreeMap<>();
+
+		for (File stackDir : Environment.assetDirectories) {
+			// maps in their own directories sit two levels below these, as in world/area/kmr/kmr_02
+			for (String parent : List.of("world/area/", "battle/common/stage/")) {
+				File[] groups = new File(stackDir, parent).listFiles(File::isDirectory);
+				if (groups == null)
+					continue;
+				for (File group : groups) {
+					File[] mapDirs = group.listFiles(File::isDirectory);
+					if (mapDirs == null)
+						continue;
+					for (File mapDir : mapDirs) {
+						String relPath = parent + group.getName() + "/" + mapDir.getName() + "/" + MAP_SOURCE_NAME + EXT_MAP;
+						AssetHandle ah = new AssetHandle(stackDir, relPath);
+						if (ah.isFile())
+							assetMap.putIfAbsent(mapDir.getName(), ah);
+					}
+				}
+			}
+		}
+
+		return assetMap.values();
 	}
 
 	public static Collection<AssetHandle> getBackgrounds() throws IOException

@@ -70,6 +70,8 @@ public enum Directories
 	public static final String EXT_OLD_TEX = ".txa";
 	public static final String EXT_MAP = ".xml";
 	public static final String EXT_PNG = ".png";
+	/** The file name of a map source kept in a directory named after the map. */
+	public static final String MAP_SOURCE_NAME = "map";
 	public static final String MAP_BACKUP_SUFFIX = ".backup";
 	public static final String MAP_CRASH_SUFFIX = ".crash";
 

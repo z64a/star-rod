@@ -7,12 +7,10 @@ import java.util.HashMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
-import app.Directories;
 import app.Environment;
 import app.LoadingBar;
 import app.Resource;
 import app.Resource.ResourceType;
-import app.StarRodMain;
 import app.input.IOUtils;
 import game.map.Map;
 import game.map.compiler.CollisionDecompiler;
@@ -73,65 +71,67 @@ public class AssetExtractor
 	public static void extractAll() throws IOException
 	{
 		// only extract in base asset dir
-		int numDirs = Environment.assetDirectories.size();
-		File assetDir = Environment.assetDirectories.get(numDirs - 1);
+		File assetDir = AssetManager.getBaseAssetDir();
 
 		File sentinel = new File(assetDir, ".star_rod_extracted");
 		if (!sentinel.exists()) {
 			LoadingBar.show("Extracting Assets");
 			Logger.log("Extracting assets in " + assetDir.getName());
-
-			HashMap<String, File> assetFiles = new HashMap<>();
-
-			// find all relevant asset files
-			File subdir = AssetSubdir.MAP_GEOM.get(assetDir);
-			for (File assetFile : IOUtils.getFilesWithExtension(subdir, ".bin", true)) {
-				String name = FilenameUtils.getBaseName(assetFile.getName());
-				assetFiles.put(name, assetFile);
-			}
-
-			// extract maps
-			for (String mapInfo : Resource.getText(ResourceType.Extract, "maps.csv")) {
-				String[] tokens = mapInfo.trim().split("\\s*,\\s*");
-				MapTemplate template = new MapTemplate(tokens);
-
-				template.shapeFile = assetFiles.get(template.shapeName);
-				template.hitFile = assetFiles.get(template.hitName);
-
-				Logger.log("Generating map source: " + template.name);
-				Map map = generateMap(template);
-				try {
-					map.saveMapWithoutHeader(new File(subdir, map.getName() + Directories.EXT_MAP));
-				}
-				catch (Exception e) {
-					StarRodMain.displayStackTrace(e);
-				}
-			}
-
-			// extract stages
-			for (String stageInfo : Resource.getText(ResourceType.Extract, "stages.csv")) {
-				String[] tokens = stageInfo.trim().split("\\s*,\\s*");
-				MapTemplate template = new MapTemplate(tokens);
-
-				template.shapeFile = assetFiles.get(template.shapeName);
-				template.hitFile = assetFiles.get(template.hitName);
-
-				Logger.log("Generating stage source: " + template.name);
-				Map map = generateMap(template);
-				map.isStage = true;
-				for (Marker actor : map.getStageMarkers()) {
-					map.create(actor);
-				}
-
-				try {
-					map.saveMapWithoutHeader(new File(subdir, map.getName() + Directories.EXT_MAP));
-				}
-				catch (Exception e) {
-					StarRodMain.displayStackTrace(e);
-				}
-			}
-
+			extractMaps(assetDir);
 			FileUtils.touch(sentinel);
+		}
+	}
+
+	/** Decompiles every map and stage in the asset layer's mapfs/geom into a map source in that layer. */
+	public static void extractMaps(File assetDir) throws IOException
+	{
+		HashMap<String, File> assetFiles = new HashMap<>();
+
+		// find all relevant asset files
+		File subdir = AssetSubdir.MAP_GEOM.get(assetDir);
+		for (File assetFile : IOUtils.getFilesWithExtension(subdir, ".bin", true)) {
+			String name = FilenameUtils.getBaseName(assetFile.getName());
+			assetFiles.put(name, assetFile);
+		}
+
+		// extract maps
+		for (String mapInfo : Resource.getText(ResourceType.Extract, "maps.csv")) {
+			String[] tokens = mapInfo.trim().split("\\s*,\\s*");
+			MapTemplate template = new MapTemplate(tokens);
+
+			template.shapeFile = assetFiles.get(template.shapeName);
+			template.hitFile = assetFiles.get(template.hitName);
+
+			Logger.log("Generating map source: " + template.name);
+			save(generateMap(template), assetDir);
+		}
+
+		// extract stages
+		for (String stageInfo : Resource.getText(ResourceType.Extract, "stages.csv")) {
+			String[] tokens = stageInfo.trim().split("\\s*,\\s*");
+			MapTemplate template = new MapTemplate(tokens);
+
+			template.shapeFile = assetFiles.get(template.shapeName);
+			template.hitFile = assetFiles.get(template.hitName);
+
+			Logger.log("Generating stage source: " + template.name);
+			Map map = generateMap(template);
+			map.isStage = true;
+			for (Marker actor : map.getStageMarkers()) {
+				map.create(actor);
+			}
+			save(map, assetDir);
+		}
+	}
+
+	private static void save(Map map, File assetDir) throws IOException
+	{
+		File file = new File(assetDir, AssetManager.getMapSourcePath(map.getName()));
+		try {
+			map.saveMapWithoutHeader(file);
+		}
+		catch (Exception e) {
+			throw new IOException("Could not save " + file.getPath() + ": " + e.getMessage(), e);
 		}
 	}
 

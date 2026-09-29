@@ -36,8 +36,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.WindowConstants;
 
-import org.apache.commons.io.FilenameUtils;
-
 import app.input.InvalidInputException;
 import assets.AssetHandle;
 import assets.AssetManager;
@@ -47,6 +45,7 @@ import game.audio.AudioTasks;
 import game.audio.booth.AudioBooth;
 import game.globals.editor.GlobalsEditor;
 import game.map.Map;
+import game.map.MapTasks;
 import game.map.compiler.BuildException;
 import game.map.compiler.CollisionCompiler;
 import game.map.compiler.GeometryCompiler;
@@ -73,8 +72,8 @@ public class StarRodMain extends StarRodFrame
 		boolean isCommandLine = args.length > 0 || GraphicsEnvironment.isHeadless();
 
 		if (isCommandLine) {
-			if (AudioTasks.isAudioTask(args))
-				Environment.initializeAudio();
+			if (AudioTasks.isAudioTask(args) || MapTasks.isMapTask(args))
+				Environment.initializeBuildTask();
 			else
 				Environment.initialize(true);
 			runCommandLine(args);
@@ -430,7 +429,7 @@ public class StarRodMain extends StarRodFrame
 				editor = new MapEditor(false);
 
 				for (File f : AssetManager.getMapSources()) {
-					String mapName = FilenameUtils.getBaseName(f.getName());
+					String mapName = Map.deriveName(f);
 					File thumbFile = new File(PROJ_THUMBNAIL + mapName + ".jpg");
 					if (thumbFile.exists())
 						continue;
@@ -606,6 +605,11 @@ public class StarRodMain extends StarRodFrame
 					catch (IOException e) {
 						Logger.printStackTrace(e);
 					}
+					break;
+
+				case "-DUMPMAPS":
+				case "-BUILDMAP":
+					i += MapTasks.run(args, i);
 					break;
 
 				case "-DUMPAUDIO":

@@ -94,7 +94,7 @@ public class SelectMapDialog extends JDialog
 			return null;
 
 		// create the new map
-		String newMapName = FilenameUtils.getBaseName(newMapFile.getName());
+		String newMapName = Map.deriveName(newMapFile);
 		Map newMap = Map.loadMap(selectedFile);
 
 		// prompt for a description
@@ -127,7 +127,7 @@ public class SelectMapDialog extends JDialog
 			return null;
 
 		// create the new map
-		String newMapName = FilenameUtils.getBaseName(newMapFile.getName());
+		String newMapName = Map.deriveName(newMapFile);
 		Map newMap = new Map(newMapName);
 
 		// prompt for a description
