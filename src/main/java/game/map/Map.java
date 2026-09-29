@@ -161,6 +161,9 @@ public class Map implements XmlSerializable
 			xmr, mapElem, TAG_ZONES, TAG_ZONE, TAG_ZONE_TREE);
 		zoneTree = new ZoneTreeModel(zoneRoot);
 
+		for (Model mdl : modelTree.getList())
+			mdl.lights.set(lightSets.get(mdl.lightsIndex));
+
 		if (!loadedJson) {
 			MapObjectNode<Marker> markerRoot;
 
@@ -172,9 +175,6 @@ public class Map implements XmlSerializable
 				markerRoot = Marker.createDefaultRoot().getNode();
 			}
 			markerTree = new MarkerTreeModel(markerRoot);
-
-			for (Model mdl : modelTree.getList())
-				mdl.lights.set(lightSets.get(mdl.lightsIndex));
 
 			features = new Features(this);
 
@@ -734,6 +734,20 @@ public class Map implements XmlSerializable
 
 	public static Map loadMap(File f)
 	{
+		return loadMap(f, true);
+	}
+
+	/**
+	 * Loads only what the map source holds, without the features.json beside the map's code. Compiling the map's
+	 * geometry and collision needs nothing from it.
+	 */
+	public static Map loadMapWithoutFeatures(File f)
+	{
+		return loadMap(f, false);
+	}
+
+	private static Map loadMap(File f, boolean loadFeatures)
+	{
 		long t0 = System.nanoTime();
 		Map map = null;
 
@@ -741,7 +755,8 @@ public class Map implements XmlSerializable
 		map = new Map();
 
 		map.setName(deriveName(f));
-		map.tryLoadFeatures();
+		if (loadFeatures)
+			map.tryLoadFeatures();
 
 		map.fromXML(xmr, xmr.getRootElement());
 

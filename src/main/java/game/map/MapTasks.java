@@ -11,7 +11,6 @@ import java.util.TreeSet;
 
 import org.apache.commons.io.FileUtils;
 
-import app.Directories;
 import app.Environment;
 import assets.AssetExtractor;
 import assets.AssetManager;
@@ -80,17 +79,19 @@ public class MapTasks
 				throw new IOException(source.getPath() + ": file not found");
 
 			String name = Map.deriveName(source);
-			File features = Directories.PROJ_SRC.file(Map.getSourcePath(name) + "features.json");
 			inputs.add(source);
-			if (features.isFile())
-				inputs.add(features);
 			for (String suffix : OUTPUTS)
 				outputs.add(new File(outDir, name + suffix));
 
 			File stamp = new File(outDir, name + ".stamp");
 			String stampText = buildInfo + source.getPath() + "\n";
-			if (!isUpToDate(stamp, stampText, outDir, name, source, features)) {
-				compile(Map.loadMap(source), outDir);
+			if (!isUpToDate(stamp, stampText, outDir, name, source)) {
+				try {
+					compile(Map.loadMapWithoutFeatures(source), outDir);
+				}
+				catch (IOException | RuntimeException e) {
+					throw new IOException(source.getPath() + ": " + e.getMessage(), e);
+				}
 				FileUtils.writeStringToFile(stamp, stampText, StandardCharsets.UTF_8);
 			}
 		}
@@ -98,14 +99,12 @@ public class MapTasks
 		writeDepfile(new File(outDir, "maps.d"), outputs, inputs);
 	}
 
-	private static boolean isUpToDate(File stamp, String stampText, File outDir, String name, File source, File features)
+	private static boolean isUpToDate(File stamp, String stampText, File outDir, String name, File source)
 		throws IOException
 	{
 		if (!stamp.isFile() || !FileUtils.readFileToString(stamp, StandardCharsets.UTF_8).equals(stampText))
 			return false;
 		if (stamp.lastModified() < source.lastModified())
-			return false;
-		if (features.isFile() && stamp.lastModified() < features.lastModified())
 			return false;
 		for (String suffix : OUTPUTS) {
 			if (!new File(outDir, name + suffix).isFile())
