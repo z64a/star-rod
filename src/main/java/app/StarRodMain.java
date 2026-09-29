@@ -608,7 +608,7 @@ public class StarRodMain extends StarRodFrame
 					break;
 
 				case "-DUMPMAPS":
-				case "-BUILDMAP":
+				case "-BUILDMAPS":
 					i += MapTasks.run(args, i);
 					break;
 

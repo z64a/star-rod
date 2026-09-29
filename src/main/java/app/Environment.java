@@ -126,14 +126,26 @@ public abstract class Environment
 	public static void printVersion()
 	{
 		try {
+			System.out.print(readBuildInfo());
+		}
+		catch (IOException e) {
+			exitWithError(e.getMessage());
+		}
+	}
+
+	/** The version and build commit from the jar's manifest, as VERSION= and COMMIT= lines. */
+	public static String readBuildInfo() throws IOException
+	{
+		try {
 			Attributes attr = new Manifest(Environment.class.getClassLoader().getResourceAsStream("META-INF/MANIFEST.MF")).getMainAttributes();
-			System.out.println("VERSION=" + attr.getValue("App-Version"));
+			StringBuilder sb = new StringBuilder("VERSION=").append(attr.getValue("App-Version")).append("\n");
 			String commit = attr.getValue("Build-Commit");
 			if (commit != null && !commit.isEmpty())
-				System.out.println("COMMIT=" + commit);
+				sb.append("COMMIT=").append(commit).append("\n");
+			return sb.toString();
 		}
 		catch (IOException | NullPointerException e) {
-			exitWithError("Could not read MANIFEST.MF: " + e);
+			throw new IOException("Could not read MANIFEST.MF: " + e, e);
 		}
 	}
 
