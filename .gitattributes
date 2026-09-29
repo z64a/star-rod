@@ -5,6 +5,7 @@
 /gradlew        text eol=lf
 /exec/StarRod   text eol=lf
 
-# These are Windows script files and should use crlf
-*.bat           text eol=crlf
+# Windows script files are stored with CRLF and never converted, so every
+# checkout, including Nix's hash of a pinned commit, has the same bytes
+*.bat           -text
 
