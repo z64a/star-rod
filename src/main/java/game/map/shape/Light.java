@@ -32,7 +32,7 @@ import util.ui.IntVectorPanel;
 public class Light
 {
 	public transient final LightSet parent;
-	public transient LightPanel panel;
+	private transient LightPanel panel;
 
 	public int[] color = new int[3];
 	public int[] dir = new int[3];
@@ -40,7 +40,6 @@ public class Light
 	public Light(LightSet parent)
 	{
 		this.parent = parent;
-		panel = new LightPanel(this);
 	}
 
 	public Light(LightSet parent, ByteBuffer bb)
@@ -64,7 +63,6 @@ public class Light
 		dir[2] = (direction >> 8) & 0xFF;
 
 		this.parent = parent;
-		panel = new LightPanel(this);
 	}
 
 	public Light(LightSet parent, int[] data)
@@ -79,7 +77,6 @@ public class Light
 		dir[2] = (data[2] << 16) >> 24;
 
 		this.parent = parent;
-		panel = new LightPanel(this);
 	}
 
 	public void write(RandomAccessFile raf) throws IOException
@@ -106,8 +103,11 @@ public class Light
 		return new Light(parent, getPacked());
 	}
 
+	/** The editor's controls for this light, made on first use so a map can load without a display. */
 	public LightPanel getPanel()
 	{
+		if (panel == null)
+			panel = new LightPanel(this);
 		return panel;
 	}
 

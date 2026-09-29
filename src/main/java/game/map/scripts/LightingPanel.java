@@ -186,13 +186,13 @@ public class LightingPanel extends JPanel implements IShutdownListener
 		if (refreshList) {
 			lightListPanel.removeAll();
 			for (Light light : lightSet)
-				lightListPanel.add(light.panel, "growx");
+				lightListPanel.add(light.getPanel(), "growx");
 
 			addLightButton.setEnabled(lightSet.getLightCount() < LightSet.MAX_LIGHTS);
 		}
 
 		for (Light light : lightSet)
-			light.panel.updateFields();
+			light.getPanel().updateFields();
 
 		repaint();
 		ignoreChanges = false;
