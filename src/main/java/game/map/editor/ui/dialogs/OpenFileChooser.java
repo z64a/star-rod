@@ -38,7 +38,7 @@ public class OpenFileChooser
 
 	public ChooseDialogResult prompt()
 	{
-		String defaultPath = (currentDirectory == null) ? null : currentDirectory.getAbsolutePath();
+		String defaultPath = getDefaultPath(currentDirectory);
 		ChooseDialogResult result;
 
 		try (MemoryStack stack = MemoryStack.stackPush()) {
@@ -60,6 +60,18 @@ public class OpenFileChooser
 		}
 
 		return result;
+	}
+
+	/**
+	 * The path a file dialog starts in. A folder path such as C:\mod\. would be split into the folder C:\mod and
+	 * the file name ".", which Windows rejects without opening the dialog, so the path is normalized and ends
+	 * with a separator to name the folder alone.
+	 */
+	static String getDefaultPath(File dir)
+	{
+		if (dir == null)
+			return null;
+		return dir.toPath().toAbsolutePath().normalize() + File.separator;
 	}
 
 	public File getSelectedFile()
