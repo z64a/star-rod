@@ -82,6 +82,7 @@ public class Map implements XmlSerializable
 	private int instanceVersion = latestVersion;
 
 	private boolean loadedJson = false;
+	private boolean readFeatures = true;
 	private boolean writeLegacyXML = false;
 
 	public MapEditorMetadata editorData = null;
@@ -167,7 +168,7 @@ public class Map implements XmlSerializable
 		if (!loadedJson) {
 			MapObjectNode<Marker> markerRoot;
 
-			if (xmr.hasTag(mapElem, TAG_MARKERS)) {
+			if (readFeatures && xmr.hasTag(mapElem, TAG_MARKERS)) {
 				markerRoot = readTree((elem) -> Marker.read(xmr, elem),
 					xmr, mapElem, TAG_MARKERS, TAG_MARKER, TAG_MARKER_TREE);
 			}
@@ -179,7 +180,7 @@ public class Map implements XmlSerializable
 			features = new Features(this);
 
 			Element scriptsElem = xmr.getUniqueTag(mapElem, TAG_SCRIPT_DATA);
-			if (scriptsElem != null)
+			if (readFeatures && scriptsElem != null)
 				features.fromXML(xmr, scriptsElem);
 		}
 
@@ -738,8 +739,10 @@ public class Map implements XmlSerializable
 	}
 
 	/**
-	 * Loads only what the map source holds, without the features.json beside the map's code. Compiling the map's
-	 * geometry and collision needs nothing from it.
+	 * Loads the map's geometry, collision, and zones, without its markers or script data from either the map source
+	 * or the features.json beside the map's code. Compiling the map needs nothing from them, and reading them can
+	 * need project data that a build task doesn't load, such as the sprite table that NPC animation names resolve
+	 * against.
 	 */
 	public static Map loadMapWithoutFeatures(File f)
 	{
@@ -755,6 +758,7 @@ public class Map implements XmlSerializable
 		map = new Map();
 
 		map.setName(deriveName(f));
+		map.readFeatures = loadFeatures;
 		if (loadFeatures)
 			map.tryLoadFeatures();
 
