@@ -9,11 +9,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.swing.ListModel;
 
 import org.apache.commons.io.FileUtils;
 
+import app.Directories;
 import app.input.IOUtils;
 import assets.AssetManager;
 import game.map.BoundingBox;
@@ -47,7 +50,8 @@ public class GeometryCompiler
 
 	private static final int RAM_BASE = 0x80210000;
 	private static final int MAX_MAP_SIZE = 0x30000;
-	private static final int MAX_STAGE_SIZE = 0x8000;
+	private static final int DEFAULT_MAX_STAGE_SIZE = 0x8000;
+	private static final Pattern SHAPE_SIZE_LIMIT = Pattern.compile("\\s*#define\\s+SHAPE_SIZE_LIMIT\\s+(0x[0-9A-Fa-f]+|\\d+)\\b.*");
 
 	private RandomAccessFile raf;
 
@@ -159,7 +163,7 @@ public class GeometryCompiler
 
 		// check size
 		boolean battleMap = map.getName().contains("_bt");
-		int limit = battleMap ? MAX_STAGE_SIZE : MAX_MAP_SIZE;
+		int limit = battleMap ? getMaxStageSize() : MAX_MAP_SIZE;
 
 		if (complete.length > limit) {
 			String mapType = battleMap ? "battle map" : "map";
@@ -638,5 +642,20 @@ public class GeometryCompiler
 		raf.writeInt(0x61);
 		raf.writeInt(1);
 		raf.writeFloat(AABB.max.getZ());
+	}
+
+	/** The size of the engine's battle stage buffer, SHAPE_SIZE_LIMIT in the project's model.h. */
+	private static int getMaxStageSize() throws IOException
+	{
+		File header = Directories.projectHeader("model.h");
+		if (!header.isFile())
+			return DEFAULT_MAX_STAGE_SIZE;
+
+		for (String line : IOUtils.readPlainTextFile(header)) {
+			Matcher m = SHAPE_SIZE_LIMIT.matcher(line);
+			if (m.matches())
+				return Integer.decode(m.group(1));
+		}
+		return DEFAULT_MAX_STAGE_SIZE;
 	}
 }

@@ -128,6 +128,15 @@ public enum Directories
 		return new File(this.toString(), filename);
 	}
 
+	/** A project header, which sits in src or include depending on the project. */
+	public static File projectHeader(String filename)
+	{
+		File inSrc = PROJ_SRC.file(filename);
+		if (inSrc.isFile())
+			return inSrc;
+		return PROJ_INCLUDE.file(filename);
+	}
+
 	private enum Root
 	{
 		NONE, DUMP, PROJECT, CONFIG, STATE
