@@ -338,7 +338,7 @@ public class Map implements XmlSerializable
 	private void setName(String name)
 	{
 		this.name = name;
-		areaAffix = getAreaAffix(name);
+		areaAffix = getAreaAffix(getBaseName(name));
 		projDir = deriveProjectDirectory(name);
 	}
 
@@ -363,22 +363,55 @@ public class Map implements XmlSerializable
 	 */
 	public static String getSourcePath(String name)
 	{
-		String areaAffix = getAreaAffix(name);
-		if (name.contains("_bt"))
-			return "battle/common/stage/area_" + areaAffix + "/" + name + "/";
+		String baseName = getBaseName(name);
+		String areaAffix = getAreaAffix(baseName);
+		if (!Environment.isDX()) {
+			if (isStageName(name))
+				return "battle/common/stage/area_" + areaAffix + "/" + name + "/";
+			return getAreaPath(areaAffix) + name + "/";
+		}
+
+		if (isStageName(name))
+			return "battle/stage/" + baseName + "/";
 
 		// the map's code can sit in any area, not only the one its name begins with, which is checked first
-		if (Environment.isDX()) {
-			if (Directories.PROJ_SRC.file(getAreaPath(areaAffix) + name).isDirectory())
-				return getAreaPath(areaAffix) + name + "/";
+		if (Directories.PROJ_SRC.file(getAreaPath(areaAffix) + baseName).isDirectory())
+			return getAreaPath(areaAffix) + baseName + "/";
 
-			File[] areaDirs = Directories.PROJ_SRC_WORLD.file("area").listFiles(File::isDirectory);
-			for (File areaDir : areaDirs) {
-				if (new File(areaDir, name).isDirectory())
-					return "world/area/" + areaDir.getName() + "/" + name + "/";
-			}
+		File[] areaDirs = Directories.PROJ_SRC_WORLD.file("area").listFiles(File::isDirectory);
+		for (File areaDir : areaDirs) {
+			if (new File(areaDir, baseName).isDirectory())
+				return "world/area/" + areaDir.getName() + "/" + baseName + "/";
 		}
-		return getAreaPath(areaAffix) + name + "/";
+		return getAreaPath(areaAffix) + baseName + "/";
+	}
+
+	/**
+	 * In papermario-dx, a map is named for its directory with a prefix: w_ for a world map, as w_kmr_02, and b_
+	 * for a battle stage, as b_trd_05. The prefixes keep a stage and a world map of the same name apart, as their
+	 * geometry shares the map filesystem. Other projects use the game's own names, which give a stage _bt.
+	 */
+	public static final String WORLD_PREFIX = "w_";
+	public static final String STAGE_PREFIX = "b_";
+
+	/** Whether a map is a battle stage's. */
+	public static boolean isStageName(String name)
+	{
+		return Environment.isDX() ? name.startsWith(STAGE_PREFIX) : name.contains("_bt");
+	}
+
+	/** A map's name without its prefix, which is its directory's: kmr_02 for w_kmr_02. */
+	public static String getBaseName(String name)
+	{
+		if (Environment.isDX() && (name.startsWith(WORLD_PREFIX) || name.startsWith(STAGE_PREFIX)))
+			return name.substring(2);
+		return name;
+	}
+
+	/** The file name of a map's source in its directory, without the extension. */
+	public static String getSourceFileName(String name)
+	{
+		return isStageName(name) ? Directories.STAGE_SOURCE_NAME : Directories.MAP_SOURCE_NAME;
 	}
 
 	private static File deriveProjectDirectory(String name)
@@ -823,7 +856,7 @@ public class Map implements XmlSerializable
 			}
 		}
 
-		String mapHeaderName = getSourcePath(name) + name + ".h";
+		String mapHeaderName = getSourcePath(name) + getBaseName(name) + ".h";
 		File mapHeader = Directories.PROJ_SRC.file(mapHeaderName);
 
 		mapVarNames.clear();
@@ -1014,7 +1047,9 @@ public class Map implements XmlSerializable
 		}
 		// a map source in its own directory takes the directory's name
 		if (name.equals(Directories.MAP_SOURCE_NAME))
-			return f.getParentFile().getName();
+			return (Environment.isDX() ? WORLD_PREFIX : "") + f.getParentFile().getName();
+		if (Environment.isDX() && name.equals(Directories.STAGE_SOURCE_NAME))
+			return STAGE_PREFIX + f.getParentFile().getName();
 		return name;
 	}
 
@@ -1113,7 +1148,7 @@ public class Map implements XmlSerializable
 	{
 		// papermario-dx names the game over map's archive gv_tex, after its area, where the original game has gv__tex
 		if (Environment.isDX())
-			return getAreaAffix(mapName) + "_tex";
+			return getAreaAffix(getBaseName(mapName)) + "_tex";
 		return mapName.substring(0, 3) + "_tex";
 	}
 

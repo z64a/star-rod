@@ -105,7 +105,7 @@ public class AssetManager
 	public static String getMapSourcePath(String mapName)
 	{
 		if (Environment.isDX())
-			return game.map.Map.getSourcePath(mapName) + MAP_SOURCE_NAME + EXT_MAP;
+			return game.map.Map.getSourcePath(mapName) + game.map.Map.getSourceFileName(mapName) + EXT_MAP;
 		return AssetSubdir.MAP_GEOM + mapName + EXT_MAP;
 	}
 
@@ -209,26 +209,40 @@ public class AssetManager
 		Sidecars sidecars = new Sidecars(Environment.assetDirectories);
 
 		for (File stackDir : Environment.assetDirectories) {
-			// maps in their own directories sit two levels below these, as in world/area/kmr/kmr_02
-			for (String parent : List.of("world/area/", "battle/common/stage/")) {
-				File[] groups = new File(stackDir, parent).listFiles(File::isDirectory);
-				if (groups == null)
-					continue;
-				for (File group : groups) {
-					File[] mapDirs = group.listFiles(File::isDirectory);
+			// world maps sit in their area's directory, as in world/area/kmr/kmr_02/map.xml
+			File[] areaDirs = new File(stackDir, "world/area/").listFiles(File::isDirectory);
+			if (areaDirs != null) {
+				for (File areaDir : areaDirs) {
+					File[] mapDirs = areaDir.listFiles(File::isDirectory);
 					if (mapDirs == null)
 						continue;
 					for (File mapDir : mapDirs) {
-						String relPath = parent + group.getName() + "/" + mapDir.getName() + "/" + MAP_SOURCE_NAME + EXT_MAP;
-						AssetHandle ah = new AssetHandle(stackDir, relPath);
-						if (ah.isFile() && !sidecars.isDeleted(relPath))
-							assetMap.putIfAbsent(mapDir.getName(), ah);
+						String relPath = "world/area/" + areaDir.getName() + "/" + mapDir.getName() + "/" + MAP_SOURCE_NAME + EXT_MAP;
+						addMapSource(assetMap, sidecars, stackDir, relPath, game.map.Map.WORLD_PREFIX + mapDir.getName());
 					}
+				}
+			}
+
+			// battle stages sit beside their code, as in battle/stage/trd_05/stage.xml
+			File[] stageDirs = new File(stackDir, "battle/stage/").listFiles(File::isDirectory);
+			if (stageDirs != null) {
+				for (File stageDir : stageDirs) {
+					String relPath = "battle/stage/" + stageDir.getName() + "/" + STAGE_SOURCE_NAME + EXT_MAP;
+					addMapSource(assetMap, sidecars, stackDir, relPath, game.map.Map.STAGE_PREFIX + stageDir.getName());
 				}
 			}
 		}
 
 		return assetMap.values();
+	}
+
+	/** Adds the map source at relPath, unless a higher layer already has the map or a sidecar deletes it. */
+	private static void addMapSource(Map<String, AssetHandle> assetMap, Sidecars sidecars, File stackDir, String relPath,
+		String mapName)
+	{
+		AssetHandle ah = new AssetHandle(stackDir, relPath);
+		if (ah.isFile() && !sidecars.isDeleted(relPath))
+			assetMap.putIfAbsent(mapName, ah);
 	}
 
 	public static Collection<AssetHandle> getBackgrounds() throws IOException

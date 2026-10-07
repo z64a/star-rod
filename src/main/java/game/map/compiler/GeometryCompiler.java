@@ -162,7 +162,7 @@ public class GeometryCompiler
 		byte[] complete = FileUtils.readFileToByteArray(build_dec);
 
 		// check size
-		boolean battleMap = map.getName().contains("_bt");
+		boolean battleMap = Map.isStageName(map.getName());
 		int limit = battleMap ? getMaxStageSize() : MAX_MAP_SIZE;
 
 		if (complete.length > limit) {

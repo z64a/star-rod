@@ -72,6 +72,8 @@ public enum Directories
 	public static final String EXT_PNG = ".png";
 	/** The file name of a map source kept in a directory named after the map. */
 	public static final String MAP_SOURCE_NAME = "map";
+	/** The file name of a battle stage's source, kept in the directory of the stage's code. */
+	public static final String STAGE_SOURCE_NAME = "stage";
 	public static final String MAP_BACKUP_SUFFIX = ".backup";
 	public static final String MAP_CRASH_SUFFIX = ".crash";
 
