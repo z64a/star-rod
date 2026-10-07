@@ -315,23 +315,23 @@ public class SpriteLoader
 			));
 	}
 
-	/** NPC sprite names in ID order. papermario-dx builds every sprite directory, sorted by name; other projects list them in npc.xml. */
-	private static List<String> readNpcSpriteNames() throws IOException
+	/** Sprite names in ID order. papermario-dx builds every sprite in the asset stack, sorted by name; other projects list them in npc.xml and player.xml. */
+	private static List<String> readSpriteNames(SpriteSet set) throws IOException
 	{
 		if (Environment.isDX())
-			return AssetManager.getNpcSpriteNames();
+			return (set == SpriteSet.Npc) ? AssetManager.getNpcSpriteNames() : AssetManager.getPlayerSpriteNames();
 
-		AssetHandle xmlHandle = AssetManager.get(AssetSubdir.SPRITE, "npc.xml");
+		AssetHandle xmlHandle = AssetManager.get(AssetSubdir.SPRITE, (set == SpriteSet.Npc) ? "npc.xml" : "player.xml");
 		if (!xmlHandle.exists()) {
 			throw new IOException(xmlHandle.assetPath + " does not exist!");
 		}
 
 		XmlReader xmr = new XmlReader(xmlHandle);
-		Element npcListElem = xmr.getUniqueRequiredTag(xmr.getRootElement(), TAG_SPRITES);
+		Element listElem = xmr.getUniqueRequiredTag(xmr.getRootElement(), TAG_SPRITES);
 		List<String> names = new ArrayList<>();
-		for (Element npcElem : xmr.getTags(npcListElem, TAG_SPRITE)) {
-			xmr.requiresAttribute(npcElem, ATTR_NAME);
-			names.add(xmr.getAttribute(npcElem, ATTR_NAME));
+		for (Element spriteElem : xmr.getTags(listElem, TAG_SPRITE)) {
+			xmr.requiresAttribute(spriteElem, ATTR_NAME);
+			names.add(xmr.getAttribute(spriteElem, ATTR_NAME));
 		}
 		return names;
 	}
@@ -343,7 +343,7 @@ public class SpriteLoader
 
 		try {
 			int curID = 1;
-			for (String name : readNpcSpriteNames()) {
+			for (String name : readSpriteNames(SpriteSet.Npc)) {
 				AssetHandle ah = AssetManager.getNpcSprite(name);
 				if (!ah.exists()) {
 					Logger.logWarning("Cannot find npc sprite '" + name + "'!");
@@ -360,21 +360,8 @@ public class SpriteLoader
 		}
 
 		try {
-			AssetHandle xmlHandle = AssetManager.get(AssetSubdir.SPRITE, "player.xml");
-			if (!xmlHandle.exists()) {
-				throw new IOException(xmlHandle.assetPath + " does not exist!");
-			}
-
-			XmlReader xmr = new XmlReader(xmlHandle);
-			Element rootElem = xmr.getRootElement();
-
 			int curID = 1;
-			Element playerListElem = xmr.getUniqueRequiredTag(rootElem, TAG_SPRITES);
-			List<Element> playerElems = xmr.getTags(playerListElem, TAG_SPRITE);
-			for (Element playerElem : playerElems) {
-				xmr.requiresAttribute(playerElem, ATTR_NAME);
-
-				String name = xmr.getAttribute(playerElem, ATTR_NAME);
+			for (String name : readSpriteNames(SpriteSet.Player)) {
 				AssetHandle ah = AssetManager.getPlayerSprite(name);
 				if (!ah.exists()) {
 					Logger.logWarning("Cannot find player sprite '" + name + "'!");

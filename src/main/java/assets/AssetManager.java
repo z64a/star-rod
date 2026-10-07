@@ -18,6 +18,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 
 import app.Environment;
 import app.input.IOUtils;
@@ -197,6 +198,24 @@ public class AssetManager
 	public static Map<String, AssetHandle> getNpcSpritePalettes(String spriteName) throws IOException
 	{
 		return getAssetMap(AssetSubdir.NPC_SPRITE, spriteName + "/palettes/", EXT_PNG);
+	}
+
+	/** Every player sprite in the asset stack that a sidecar doesn't delete, sorted by name, which is the order of their IDs. */
+	public static List<String> getPlayerSpriteNames()
+	{
+		Sidecars sidecars = new Sidecars(Environment.assetDirectories);
+		TreeSet<String> names = new TreeSet<>();
+
+		for (File stackDir : Environment.assetDirectories) {
+			File[] spriteFiles = AssetSubdir.PLR_SPRITE.get(stackDir).listFiles((dir, filename) -> filename.endsWith(EXT_SPRITE));
+			if (spriteFiles == null)
+				continue;
+			for (File spriteFile : spriteFiles) {
+				if (spriteFile.isFile() && !sidecars.isDeleted("sprite/player/" + spriteFile.getName()))
+					names.add(FilenameUtils.getBaseName(spriteFile.getName()));
+			}
+		}
+		return new ArrayList<>(names);
 	}
 
 	public static AssetHandle getPlayerSprite(String spriteName)
