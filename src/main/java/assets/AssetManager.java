@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -167,6 +168,25 @@ public class AssetManager
 	public static AssetHandle getNpcSprite(String spriteName)
 	{
 		return get(AssetSubdir.NPC_SPRITE, spriteName + "/" + FN_SPRITESHEET);
+	}
+
+	/** Every NPC sprite in the asset stack that a sidecar doesn't delete, sorted by name, which is the order of their IDs. */
+	public static List<String> getNpcSpriteNames()
+	{
+		Sidecars sidecars = new Sidecars(Environment.assetDirectories);
+		TreeSet<String> names = new TreeSet<>();
+
+		for (File stackDir : Environment.assetDirectories) {
+			File[] spriteDirs = AssetSubdir.NPC_SPRITE.get(stackDir).listFiles(File::isDirectory);
+			if (spriteDirs == null)
+				continue;
+			for (File spriteDir : spriteDirs) {
+				String name = spriteDir.getName();
+				if (new File(spriteDir, FN_SPRITESHEET).isFile() && !sidecars.isDeleted("sprite/npc/" + name))
+					names.add(name);
+			}
+		}
+		return new ArrayList<>(names);
 	}
 
 	public static Map<String, AssetHandle> getNpcSpriteRasters(String spriteName) throws IOException

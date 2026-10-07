@@ -39,8 +39,7 @@ public class SpriteLoader
 	}
 
 	/**
-	 * Represent entries in the sprite list files npc.xml and player.xml
-	 * These associate sprite IDs with directories and hold a reference to the loaded sprites.
+	 * Associates a sprite ID with its directory and holds a reference to the loaded sprite.
 	 */
 	public static class SpriteMetadata implements Indexable<String>
 	{
@@ -316,27 +315,35 @@ public class SpriteLoader
 			));
 	}
 
+	/** NPC sprite names in ID order. papermario-dx builds every sprite directory, sorted by name; other projects list them in npc.xml. */
+	private static List<String> readNpcSpriteNames() throws IOException
+	{
+		if (Environment.isDX())
+			return AssetManager.getNpcSpriteNames();
+
+		AssetHandle xmlHandle = AssetManager.get(AssetSubdir.SPRITE, "npc.xml");
+		if (!xmlHandle.exists()) {
+			throw new IOException(xmlHandle.assetPath + " does not exist!");
+		}
+
+		XmlReader xmr = new XmlReader(xmlHandle);
+		Element npcListElem = xmr.getUniqueRequiredTag(xmr.getRootElement(), TAG_SPRITES);
+		List<String> names = new ArrayList<>();
+		for (Element npcElem : xmr.getTags(npcListElem, TAG_SPRITE)) {
+			xmr.requiresAttribute(npcElem, ATTR_NAME);
+			names.add(xmr.getAttribute(npcElem, ATTR_NAME));
+		}
+		return names;
+	}
+
 	private static void readSpriteTable()
 	{
 		npcSpriteData = new TreeMap<>();
 		playerSpriteData = new TreeMap<>();
 
 		try {
-			AssetHandle xmlHandle = AssetManager.get(AssetSubdir.SPRITE, "npc.xml");
-			if (!xmlHandle.exists()) {
-				throw new IOException(xmlHandle.assetPath + " does not exist!");
-			}
-
-			XmlReader xmr = new XmlReader(xmlHandle);
-			Element rootElem = xmr.getRootElement();
-
 			int curID = 1;
-			Element npcListElem = xmr.getUniqueRequiredTag(rootElem, TAG_SPRITES);
-			List<Element> npcElems = xmr.getTags(npcListElem, TAG_SPRITE);
-			for (Element npcElem : npcElems) {
-				xmr.requiresAttribute(npcElem, ATTR_NAME);
-
-				String name = xmr.getAttribute(npcElem, ATTR_NAME);
+			for (String name : readNpcSpriteNames()) {
 				AssetHandle ah = AssetManager.getNpcSprite(name);
 				if (!ah.exists()) {
 					Logger.logWarning("Cannot find npc sprite '" + name + "'!");
@@ -421,7 +428,7 @@ public class SpriteLoader
 			this.palIndex = palIndex;
 			this.animIndex = animIndex;
 			this.uniqueID = makeID(spriteIndex, palIndex, animIndex, isPlayer);
-			this.animID = uniqueID & 0xFFFFFF;
+			this.animID = uniqueID & ~getPlayerFlag();
 
 			if (isPlayer ? palIndex == 0 : palName.equals("Default"))
 				enumName = String.format("ANIM_%s_%s", spriteName, animName);
@@ -432,10 +439,18 @@ public class SpriteLoader
 
 	public static int makeID(int spriteIndex, int palIndex, int animIndex, boolean isPlayer)
 	{
-		int id = ((spriteIndex & 0xFF) << 16) | ((palIndex & 0xFF) << 8) | (animIndex & 0xFF);
+		// papermario-dx has 12-bit sprite indices, so its player flag sits above them
+		int spriteIndexMask = Environment.isDX() ? 0xFFF : 0xFF;
+		int id = ((spriteIndex & spriteIndexMask) << 16) | ((palIndex & 0xFF) << 8) | (animIndex & 0xFF);
 		if (isPlayer)
-			id |= (1 << 24);
+			id |= getPlayerFlag();
 		return id;
+	}
+
+	/** The bit of an ID from makeID that marks a player sprite's animation. */
+	private static int getPlayerFlag()
+	{
+		return Environment.isDX() ? (1 << 31) : (1 << 24);
 	}
 
 	private static boolean animMetadataLoaded = false;
