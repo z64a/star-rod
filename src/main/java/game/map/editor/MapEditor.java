@@ -1191,8 +1191,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		useGameAspectRatio = false;
 		useMapBackgroundColor = true;
 		useMapCameraProperties = false;
-		useGeometryFlags = false;
-		useFiltering = false;
+		useGeometryFlags = true;
+		useFiltering = true;
 		useTextureLOD = true;
 		USE_GAME_ASPECT_RATIO.setCheckbox(useGameAspectRatio);
 		USE_MAP_CAM_PROPERTIES.setCheckbox(useMapCameraProperties);
