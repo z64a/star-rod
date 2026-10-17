@@ -106,7 +106,8 @@ public class LoadingBar
 
 			setLayout(new MigLayout("fill"));
 
-			add(new LoadingSplashPanel(fullSize), "grow, wrap");
+			if (fullSize || LoadingSplashPanel.BANNERS_ENABLED)
+				add(new LoadingSplashPanel(fullSize), "grow, wrap");
 			add(titleLabel, "grow, wrap");
 			add(progressBar, "grow, pushy");
 			pack();

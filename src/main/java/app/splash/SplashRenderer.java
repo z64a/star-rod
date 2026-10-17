@@ -29,7 +29,7 @@ public final class SplashRenderer
 	public static final int HEIGHT = 512;
 	public static final int BANNER_WIDTH = 480;
 	public static final int BANNER_HEIGHT = 144;
-	public static final int DEFAULT_UNHINGED = 55;
+	public static final int DEFAULT_UNHINGED = 50;
 	static final int STYLE_COUNT = 9;
 
 	private static final Color INK = new Color(17, 13, 28);

@@ -26,16 +26,30 @@ To get started with modding Paper Mario, see [docs.starhaven.dev](https://docs.s
 ### Splash screens
 
 Startup splashes are composed locally from bundled stock photography with randomized
-collages, color treatments, and varied Star Rod lettering. Open **Splash Screens...** in the
-main window to preview compositions, reroll, and save an **Unhinged** intensity from
-0 to 100 (default 55). The setting is also stored as `SplashUnhinged` in `main.cfg`.
+collages, color treatments, and varied Star Rod lettering. **Unhinged** starts at 50,
+rises by a random 2-5 points per GUI launch, reaches 100, then resets to 50 on the
+following launch. The next value is saved as `SplashNextUnhinged` in `main.cfg`;
+older manual `SplashUnhinged` settings are ignored so the first cycle starts at 50.
+Each launch also has a 1-in-200 chance of showing the original MS Paint splash.
+The rare Deluxe edition keeps its 1-in-1,000 launch chance and uses the same random
+photo collages and lettering with a gold color treatment, trim, and **DELUXE** badge.
+Deluxe takes precedence if both rare variants
+roll together. The old AI-generated splash images are no longer bundled.
 Startup never downloads photos or waits for the composition to finish.
-Please-wait and ROM-validation windows use a compact 480 × 144 banner with the same
-photos, fonts, and Unhinged setting. Their lettering varies between “Loading” and
-“Please wait,” above the status and progress bar.
+Compact 480 × 144 banners for please-wait and ROM-validation windows are retained
+for future use, but disabled by `LoadingSplashPanel.BANNERS_ENABLED`. The banner
+renderer and previews remain available; the full startup splash is still enabled.
 
-Run `./gradlew previewSplashes` to render a comparison sheet at intensities 0, 55,
-and 100 in `build/splash-preview`, plus sheets of font treatments and compact banners.
+The interactive preview is a developer tool in
+`src/test/java/app/splash/SplashPreviewWindow.java`. In VS Code, open that file and
+click **Run** above `main()` to audit compositions with the Unhinged slider, Reroll,
+and Deluxe toggle. It starts at Unhinged 50, needs no project or ROM, and never reads
+or changes the saved launch cycle. Switching Deluxe preserves the seed for comparison.
+The preview is absent from the app menu and release JAR.
+
+Run `./gradlew previewSplashes` (or `app.splash.SplashPreview.main()`) to render a comparison sheet at intensities 0, 55,
+and 100 in `build/splash-preview`, plus sheets of font treatments, compact banners,
+and the procedural Deluxe design.
 The title is usually `STAR ROD`, `Star Rod`, or `star rod`, with a combined 6% chance
 of punctuation variants such as `[ star rod ]` and `star.rod`.
 Photo credits, source links and license information

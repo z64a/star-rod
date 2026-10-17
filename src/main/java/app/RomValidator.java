@@ -57,7 +57,8 @@ public class RomValidator
 		progressBar.setIndeterminate(true);
 
 		pleaseWait.setLayout(new MigLayout("fill"));
-		pleaseWait.add(new LoadingSplashPanel(false), "growx, wrap");
+		if (LoadingSplashPanel.BANNERS_ENABLED)
+			pleaseWait.add(new LoadingSplashPanel(false), "growx, wrap");
 		pleaseWait.add(new JLabel("Validating selected ROM..."), "wrap");
 		pleaseWait.add(progressBar, "growx");
 

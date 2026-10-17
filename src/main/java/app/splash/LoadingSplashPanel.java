@@ -16,6 +16,9 @@ import util.Logger;
 public final class LoadingSplashPanel extends JPanel
 {
 
+	// Keep compact wait-window artwork available for future experimentation.
+	public static final boolean BANNERS_ENABLED = false;
+
 	private final boolean fullSize;
 	private final SplashPanel picture;
 	private SwingWorker<BufferedImage, Void> worker;
@@ -38,12 +41,12 @@ public final class LoadingSplashPanel extends JPanel
 			return;
 		long seed = ThreadLocalRandom.current().nextLong();
 		int unhinged = Environment.mainConfig == null ? SplashRenderer.DEFAULT_UNHINGED
-			: Environment.mainConfig.getInteger(Options.SplashUnhinged);
+			: Environment.mainConfig.getInteger(Options.SplashNextUnhinged);
 		worker = new SwingWorker<>() {
 			@Override
 			protected BufferedImage doInBackground() throws Exception
 			{
-				return (fullSize ? SplashPhotos.create(seed, unhinged) : SplashPhotos.createBanner(seed, unhinged)).image();
+				return fullSize ? StartupSplash.render() : SplashPhotos.createBanner(seed, unhinged).image();
 			}
 
 			@Override

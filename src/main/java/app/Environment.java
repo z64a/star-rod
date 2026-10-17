@@ -42,6 +42,7 @@ import app.config.Config;
 import app.config.Options;
 import app.config.Options.Scope;
 import app.input.IOUtils;
+import app.splash.StartupSplash;
 import assets.AssetExtractor;
 import assets.ExpectedAsset;
 import game.ProjectDatabase;
@@ -277,6 +278,7 @@ public abstract class Environment
 			Logger.setDefaultOuputPriority(logDetails ? Priority.DETAIL : Priority.STANDARD);
 
 			if (!isCommandLine) {
+				StartupSplash.initialize(mainConfig);
 				Themes.setThemeByKey(Environment.mainConfig.getString(Options.Theme));
 				// UIManager.put("TabbedPane.tabWidthMode", "compact");
 				// UIManager.put("TabbedPane.showTabSeparators", true);

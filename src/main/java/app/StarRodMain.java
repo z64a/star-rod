@@ -39,7 +39,6 @@ import javax.swing.WindowConstants;
 import common.BaseEditor;
 
 import app.input.InvalidInputException;
-import app.splash.SplashSettings;
 import assets.AssetHandle;
 import assets.AssetManager;
 import assets.ExpectedAsset;
@@ -205,22 +204,6 @@ public class StarRodMain extends StarRodFrame
 		});
 		buttons.add(themesMenuButton);
 
-		JButton splashButton = new JButton("Splash Screens...");
-		SwingUtils.setFontSize(splashButton, 12);
-		splashButton.addActionListener(e -> new SplashSettings(this).setVisible(true));
-		buttons.add(splashButton);
-
-		// not ready
-		/*
-		JButton captureThumbnailsButton = new JButton("Capture Thumbnails");
-		trySetIcon(captureThumbnailsButton, ExpectedAsset.ICON_THEMES);
-		SwingUtils.setFontSize(captureThumbnailsButton, 12);
-		captureThumbnailsButton.addActionListener((e) -> {
-			action_captureThumbnails();
-		});
-		buttons.add(captureThumbnailsButton);
-		*/
-
 		JButton openConfigDirButton = new JButton("Open Config Dir");
 		trySetIcon(openConfigDirButton, ExpectedAsset.ICON_SILVER);
 		SwingUtils.setFontSize(openConfigDirButton, 12);
@@ -310,7 +293,6 @@ public class StarRodMain extends StarRodFrame
 
 		add(themesMenuButton, "grow");
 		add(audioBoothButton, "grow");
-		add(splashButton, "span, grow");
 
 		add(openConfigDirButton, "grow");
 		add(openProjectDirButton, "grow");

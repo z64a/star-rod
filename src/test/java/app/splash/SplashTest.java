@@ -130,6 +130,18 @@ public class SplashTest
 	}
 
 	@Test
+	public void deluxePreservesPhotoCreditsAndLeavesTheBaseCompositionUntouched() throws IOException
+	{
+		SplashPhotos.Splash standard = SplashPhotos.create(1703, 75);
+		int[] original = pixels(standard.image());
+		SplashPhotos.Splash deluxe = SplashPhotos.createDeluxe(1703, 75);
+		assertEquals(standard.photos(), deluxe.photos());
+		assertFalse(Arrays.equals(original, pixels(deluxe.image())));
+		assertArrayEquals(pixels(deluxe.image()), pixels(DeluxeSplashRenderer.render(standard.image(), 1703, 75)));
+		assertArrayEquals(original, pixels(standard.image()));
+	}
+
+	@Test
 	public void missingPhotoIsReportedAsAnIoFailure()
 	{
 		assertThrows(IOException.class, () -> SplashPhotos.read(new SplashPhotos.Photo("missing.jpg", "", "")));
@@ -148,22 +160,22 @@ public class SplashTest
 	}
 
 	@Test
-	public void existingConfigsGainDefaultAndSaveIntensity() throws IOException
+	public void existingConfigsGainDefaultAndSaveNextLaunchIntensity() throws IOException
 	{
 		Path path = tempDir.resolve("main.cfg");
 		Files.writeString(path, "GameVersion = us\n");
 		Config config = new Config(path.toFile(), Scope.Main);
 		config.readConfig();
-		assertEquals(SplashRenderer.DEFAULT_UNHINGED, config.getInteger(Options.SplashUnhinged));
-		config.setInteger(Options.SplashUnhinged, 72);
+		assertEquals(SplashRenderer.DEFAULT_UNHINGED, config.getInteger(Options.SplashNextUnhinged));
+		config.setInteger(Options.SplashNextUnhinged, 72);
 		config.saveConfigFile();
 		Config reloaded = new Config(path.toFile(), Scope.Main);
 		reloaded.readConfig();
-		assertEquals(72, reloaded.getInteger(Options.SplashUnhinged));
-		reloaded.setInteger(Options.SplashUnhinged, -1);
-		assertEquals(0, reloaded.getInteger(Options.SplashUnhinged));
-		reloaded.setInteger(Options.SplashUnhinged, 101);
-		assertEquals(100, reloaded.getInteger(Options.SplashUnhinged));
+		assertEquals(72, reloaded.getInteger(Options.SplashNextUnhinged));
+		reloaded.setInteger(Options.SplashNextUnhinged, -1);
+		assertEquals(50, reloaded.getInteger(Options.SplashNextUnhinged));
+		reloaded.setInteger(Options.SplashNextUnhinged, 101);
+		assertEquals(100, reloaded.getInteger(Options.SplashNextUnhinged));
 	}
 
 	private static BufferedImage samplePhoto()

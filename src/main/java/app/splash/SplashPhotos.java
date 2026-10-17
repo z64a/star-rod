@@ -67,6 +67,12 @@ public final class SplashPhotos
 		return create(seed, unhinged, true);
 	}
 
+	public static Splash createDeluxe(long seed, int unhinged) throws IOException
+	{
+		Splash base = create(seed, unhinged);
+		return new Splash(DeluxeSplashRenderer.render(base.image(), seed, unhinged), base.photos());
+	}
+
 	private static Splash create(long seed, int unhinged, boolean banner) throws IOException
 	{
 		List<Photo> pool = new ArrayList<>(catalog());

@@ -60,6 +60,30 @@ public final class SplashPreview
 		ImageIO.write(sources, "png", output.resolve("source-photos.png").toFile());
 		renderTypography(output, photos);
 		renderBanners(output, firstSeed);
+		renderDeluxe(output, firstSeed);
+	}
+
+	private static void renderDeluxe(Path output, long firstSeed) throws Exception
+	{
+		BufferedImage sheet = new BufferedImage(1152, 572, BufferedImage.TYPE_INT_RGB);
+		Graphics2D g = sheet.createGraphics();
+		g.setColor(new Color(20, 20, 24));
+		g.fillRect(0, 0, sheet.getWidth(), sheet.getHeight());
+		g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+		for (int i = 0; i < 6; i++) {
+			int level = 50 + (i % 3) * 25;
+			BufferedImage deluxe = StartupSplash.render(new StartupSplash.Selection(firstSeed + i, level, false), true);
+			ImageIO.write(deluxe, "png", output.resolve("deluxe-" + (firstSeed + i) + ".png").toFile());
+			if (i < 3)
+				ImageIO.write(deluxe, "png", output.resolve("deluxe-" + level + ".png").toFile());
+			int x = i % 3 * 384, y = i / 3 * 286;
+			g.drawImage(deluxe, x, y + 30, 384, 256, null);
+			g.setColor(Color.WHITE);
+			g.drawString("Deluxe / Unhinged " + level + " / seed " + (firstSeed + i), x + 10, y + 21);
+		}
+		g.dispose();
+		ImageIO.write(sheet, "png", output.resolve("deluxe.png").toFile());
 	}
 
 	private static void renderBanners(Path output, long firstSeed) throws Exception

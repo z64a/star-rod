@@ -34,7 +34,6 @@ public abstract class Resource
 		Font				("font/"),
 		Icon                ("icon/"),
 		Audio               ("audio/"),
-		Deluxe              ("deluxe/"),
 		Splash              ("splash/"),
 		Shader              ("shader/");
 		// @formatter:on

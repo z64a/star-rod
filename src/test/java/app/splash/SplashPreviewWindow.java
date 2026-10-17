@@ -7,38 +7,48 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JScrollPane;
 import javax.swing.JSlider;
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 
-import app.Environment;
-import app.config.Options;
+import com.formdev.flatlaf.FlatDarkLaf;
+
 import net.miginfocom.swing.MigLayout;
 import util.Logger;
 
-/** Tune the amount of chaos against the same seed, then reroll to try other compositions. */
-public final class SplashSettings extends JDialog
+/** Standalone developer preview; needs no project, ROM, or application configuration. */
+public final class SplashPreviewWindow extends JDialog
 {
+	public static void main(String[] args)
+	{
+		SwingUtilities.invokeLater(() -> {
+			FlatDarkLaf.setup();
+			new SplashPreviewWindow().setVisible(true);
+		});
+	}
 
 	private final SplashPanel preview = new SplashPanel(640, 427);
 	private final JSlider unhinged;
+	private final JCheckBox deluxe = new JCheckBox("Deluxe");
 	private final JLabel amount = new JLabel();
 	private final JLabel status = new JLabel("Composing...");
 	private final JTextArea credits = new JTextArea(3, 60);
 	private SwingWorker<SplashPhotos.Splash, Void> worker;
 	private long seed = ThreadLocalRandom.current().nextLong();
 
-	public SplashSettings(Frame owner)
+	public SplashPreviewWindow()
 	{
-		super(owner, "Splash Screens", true);
+		super((Frame) null, "Splash Preview", true);
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 		setLayout(new MigLayout("fillx, insets 12, wrap 3", "[grow][][right]"));
 		add(preview, "span, w 640!, h 427!");
 
-		unhinged = new JSlider(0, 100, Environment.mainConfig.getInteger(Options.SplashUnhinged));
+		unhinged = new JSlider(0, 100, SplashRenderer.DEFAULT_UNHINGED);
 		unhinged.setMajorTickSpacing(25);
 		unhinged.setPaintTicks(true);
 		Hashtable<Integer, JLabel> labels = new Hashtable<>();
@@ -48,12 +58,15 @@ public final class SplashSettings extends JDialog
 		unhinged.setLabelTable(labels);
 		unhinged.setPaintLabels(true);
 		unhinged.addChangeListener(e -> {
-			amount.setText("Unhinged: " + unhinged.getValue());
+			amount.setText("Preview Unhinged: " + unhinged.getValue());
 			if (!unhinged.getValueIsAdjusting())
 				refresh();
 		});
-		amount.setText("Unhinged: " + unhinged.getValue());
-		add(amount, "span, gap top 8");
+		amount.setText("Preview Unhinged: " + unhinged.getValue());
+		add(amount, "span 2, growx, gap top 8");
+		deluxe.setToolTipText("Preview the rare gold edition without changing startup odds.");
+		deluxe.addActionListener(e -> refresh());
+		add(deluxe, "right");
 		add(unhinged, "span, growx");
 		add(status, "span, growx");
 
@@ -68,20 +81,13 @@ public final class SplashSettings extends JDialog
 			refresh();
 		});
 		add(reroll, "left");
-		JButton cancel = new JButton("Cancel");
-		cancel.addActionListener(e -> dispose());
-		add(cancel);
-		JButton save = new JButton("Save");
-		save.addActionListener(e -> {
-			Environment.mainConfig.setInteger(Options.SplashUnhinged, unhinged.getValue());
-			Environment.mainConfig.saveConfigFile();
-			dispose();
-		});
-		add(save);
-		getRootPane().setDefaultButton(save);
+		JButton close = new JButton("Close");
+		close.addActionListener(e -> dispose());
+		add(close, "skip 1, right");
+		getRootPane().setDefaultButton(close);
 		pack();
 		setResizable(false);
-		setLocationRelativeTo(owner);
+		setLocationRelativeTo(null);
 		refresh();
 	}
 
@@ -91,12 +97,13 @@ public final class SplashSettings extends JDialog
 			worker.cancel(true);
 		long currentSeed = seed;
 		int level = unhinged.getValue();
+		boolean deluxePreview = deluxe.isSelected();
 		status.setText("Composing...");
 		worker = new SwingWorker<>() {
 			@Override
 			protected SplashPhotos.Splash doInBackground() throws Exception
 			{
-				return SplashPhotos.create(currentSeed, level);
+				return deluxePreview ? SplashPhotos.createDeluxe(currentSeed, level) : SplashPhotos.create(currentSeed, level);
 			}
 
 			@Override
@@ -107,7 +114,9 @@ public final class SplashSettings extends JDialog
 				try {
 					SplashPhotos.Splash splash = get();
 					preview.setImage(splash.image());
-					status.setText("A new composition on every launch. Save applies this intensity to future splashes.");
+					status.setText(deluxePreview
+						? "Deluxe preview. Reroll for another gold composition; startup odds stay 1 in 1,000."
+						: "Startup Unhinged rises by 2-5 each launch, then resets to 50 after reaching 100.");
 					credits.setText("Photos from Pexels (Pexels License):\n" + splash.photos().stream()
 						.map(photo -> photo.photographer() + " - " + photo.source()).collect(Collectors.joining("\n")));
 					credits.setCaretPosition(0);
