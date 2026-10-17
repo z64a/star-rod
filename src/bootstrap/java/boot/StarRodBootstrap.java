@@ -3,6 +3,9 @@ package boot;
 import java.awt.Desktop;
 import java.awt.GraphicsEnvironment;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import javax.swing.JOptionPane;
 
@@ -52,26 +55,13 @@ public class StarRodBootstrap
 			.toURI()
 			.getPath();
 
-		ProcessBuilder processBuilder;
-		if (args.length > 0) {
-			processBuilder = new ProcessBuilder(
-				javaExec,
-				"-cp",
-				jarPath,
-				"app.StarRodMain",
-				String.join(" ", args).trim());
-		}
-		else {
-			processBuilder = new ProcessBuilder(
-				javaExec,
-				"-cp",
-				jarPath,
-				"app.StarRodMain");
-		}
+		List<String> command = new ArrayList<>(Arrays.asList(javaExec, "-cp", jarPath, "app.StarRodMain"));
+		command.addAll(Arrays.asList(args));
 
+		ProcessBuilder processBuilder = new ProcessBuilder(command);
 		processBuilder.inheritIO();
 		Process process = processBuilder.start();
-		process.waitFor();
+		System.exit(process.waitFor());
 	}
 
 	private static void showDownloadMessage(boolean isCommandLine, String version)

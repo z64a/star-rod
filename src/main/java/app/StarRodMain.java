@@ -43,6 +43,8 @@ import assets.AssetHandle;
 import assets.AssetManager;
 import assets.ExpectedAsset;
 import common.BaseEditor;
+import game.audio.AudioTasks;
+import game.audio.booth.AudioBooth;
 import game.globals.editor.GlobalsEditor;
 import game.map.Map;
 import game.map.compiler.BuildException;
@@ -63,10 +65,18 @@ public class StarRodMain extends StarRodFrame
 {
 	public static void main(String[] args) throws InterruptedException
 	{
+		if (args.length > 0 && args[0].equalsIgnoreCase("-Version")) {
+			Environment.printVersion();
+			return;
+		}
+
 		boolean isCommandLine = args.length > 0 || GraphicsEnvironment.isHeadless();
 
 		if (isCommandLine) {
-			Environment.initialize(true);
+			if (AudioTasks.isAudioTask(args))
+				Environment.initializeAudio();
+			else
+				Environment.initialize(true);
 			runCommandLine(args);
 			Environment.exit();
 		}
@@ -174,6 +184,14 @@ public class StarRodMain extends StarRodFrame
 			action_openImageEditor();
 		});
 		buttons.add(imageEditorButton);
+
+		JButton audioBoothButton = new JButton("Audio Booth");
+		SwingUtils.addBorderPadding(audioBoothButton);
+		SwingUtils.setFontSize(audioBoothButton, 12);
+		audioBoothButton.addActionListener((e) -> {
+			action_openAudioBooth();
+		});
+		buttons.add(audioBoothButton);
 
 		JButton themesMenuButton = new JButton("Choose Theme");
 		trySetIcon(themesMenuButton, ExpectedAsset.ICON_THEMES);
@@ -384,6 +402,15 @@ public class StarRodMain extends StarRodFrame
 		});
 	}
 
+	private void action_openAudioBooth()
+	{
+		new EditorWorker(() -> {
+			CountDownLatch editorClosedSignal = new CountDownLatch(1);
+			new AudioBooth(editorClosedSignal);
+			editorClosedSignal.await();
+		});
+	}
+
 	private void action_openThemesMenu()
 	{
 		new EditorWorker(() -> {
@@ -579,6 +606,13 @@ public class StarRodMain extends StarRodFrame
 					catch (IOException e) {
 						Logger.printStackTrace(e);
 					}
+					break;
+
+				case "-DUMPAUDIO":
+				case "-BUILDAUDIO":
+				case "-VERIFYAUDIO":
+				case "-RENDERAUDIO":
+					i += AudioTasks.run(args, i);
 					break;
 
 				default:

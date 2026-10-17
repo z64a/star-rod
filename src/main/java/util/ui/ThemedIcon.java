@@ -71,4 +71,10 @@ public abstract class ThemedIcon
 
 	public static final FlatSVGIcon REFRESH_24 = getIcon("refresh_24");
 	public static final FlatSVGIcon REFRESH_16 = REFRESH_24.derive(16, 16);
+
+	public static final FlatSVGIcon VOLUME_UP_24 = getIcon("volume_up_24");
+	public static final FlatSVGIcon VOLUME_OFF_24 = getIcon("volume_off_24");
+
+	public static final FlatSVGIcon VOLUME_UP_16 = VOLUME_UP_24.derive(16, 16);
+	public static final FlatSVGIcon VOLUME_OFF_16 = VOLUME_OFF_24.derive(16, 16);
 }

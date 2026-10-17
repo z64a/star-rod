@@ -122,6 +122,21 @@ public abstract class Environment
 		return isDX(); //TODO
 	}
 
+	/** Prints the version and build commit from the jar's manifest, without starting up. */
+	public static void printVersion()
+	{
+		try {
+			Attributes attr = new Manifest(Environment.class.getClassLoader().getResourceAsStream("META-INF/MANIFEST.MF")).getMainAttributes();
+			System.out.println("VERSION=" + attr.getValue("App-Version"));
+			String commit = attr.getValue("Build-Commit");
+			if (commit != null && !commit.isEmpty())
+				System.out.println("COMMIT=" + commit);
+		}
+		catch (IOException | NullPointerException e) {
+			exitWithError("Could not read MANIFEST.MF: " + e);
+		}
+	}
+
 	public static String getVersionString()
 	{
 		return versionString;
@@ -262,7 +277,7 @@ public abstract class Environment
 			LoadingBar.show("Loading Project", true);
 			boolean validProject = loadProject(projDir);
 			if (!validProject)
-				exit();
+				exit(1);
 		}
 		catch (Throwable t) {
 			StarRodMain.handleEarlyCrash(t);
@@ -272,6 +287,31 @@ public abstract class Environment
 		}
 
 		initialized = true;
+	}
+
+	/** Sets up only what the audio tasks need: the asset stack of the decomp project in the current directory. */
+	public static void initializeAudio()
+	{
+		commandLine = true;
+
+		File decompCfg = new File("./ver/us/", FN_SPLAT);
+		if (!decompCfg.isFile())
+			exitWithError("The current directory is not a decomp project: could not find " + decompCfg.getPath());
+
+		try {
+			assetDirectories = getAssetDirs(new File("."), decompCfg.getParentFile(), decompCfg);
+		}
+		catch (IOException | RuntimeException e) {
+			exitWithError(decompCfg.getPath() + ": could not read the asset stack: " + e);
+		}
+
+		initialized = true;
+	}
+
+	private static void exitWithError(String message)
+	{
+		System.err.println(message);
+		exit(1);
 	}
 
 	public static void exit()
