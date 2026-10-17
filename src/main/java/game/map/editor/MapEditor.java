@@ -5,6 +5,7 @@ import static game.map.MapKey.*;
 import static game.map.editor.EditorShortcut.*;
 import static org.lwjgl.opengl.GL11.*;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.KeyEventDispatcher;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Supplier;
 
 import javax.imageio.ImageIO;
 import javax.swing.JComboBox;
@@ -39,6 +41,19 @@ import org.apache.commons.io.FilenameUtils;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.w3c.dom.Element;
+
+import common.FrameLimiter;
+import common.GLEditor;
+import common.KeyboardInput;
+import common.KeyboardInput.KeyInputEvent;
+import common.KeyboardInput.KeyboardInputListener;
+import common.MouseInput;
+import common.MouseInput.MouseManagerListener;
+import common.Vector3f;
+import common.commands.AbstractCommand;
+import common.commands.CommandBatch;
+import common.commands.EditableField;
+import common.commands.ThreadSafeCommandManager;
 
 import app.Directories;
 import app.Environment;
@@ -54,18 +69,6 @@ import assets.AssetHandle;
 import assets.AssetManager;
 import assets.ui.SelectMapDialog;
 import assets.ui.SelectTexDialog;
-import common.FrameLimiter;
-import common.GLEditor;
-import common.KeyboardInput;
-import common.KeyboardInput.KeyInputEvent;
-import common.KeyboardInput.KeyboardInputListener;
-import common.MouseInput;
-import common.MouseInput.MouseManagerListener;
-import common.Vector3f;
-import common.commands.AbstractCommand;
-import common.commands.CommandBatch;
-import common.commands.CommandManager;
-import common.commands.EditableField;
 import game.ProjectDatabase;
 import game.map.Axis;
 import game.map.BoundingBox;
@@ -180,7 +183,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	private File clipboardFile;
 	private LogFile editorLog;
 
-	private boolean loading = true;
+	private volatile boolean loading = true;
+	private boolean closed;
 	private boolean exitCompletely = !Environment.mainConfig.getBoolean(Options.ExitToMenu);
 	private boolean showLoadingScreen;
 
@@ -396,13 +400,11 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	public final PreviewGeneratorFromPaths generateFromPathsPreview;
 	public final PreviewGeometry drawGeometryPreview;
 
-	/**
-	 * GUI Event Handling Events from the GUI are processed in three ways: (1) General events are submitted as Runnable
-	 * objects to the guiEventQueue via invokeNextFrame(). (2) GuiCommands are forwarded to the guiEventQueue with
-	 * submitGuiCommand(). (3) EditorKeyEvents are submitted to the keyEventQueue via enqueueKeyEvent().
-	 */
-	private LinkedBlockingQueue<Runnable> guiEventQueue;
-	private LinkedBlockingQueue<EditorShortcut> keyEventQueue;
+	// Map loading can prompt on the EDT and therefore runs outside modifyLock.
+	private final LinkedBlockingQueue<Runnable> mapChangeQueue = new LinkedBlockingQueue<>();
+	public final MapKeyConfig keyConfig = new MapKeyConfig();
+	private final MapKeyInput keyInput = new MapKeyInput(keyConfig, () -> isPlayInEditorMode, this::handleShortcutEvent);
+	private File keyBindingsFile;
 
 	/**
 	 * Loaded Map Data
@@ -425,8 +427,10 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	public MouseInput mouse;
 	public SpriteLoader spriteLoader;
 
-	public SelectionManager selectionManager; // handles object/face/vertex selections
-	private CommandManager commandManager; // handles comnmand execution and undo/redo
+	public SelectionManager selectionManager;
+	private ThreadSafeCommandManager commandManager;
+	private int commandDepth;
+	private int guiUpdateDepth;
 	private DrawTrianglesManager drawTriManager;
 	public SwingGUI gui;
 
@@ -468,10 +472,83 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	public static void execute(AbstractCommand cmd)
 	{
+		instance().executeCommand(cmd);
+	}
+
+	/** Construct commands that capture editor state while holding the render lock. */
+	public static void execute(Supplier<? extends AbstractCommand> factory)
+	{
+		MapEditor editor = instance();
+		editor.runThreadsafe(() -> {
+			if (!editor.loading)
+				editor.executeCommand(factory.get());
+		});
+	}
+
+	private void executeCommand(AbstractCommand cmd)
+	{
+		runThreadsafe(() -> {
+			if (!loading)
+				runCommand(() -> commandManager.executeCommand(cmd));
+		});
+	}
+
+	private void runCommand(Runnable action)
+	{
+		commandDepth++;
+		try {
+			action.run();
+		}
+		finally {
+			commandDepth--;
+		}
+		if (commandDepth == 0)
+			gui.syncSelectionWith(selectionManager);
+	}
+
+	/** Selection listeners must ignore changes caused by commands or UI refreshes. */
+	public boolean isApplyingChanges()
+	{
+		synchronized (modifyLock) {
+			return commandDepth != 0 || guiUpdateDepth != 0;
+		}
+	}
+
+	/** Runs immediately on the calling thread, excluding update/render. */
+	public void runThreadsafe(Runnable action)
+	{
+		synchronized (modifyLock) {
+			action.run();
+		}
+	}
+
+	/** UI actions cannot edit the previous map while its replacement is loading. */
+	public void runEditorAction(Runnable action)
+	{
+		runThreadsafe(() -> {
+			if (!loading)
+				action.run();
+		});
+	}
+
+	/** Never waits for the EDT while holding the render lock. */
+	public void runInEDT(Runnable action)
+	{
+		Runnable update = () -> runThreadsafe(() -> {
+			if (closed)
+				return;
+			guiUpdateDepth++;
+			try {
+				action.run();
+			}
+			finally {
+				guiUpdateDepth--;
+			}
+		});
 		if (SwingUtilities.isEventDispatchThread())
-			instance().executeNextFrame(cmd);
+			update.run();
 		else
-			instance().commandManager.executeCommand(cmd);
+			SwingUtilities.invokeLater(update);
 	}
 
 	public void flushUndoRedo()
@@ -511,6 +588,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		File editorConfigFile = new File(PROJ_CFG + "/" + FN_MAP_EDITOR_CONFIG);
 
 		editorConfig = readEditorConfig(editorConfigFile);
+		keyBindingsFile = new File(PROJ_CFG + "/map_key_bindings.cfg");
+		MapKeyBindingsConfig.load(keyBindingsFile, keyConfig);
 		loadRecentMaps();
 
 		// ------------------------------------------------------------
@@ -532,7 +611,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		drawGeometryPreview = new PreviewGeometry();
 
 		selectionManager = new SelectionManager(this);
-		commandManager = new CommandManager(UNDO_LIMIT, this::onModified);
+		commandManager = new ThreadSafeCommandManager(UNDO_LIMIT, modifyLock, this::onModified);
 		drawTriManager = new DrawTrianglesManager(this, drawGeometryPreview);
 
 		KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
@@ -541,9 +620,9 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		spriteLoader = new SpriteLoader();
 		SpriteLoader.loadAnimsMetadata(true);
 
-		keyboard = new KeyboardInput(glCanvas);
+		keyboard = new KeyboardInput(glCanvas, keyConfig);
 		mouse = new MouseInput(glCanvas);
-		gui = new SwingGUI(this, glCanvas, logFile);
+		gui = createSwingGui(logFile);
 		Logger.addSwingListener(gui);
 
 		if (Environment.isMacOS())
@@ -560,6 +639,25 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	public boolean isLoading()
 	{
 		return loading;
+	}
+
+	private SwingGUI createSwingGui(File logFile)
+	{
+		assert !Thread.holdsLock(modifyLock);
+		if (SwingUtilities.isEventDispatchThread())
+			return new SwingGUI(this, glCanvas, logFile);
+		FutureTask<SwingGUI> create = new FutureTask<>(() -> new SwingGUI(this, glCanvas, logFile));
+		SwingUtilities.invokeLater(create);
+		try {
+			return create.get();
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new StarRodException(e);
+		}
+		catch (ExecutionException e) {
+			throw new StarRodException(e.getCause());
+		}
 	}
 
 	/**
@@ -593,6 +691,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			});
 
 			Logger.removeListener(gui);
+			KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
 			gui.destroyGUI();
 
 			editorLog.close();
@@ -615,13 +714,15 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 			// run two logic + render steps before the editor is visible to warm up
 			for (int i = 0; i < 2; i++) {
-				step();
-				glCanvas.render();
+				synchronized (modifyLock) {
+					step();
+					glCanvas.render();
+				}
 			}
 
 			LoadingBar.dismiss();
 
-			gui.showGUI();
+			runInEDT(gui::showGUI);
 
 			// enter the main loop
 			runLoop();
@@ -659,10 +760,15 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	private void cleanup(boolean crashed)
 	{
+		runThreadsafe(() -> {
+			closed = true;
+			loading = true;
+		});
 		EditableField.setCallbacksEnabled(false);
 		TextureManager.clear();
 		Logger.removeListener(gui);
-		gui.destroyGUI();
+		KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
+		SwingUtilities.invokeLater(gui::destroyGUI);
 
 		// update recent/crashed maps and flush the config
 		saveRecentMaps();
@@ -735,6 +841,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	{
 		TextureManager.clear();
 		Logger.removeListener(gui);
+		KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
 
 		gui.destroyGUI();
 
@@ -798,29 +905,33 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	private void saveCrashFile()
 	{
-		try {
-			map.saveMapAs(AssetManager.getMapRecoveryFile(map.getName(), Directories.MAP_CRASH_SUFFIX));
-			DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-			Logger.log("Saved crash at " + dateFormatter.format(LocalDateTime.now()));
-		}
-		catch (Exception e) {
-			Logger.logError("Failed to save crash for " + map.getName());
-			Logger.printStackTrace(e);
+		synchronized (modifyLock) {
+			try {
+				map.saveBackup(AssetManager.getMapRecoveryFile(map.getName(), Directories.MAP_CRASH_SUFFIX));
+				DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+				Logger.log("Saved crash at " + dateFormatter.format(LocalDateTime.now()));
+			}
+			catch (Exception e) {
+				Logger.logError("Failed to save crash for " + map.getName());
+				Logger.printStackTrace(e);
+			}
 		}
 	}
 
 	private void saveBackup()
 	{
-		try {
-			map.saveMapAs(AssetManager.getMapRecoveryFile(map.getName(), Directories.MAP_BACKUP_SUFFIX));
-			DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-			Logger.log("Saved backup at " + dateFormatter.format(LocalDateTime.now()));
+		synchronized (modifyLock) {
+			try {
+				map.saveBackup(AssetManager.getMapRecoveryFile(map.getName(), Directories.MAP_BACKUP_SUFFIX));
+				DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+				Logger.log("Saved backup at " + dateFormatter.format(LocalDateTime.now()));
+			}
+			catch (Exception e) {
+				Logger.logError("Backup failed for " + map.getName());
+				Logger.printStackTrace(e);
+			}
+			lastBackupTime = time;
 		}
-		catch (Exception e) {
-			Logger.logError("Backup failed for " + map.getName());
-			Logger.printStackTrace(e);
-		}
-		lastBackupTime = time;
 	}
 
 	private Map checkForCrashData()
@@ -1053,7 +1164,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		selectionPaintRadius = 16.0f;
 
 		selectionManager = new SelectionManager(this);
-		commandManager = new CommandManager(UNDO_LIMIT, this::onModified);
+		commandManager = new ThreadSafeCommandManager(UNDO_LIMIT, modifyLock, this::onModified);
 
 		showModels = true;
 		showColliders = true;
@@ -1097,8 +1208,6 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		resetMode.silence();
 		resetMode.exec();
 
-		guiEventQueue = new LinkedBlockingQueue<>();
-		keyEventQueue = new LinkedBlockingQueue<>();
 		frameCounter = 0;
 
 		loadPreferences();
@@ -1224,8 +1333,15 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		while (!gui.isCloseRequested()) {
 			long t_start = System.nanoTime();
 
-			step();
-			glCanvas.render();
+			// Map loading may wait for a Swing dialog; it must not hold modifyLock while doing so.
+			Runnable mapChange;
+			while ((mapChange = mapChangeQueue.poll()) != null)
+				mapChange.run();
+
+			synchronized (modifyLock) {
+				step();
+				glCanvas.render();
+			}
 
 			long t_beforesync = System.nanoTime();
 			limiter.sync(TARGET_FPS);
@@ -1237,9 +1353,6 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 			avMaxFPS += 1e9 / (t_aftersync - t_start); // max FPS would use t_beforesync here
 			avFPS += 1 / deltaTime;
-
-			if (!selectionManager.currentSelection.transforming() && !selectionManager.uvSelection.transforming())
-				gui.setLastSelectedInfo(selectionManager.getMostRecentObject());
 
 			if (++frameCounter % 30 == 0) {
 				gui.displayFPS(avFPS / 30, avMaxFPS / 30, (t_beforesync - t_start) / 1e6);
@@ -1280,17 +1393,14 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		selectionManager.testGizmoMouseover(editorMode, currentRay, activeView);
 
 		// handle input
-		keyboard.update(this, gui.isFocused());
-		mouse.update(this, gui.isFocused());
+		keyboard.update(this, glCanvas.isFocusOwner() && !gui.isModalDialogOpen());
+		mouse.update(this, gui.isFocused() && !gui.isModalDialogOpen());
 
 		if (activeView == perspectiveView && cursor3D.isSelected()) {
 			int dw = mouse.getFrameDW();
 			if (dw != 0)
 				cursor3D.changeGuide(dw);
 		}
-
-		while (!keyEventQueue.isEmpty())
-			handleShortcutPress(keyEventQueue.poll(), true);
 
 		updateKeyboardTranslation();
 
@@ -1349,23 +1459,19 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				break;
 		}
 
+		if (isPlayInEditorMode)
+			updatePlayInEditorSimulation(deltaTime);
+
 		perspectiveView.camera.tick(deltaTime);
 		activeView.camera.handleMovementInput(mouse, keyboard, (float) deltaTime);
 
 		if (doStepProfiling)
 			profiler.record("input");
 
-		if (isPlayInEditorMode)
-			updatePlayInEditorSimulation(deltaTime);
-
 		cursor3D.updateShadow(getCollisionMap(), map, deltaTime);
 
 		if (doStepProfiling && isPlayInEditorMode)
 			profiler.record("PIE");
-
-		// execute events from the GUI
-		while (!guiEventQueue.isEmpty())
-			guiEventQueue.poll().run();
 
 		// synchronize the GUI
 		gui.syncSelectionWith(selectionManager);
@@ -1391,13 +1497,28 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 		cursor3D.updateAnimation(deltaTime);
 
-		for (Tickable ticker : tickers)
-			ticker.tick(deltaTime);
+		queueGuiTick(deltaTime);
 
 		if (doStepProfiling) {
 			profiler.record("the rest");
 			profiler.print();
 		}
+	}
+
+	private boolean guiTickPending;
+
+	private void queueGuiTick(double dt)
+	{
+		if (guiTickPending)
+			return;
+		guiTickPending = true;
+		runInEDT(() -> {
+			guiTickPending = false;
+			if (!selectionManager.currentSelection.transforming() && !selectionManager.uvSelection.transforming())
+				gui.setLastSelectedInfo(selectionManager.getMostRecentObject());
+			for (Tickable ticker : tickers)
+				ticker.tick(dt);
+		});
 	}
 
 	private void onModified()
@@ -1462,27 +1583,29 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	 * These methods allow the GUI to submit events to the editor.
 	 */
 
-	public void enqueueKeyEvent(EditorShortcut event)
+	public void executeShortcut(EditorShortcut event)
 	{
-		keyEventQueue.add(event);
-	}
-
-	public void doNextFrame(Runnable event)
-	{
-		guiEventQueue.add(event);
-	}
-
-	public void executeNextFrame(AbstractCommand cmd)
-	{
-		guiEventQueue.add(() -> {
-			commandManager.executeCommand(cmd);
+		runThreadsafe(() -> {
+			if (!loading)
+				handleShortcutPress(event, true);
 		});
+	}
+
+	public void changeMapNextFrame(File file)
+	{
+		mapChangeQueue.add(() -> action_OpenMap(file));
+	}
+
+	public void changeMapNextFrame(Map newMap)
+	{
+		mapChangeQueue.add(() -> action_OpenMap(newMap));
 	}
 
 	public void submitGuiCommand(GuiCommand cmd)
 	{
-		guiEventQueue.add(() -> {
-			executeGuiCommand(cmd);
+		runThreadsafe(() -> {
+			if (!loading)
+				executeGuiCommand(cmd);
 		});
 	}
 
@@ -1565,18 +1688,17 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				break;
 
 			case SEPARATE_VERTS:
-				if (editorMode == EditorMode.Modify) {
-					List<Triangle> triangles = selectionManager.getTrianglesFromSelection();
-					if (triangles.size() > 0)
-						commandManager.executeCommand(new SeparateVertices(triangles));
-				}
+				if (editorMode == EditorMode.Modify && !selectionManager.currentSelection.transforming())
+					executeCommand(new SeparateVertices(selectionManager));
 				break;
 
 			case FUSE_VERTS:
-				if (editorMode == EditorMode.Modify) {
-					List<Triangle> triangles = selectionManager.getTrianglesFromSelection();
-					if (triangles.size() > 0)
-						commandManager.executeCommand(new FuseVertices(triangles));
+				if (editorMode == EditorMode.Modify && !selectionManager.currentSelection.transforming()) {
+					FuseVertices command = new FuseVertices(selectionManager);
+					if (command.shouldExec())
+						executeCommand(command);
+					else
+						Logger.log("No vertices fused. Select coincident vertices with matching UVs and colors in the same triangle batch.");
 				}
 				break;
 
@@ -1584,7 +1706,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				if (editorMode == EditorMode.Modify) {
 					List<Triangle> triangles = selectionManager.getTrianglesFromSelection();
 					if (triangles.size() > 0)
-						commandManager.executeCommand(new CleanupTriangles(triangles));
+						executeCommand(new CleanupTriangles(triangles));
 				}
 				break;
 
@@ -1592,7 +1714,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				if (editorMode == EditorMode.Modify) {
 					List<Model> models = selectionManager.getSelectedObjects(Model.class);
 					if (models.size() > 1)
-						commandManager.executeCommand(new JoinModels(models));
+						executeCommand(new JoinModels(models));
 				}
 				break;
 
@@ -1600,7 +1722,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				if (editorMode == EditorMode.Modify) {
 					List<Collider> colliders = selectionManager.getSelectedObjects(Collider.class);
 					if (colliders.size() > 1)
-						commandManager.executeCommand(new JoinColliders(colliders));
+						executeCommand(new JoinColliders(colliders));
 				}
 				break;
 
@@ -1608,7 +1730,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				if (editorMode == EditorMode.Modify) {
 					List<Zone> zones = selectionManager.getSelectedObjects(Zone.class);
 					if (zones.size() > 1)
-						commandManager.executeCommand(new JoinZones(zones));
+						executeCommand(new JoinZones(zones));
 				}
 				break;
 
@@ -1619,7 +1741,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 						CommandBatch batch = new CommandBatch("Split Model");
 						batch.addCommand(new SplitModel(triangles));
 						batch.addCommand(selectionManager.new SetSelectionMode(SelectionMode.OBJECT));
-						commandManager.executeCommand(batch);
+						executeCommand(batch);
 					}
 				}
 				break;
@@ -1631,7 +1753,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 						CommandBatch batch = new CommandBatch("Split Collider");
 						batch.addCommand(new SplitCollider(triangles));
 						batch.addCommand(selectionManager.new SetSelectionMode(SelectionMode.OBJECT));
-						commandManager.executeCommand(batch);
+						executeCommand(batch);
 					}
 				}
 				break;
@@ -1643,7 +1765,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 						CommandBatch batch = new CommandBatch("Split Zone");
 						batch.addCommand(new SplitZone(triangles));
 						batch.addCommand(selectionManager.new SetSelectionMode(SelectionMode.OBJECT));
-						commandManager.executeCommand(batch);
+						executeCommand(batch);
 					}
 				}
 				break;
@@ -1652,7 +1774,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				if (editorMode == EditorMode.Modify) {
 					List<Collider> colliders = selectionManager.getSelectedObjects(Collider.class);
 					if (colliders.size() > 0)
-						commandManager.executeCommand(new ConvertColliders(colliders));
+						executeCommand(new ConvertColliders(colliders));
 				}
 				break;
 
@@ -1660,7 +1782,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				if (editorMode == EditorMode.Modify) {
 					List<Zone> zones = selectionManager.getSelectedObjects(Zone.class);
 					if (zones.size() > 0)
-						commandManager.executeCommand(new ConvertZones(zones));
+						executeCommand(new ConvertZones(zones));
 				}
 				break;
 
@@ -1668,7 +1790,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				if (editorMode == EditorMode.Modify) {
 					List<Collider> colliders = selectionManager.getSelectedObjects(Collider.class);
 					if (colliders.size() > 0)
-						commandManager.executeCommand(new CreateBVH(colliders));
+						executeCommand(new CreateBVH(colliders));
 				}
 				break;
 
@@ -1695,7 +1817,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 						mdlList.add(mdl);
 				}
 				if (!mdlList.isEmpty())
-					commandManager.executeCommand(selectionManager.getSetObjects(mdlList));
+					executeCommand(selectionManager.getSetObjects(mdlList));
 				break;
 
 			case SET_ALL_RENDER_MODE:
@@ -1721,7 +1843,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 								CommandBatch batch = new CommandBatch();
 								for (Model mdl : models)
 									batch.addCommand(mdl.renderMode.mutator(selectedMode));
-								executeNextFrame(batch);
+								execute(batch);
 							}
 						});
 					}
@@ -1833,8 +1955,14 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			if (mouse.isHoldingMMB()) {
 				clickHitMMB = selectionManager.pickWorld(getGeometryMap(), currentRay, activeView, true);
 
-				if (!clickHitMMB.missed())
-					cursor3D.updateDrag(clickHitMMB.point);
+				if (!clickHitMMB.missed()) {
+					if (isPlayInEditorMode) {
+						cursor3D.setPosition(clickHitMMB.point);
+						requestPlayInEditorCameraCut();
+					}
+					else
+						cursor3D.updateDrag(clickHitMMB.point);
+				}
 			}
 		}
 	}
@@ -2120,9 +2248,9 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 					Model mdl = (Model) hit.obj;
 					List<Model> mdlList = selectionManager.getSelectedObjects(Model.class);
 					if (mdlList.size() > 0 && mdlList.contains(mdl))
-						commandManager.executeCommand(new ApplyTextureToList(mdlList, selectionManager.selectedTexture));
+						executeCommand(new ApplyTextureToList(mdlList, selectionManager.selectedTexture));
 					else
-						commandManager.executeCommand(new ApplyTexture(mdl, selectionManager.selectedTexture));
+						executeCommand(new ApplyTexture(mdl, selectionManager.selectedTexture));
 				}
 				break;
 			case VertexPaint:
@@ -2213,8 +2341,10 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		clickRayMMB = currentRay;
 		clickHitMMB = selectionManager.pickWorld(getGeometryMap(), currentRay, activeView, true);
 
-		if (!clickHitMMB.missed())
+		if (!clickHitMMB.missed()) {
 			cursor3D.setPosition(clickHitMMB.point);
+			requestPlayInEditorCameraCut();
+		}
 	}
 
 	@Override
@@ -2245,17 +2375,17 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	@Override
 	public boolean dispatchKeyEvent(KeyEvent e)
 	{
-		if (e.getID() == KeyEvent.KEY_PRESSED) {
-			switch (e.getKeyCode()) {
-				case KeyEvent.VK_Z:
-					if (e.isControlDown())
-						enqueueKeyEvent(EditorShortcut.UNDO);
-					break;
-				case KeyEvent.VK_Y:
-					if (e.isControlDown())
-						enqueueKeyEvent(EditorShortcut.REDO);
-					break;
-			}
+		if (gui == null || gui.isModalDialogOpen() || !gui.isActive() || e.getSource() == glCanvas
+			|| e.getID() != KeyEvent.KEY_PRESSED)
+			return false;
+		// Text fields keep their own editing shortcuts; dialogs must be able to capture any key.
+		if (!(e.getSource() instanceof Component component) || !SwingUtilities.isDescendingFrom(component, gui)
+			|| component instanceof javax.swing.text.JTextComponent)
+			return false;
+		EditorShortcut input = keyConfig.resolve(e.getKeyCode(), e.getModifiersEx(), false);
+		if (input == UNDO || input == REDO) {
+			executeShortcut(input);
+			return true;
 		}
 		return false;
 	}
@@ -2263,53 +2393,57 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	@Override
 	public void keyPress(KeyInputEvent evt)
 	{
-		handleKeyEvent(evt, true);
+		keyInput.keyPress(evt);
 	}
 
 	@Override
 	public void keyRelease(KeyInputEvent evt)
 	{
-		handleKeyEvent(evt, false);
+		keyInput.keyRelease(evt);
 	}
 
 	// map key events to symbolic shortcuts and dispatch them
-	private void handleKeyEvent(KeyInputEvent key, boolean press)
+	private void handleShortcutEvent(EditorShortcut shortcut, boolean press)
 	{
-		boolean ctrl = keyboard.isCtrlDown();
-		boolean shift = keyboard.isShiftDown();
-
-		if (key.code == KeyEvent.VK_CONTROL || key.code == KeyEvent.VK_SHIFT)
+		// Releases must survive modifier changes, lost focus, and transformations.
+		if (!press) {
+			handleShortcutRelease(shortcut);
 			return;
-
-		if (ctrl && shift)
-			return;
-
-		// don't allow key events during transformations
-		switch (editorMode) {
-			default:
-				if (selectionManager.currentSelection.transforming())
-					return;
-				break;
-			case EditUVs:
-				if (selectionManager.uvSelection.transforming())
-					return;
-				break;
 		}
+		if (isPlayInEditorMode && (shortcut == PLAY_IN_EDITOR_JUMP || shortcut == PLAY_IN_EDITOR_SPIN)) {
+			handleShortcutPress(shortcut, false);
+			return;
+		}
+		if (editorMode == EditorMode.EditUVs) {
+			if (selectionManager.uvSelection.transforming())
+				return;
+		}
+		else if (selectionManager.currentSelection.transforming())
+			return;
 
-		EditorShortcut shortcut = null;
-		if (ctrl)
-			shortcut = EditorShortcut.getCtrl(key.code);
-		else if (shift)
-			shortcut = EditorShortcut.getShift(key.code);
-		else
-			shortcut = EditorShortcut.get(key.code);
-
-		if (shortcut != null) {
-			if (press)
+		// Held inputs must remain ordered with their releases in the frame loop.
+		// Discrete editing shortcuts use the same EDT path as menu actions.
+		switch (shortcut) {
+			case NUDGE_UP, NUDGE_DOWN, NUDGE_LEFT, NUDGE_RIGHT, NUDGE_IN, NUDGE_OUT, SELECTION_PAINTING:
 				handleShortcutPress(shortcut, false);
-			else
-				handleShortcutRelease(shortcut);
+				break;
+			default:
+				Map targetMap = map;
+				runInEDT(() -> {
+					if (loading || map != targetMap)
+						return;
+					Selection<?> selection = getSelectionForCurrentMode();
+					if (selection == null || !selection.transforming())
+						handleShortcutPress(shortcut, false);
+				});
+				break;
 		}
+	}
+
+	public void saveKeyBindings(java.util.Map<common.KeyInput, common.KeyBinding> bindings) throws IOException
+	{
+		MapKeyBindingsConfig.save(keyBindingsFile, bindings);
+		keyConfig.setBindings(bindings);
 	}
 
 	private Vector3f getNudgeVector(NudgeDirection dir)
@@ -2386,7 +2520,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		Vector3f translateDir;
 		int keysHeld = 0;
 
-		if (keyboard.isKeyDown(NUDGE_UP.key)) {
+		if (keyboard.isDown(NUDGE_UP)) {
 			if (!selection.transforming()) {
 				startKeyboardTranslation();
 				return;
@@ -2397,7 +2531,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			keysHeld++;
 		}
 
-		if (keyboard.isKeyDown(NUDGE_DOWN.key)) {
+		if (keyboard.isDown(NUDGE_DOWN)) {
 			if (!selection.transforming()) {
 				startKeyboardTranslation();
 				return;
@@ -2408,7 +2542,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			keysHeld++;
 		}
 
-		if (keyboard.isKeyDown(NUDGE_LEFT.key)) {
+		if (keyboard.isDown(NUDGE_LEFT)) {
 			if (!selection.transforming()) {
 				startKeyboardTranslation();
 				return;
@@ -2419,7 +2553,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			keysHeld++;
 		}
 
-		if (keyboard.isKeyDown(NUDGE_RIGHT.key)) {
+		if (keyboard.isDown(NUDGE_RIGHT)) {
 			if (!selection.transforming()) {
 				startKeyboardTranslation();
 				return;
@@ -2430,7 +2564,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			keysHeld++;
 		}
 
-		if (keyboard.isKeyDown(NUDGE_IN.key)) {
+		if (keyboard.isDown(NUDGE_IN)) {
 			if (!selection.transforming()) {
 				startKeyboardTranslation();
 				return;
@@ -2441,7 +2575,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			keysHeld++;
 		}
 
-		if (keyboard.isKeyDown(NUDGE_OUT.key)) {
+		if (keyboard.isDown(NUDGE_OUT)) {
 			if (!selection.transforming()) {
 				startKeyboardTranslation();
 				return;
@@ -2493,21 +2627,39 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				cursor3D.endInputJump();
 				break;
 
+			case PLAY_IN_EDITOR_SPIN:
+				cursor3D.endInputSpin();
+				break;
+
 			default:
 				// nothing
 				break;
 		}
 	}
 
+	private void undoRedo(boolean redo)
+	{
+		Map targetMap = map;
+		runInEDT(() -> {
+			if (loading || map != targetMap)
+				return;
+			Selection<?> selection = getSelectionForCurrentMode();
+			if (selection == null || !selection.transforming())
+				runCommand(redo ? commandManager::redo : commandManager::undo);
+		});
+	}
+
 	private void handleShortcutPress(EditorShortcut key, boolean fromGui)
 	{
 		switch (key) {
-			case UNDO:
-				commandManager.action_Undo();
+			case UNDO: {
+				undoRedo(false);
 				break;
-			case REDO:
-				commandManager.action_Redo();
+			}
+			case REDO: {
+				undoRedo(true);
 				break;
+			}
 			case SELECT_ALL:
 				selectAll();
 				break;
@@ -2547,7 +2699,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				if (editorMode == EditorMode.Modify) {
 					List<Triangle> triangles = selectionManager.getTrianglesFromSelection();
 					if (triangles.size() > 0)
-						commandManager.executeCommand(new InvertNormals(triangles));
+						executeCommand(new InvertNormals(triangles));
 				}
 				break;
 
@@ -2612,16 +2764,16 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			case TOGGLE_TWO_SIDED:
 				List<Triangle> triangles = selectionManager.getTrianglesFromSelection();
 				if (triangles.size() > 0)
-					commandManager.executeCommand(new ToggleDoubleSided(triangles));
+					executeCommand(new ToggleDoubleSided(triangles));
 				break;
 
 			case TOGGLE_UV_EDIT:
 				switch (editorMode) {
 					case Modify:
-						commandManager.executeCommand(new ChangeMode(EditorMode.EditUVs));
+						executeCommand(new ChangeMode(EditorMode.EditUVs));
 						break;
 					case EditUVs:
-						commandManager.executeCommand(new ChangeMode(EditorMode.Modify));
+						executeCommand(new ChangeMode(EditorMode.Modify));
 						break;
 					default:
 				}
@@ -2630,6 +2782,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			case PLAY_IN_EDITOR_TOGGLE: {
 				if (!isPlayInEditorMode) {
 					cursor3D.startPreviewMode();
+					zoneCam.startPreview(cursor3D.getSimulationPosition());
 					isPlayInEditorMode = true;
 				}
 				else {
@@ -2646,6 +2799,11 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			case PLAY_IN_EDITOR_JUMP:
 				if (isPlayInEditorMode)
 					cursor3D.startInputJump();
+				break;
+
+			case PLAY_IN_EDITOR_SPIN:
+				if (isPlayInEditorMode)
+					cursor3D.startInputSpin();
 				break;
 
 			case PIE_IGNORE_HIDDEN_COL:
@@ -2788,28 +2946,28 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 			case SHOW_MODELS: {
 				boolean shouldHide = fromGui ? !key.getCheckBox().isSelected() : showModels;
-				commandManager.executeCommand(
+				executeCommand(
 					new HideObjectTree("Models", map.modelTree, key.getCheckBox(), (b) -> showModels = b, shouldHide));
 			}
 				break;
 
 			case SHOW_COLLIDERS: {
 				boolean shouldHide = fromGui ? !key.getCheckBox().isSelected() : showColliders;
-				commandManager.executeCommand(
+				executeCommand(
 					new HideObjectTree("Colliders", map.colliderTree, key.getCheckBox(), (b) -> showColliders = b, shouldHide));
 			}
 				break;
 
 			case SHOW_ZONES: {
 				boolean shouldHide = fromGui ? !key.getCheckBox().isSelected() : showZones;
-				commandManager.executeCommand(
+				executeCommand(
 					new HideObjectTree("Zones", map.zoneTree, key.getCheckBox(), (b) -> showZones = b, shouldHide));
 			}
 				break;
 
 			case SHOW_MARKERS: {
 				boolean shouldHide = fromGui ? !key.getCheckBox().isSelected() : showMarkers;
-				commandManager.executeCommand(
+				executeCommand(
 					new HideObjectTree("Markers", map.markerTree, key.getCheckBox(), (b) -> showMarkers = b, shouldHide));
 			}
 				break;
@@ -2921,7 +3079,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			case HIDE_SELECTED:
 				if (selectionManager.getSelectionMode() == SelectionMode.OBJECT) {
 					List<MapObject> objs = selectionManager.getSelectedObjects();
-					commandManager.executeCommand(new HideObjects(objs));
+					executeCommand(new HideObjects(objs));
 				}
 				break;
 
@@ -3010,24 +3168,37 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	public void updatePlayInEditorSimulation(double deltaTime)
 	{
 		Map collisionMap = getCollisionMap();
+		List<Zone> cameraCandidates = new ArrayList<>();
+		for (Zone zone : collisionMap.zoneTree)
+			cameraCandidates.add(zone);
 
-		// update 'player'
+		if (!zoneCam.controller.isInitialized())
+			updatePlayInEditorCamera(cameraCandidates, 0.0);
+		zoneCam.prepareSimulation();
 		cursor3D.tickSimulation(keyboard, collisionMap, map, perspectiveView, deltaTime,
-			perspectiveView == activeView, true, false);
+			perspectiveView == activeView, true, pieIgnoreHiddenColliders,
+			stepTime -> updatePlayInEditorCamera(cameraCandidates, stepTime));
+	}
 
-		Vector3f start = cursor3D.getPosition();
-		PickRay traceBelowCursor = new PickRay(Channel.COLLISION, new Vector3f(start.x, start.y + 10, start.z), PickRay.DOWN,
-			perspectiveView);
-
-		// update camera
-		List<Zone> candidates = new ArrayList<>();
-		for (Zone z : collisionMap.zoneTree) {
-			if (z.hasCameraData.get())
-				candidates.add(z);
+	private void updatePlayInEditorCamera(List<Zone> cameraCandidates, double deltaTime)
+	{
+		Vector3f playerPosition = cursor3D.getSimulationPosition();
+		PickRay cameraTrace = new PickRay(Channel.COLLISION,
+			new Vector3f(playerPosition.x, playerPosition.y + 10, playerPosition.z), PickRay.DOWN, perspectiveView);
+		PickHit zoneHit = Map.pickObjectFromSet(cameraTrace, cameraCandidates, pieIgnoreHiddenZones);
+		CameraZoneData cameraData = null;
+		if (!zoneHit.missed()) {
+			Zone zone = (Zone) zoneHit.obj;
+			if (zone.hasCameraData.get())
+				cameraData = zone.camData;
 		}
-		PickHit zoneHit = Map.pickObjectFromSet(traceBelowCursor, candidates, pieIgnoreHiddenZones);
-		if (zoneHit.dist < Float.MAX_VALUE)
-			zoneCam.controlData = ((Zone) zoneHit.obj).camData;
+		zoneCam.updateSimulation(cameraData, playerPosition, cursor3D.allowVerticalCameraMovement(), cursor3D.getCameraYInterpRate(), deltaTime);
+	}
+
+	private void requestPlayInEditorCameraCut()
+	{
+		if (isPlayInEditorMode)
+			zoneCam.requestCameraCut(cursor3D.getSimulationPosition());
 	}
 
 	public boolean isPlayInEditorMode()
@@ -3223,6 +3394,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				map.glBackgroundTexID = TextureManager.bindBufferedImage(map.bgImage);
 			else
 				map.glBackgroundTexID = TextureManager.glMissingTextureID;
+			needsBackgroundReload = false;
 		}
 
 		if (dummyDraw)
@@ -3325,11 +3497,13 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	{
 		runInContext(() -> {
 			glReadBuffer(GL_FRONT);
-			int width = perspectiveView.maxX - perspectiveView.minX;
-			int height = perspectiveView.maxY - perspectiveView.minY;
+			int minX = RenderState.toFramebufferX(perspectiveView.minX);
+			int minY = RenderState.toFramebufferY(perspectiveView.minY);
+			int width = RenderState.toFramebufferX(perspectiveView.maxX) - minX;
+			int height = RenderState.toFramebufferY(perspectiveView.maxY) - minY;
 			int bpp = 4;
 			ByteBuffer buffer = BufferUtils.createByteBuffer(width * height * bpp);
-			glReadPixels(perspectiveView.minX, perspectiveView.minY, width, height,
+			glReadPixels(minX, minY, width, height,
 				GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, buffer);
 
 			BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
@@ -3440,6 +3614,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	/** Prompts on the event dispatch thread, after the caller has released the OpenGL context. */
 	private File promptForTextureArchive()
 	{
+		assert (!Thread.holdsLock(modifyLock));
 		FutureTask<File> prompt = new FutureTask<>(() -> {
 			while (true) {
 				int choice = SwingUtils.getConfirmDialog()
@@ -3535,7 +3710,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			if (v.painted)
 				newVertexColorMap.put(v, new Color4d(v.r, v.g, v.b, v.a));
 		}
-		commandManager.executeCommand(new PaintVertices(backupVertexColorMap, newVertexColorMap));
+		executeCommand(new PaintVertices(backupVertexColorMap, newVertexColorMap));
 	}
 
 	private void pickVertexColor()
@@ -3578,9 +3753,16 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	/**
 	 * Saves the map quietly, will prompt for a filename if this is a newly created map.
 	 *
-	 * @throws IOException
+	 * @return whether the map was saved successfully
 	 */
-	public void action_SaveMap()
+	public boolean action_SaveMap()
+	{
+		synchronized (modifyLock) {
+			return action_SaveMapLocked();
+		}
+	}
+
+	private boolean action_SaveMapLocked()
 	{
 		try {
 			map.saveMap(new MapEditorMetadata(this));
@@ -3589,14 +3771,22 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		}
 		catch (Exception e) {
 			displayStackTrace(e);
-			return;
+			return false;
 		}
 
 		map.modified = false;
 		lastBackupTime = time;
+		return true;
 	}
 
-	public void action_SaveMapAs(File f)
+	public boolean action_SaveMapAs(File f)
+	{
+		synchronized (modifyLock) {
+			return action_SaveMapAsLocked(f);
+		}
+	}
+
+	private boolean action_SaveMapAsLocked(File f)
 	{
 		try {
 			map.saveMapAs(f, new MapEditorMetadata(this));
@@ -3605,7 +3795,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		}
 		catch (Exception e) {
 			displayStackTrace(e);
-			return;
+			return false;
 		}
 
 		map.modified = false;
@@ -3614,6 +3804,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		updateWindowTitle();
 		updateRecentMaps();
 		gui.setRecentMaps(recentMaps);
+		return true;
 	}
 
 	public void action_OpenMap(File f)
@@ -3640,7 +3831,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	public void loadOverrides()
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 		checkShapeOverride();
 		checkHitOverride();
 	}
@@ -3699,79 +3890,113 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	private void openMap(Map newMap, boolean thumbnailMode)
 	{
 		assert (!SwingUtilities.isEventDispatchThread());
+		assert (!Thread.holdsLock(modifyLock));
 
 		if (newMap == null)
 			return;
 
-		String prevTexName = (thumbnailMode || map == null) ? null : map.texName;
-		boolean reloadTextures = !newMap.texName.equals(prevTexName);
-		boolean[] loadedTextures = { !reloadTextures };
+		boolean[] loadedTextures = { false };
+		synchronized (modifyLock) {
+			String prevTexName = (thumbnailMode || map == null) ? null : map.texName;
+			boolean reloadTextures = !newMap.texName.equals(prevTexName);
+			loadedTextures[0] = !reloadTextures;
 
-		// Release the context before asking Swing to show a modal dialog.
-		runInContext(() -> {
-			if (map != null)
-				releaseMapResources(reloadTextures);
+			runInContext(() -> {
+				if (map != null)
+					releaseMapResources(reloadTextures);
 
-			loading = true;
-			map = newMap;
+				loading = true;
+				map = newMap;
 
-			if (reloadTextures)
-				loadedTextures[0] = TextureManager.load(map.texName);
-		});
+				if (reloadTextures)
+					loadedTextures[0] = TextureManager.load(map.texName);
+			});
+		}
 
+		// Release both the GL context and modifyLock before waiting for a modal Swing dialog.
 		while (!loadedTextures[0]) {
 			File texFile = promptForTextureArchive();
 			if (texFile == null)
 				break;
 
 			String texName = FilenameUtils.getBaseName(texFile.getName());
-			runInContext(() -> loadedTextures[0] = TextureManager.load(texName));
+			synchronized (modifyLock) {
+				runInContext(() -> loadedTextures[0] = TextureManager.load(texName));
+			}
 		}
 
-		runInContext(() -> {
-			loadMapResources();
-			loadOverrides();
+		synchronized (modifyLock) {
+			runInContext(() -> {
+				loadMapResources();
+				loadOverrides();
 
-			updateRecentMaps();
-			gui.setRecentMaps(recentMaps);
+				updateRecentMaps();
+				gui.setRecentMaps(recentMaps);
 
-			resetEditorSettings();
-			map.initializeAllObjects();
-			map.loadVarNames();
+				resetEditorSettings();
+				map.initializeAllObjects();
+				map.loadVarNames();
 
-			if (!thumbnailMode) {
-				final Map guiMap = newMap;
-				SwingUtilities.invokeLater(() -> {
-					updateWindowTitle();
-					gui.setMap(guiMap);
-				});
+				if (!thumbnailMode) {
+					if (map.editorData != null) {
+						for (int i = 0; i < 4; i++) {
+							MapEditCamera cam = fourViews[i].camera;
+							if (cam.pos.x != 0x10000)
+								cam.pos.x = Float.isNaN(map.editorData.cameraPos[i][0]) ? 0 : map.editorData.cameraPos[i][0];
+							if (cam.pos.y != 0x10000)
+								cam.pos.y = Float.isNaN(map.editorData.cameraPos[i][1]) ? 0 : map.editorData.cameraPos[i][1];
+							if (cam.pos.z != 0x10000)
+								cam.pos.z = Float.isNaN(map.editorData.cameraPos[i][2]) ? 0 : map.editorData.cameraPos[i][2];
+						}
 
-				if (map.editorData != null) {
-					for (int i = 0; i < 4; i++) {
-						MapEditCamera cam = fourViews[i].camera;
-						if (cam.pos.x != 0x10000)
-							cam.pos.x = Float.isNaN(map.editorData.cameraPos[i][0]) ? 0 : map.editorData.cameraPos[i][0];
-						if (cam.pos.y != 0x10000)
-							cam.pos.y = Float.isNaN(map.editorData.cameraPos[i][1]) ? 0 : map.editorData.cameraPos[i][1];
-						if (cam.pos.z != 0x10000)
-							cam.pos.z = Float.isNaN(map.editorData.cameraPos[i][2]) ? 0 : map.editorData.cameraPos[i][2];
+						perspectiveView.camera.pitch = Float.isNaN(map.editorData.perspPitch) ? 0 : map.editorData.perspPitch;
+						perspectiveView.camera.yaw = Float.isNaN(map.editorData.perspYaw) ? 0 : map.editorData.perspYaw;
 					}
-
-					perspectiveView.camera.pitch = Float.isNaN(map.editorData.perspPitch) ? 0 : map.editorData.perspPitch;
-					perspectiveView.camera.yaw = Float.isNaN(map.editorData.perspYaw) ? 0 : map.editorData.perspYaw;
 				}
-			}
-		});
+			});
 
-		loading = false;
+			if (thumbnailMode)
+				loading = false;
+		}
+
+		if (!thumbnailMode) {
+			// Attach the new Swing models before accepting edits. Neither the GL
+			// context nor modifyLock may be held while waiting for this handoff.
+			FutureTask<Void> attachGui = new FutureTask<>(() -> {
+				runThreadsafe(() -> {
+					updateWindowTitle();
+					gui.setMap(newMap);
+					loading = false;
+				});
+				return null;
+			});
+			SwingUtilities.invokeLater(attachGui);
+			try {
+				attachGui.get();
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				throw new StarRodException(e);
+			}
+			catch (ExecutionException e) {
+				throw new StarRodException(e.getCause());
+			}
+		}
 	}
 
 	private void updateWindowTitle()
 	{
-		gui.setTitle(Environment.decorateTitle("Map Editor") + " - " + map.getName());
+		runInEDT(() -> gui.setTitle(Environment.decorateTitle("Map Editor") + " - " + map.getName()));
 	}
 
-	public void action_SaveShading()
+	public boolean action_SaveShading()
+	{
+		synchronized (modifyLock) {
+			return action_SaveShadingLocked();
+		}
+	}
+
+	private boolean action_SaveShadingLocked()
 	{
 		try {
 			if (!Environment.isDX()) {
@@ -3781,7 +4006,9 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		}
 		catch (Exception e) {
 			displayStackTrace(e);
+			return false;
 		}
+		return true;
 	}
 
 	// ==================================================
@@ -3796,7 +4023,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	private void duplicateSelection()
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		if (editorMode != EditorMode.Modify || selectionManager.getSelectionMode() != SelectionMode.OBJECT)
 			return;
@@ -3811,7 +4038,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			CommandBatch batch = new CommandBatch("Duplicate Objects");
 			batch.addCommand(new CreateObjects(duplicateList));
 			batch.addCommand(selectionManager.getModifyObjects(null, selectedList));
-			commandManager.executeCommand(batch);
+			executeCommand(batch);
 		}
 	}
 
@@ -3906,7 +4133,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	private void findObject()
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		SwingUtilities.invokeLater(() -> {
 			FindDialog dlg = new FindDialog(map);
@@ -3915,7 +4142,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 			MapObject result = dlg.getResult();
 			if (result != null)
-				executeNextFrame(selectionManager.getAddObject(result));
+				execute(() -> selectionManager.getAddObject(result));
 		});
 	}
 
@@ -3936,28 +4163,28 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	private void pasteObjects()
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		if (editorMode != EditorMode.Modify || selectionManager.getSelectionMode() != SelectionMode.OBJECT || !clipboardFile.exists())
 			return;
 
 		PrefabImportData imported = map.importPrefab(clipboardFile);
 		if (imported.getNumObjects() > 0) {
-			commandManager.executeCommand(imported.getCommand("Paste Objects"));
+			executeCommand(imported.getCommand("Paste Objects"));
 			Logger.log("Pasted " + imported.getNumObjects() + " objects from clipboard.");
 		}
 	}
 
 	private void pasteObjects(MapObjectNode<? extends MapObject> node)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		if (editorMode != EditorMode.Modify || selectionManager.getSelectionMode() != SelectionMode.OBJECT || !clipboardFile.exists())
 			return;
 
 		PrefabImportData imported = map.importPrefab(clipboardFile, node);
 		if (imported.getNumObjects() > 0) {
-			commandManager.executeCommand(imported.getCommand("Paste Objects"));
+			executeCommand(imported.getCommand("Paste Objects"));
 			Logger.log("Pasted " + imported.getNumObjects() + " objects from clipboard.");
 		}
 	}
@@ -3997,7 +4224,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			}
 
 			if (flipList.size() > 0)
-				commandManager.executeCommand(new InvertNormals(flipList));
+				executeCommand(new InvertNormals(flipList));
 		}
 	}
 
@@ -4007,7 +4234,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	public void action_CreateModel(TriangleBatch batch, String name, MapObjectNode<Model> parent)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		Model mdl = Model.create(batch, name);
 		mdl.getNode().parentNode = parent;
@@ -4018,7 +4245,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	public void action_CreateCollider(TriangleBatch batch, String name, MapObjectNode<Collider> parent)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		Collider c = Collider.create(batch, name);
 		c.getNode().parentNode = parent;
@@ -4028,7 +4255,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	public void action_CreateZone(TriangleBatch batch, String name, MapObjectNode<Zone> parent)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		Zone z = Zone.create(batch, name);
 		z.getNode().parentNode = parent;
@@ -4038,7 +4265,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	public void action_CreateMarker(String name, MarkerType type, MapObjectNode<Marker> parent)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		Vector3f pos = cursor3D.getPosition();
 
@@ -4057,13 +4284,13 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		if (selectedList.size() > 0)
 			batch.addCommand(selectionManager.getModifyObjects(null, selectedList));
 
-		commandManager.executeCommand(batch);
+		executeCommand(batch);
 	}
 
 	@SuppressWarnings("unchecked")
 	public void action_CreateGroup(MapObjectNode<? extends MapObject> parent)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		MapObjectType type = parent.getUserObject().getObjectType();
 
@@ -4087,7 +4314,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	private void action_CreateModelGroup(MapObjectNode<Model> parent)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		Model group = new Model(ShapeType.GROUP);
 
@@ -4100,61 +4327,61 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 		group.updateTransformHierarchy();
 
-		commandManager.executeCommand(new CreateObject(group));
+		executeCommand(new CreateObject(group));
 
-		// have this to run next frame as a separate command after the CreateObject resolves
-		doNextFrame(() -> {
+		// Creation is synchronous; the new parent is ready for the move command.
+		runThreadsafe(() -> {
 			action_MoveSelectedModels(group.getNode(), -1);
 		});
 	}
 
 	private void action_CreateColliderGroup(MapObjectNode<Collider> parent)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		Collider group = new Collider(HitType.GROUP);
 
 		group.getNode().parentNode = parent;
 		group.setName("New Group");
 
-		commandManager.executeCommand(new CreateObject(group));
+		executeCommand(new CreateObject(group));
 
-		// have this to run next frame as a separate command after the CreateObject resolves
-		doNextFrame(() -> {
+		// Creation is synchronous; the new parent is ready for the move command.
+		runThreadsafe(() -> {
 			action_MoveSelectedColliders(group.getNode(), -1);
 		});
 	}
 
 	private void action_CreateZoneGroup(MapObjectNode<Zone> parent)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		Zone group = new Zone(HitType.GROUP);
 
 		group.getNode().parentNode = parent;
 		group.setName("New Group");
 
-		commandManager.executeCommand(new CreateObject(group));
+		executeCommand(new CreateObject(group));
 
-		// have this to run next frame as a separate command after the CreateObject resolves
-		doNextFrame(() -> {
+		// Creation is synchronous; the new parent is ready for the move command.
+		runThreadsafe(() -> {
 			action_MoveSelectedZones(group.getNode(), -1);
 		});
 	}
 
 	private void action_CreateMarkerGroup(MapObjectNode<Marker> parent)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		Marker group = Marker.createGroup("New Group");
 
 		group.getNode().parentNode = parent;
 		group.setName("New Group");
 
-		commandManager.executeCommand(new CreateObject(group));
+		executeCommand(new CreateObject(group));
 
-		// have this to run next frame as a separate command after the CreateObject resolves
-		doNextFrame(() -> {
+		// Creation is synchronous; the new parent is ready for the move command.
+		runThreadsafe(() -> {
 			action_MoveSelectedMarkers(group.getNode(), -1);
 		});
 	}
@@ -4175,7 +4402,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	// methods of the UV selection, which issues a DirectTransformSelection command to the Editor.
 	public void action_GenerateUVs(UVGenerator g)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		List<Triangle> triangles = selectionManager.getTrianglesFromSelection(Model.class);
 
@@ -4185,7 +4412,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	public <T extends Selectable> void action_TransformSelection(TransformMatrix m, Selection<T> currentSelection)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		currentSelection.applyMatrixTransformation(m);
 	}
@@ -4203,13 +4430,13 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			nodeList.add(mdl.getNode());
 
 		if (mdlList.size() > 0)
-			commandManager.executeCommand(map.modelTree.getTree().new MoveNodes(
+			executeCommand(map.modelTree.getTree().new MoveNodes(
 				map.modelTree, nodeList, newParent, childIndex));
 	}
 
 	public void action_MoveSelectedColliders(MapObjectNode<Collider> newParent, int childIndex)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		List<Collider> colliderList = selectionManager.getSelectedObjects(Collider.class);
 
@@ -4218,13 +4445,13 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			nodeList.add(c.getNode());
 
 		if (colliderList.size() > 0)
-			commandManager.executeCommand(map.colliderTree.getTree().new MoveNodes(
+			executeCommand(map.colliderTree.getTree().new MoveNodes(
 				map.colliderTree, nodeList, newParent, childIndex));
 	}
 
 	public void action_MoveSelectedZones(MapObjectNode<Zone> newParent, int childIndex)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		List<Zone> zoneList = selectionManager.getSelectedObjects(Zone.class);
 
@@ -4233,13 +4460,13 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			nodeList.add(z.getNode());
 
 		if (zoneList.size() > 0)
-			commandManager.executeCommand(map.zoneTree.getTree().new MoveNodes(
+			executeCommand(map.zoneTree.getTree().new MoveNodes(
 				map.zoneTree, nodeList, newParent, childIndex));
 	}
 
 	public void action_MoveSelectedMarkers(MapObjectNode<Marker> newParent, int childIndex)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
+		assert (Thread.holdsLock(modifyLock));
 
 		List<Marker> zoneList = selectionManager.getSelectedObjects(Marker.class);
 
@@ -4248,7 +4475,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			markerList.add(m.getNode());
 
 		if (zoneList.size() > 0)
-			commandManager.executeCommand(map.markerTree.getTree().new MoveNodes(
+			executeCommand(map.markerTree.getTree().new MoveNodes(
 				map.markerTree, markerList, newParent, childIndex));
 	}
 

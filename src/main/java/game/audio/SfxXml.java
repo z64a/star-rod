@@ -1034,6 +1034,6 @@ public final class SfxXml
 				attributes.put(ATTR_ENVELOPE, Integer.toString(bank & 3));
 			return attributes;
 		}
-	
+
 	}
 }

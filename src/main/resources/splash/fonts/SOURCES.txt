@@ -1,0 +1,8 @@
+﻿# family | file | official subset URL | license source
+Bungee | Bungee-Regular.ttf | https://fonts.gstatic.com/l/font?kit=N0bU2SZBIuF2PU_ECmZQAfT5tpaVJNYASHLLF9x4MacbcMARrtV56TydjnekdWM&skey=2e93db42ee6e0e28&v=v17 | https://raw.githubusercontent.com/google/fonts/main/ofl/bungee/OFL.txt
+Lobster | Lobster-Regular.ttf | https://fonts.gstatic.com/l/font?kit=neILzCirqoswsqX9_oW0FokYfrq07TZZ7GfEjt18LefgNzSKBNFHy5R6QFk3vMWK&skey=7ed805a363b4659c&v=v32 | https://raw.githubusercontent.com/google/fonts/main/ofl/lobster/OFL.txt
+Rye | Rye-Regular.ttf | https://fonts.gstatic.com/l/font?kit=r05XGLJT86YDFozIdMGHzXNhDofBgjahqMVc0oOGJhUhF2JDI8zj55x5oJE&skey=18b6854fa95116ab&v=v17 | https://raw.githubusercontent.com/google/fonts/main/ofl/rye/OFL.txt
+Monoton | Monoton-Regular.ttf | https://fonts.gstatic.com/l/font?kit=5h1aiZUrOngCibe4fkbZZ0yQI2EI4zSsJTMbrjv-o9KyJiVSl-JYxeq-zm7d5Lvi&skey=6851b793dcae5a6c&v=v22 | https://raw.githubusercontent.com/google/fonts/main/ofl/monoton/OFL.txt
+Rubik Mono One | RubikMonoOne-Regular.ttf | https://fonts.gstatic.com/l/font?kit=UqyJK8kPP3hjw6ANTdfRk9YSN-8wXoADWM7TjnHRJpNlXze0pM_VE8hKVHEnOFGQy6jlDIRrmQ&skey=ae6db2ecce22196d&v=v20 | https://raw.githubusercontent.com/google/fonts/main/ofl/rubikmonoone/OFL.txt
+Caveat | Caveat-Bold.ttf | https://fonts.gstatic.com/l/font?kit=WnznHAc5bAfYB2QRah7pcpNvOx-pjRV6SIK7RDRkvCXm9rNrJqRn0GRxpopD3hD8GTHHLM6RWqLa2ho1&skey=7833cd5b856b60c9&v=v23 | https://raw.githubusercontent.com/google/fonts/main/ofl/caveat/OFL.txt
+Press Start 2P | PressStart2P-Regular.ttf | https://fonts.gstatic.com/l/font?kit=e3t4euO8T-267oIAQAu6jDQyK0nSmNZsyKkaRNFYqiMVPFTdyxRnEhUfj26XEClFCm-cCR_mgg&skey=24cc298767068e24&v=v16 | https://raw.githubusercontent.com/google/fonts/main/ofl/pressstart2p/OFL.txt

@@ -28,7 +28,7 @@ public class PathSubpanel extends JPanel
 
 		JButton addPointButton = new JButton("Add Point");
 		addPointButton.addActionListener((e) -> {
-			MapEditor.execute(new AddPathPoint(parent.getData().pathComponent.path));
+			MapEditor.execute(() -> new AddPathPoint(parent.getData().pathComponent.path));
 		});
 		SwingUtils.addBorderPadding(addPointButton);
 
@@ -37,7 +37,7 @@ public class PathSubpanel extends JPanel
 			PathComponent comp = parent.getData().pathComponent;
 			boolean newValue = cbShowInterp.isSelected();
 
-			MapEditor.execute(comp.showInterp.mutator(newValue));
+			MapEditor.execute(() -> comp.showInterp.mutator(newValue));
 		});
 
 		pathList = new PathList();

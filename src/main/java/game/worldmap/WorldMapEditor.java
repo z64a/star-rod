@@ -87,6 +87,7 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 	private static final int UNDO_LIMIT = 64;
 
 	private List<WorldLocation> locations;
+	private boolean loadedSuccessfully;
 
 	private JCheckBox cbMoveTogether;
 	private JCheckBox cbUseOriginals;
@@ -257,7 +258,6 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 		item.setAccelerator(awtKeyStroke);
 		item.addActionListener((e) -> {
 			saveChanges();
-			flushUndoRedo();
 		});
 		menu.add(item);
 
@@ -728,31 +728,66 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 	private void loadData()
 	{
 		try {
-			locations = WorldMapModder.loadLocations();
+			List<WorldLocation> loadedLocations = WorldMapModder.loadLocations();
+			runThreadsafe(() -> {
+				locations = loadedLocations;
+				loadedSuccessfully = true;
+				modified = false;
+				commandManager.flush();
+			});
 			Logger.log("Loaded world map.");
 		}
 		catch (IOException e) {
-			locations = new ArrayList<>();
+			runThreadsafe(() -> {
+				loadedSuccessfully = false;
+				if (locations == null)
+					locations = new ArrayList<>();
+			});
 			Logger.printStackTrace(e);
 		}
 	}
 
+	public boolean isLoadedSuccessfully()
+	{
+		return callThreadsafe(() -> loadedSuccessfully);
+	}
+
 	public void onModified()
 	{
-		// nothing to do
+		runThreadsafe(() -> modified = true);
 	}
 
 	@Override
 	protected boolean isModified()
 	{
-		return modified;
+		return callThreadsafe(() -> modified);
 	}
 
 	@Override
-	protected void saveChanges()
+	protected boolean saveChanges()
 	{
-		WorldMapModder.saveLocations(locations);
-		Logger.log("Saved world map.");
+		return callThreadsafe(this::saveChangesLocked);
+	}
+
+	private boolean saveChangesLocked()
+	{
+		if (!loadedSuccessfully) {
+			Logger.logError("Cannot save the world map because it was not loaded successfully.");
+			return false;
+		}
+
+		try {
+			WorldMapModder.saveLocations(locations);
+			modified = false;
+			commandManager.flush();
+			Logger.log("Saved world map.");
+			return true;
+		}
+		catch (IOException e) {
+			Logger.logError("Failed to save world map.");
+			super.showStackTrace(e);
+			return false;
+		}
 	}
 
 	@Override
@@ -1014,6 +1049,12 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 			super.undo();
 
 			editor.setSelectedLocation(prev);
+		}
+
+		@Override
+		public boolean modifiesData()
+		{
+			return false;
 		}
 	}
 }

@@ -220,7 +220,7 @@ public final class BasicCamera extends BaseCamera
 		if (useDepth) {
 			// this is the expensive part, reading z from the depth buffer
 			FloatBuffer fb = BufferUtils.createFloatBuffer(1);
-			glReadPixels(mouseX, mouseY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, fb);
+			glReadPixels(RenderState.toFramebufferX(mouseX), RenderState.toFramebufferY(mouseY), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, fb);
 			winZ = fb.get();
 		}
 
@@ -232,7 +232,7 @@ public final class BasicCamera extends BaseCamera
 		int stencilValue = 0;
 		if (useStencil) {
 			IntBuffer ib = BufferUtils.createIntBuffer(1);
-			glReadPixels(mouseX, mouseY, 1, 1, GL_STENCIL_INDEX, GL_UNSIGNED_INT, ib);
+			glReadPixels(RenderState.toFramebufferX(mouseX), RenderState.toFramebufferY(mouseY), 1, 1, GL_STENCIL_INDEX, GL_UNSIGNED_INT, ib);
 			stencilValue = ib.get();
 		}
 

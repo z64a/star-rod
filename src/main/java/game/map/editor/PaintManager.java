@@ -9,8 +9,10 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.LinkedList;
+import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
@@ -26,10 +28,11 @@ import javax.swing.JSlider;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.border.Border;
-import javax.swing.border.EtchedBorder;
+
+import common.Vector3f;
+import common.commands.AbstractCommand;
 
 import app.SwingUtils;
-import common.Vector3f;
 import game.map.editor.render.RenderingOptions.SurfaceMode;
 import game.map.editor.render.TextureManager;
 import game.map.editor.ui.GuiCommand;
@@ -37,6 +40,7 @@ import game.map.editor.ui.SwingGUI;
 import game.map.mesh.Vertex;
 import net.miginfocom.swing.MigLayout;
 import util.identity.IdentityHashSet;
+import util.ui.HexTextField;
 import util.ui.LimitedLengthDocument;
 
 public class PaintManager
@@ -61,7 +65,7 @@ public class PaintManager
 	public static JPanel createPaintVertexTab(SwingGUI gui)
 	{
 		if (paintVertexTab == null)
-			paintVertexTab = new PaintVertexPanel(gui);
+			paintVertexTab = new PaintVertexPanel(button -> gui.addButtonCommand(button, GuiCommand.SHOW_CHOOSE_COLOR_DIALOG));
 		return paintVertexTab;
 	}
 
@@ -134,7 +138,7 @@ public class PaintManager
 						case HSL:
 							int[] vhsl = RGBtoHSL(new int[] { v.r & 0xFF, v.g & 0xFF, v.b & 0xFF });
 							int[] out_hsl = new int[3];
-							out_hsl[0] = getNewComponent(paintVertexTab.channelH, vhsl[0], brushStrength);
+							out_hsl[0] = getNewHue(paintVertexTab.channelH, vhsl[0], brushStrength);
 							out_hsl[1] = getNewComponent(paintVertexTab.channelS, vhsl[1], brushStrength);
 							out_hsl[2] = getNewComponent(paintVertexTab.channelV, vhsl[2], brushStrength);
 							out_rgb = HSLtoRGB(out_hsl);
@@ -248,7 +252,76 @@ public class PaintManager
 
 	public static void setSelectedColor(Color c)
 	{
-		paintVertexTab.setSelectedColor(c);
+		commitSelectedColor(getSelectedColor(), c);
+	}
+
+	private static void commitSelectedColor(Color oldColor, Color newColor)
+	{
+		int[] oldValues = paintVertexTab.getColorValues();
+		paintVertexTab.setSelectedColor(newColor);
+		MapEditor.execute(new SetPaintColor(oldValues, paintVertexTab.getColorValues(), oldColor, newColor));
+	}
+
+	// Slider values cannot always be recovered from RGB; for example, hue 0 and 3600 produce the same color.
+	private static void commitSelectedColor(PaintSlider slider, int oldSliderValue, int newSliderValue, Color oldColor, Color newColor)
+	{
+		int[] oldValues = paintVertexTab.getColorValues();
+		PaintSlider[] sliders = paintVertexTab.getColorSliders();
+		for (int i = 0; i < sliders.length; i++)
+			if (sliders[i] == slider)
+				oldValues[i] = oldSliderValue;
+		paintVertexTab.applySliderColor(slider, newSliderValue, newColor);
+		MapEditor.execute(new SetPaintColor(oldValues, paintVertexTab.getColorValues(), oldColor, newColor));
+	}
+
+	private static final class SetPaintColor extends AbstractCommand
+	{
+		private final int[] oldValues;
+		private final int[] newValues;
+		private final Color oldColor;
+		private final Color newColor;
+
+		private SetPaintColor(int[] oldValues, int[] newValues, Color oldColor, Color newColor)
+		{
+			super("Set Paint Color");
+			this.oldValues = oldValues;
+			this.newValues = newValues;
+			this.oldColor = oldColor;
+			this.newColor = newColor;
+		}
+
+		@Override
+		public boolean shouldExec()
+		{
+			return !Arrays.equals(oldValues, newValues) || !oldColor.equals(newColor);
+		}
+
+		@Override
+		public boolean modifiesData()
+		{
+			return false;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+			apply(newColor, newValues);
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+			apply(oldColor, oldValues);
+		}
+
+		private void apply(Color color, int[] values)
+		{
+			paintVertexTab.colorBeforeAdjustment = null;
+			paintVertexTab.setColorValues(values);
+			paintVertexTab.previewSelectedColor(color);
+		}
 	}
 
 	public static void pushSelectedColor()
@@ -305,6 +378,9 @@ public class PaintManager
 		private PaintSlider channelR, channelG, channelB;
 		private PaintSlider channelH, channelS, channelV;
 		private PaintSlider channelA;
+		private HexTextField colorHexField;
+		private JRadioButton rgbButton;
+		private JRadioButton hslButton;
 
 		private PaintSlider innerRadiusSlider;
 		private PaintSlider outerRadiusSlider;
@@ -315,10 +391,13 @@ public class PaintManager
 
 		private ColorModel selectedColorModel = ColorModel.RGB;
 		private Color selectedColor;
+		private Color colorBeforeAdjustment;
+		private BrushFallOffType committedFallOff;
 
 		private boolean ignoreSliderUpdates = false;
+		private boolean ignoreBrushUpdates = false;
 
-		private PaintVertexPanel(SwingGUI gui)
+		private PaintVertexPanel(Consumer<JButton> configureColorPicker)
 		{
 			colorPreview = new JLabel();
 			ImageIcon icon = new ImageIcon(TextureManager.background) {
@@ -333,14 +412,14 @@ public class PaintManager
 			colorPreview.setForeground(new Color(255, 255, 255, 255));
 			selectedColor = Color.white;
 
-			JRadioButton rgbButton = new JRadioButton(ColorModel.RGB.toString());
+			rgbButton = new JRadioButton(ColorModel.RGB.toString());
 			rgbButton.setSelected(true);
 			rgbButton.addActionListener((e) -> {
 				if (rgbButton.isSelected())
 					setColorModel(ColorModel.RGB);
 			});
 
-			JRadioButton hslButton = new JRadioButton(ColorModel.HSL.toString());
+			hslButton = new JRadioButton(ColorModel.HSL.toString());
 			hslButton.setSelected(false);
 			hslButton.addActionListener((e) -> {
 				if (hslButton.isSelected())
@@ -352,33 +431,22 @@ public class PaintManager
 			group.add(hslButton);
 
 			// update the color preview when the sliders are adjusted
-			SliderListener colorPreviewListener = (preview, value) -> {
+			SliderListener colorPreviewListener = (slider, preview, oldValue, value) -> {
 				if (ignoreSliderUpdates)
 					return;
 
-				int[] rgb = new int[3];
+				Color c = getColorFromControls();
 
-				switch (selectedColorModel) {
-					case RGB:
-						rgb[0] = channelR.isPaintEnabled() ? channelR.getValue() : 0;
-						rgb[1] = channelG.isPaintEnabled() ? channelG.getValue() : 0;
-						rgb[2] = channelB.isPaintEnabled() ? channelB.getValue() : 0;
-						break;
-					case HSL:
-						int[] hsl = new int[3];
-						hsl[0] = channelH.isPaintEnabled() ? channelH.getValue() : 0;
-						hsl[1] = channelS.isPaintEnabled() ? channelS.getValue() : smax;
-						hsl[2] = channelV.isPaintEnabled() ? channelV.getValue() : (lmax / 2);
-						rgb = HSLtoRGB(hsl);
-						break;
-					default:
-						throw new RuntimeException("Unknown color model.");
+				if (preview) {
+					if (colorBeforeAdjustment == null)
+						colorBeforeAdjustment = selectedColor;
+					previewSelectedColor(c);
 				}
-
-				int a = channelA.isPaintEnabled() ? channelA.getValue() : 255;
-				Color c = new Color(rgb[0], rgb[1], rgb[2], a);
-				selectedColor = c;
-				colorPreview.setForeground(c);
+				else {
+					Color oldColor = colorBeforeAdjustment == null ? selectedColor : colorBeforeAdjustment;
+					colorBeforeAdjustment = null;
+					commitSelectedColor(slider, oldValue, value, oldColor, c);
+				}
 			};
 
 			channelR = new PaintSlider("R", "w 30!", colorPreviewListener, 0, 255, 255, 32, true);
@@ -395,23 +463,60 @@ public class PaintManager
 
 			channelA = new PaintSlider("A", "w 30!", colorPreviewListener, 0, 255, 255, 32, true);
 
-			innerRadiusSlider = new PaintSlider("Inner", "w 50!", (b, v) -> {}, 0, 150, 0, 50, false);
-			outerRadiusSlider = new PaintSlider("Outer", "w 50!", (b, v) -> {
-				innerRadiusSlider.setMaximum(outerRadiusSlider.getValue());
+			colorHexField = new HexTextField(6, (rgb) -> {
+				int r = (rgb >>> 16) & 0xFF;
+				int g = (rgb >>> 8) & 0xFF;
+				int b = rgb & 0xFF;
+				PaintManager.setSelectedColor(new Color(r, g, b, selectedColor.getAlpha()));
+			});
+			colorHexField.setHorizontalAlignment(SwingConstants.CENTER);
+			colorHexField.setToolTipText("RGB color in RRGGBB format");
+			SwingUtils.setFontSize(colorHexField, 12);
+			SwingUtils.addBorderPadding(colorHexField);
+			colorHexField.setValue(0xFFFFFF);
+
+			makePaintChannelUndoable(channelR, "Red");
+			makePaintChannelUndoable(channelG, "Green");
+			makePaintChannelUndoable(channelB, "Blue");
+			makePaintChannelUndoable(channelH, "Hue");
+			makePaintChannelUndoable(channelS, "Saturation");
+			makePaintChannelUndoable(channelV, "Lightness");
+			makePaintChannelUndoable(channelA, "Alpha");
+
+			innerRadiusSlider = new PaintSlider("Inner", "w 50!", (slider, preview, oldValue, value) -> {
+				if (!preview)
+					commitBrushSettings("Set Inner Brush Radius");
+			}, 0, 150, 0, 50, false);
+			outerRadiusSlider = new PaintSlider("Outer", "w 50!", (slider, preview, oldValue, value) -> {
+				innerRadiusSlider.setMaximum(value);
+				if (!preview)
+					commitBrushSettings("Set Outer Brush Radius");
 			}, 1, 500, 150, 50, false);
-			forceSlider = new PaintSlider("Power", "w 50!", (b, v) -> {}, 1, 100, 100, 10, false);
+			forceSlider = new PaintSlider("Power", "w 50!", (slider, preview, oldValue, value) -> {
+				if (!preview)
+					commitBrushSettings("Set Brush Power");
+			}, 1, 100, 100, 10, false);
 
 			fallOffComboBox = new JComboBox<>(BrushFallOffType.values());
+			committedFallOff = (BrushFallOffType) fallOffComboBox.getSelectedItem();
+			fallOffComboBox.addActionListener((e) -> {
+				if (!ignoreBrushUpdates)
+					commitBrushSettings("Set Brush Falloff");
+			});
 			SwingUtils.addBorderPadding(fallOffComboBox);
 
 			cbShowTextures = new JCheckBox(" Show textures while painting");
 			cbShowTextures.setVerticalAlignment(SwingConstants.CENTER);
+			cbShowTextures.addActionListener((e) -> {
+				boolean newValue = cbShowTextures.isSelected();
+				MapEditor.execute(new SetShowTextures(!newValue, newValue));
+			});
 
 			JButton pickerButton = new JButton("Open Color Picker");
 			SwingUtils.addBorderPadding(pickerButton);
-			gui.addButtonCommand(pickerButton, GuiCommand.SHOW_CHOOSE_COLOR_DIALOG);
+			configureColorPicker.accept(pickerButton);
 
-			Border border = BorderFactory.createEtchedBorder(EtchedBorder.LOWERED);
+			Border border = BorderFactory.createEtchedBorder();
 
 			JPanel rgbaPanel = new JPanel(new MigLayout("fill, wrap, hidemode 3, ins 16 16 16 16"));
 			rgbaPanel.setBorder(border);
@@ -419,9 +524,11 @@ public class PaintManager
 			rgbaPanel.add(colorPreview, "span, split 2, h 96!, w 96!, gap 16 8 16 16");
 			rgbaPanel.add(getColorSwatchPanel());
 
-			rgbaPanel.add(SwingUtils.getLabel("Color Model:", 12), "span, split 3, gapright 10, gapbottom 16");
+			rgbaPanel.add(SwingUtils.getLabel("Color Model:", 12), "span, split 5, gapright 10, gapbottom 16");
 			rgbaPanel.add(rgbButton, "gapleft 8, sg radio");
 			rgbaPanel.add(hslButton, "gapleft 8, sg radio");
+			rgbaPanel.add(new JLabel(), "growx, pushx");
+			rgbaPanel.add(colorHexField, "w 80!");
 			SwingUtils.setFontSize(rgbButton, 12);
 			SwingUtils.setFontSize(hslButton, 12);
 
@@ -452,10 +559,10 @@ public class PaintManager
 
 			setLayout(new MigLayout("wrap, fillx, insets 8"));
 			add(SwingUtils.getLabel("Current Color", 14));
-
 			add(rgbaPanel, "grow, gapbottom 16");
 
 			add(SwingUtils.getLabel("Brush Settings", 14), "gapbottom 4");
+
 			add(brushPanel, "grow, gapbottom 16");
 
 			add(SwingUtils.getLabel("Rendering", 14), "gapbottom 4");
@@ -522,15 +629,33 @@ public class PaintManager
 			return selectedColor;
 		}
 
+		private PaintSlider[] getColorSliders()
+		{
+			return new PaintSlider[] { channelR, channelG, channelB, channelH, channelS, channelV, channelA };
+		}
+
+		private int[] getColorValues()
+		{
+			return Arrays.stream(getColorSliders()).mapToInt(PaintSlider::getValue).toArray();
+		}
+
+		private void setColorValues(int[] values)
+		{
+			PaintSlider[] sliders = getColorSliders();
+			for (int i = 0; i < sliders.length; i++)
+				sliders[i].setValue(values[i]);
+		}
+
 		private void setSelectedColor(Color c)
 		{
+			colorBeforeAdjustment = null;
 			ignoreSliderUpdates = true;
 
 			switch (selectedColorModel) {
 				case RGB:
-					channelR.slider.setValue(c.getRed());
-					channelG.slider.setValue(c.getGreen());
-					channelB.slider.setValue(c.getBlue());
+					channelR.setValue(c.getRed());
+					channelG.setValue(c.getGreen());
+					channelB.setValue(c.getBlue());
 					break;
 				case HSL:
 					int[] hsl = RGBtoHSL(new int[] { c.getRed(), c.getGreen(), c.getBlue() });
@@ -542,15 +667,81 @@ public class PaintManager
 					throw new RuntimeException("Unknown color model.");
 			}
 
-			channelA.slider.setValue(c.getAlpha());
+			channelA.setValue(c.getAlpha());
 			ignoreSliderUpdates = false;
 
 			selectedColor = c;
 			colorPreview.setForeground(c);
+			colorHexField.setValue((c.getRed() << 16) | (c.getGreen() << 8) | c.getBlue());
+		}
+
+		private void previewSelectedColor(Color c)
+		{
+			selectedColor = c;
+			colorPreview.setForeground(c);
+			colorHexField.setValue((c.getRed() << 16) | (c.getGreen() << 8) | c.getBlue());
+		}
+
+		private void applySliderColor(PaintSlider slider, int value, Color c)
+		{
+			colorBeforeAdjustment = null;
+			slider.setValue(value);
+			previewSelectedColor(c);
+		}
+
+		private Color getColorFromControls()
+		{
+			int[] rgb = new int[3];
+
+			switch (selectedColorModel) {
+				case RGB:
+					rgb[0] = channelR.isPaintEnabled() ? channelR.getValue() : 0;
+					rgb[1] = channelG.isPaintEnabled() ? channelG.getValue() : 0;
+					rgb[2] = channelB.isPaintEnabled() ? channelB.getValue() : 0;
+					break;
+				case HSL:
+					int[] hsl = new int[3];
+					hsl[0] = channelH.isPaintEnabled() ? channelH.getValue() : 0;
+					hsl[1] = channelS.isPaintEnabled() ? channelS.getValue() : smax;
+					hsl[2] = channelV.isPaintEnabled() ? channelV.getValue() : (lmax / 2);
+					rgb = HSLtoRGB(hsl);
+					break;
+				default:
+					throw new RuntimeException("Unknown color model.");
+			}
+
+			int alpha = channelA.isPaintEnabled() ? channelA.getValue() : 255;
+			return new Color(rgb[0], rgb[1], rgb[2], alpha);
+		}
+
+		private void makePaintChannelUndoable(PaintSlider slider, String channelName)
+		{
+			slider.setCheckboxListener(() -> {
+				boolean newValue = slider.isPaintEnabled();
+				boolean oldValue = !newValue;
+				applyPaintChannelEnabled(slider, newValue);
+				MapEditor.execute(new SetPaintChannelEnabled(channelName, slider, oldValue, newValue));
+			});
+		}
+
+		private void applyPaintChannelEnabled(PaintSlider slider, boolean enabled)
+		{
+			slider.setPaintEnabled(enabled);
 		}
 
 		private void setColorModel(ColorModel mdl)
 		{
+			ColorModel oldModel = selectedColorModel;
+			int[] oldValues = getColorValues();
+			applyColorModel(mdl);
+			MapEditor.execute(new SetPaintColorModel(oldModel, mdl, oldValues, getColorValues()));
+		}
+
+		private void applyColorModel(ColorModel mdl)
+		{
+			rgbButton.setSelected(mdl == ColorModel.RGB);
+			hslButton.setSelected(mdl == ColorModel.HSL);
+
 			if (mdl == selectedColorModel)
 				return;
 
@@ -585,11 +776,232 @@ public class PaintManager
 
 			selectedColorModel = mdl;
 		}
+
+		private final class SetPaintColorModel extends AbstractCommand
+		{
+			private final ColorModel oldModel;
+			private final ColorModel newModel;
+			private final int[] oldValues;
+			private final int[] newValues;
+
+			private SetPaintColorModel(ColorModel oldModel, ColorModel newModel, int[] oldValues, int[] newValues)
+			{
+				super("Set Paint Color Model");
+				this.oldModel = oldModel;
+				this.newModel = newModel;
+				this.oldValues = oldValues;
+				this.newValues = newValues;
+			}
+
+			@Override
+			public boolean shouldExec()
+			{
+				return oldModel != newModel;
+			}
+
+			@Override
+			public boolean modifiesData()
+			{
+				return false;
+			}
+
+			@Override
+			public void exec()
+			{
+				super.exec();
+				applyColorModel(newModel);
+				setColorValues(newValues);
+			}
+
+			@Override
+			public void undo()
+			{
+				super.undo();
+				applyColorModel(oldModel);
+				setColorValues(oldValues);
+			}
+		}
+
+		private final class SetPaintChannelEnabled extends AbstractCommand
+		{
+			private final PaintSlider slider;
+			private final boolean oldValue;
+			private final boolean newValue;
+
+			private SetPaintChannelEnabled(String channelName, PaintSlider slider, boolean oldValue, boolean newValue)
+			{
+				super("Set " + channelName + " Paint Channel");
+				this.slider = slider;
+				this.oldValue = oldValue;
+				this.newValue = newValue;
+			}
+
+			@Override
+			public boolean shouldExec()
+			{
+				return oldValue != newValue;
+			}
+
+			@Override
+			public boolean modifiesData()
+			{
+				return false;
+			}
+
+			@Override
+			public void exec()
+			{
+				super.exec();
+				applyPaintChannelEnabled(slider, newValue);
+			}
+
+			@Override
+			public void undo()
+			{
+				super.undo();
+				applyPaintChannelEnabled(slider, oldValue);
+			}
+		}
+
+		private BrushSettings getCommittedBrushSettings()
+		{
+			return new BrushSettings(
+				innerRadiusSlider.getCommittedValue(),
+				outerRadiusSlider.getCommittedValue(),
+				forceSlider.getCommittedValue(),
+				committedFallOff);
+		}
+
+		private BrushSettings getCurrentBrushSettings()
+		{
+			return new BrushSettings(
+				innerRadiusSlider.getValue(),
+				outerRadiusSlider.getValue(),
+				forceSlider.getValue(),
+				(BrushFallOffType) fallOffComboBox.getSelectedItem());
+		}
+
+		private void commitBrushSettings(String commandName)
+		{
+			BrushSettings oldSettings = getCommittedBrushSettings();
+			BrushSettings newSettings = getCurrentBrushSettings();
+			applyBrushSettings(newSettings);
+			MapEditor.execute(new SetBrushSettings(commandName, oldSettings, newSettings));
+		}
+
+		private void applyBrushSettings(BrushSettings settings)
+		{
+			ignoreBrushUpdates = true;
+			outerRadiusSlider.setValue(settings.outerRadius);
+			innerRadiusSlider.setMaximum(settings.outerRadius);
+			innerRadiusSlider.setValue(settings.innerRadius);
+			forceSlider.setValue(settings.power);
+			fallOffComboBox.setSelectedItem(settings.fallOff);
+			committedFallOff = settings.fallOff;
+			ignoreBrushUpdates = false;
+		}
+
+		private static final class BrushSettings
+		{
+			private final int innerRadius;
+			private final int outerRadius;
+			private final int power;
+			private final BrushFallOffType fallOff;
+
+			private BrushSettings(int innerRadius, int outerRadius, int power, BrushFallOffType fallOff)
+			{
+				this.innerRadius = innerRadius;
+				this.outerRadius = outerRadius;
+				this.power = power;
+				this.fallOff = fallOff;
+			}
+		}
+
+		private final class SetBrushSettings extends AbstractCommand
+		{
+			private final BrushSettings oldSettings;
+			private final BrushSettings newSettings;
+
+			private SetBrushSettings(String commandName, BrushSettings oldSettings, BrushSettings newSettings)
+			{
+				super(commandName);
+				this.oldSettings = oldSettings;
+				this.newSettings = newSettings;
+			}
+
+			@Override
+			public boolean shouldExec()
+			{
+				return oldSettings.innerRadius != newSettings.innerRadius
+					|| oldSettings.outerRadius != newSettings.outerRadius
+					|| oldSettings.power != newSettings.power
+					|| oldSettings.fallOff != newSettings.fallOff;
+			}
+
+			@Override
+			public boolean modifiesData()
+			{
+				return false;
+			}
+
+			@Override
+			public void exec()
+			{
+				super.exec();
+				applyBrushSettings(newSettings);
+			}
+
+			@Override
+			public void undo()
+			{
+				super.undo();
+				applyBrushSettings(oldSettings);
+			}
+		}
+
+		private final class SetShowTextures extends AbstractCommand
+		{
+			private final boolean oldValue;
+			private final boolean newValue;
+
+			private SetShowTextures(boolean oldValue, boolean newValue)
+			{
+				super("Show Textures While Painting");
+				this.oldValue = oldValue;
+				this.newValue = newValue;
+			}
+
+			@Override
+			public boolean shouldExec()
+			{
+				return oldValue != newValue;
+			}
+
+			@Override
+			public boolean modifiesData()
+			{
+				return false;
+			}
+
+			@Override
+			public void exec()
+			{
+				super.exec();
+				cbShowTextures.setSelected(newValue);
+			}
+
+			@Override
+			public void undo()
+			{
+				super.undo();
+				cbShowTextures.setSelected(oldValue);
+			}
+		}
 	}
 
 	private static interface SliderListener
 	{
-		public void update(boolean preview, int value);
+		public void update(PaintSlider slider, boolean preview, int oldValue, int newValue);
 	}
 
 	private static class PaintSlider extends JComponent
@@ -604,12 +1016,14 @@ public class PaintManager
 		private int max;
 		private final int min;
 		private final boolean hasCheckbox;
+		private int committedValue;
 
 		private final JCheckBox checkbox;
 		private final JTextField textField;
 		private final JSlider slider;
 
 		private final SliderListener listener;
+		private Runnable checkboxListener;
 
 		private PaintSlider(String lblText, String lblLayout, SliderListener listener, int minValue, int maxValue, int initialValue, int ticks,
 			boolean hasCheckbox)
@@ -635,6 +1049,10 @@ public class PaintManager
 
 			checkbox = new JCheckBox();
 			checkbox.setSelected(true);
+			checkbox.addActionListener((e) -> {
+				if (checkboxListener != null)
+					checkboxListener.run();
+			});
 
 			textField = new JTextField("0", 5);
 			textField.setFont(textField.getFont().deriveFont(12f));
@@ -725,8 +1143,12 @@ public class PaintManager
 
 		public void setMaximum(int value)
 		{
+			UpdateMode oldUpdate = update;
+			update = UpdateMode.FROM_OUTSIDE;
 			max = value;
 			slider.setMaximum(value);
+			textField.setText(Integer.toString(slider.getValue()));
+			update = oldUpdate;
 		}
 
 		public int getValue()
@@ -736,38 +1158,67 @@ public class PaintManager
 
 		public void setValue(int value)
 		{
+			value = Math.max(min, Math.min(max, value));
 			update = UpdateMode.FROM_OUTSIDE;
 			textField.setText(Integer.toString(value));
 			slider.setValue(value);
+			committedValue = value;
 			update = UpdateMode.NONE;
+		}
+
+		public int getCommittedValue()
+		{
+			return committedValue;
 		}
 
 		private void updatePreview(UpdateMode mode, int value)
 		{
-			update = mode;
-			if (mode == UpdateMode.FROM_SLIDER)
-				textField.setText(Integer.toString(value));
-
-			listener.update(true, value);
-			update = UpdateMode.NONE;
-		}
-
-		private void updateValue(UpdateMode mode, int value)
-		{
+			value = Math.max(min, Math.min(max, value));
 			update = mode;
 			if (mode == UpdateMode.FROM_SLIDER)
 				textField.setText(Integer.toString(value));
 			else if (mode == UpdateMode.FROM_TEXTFIELD)
 				slider.setValue(value);
 
-			listener.update(false, value);
+			listener.update(this, true, committedValue, value);
 			update = UpdateMode.NONE;
+		}
+
+		private void updateValue(UpdateMode mode, int value)
+		{
+			value = Math.max(min, Math.min(max, value));
+			update = mode;
+			textField.setText(Integer.toString(value));
+			slider.setValue(value);
+
+			listener.update(this, false, committedValue, value);
+			committedValue = value;
+			update = UpdateMode.NONE;
+		}
+
+		public void setCheckboxListener(Runnable listener)
+		{
+			checkboxListener = listener;
+		}
+
+		public void setPaintEnabled(boolean enabled)
+		{
+			checkbox.setSelected(enabled);
 		}
 
 		public boolean isPaintEnabled()
 		{
 			return hasCheckbox && checkbox.isSelected();
 		}
+	}
+
+	private static int getNewHue(PaintSlider slider, int hue, int increment)
+	{
+		// RGB cannot preserve the hue branch at the red seam or for gray colors, so choose the branch nearest the target.
+		if (hue == 0 && slider.isPaintEnabled() && slider.getValue() > hmax / 2)
+			hue = hmax;
+
+		return getNewComponent(slider, hue, increment);
 	}
 
 	public static int getNewComponent(PaintSlider slider, int val, int increment)

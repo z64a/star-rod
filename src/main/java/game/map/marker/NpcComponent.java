@@ -15,6 +15,7 @@ import common.Vector3f;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
+
 import game.map.Axis;
 import game.map.JsonFeatures.JsonDetectData;
 import game.map.JsonFeatures.JsonMarker;
@@ -739,7 +740,7 @@ public class NpcComponent extends BaseMarkerComponent
 		int animID = Math.min(animIndex.get(), previewSprite.animations.size() - 1);
 		int palID = Math.min(paletteID.get(), previewSprite.palettes.size() - 1);
 		if (animID >= 0 && palID >= 0) // watch out for sprites with no animations
-			previewSprite.render(opts.spriteShading, animID, palID, false, opts.useFiltering, selected);
+			previewSprite.render(opts.spriteShading, animID, palID, false, selected, opts.useFiltering);
 
 		RenderState.setModelMatrix(null);
 

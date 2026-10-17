@@ -55,7 +55,7 @@ public abstract class LineRenderQueue
 		assert (shader != null);
 
 		lines.loadBuffers();
-		lines.render();
+		lines.render(shader);
 
 		if (flush)
 			reset();
@@ -80,7 +80,7 @@ public abstract class LineRenderQueue
 		assert (shader != null);
 
 		lines.loadBuffers();
-		lines.renderWithTransform(modelMatrix);
+		lines.renderWithTransform(shader, modelMatrix);
 
 		if (flush)
 			reset();

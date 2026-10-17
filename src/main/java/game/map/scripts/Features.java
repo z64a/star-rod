@@ -256,6 +256,11 @@ public class Features extends UpdateProvider implements XmlSerializable
 	@Override
 	public void fromXML(XmlReader xmr, Element scriptElem)
 	{
+		fromXML(xmr, scriptElem, true);
+	}
+
+	public void fromXML(XmlReader xmr, Element scriptElem, boolean loadShadingProfile)
+	{
 		Element pannersElem = xmr.getUniqueTag(scriptElem, TAG_PANNER_LIST);
 		if (pannersElem != null) {
 			for (Element pannerElem : xmr.getTags(pannersElem, TAG_PANNER))
@@ -273,11 +278,16 @@ public class Features extends UpdateProvider implements XmlSerializable
 			if (xmr.hasAttribute(optionsElem, ATTR_HAS_SHADING))
 				hasSpriteShading.set(xmr.readBoolean(optionsElem, ATTR_HAS_SHADING));
 
+			if (xmr.hasAttribute(optionsElem, ATTR_SHADING_COLOR))
+				shadingBaseColor.set(xmr.readHex(optionsElem, ATTR_SHADING_COLOR));
+			if (xmr.hasAttribute(optionsElem, ATTR_SHADING_OFFSET))
+				shadingOffset.set(xmr.readInt(optionsElem, ATTR_SHADING_OFFSET));
+
 			String shadingName = null;
 			if (xmr.hasAttribute(optionsElem, ATTR_SHADING_NAME)) {
 				shadingName = xmr.getAttribute(optionsElem, ATTR_SHADING_NAME);
-				if (!Environment.isDX()) {
-					shadingProfileName.set(shadingName);
+				shadingProfileName.set(shadingName);
+				if (loadShadingProfile && !Environment.isDX()) {
 
 					EditableShadingProfile profile = ProjectDatabase.SpriteShading.find(shadingName);
 					if (profile == null) {
@@ -328,6 +338,8 @@ public class Features extends UpdateProvider implements XmlSerializable
 
 			if (xmr.hasAttribute(camElem, ATTR_CAM_LEADS))
 				camLeadsPlayer.set(xmr.readBoolean(camElem, ATTR_CAM_LEADS));
+			if (xmr.hasAttribute(camElem, ATTR_CAM_ENABLED_LAST))
+				camEnabledLast = xmr.readBoolean(camElem, ATTR_CAM_ENABLED_LAST);
 		}
 
 		Element fogElem = xmr.getUniqueTag(scriptElem, TAG_FOG);
@@ -354,6 +366,7 @@ public class Features extends UpdateProvider implements XmlSerializable
 		xmw.addInt(camTag, ATTR_CAM_FAR, camFarClip.get());
 		xmw.addIntArray(camTag, ATTR_CAM_BGCOL, bgColorR.get(), bgColorG.get(), bgColorB.get());
 		xmw.addBoolean(camTag, ATTR_CAM_LEADS, camLeadsPlayer.get());
+		xmw.addBoolean(camTag, ATTR_CAM_ENABLED_LAST, camEnabledLast);
 		xmw.printTag(camTag);
 
 		XmlTag fogTag = xmw.createTag(TAG_FOG, true);
@@ -366,6 +379,8 @@ public class Features extends UpdateProvider implements XmlSerializable
 		xmw.addAttribute(optionsTag, ATTR_LOCATION, locationName.get());
 
 		xmw.addBoolean(optionsTag, ATTR_HAS_SHADING, hasSpriteShading.get());
+		xmw.addHex(optionsTag, ATTR_SHADING_COLOR, shadingBaseColor.get());
+		xmw.addInt(optionsTag, ATTR_SHADING_OFFSET, shadingOffset.get());
 		String shadingName = shadingProfileName.get();
 		if (shadingName != null && !shadingName.isEmpty())
 			xmw.addAttribute(optionsTag, ATTR_SHADING_NAME, shadingName);

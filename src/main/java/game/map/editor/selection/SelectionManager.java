@@ -3,11 +3,14 @@ package game.map.editor.selection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.swing.SwingUtilities;
+
+import common.commands.AbstractCommand;
+import common.commands.CommandBatch;
 
 import game.map.BoundingBox;
 import game.map.Map;
@@ -21,8 +24,6 @@ import game.map.editor.commands.CloneObjects;
 import game.map.editor.commands.CloneTriangles;
 import game.map.editor.commands.DeleteObjects;
 import game.map.editor.commands.DeleteTriangles;
-import common.commands.CommandBatch;
-import common.commands.AbstractCommand;
 import game.map.editor.selection.PickRay.PickHit;
 import game.map.hit.Collider;
 import game.map.hit.Zone;
@@ -92,9 +93,6 @@ public class SelectionManager
 	// objects used to synchronize selected objects with their counterparts in GUI
 	// these track changes to the selection that occur between calls to syncGUI()
 	private EditorUpdateRecord<MapObject> editorObjectUpdates = new EditorUpdateRecord<>();
-	private GuiUpdateRecord<MapObject> objectTreeUpdates = new GuiUpdateRecord<>();
-	private GuiUpdateRecord<SelectablePoint> pointsUpdates = new GuiUpdateRecord<>();
-	private GuiUpdateRecord<DisplayCommand> displayListUpdates = new GuiUpdateRecord<>();
 
 	// require the MapObjectPanel to have these methods available
 	public static interface GUISelectionInterface
@@ -409,6 +407,141 @@ public class SelectionManager
 	public List<Vertex> getVertices()
 	{
 		return vertexWorkingSet;
+	}
+
+	public List<Triangle> getTrianglesForVertexOperation()
+	{
+		if (selectionMode != SelectionMode.VERTEX)
+			return getTrianglesFromSelection();
+
+		IdentityHashSet<Vertex> vertices = new IdentityHashSet<>();
+		IdentityHashSet<AbstractMesh> meshes = new IdentityHashSet<>();
+		for (Vertex v : vertexSelection.selectableList) {
+			vertices.add(v);
+			meshes.add(v.parentMesh);
+		}
+
+		List<Triangle> triangles = new ArrayList<>();
+		for (AbstractMesh mesh : meshes) {
+			for (Triangle t : mesh) {
+				for (Vertex v : t.vert) {
+					if (vertices.contains(v)) {
+						triangles.add(t);
+						break;
+					}
+				}
+			}
+		}
+		return triangles;
+	}
+
+	public AbstractCommand getVertexSelectionUpdate(List<Triangle> triangles, List<Vertex> oldVertices, List<Vertex> newVertices)
+	{
+		return new UpdateVertexSelection(triangles, oldVertices, newVertices);
+	}
+
+	private class UpdateVertexSelection extends AbstractCommand
+	{
+		private final List<Vertex> oldWorkingVertices = new ArrayList<>(vertexWorkingSet);
+		private final List<Vertex> oldSelectedVertices = new ArrayList<>(vertexSelection.selectableList);
+		private final List<UV> oldWorkingUVs = new ArrayList<>(uvWorkingSet);
+		private final List<UV> oldSelectedUVs = new ArrayList<>(uvSelection.selectableList);
+		private final List<Vertex> newWorkingVertices;
+		private final List<Vertex> newSelectedVertices;
+		private final List<UV> newWorkingUVs;
+		private final List<UV> newSelectedUVs;
+
+		private UpdateVertexSelection(List<Triangle> triangles, List<Vertex> oldVertices, List<Vertex> newVertices)
+		{
+			super("Update Vertex Selection");
+			IdentityHashMap<Vertex, List<Vertex>> replacements = new IdentityHashMap<>();
+			for (int i = 0; i < oldVertices.size(); i++)
+				replacements.computeIfAbsent(oldVertices.get(i), v -> new ArrayList<>()).add(newVertices.get(i));
+
+			IdentityHashMap<Triangle, Integer> triangleIndices = new IdentityHashMap<>();
+			IdentityHashSet<AbstractMesh> meshes = new IdentityHashSet<>();
+			for (int i = 0; i < triangles.size(); i++) {
+				Triangle t = triangles.get(i);
+				triangleIndices.put(t, i);
+				meshes.add(t.parentBatch.parentMesh);
+			}
+
+			// A vertex can remain in use outside the triangles being edited.
+			IdentityHashSet<Vertex> survivingVertices = new IdentityHashSet<>();
+			for (AbstractMesh mesh : meshes) {
+				for (Triangle t : mesh) {
+					Integer index = triangleIndices.get(t);
+					for (int j = 0; j < 3; j++)
+						survivingVertices.add(index == null ? t.vert[j] : newVertices.get(3 * index + j));
+				}
+			}
+			for (Vertex v : survivingVertices) {
+				List<Vertex> values = replacements.get(v);
+				if (values != null)
+					values.add(v);
+			}
+
+			IdentityHashMap<UV, List<UV>> uvReplacements = new IdentityHashMap<>();
+			for (Vertex v : replacements.keySet()) {
+				List<UV> values = uvReplacements.computeIfAbsent(v.uv, uv -> new ArrayList<>());
+				for (Vertex replacement : replacements.get(v))
+					values.add(replacement.uv);
+			}
+
+			newWorkingVertices = replaceSelectionReferences(oldWorkingVertices, replacements);
+			newSelectedVertices = replaceSelectionReferences(oldSelectedVertices, replacements);
+			newWorkingUVs = replaceSelectionReferences(oldWorkingUVs, uvReplacements);
+			newSelectedUVs = replaceSelectionReferences(oldSelectedUVs, uvReplacements);
+		}
+
+		@Override
+		public boolean modifiesData()
+		{
+			return false;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+			apply(newWorkingVertices, newSelectedVertices, newWorkingUVs, newSelectedUVs);
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+			apply(oldWorkingVertices, oldSelectedVertices, oldWorkingUVs, oldSelectedUVs);
+		}
+
+		private void apply(List<Vertex> workingVertices, List<Vertex> selectedVertices, List<UV> workingUVs, List<UV> selectedUVs)
+		{
+			vertexSelection.clear();
+			uvSelection.clear();
+			vertexWorkingSet = new ArrayList<>(workingVertices);
+			uvWorkingSet = new ArrayList<>(workingUVs);
+			vertexSelection.addAndSelect(selectedVertices);
+			uvSelection.addAndSelect(selectedUVs);
+		}
+	}
+
+	private static <T> List<T> replaceSelectionReferences(List<T> selection, IdentityHashMap<T, List<T>> replacements)
+	{
+		List<T> result = new ArrayList<>();
+		IdentityHashSet<T> added = new IdentityHashSet<>();
+		for (T selected : selection) {
+			List<T> values = replacements.get(selected);
+			if (values == null) {
+				if (added.add(selected))
+					result.add(selected);
+			}
+			else {
+				for (T value : values)
+					if (added.add(value))
+						result.add(value);
+			}
+		}
+		return result;
 	}
 
 	public void generateUVListFromSelectedModel()
@@ -1147,9 +1280,6 @@ public class SelectionManager
 
 	public void clearObjectSelection()
 	{
-		if (SwingUtilities.isEventDispatchThread())
-			throw new RuntimeException("Invalid state. Tried to clear object selection from EDT.");
-
 		editorObjectUpdates.clear(objectSelection.selectableList);
 		for (MapObject obj : objectSelection.selectableList) {
 			if (obj.hasMesh())
@@ -1161,27 +1291,18 @@ public class SelectionManager
 
 	public void selectObject(MapObject obj)
 	{
-		if (SwingUtilities.isEventDispatchThread())
-			throw new RuntimeException("Invalid state. Tried to select object from EDT.");
-
 		objectSelection.addAndSelect(obj);
 		editorObjectUpdates.select(obj);
 	}
 
 	public void deselectObject(MapObject obj)
 	{
-		if (SwingUtilities.isEventDispatchThread())
-			throw new RuntimeException("Invalid state. Tried to deselect object from EDT.");
-
 		objectSelection.removeAndDeselect(obj);
 		editorObjectUpdates.deselect(obj);
 	}
 
 	public void deleteObject(MapObject obj)
 	{
-		if (SwingUtilities.isEventDispatchThread())
-			throw new RuntimeException("Invalid state. Tried to delete object from EDT.");
-
 		objectSelection.removeAndDeselect(obj);
 		editorObjectUpdates.delete(obj);
 
@@ -1199,9 +1320,6 @@ public class SelectionManager
 
 	public void createObject(MapObject obj)
 	{
-		if (SwingUtilities.isEventDispatchThread())
-			throw new RuntimeException("Invalid state. Tried to create object from EDT.");
-
 		objectSelection.addAndSelect(obj);
 		editorObjectUpdates.create(obj);
 
@@ -1219,9 +1337,6 @@ public class SelectionManager
 
 	private void selectTriangle(Triangle t)
 	{
-		if (SwingUtilities.isEventDispatchThread())
-			throw new RuntimeException("Invalid state. Tried to select triangle from EDT.");
-
 		triangleSelection.addAndSelect(t);
 
 		//XXX these exist to make the GUI identify objects as we select triangles
@@ -1236,9 +1351,6 @@ public class SelectionManager
 
 	private void deselectTriangle(Triangle t, boolean canDeselectMesh)
 	{
-		if (SwingUtilities.isEventDispatchThread())
-			throw new RuntimeException("Invalid state. Tried to deselect triangle from EDT.");
-
 		triangleSelection.removeAndDeselect(t);
 
 		//XXX
@@ -1251,187 +1363,100 @@ public class SelectionManager
 		}
 	}
 
-	// STORY TIME
-	// In this method, updates from the Editor take precedence over changes from the GUI. Why is that?
-	// If we allow bidirectional updates in the same frame, conflicts may occur. Here is an example.
-	// Deleting a selected object will break undo/redo. We'll find something like this in the log:
-	//	> Exec: Create Object
-	//	> Undo: Create Object
-	//	> Exec: Modify Object Selection
-	//	> Can't redo anything.
-	// Basically, the map.remove(...) method is responsible. When a selected item is removed from the JTree,
-	// fireTreeNodesRemoved(...) is invoked, which fires a TreeSelectionEvent to the TreeSelectionListener in
-	// MapObjectPanel, which asynchronously notifies SelectionManager that a selection change has occurred via
-	// syncGUI(...). From there, a ModifySelection command is created and executed in the Editor thread.
-	// Meanwhile, deleteObject(...) is invoked on the SelectionManager, which uses syncGUI(...) to notify the
-	// JTree about the selection change at its earliest convenience via invokeLater(...).
-	// Hence two events, both dispatched from syncGUI(...). The solution is to pre-empt this conflict by only
-	// allowing ONE thread to update the other at a time. This has a small chance of creating a race condition
-	// if the CreateObject command is executed from the EDT, so don't do that!
-	// An alternative solution (aka uglier hack) is use a public flag in the MapObjectTreeModel that is set when
-	// fireTreeNodesRemoved(...) is invoked. MapObjectPanel can check this flag when it handles a tree selection
-	// event to determine whether or not it should notify SelectionManager.
-	// Tight coupling is bad.
-
-	/**
-	 * Handles all communication with the the GUI since the last time this method was invoked.
-	 */
+	/** Flush model changes on the EDT while holding the editor lock. */
 	public void syncGUI(GUISelectionInterface guiSelect)
 	{
-		if (pointsUpdates.updated) {
-			if (pointsUpdates.added.size() != 0 || pointsUpdates.removed.size() != 0) {
-				CommandBatch batch = new CommandBatch("Select Points");
+		assert SwingUtilities.isEventDispatchThread();
+		if (!editorObjectUpdates.updated)
+			return;
 
-				if (selectionMode != SelectionMode.POINT)
-					batch.addCommand(new SetSelectionMode(SelectionMode.POINT));
+		// Detach the record before notifying listeners, which may themselves update the model.
+		EditorUpdateRecord<MapObject> updates = editorObjectUpdates;
+		editorObjectUpdates = new EditorUpdateRecord<>();
+		guiSelect.setObjectsDeselected(updates.removed);
+		guiSelect.setObjectsSelected(updates.added);
+		guiSelect.setObjectsDeleted(updates.deleted);
+		guiSelect.setObjectsCreated(updates.created);
+		guiSelect.finishUpdate();
+	}
 
-				batch.addCommand(getModifyPoints(pointsUpdates.added, pointsUpdates.removed));
-				MapEditor.execute(batch);
-			}
-			pointsUpdates.reset();
-		}
+	/** A tree gesture becomes one synchronous, undoable selection change. */
+	public void selectObjectsFromGUI(List<MapObject> selected, List<MapObject> deselected, boolean additive)
+	{
+		editor.runThreadsafe(() -> {
+			if (editor.isLoading() || editor.isApplyingChanges())
+				return;
+			List<MapObject> added = new ArrayList<>(selected);
+			List<MapObject> removed = new ArrayList<>(additive ? deselected : objectSelection.selectableList);
+			removed.removeAll(selected);
+			added.removeAll(objectSelection.selectableList);
+			if (!added.isEmpty() || !removed.isEmpty())
+				MapEditor.execute(getModifyObjects(added, removed));
+		});
+	}
 
-		if (displayListUpdates.updated) {
-			List<Triangle> removedTriangles = new LinkedList<>();
-			List<Triangle> addedTriangles = new LinkedList<>();
+	public void selectPointsFromGUI(List<? extends SelectablePoint> selected, List<? extends SelectablePoint> deselected, boolean additive)
+	{
+		editor.runThreadsafe(() -> {
+			if (editor.isLoading() || editor.isApplyingChanges())
+				return;
+			List<SelectablePoint> added = new ArrayList<>(selected);
+			List<SelectablePoint> removed = new ArrayList<>(additive ? deselected : pointSelection.selectableList);
+			removed.removeAll(selected);
+			added.removeAll(pointSelection.selectableList);
+			if (added.isEmpty() && removed.isEmpty())
+				return;
+			CommandBatch batch = new CommandBatch("Select Points");
+			batch.setModifiesData(false);
+			if (selectionMode != SelectionMode.POINT)
+				batch.addCommand(new SetSelectionMode(SelectionMode.POINT));
+			batch.addCommand(getModifyPoints(added, removed));
+			MapEditor.execute(batch);
+		});
+	}
 
+	public void selectDisplayCommandsFromGUI(List<DisplayCommand> selected, List<DisplayCommand> deselected, boolean additive)
+	{
+		editor.runThreadsafe(() -> {
+			if (editor.isLoading() || editor.isApplyingChanges())
+				return;
+			List<DisplayCommand> added = new ArrayList<>();
+			for (DisplayCommand cmd : selected)
+				if (!selectedCommands.contains(cmd))
+					added.add(cmd);
+			List<DisplayCommand> removed = new ArrayList<>();
+			for (DisplayCommand cmd : additive ? deselected : selectedCommands)
+				if (!selected.contains(cmd))
+					removed.add(cmd);
+			if (added.isEmpty() && removed.isEmpty())
+				return;
+
+			List<Triangle> removedTriangles = new ArrayList<>();
+			List<Triangle> addedTriangles = new ArrayList<>();
 			AbstractMesh mesh = null;
-
-			for (DisplayCommand cmd : displayListUpdates.removed) {
+			for (DisplayCommand cmd : removed) {
 				if (cmd.getType() == CmdType.DrawTriangleBatch)
 					removedTriangles.addAll(((TriangleBatch) cmd).triangles);
 				mesh = cmd.parentMesh;
 			}
-
-			for (DisplayCommand cmd : displayListUpdates.added) {
+			for (DisplayCommand cmd : added) {
 				if (cmd.getType() == CmdType.DrawTriangleBatch)
 					addedTriangles.addAll(((TriangleBatch) cmd).triangles);
 				mesh = cmd.parentMesh;
 			}
-
-			if (mesh == null || !(mesh.parentObject instanceof Model))
+			if (mesh == null || !(mesh.parentObject instanceof Model model))
 				return;
 
 			CommandBatch batch = new CommandBatch("Select Display Commands");
-			batch.addCommand(new ModifyDisplayCommands((Model) mesh.parentObject, displayListUpdates.added, displayListUpdates.removed));
-
-			if (addedTriangles.size() != 0 || removedTriangles.size() != 0) {
+			batch.setModifiesData(false);
+			batch.addCommand(new ModifyDisplayCommands(model, added, removed));
+			if (!addedTriangles.isEmpty() || !removedTriangles.isEmpty()) {
 				if (selectionMode != SelectionMode.TRIANGLE)
 					batch.addCommand(new SetSelectionMode(SelectionMode.TRIANGLE));
-
 				batch.addCommand(getModifyTriangles(addedTriangles, removedTriangles, false));
 			}
-
 			MapEditor.execute(batch);
-
-			displayListUpdates.reset();
-		}
-
-		if (editorObjectUpdates.updated) {
-			// changes on the editor thread take precedence...
-			objectTreeUpdates.reset();
-
-			// ...but changes to the GUI need to be done on the EDT
-			SwingUtilities.invokeLater(() -> {
-				if (!editorObjectUpdates.removed.isEmpty())
-					guiSelect.setObjectsDeselected(editorObjectUpdates.removed);
-
-				if (!editorObjectUpdates.added.isEmpty())
-					guiSelect.setObjectsSelected(editorObjectUpdates.added);
-
-				if (!editorObjectUpdates.deleted.isEmpty())
-					guiSelect.setObjectsDeleted(editorObjectUpdates.deleted);
-
-				if (!editorObjectUpdates.created.isEmpty())
-					guiSelect.setObjectsCreated(editorObjectUpdates.created);
-
-				guiSelect.finishUpdate();
-				editorObjectUpdates.reset();
-			});
-		}
-		else if (objectTreeUpdates.updated) {
-			// for readibility
-			LinkedBlockingQueue<MapObject> added = objectTreeUpdates.added;
-			LinkedBlockingQueue<MapObject> removed = objectTreeUpdates.removed;
-
-			if (added.size() != 0 || removed.size() != 0) {
-				//	System.out.println("GUI updated. (+" + added.size() + ", -" + removed.size() + ")");
-				MapEditor.execute(getModifyObjects(added, removed));
-			}
-
-			objectTreeUpdates.reset();
-		}
-	}
-
-	/**
-	 * The GUI uses these methods to report changes in the command list selections.
-	 */
-
-	public void clearDisplayCommandsFromGUI()
-	{
-		displayListUpdates.deselect(selectedCommands);
-	}
-
-	public void selectDisplayCommandsFromGUI(Iterable<DisplayCommand> objs)
-	{
-		displayListUpdates.select(objs);
-	}
-
-	public void deselectDisplayCommandsFromGUI(Iterable<DisplayCommand> objs)
-	{
-		displayListUpdates.deselect(objs);
-	}
-
-	/**
-	 * The GUI uses these methods to report changes in the command list selections.
-	 */
-
-	public void clearPointsFromGUI()
-	{
-		pointsUpdates.deselect(pointSelection.selectableList);
-	}
-
-	public void selectPointsFromGUI(Iterable<? extends SelectablePoint> objs)
-	{
-		pointsUpdates.select(objs);
-	}
-
-	public void deselectPointsFromGUI(Iterable<? extends SelectablePoint> objs)
-	{
-		pointsUpdates.deselect(objs);
-	}
-
-	/**
-	 * The GUI uses these methods to report changes in the object tree selections.
-	 */
-
-	public void clearObjectsFromGUI()
-	{
-		objectTreeUpdates.deselect(objectSelection.selectableList);
-	}
-
-	public void selectObjectsFromGUI(Iterable<MapObject> objs)
-	{
-		objectTreeUpdates.select(objs);
-	}
-
-	public void deselectObjectsFromGUI(Iterable<MapObject> objs)
-	{
-		objectTreeUpdates.deselect(objs);
-	}
-
-	/**
-	 * The GUI uses these methods to report changes in the object tree selections.
-	 */
-
-	public void selectLightsFromGUI(MapObject obj)
-	{
-		editorObjectUpdates.select(obj);
-	}
-
-	public void deselectLightsFromGUI(Iterable<MapObject> objs)
-	{
-		editorObjectUpdates.clear(objs);
+		});
 	}
 
 	/**

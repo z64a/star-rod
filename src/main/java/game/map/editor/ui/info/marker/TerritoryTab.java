@@ -65,7 +65,7 @@ public class TerritoryTab extends JPanel
 				return;
 
 			MoveType type = (MoveType) moveTypeBox.getSelectedItem();
-			MapEditor.execute(parent.getData().npcComponent.moveType.mutator(type));
+			MapEditor.execute(() -> parent.getData().npcComponent.moveType.mutator(type));
 		});
 		SwingUtils.addBorderPadding(moveTypeBox);
 
@@ -80,7 +80,7 @@ public class TerritoryTab extends JPanel
 		overrideField = new FloatTextField((speed) -> MapEditor.execute(
 			parent.getData().npcComponent.movementSpeedOverride.mutator(speed)));
 
-		detectCenterPanel = new IntVectorPanel(true, 3, (i, v) -> MapEditor.execute(new SetDetectPos(parent.getData(), i, v)));
+		detectCenterPanel = new IntVectorPanel(true, 3, (i, v) -> MapEditor.execute(() -> new SetDetectPos(parent.getData(), i, v)));
 
 		detectTypeBox = new JComboBox<>(VolumeType.values());
 		detectTypeBox.addActionListener(e -> {
@@ -88,16 +88,16 @@ public class TerritoryTab extends JPanel
 				return;
 
 			boolean useCircle = (VolumeType) detectTypeBox.getSelectedItem() == VolumeType.Circle;
-			MapEditor.execute(parent.getData().npcComponent.useDetectCircle.mutator(useCircle));
+			MapEditor.execute(() -> parent.getData().npcComponent.useDetectCircle.mutator(useCircle));
 		});
 
 		detectSpinnerX = new JSpinner(new SpinnerNumberModel(256, 0, 4096, 1));
 		detectSpinnerX.addChangeListener((e) -> {
 			int v = (int) detectSpinnerX.getValue();
 			if (parent.getData().npcComponent.useDetectCircle.get())
-				MapEditor.execute(parent.getData().npcComponent.detectRadius.mutator(v));
+				MapEditor.execute(() -> parent.getData().npcComponent.detectRadius.mutator(v));
 			else
-				MapEditor.execute(parent.getData().npcComponent.detectSizeX.mutator(v));
+				MapEditor.execute(() -> parent.getData().npcComponent.detectSizeX.mutator(v));
 		});
 		SwingUtils.addVerticalBorderPadding(detectSpinnerX);
 
@@ -105,11 +105,11 @@ public class TerritoryTab extends JPanel
 		detectSpinnerZ.addChangeListener((e) -> {
 			int v = (int) detectSpinnerZ.getValue();
 			if (!parent.getData().npcComponent.useDetectCircle.get())
-				MapEditor.execute(parent.getData().npcComponent.detectSizeZ.mutator(v));
+				MapEditor.execute(() -> parent.getData().npcComponent.detectSizeZ.mutator(v));
 		});
 		SwingUtils.addVerticalBorderPadding(detectSpinnerZ);
 
-		wanderCenterPanel = new IntVectorPanel(true, 3, (i, v) -> MapEditor.execute(new SetWanderPos(parent.getData(), i, v)));
+		wanderCenterPanel = new IntVectorPanel(true, 3, (i, v) -> MapEditor.execute(() -> new SetWanderPos(parent.getData(), i, v)));
 
 		wanderTypeBox = new JComboBox<>(VolumeType.values());
 		wanderTypeBox.addActionListener(e -> {
@@ -117,16 +117,16 @@ public class TerritoryTab extends JPanel
 				return;
 
 			boolean useCircle = (VolumeType) wanderTypeBox.getSelectedItem() == VolumeType.Circle;
-			MapEditor.execute(parent.getData().npcComponent.useWanderCircle.mutator(useCircle));
+			MapEditor.execute(() -> parent.getData().npcComponent.useWanderCircle.mutator(useCircle));
 		});
 
 		wanderSpinnerX = new JSpinner(new SpinnerNumberModel(256, 0, 4096, 1));
 		wanderSpinnerX.addChangeListener((e) -> {
 			int v = (int) wanderSpinnerX.getValue();
 			if (parent.getData().npcComponent.useWanderCircle.get())
-				MapEditor.execute(parent.getData().npcComponent.wanderRadius.mutator(v));
+				MapEditor.execute(() -> parent.getData().npcComponent.wanderRadius.mutator(v));
 			else
-				MapEditor.execute(parent.getData().npcComponent.wanderSizeX.mutator(v));
+				MapEditor.execute(() -> parent.getData().npcComponent.wanderSizeX.mutator(v));
 		});
 		SwingUtils.addVerticalBorderPadding(wanderSpinnerX);
 
@@ -134,13 +134,13 @@ public class TerritoryTab extends JPanel
 		wanderSpinnerZ.addChangeListener((e) -> {
 			int v = (int) wanderSpinnerZ.getValue();
 			if (!parent.getData().npcComponent.useWanderCircle.get())
-				MapEditor.execute(parent.getData().npcComponent.wanderSizeZ.mutator(v));
+				MapEditor.execute(() -> parent.getData().npcComponent.wanderSizeZ.mutator(v));
 		});
 		SwingUtils.addVerticalBorderPadding(wanderSpinnerZ);
 
 		JButton addPointButton = new JButton("Add Point");
 		addPointButton.addActionListener((e) -> {
-			MapEditor.execute(new AddPathPoint(parent.getData().npcComponent.patrolPath));
+			MapEditor.execute(() -> new AddPathPoint(parent.getData().npcComponent.patrolPath));
 		});
 		SwingUtils.addBorderPadding(addPointButton);
 

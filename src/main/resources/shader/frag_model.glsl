@@ -51,21 +51,21 @@ uniform vec2 fogDist = vec2(950, 1000);
 uniform vec4 fogColor = vec4(0.04f, 0.04f, 0.04f, 1.0f);
 
 uniform bool useLOD = false;
-uniform float lodBias = 0.0f; //XXX unused
+uniform int maxLOD = 0;
 
 // retrieves a texel from the tile, using different methods depending on its format
-vec4 getTexel(in sampler2D img, in sampler1D pal, in int fmt, in vec2 texCoord, float lodLevel)
+vec4 getTexel(in sampler2D img, in sampler1D pal, in int fmt, in vec2 texCoord, int lodLevel)
 {
 	vec4 texel;
 
 	if(!useLOD)
-		lodLevel = 0.0;
+		lodLevel = 0;
 
 	switch(fmt)
 	{
 	case 4: // I
 	{
-		vec4 sample = textureLod(img, texCoord, lodLevel);
+		vec4 sample = textureLod(img, texCoord, float(lodLevel));
 		if(translucent)
 		{
 			texel.r = 1.0;
@@ -83,7 +83,7 @@ vec4 getTexel(in sampler2D img, in sampler1D pal, in int fmt, in vec2 texCoord, 
 	} break;
 	case 3: // IA
 	{
-		vec4 sample = textureLod(img, texCoord, lodLevel);
+		vec4 sample = textureLod(img, texCoord, float(lodLevel));
 		texel.r = sample.r;
 		texel.g = sample.r;
 		texel.b = sample.r;
@@ -91,27 +91,13 @@ vec4 getTexel(in sampler2D img, in sampler1D pal, in int fmt, in vec2 texCoord, 
 	} break;
 	case 2: // CI -- assume 256-color palette
 	{
-		if(useLOD)
-		{
-			// have to sample the two nearest lod levels and mix them
-			// automatic mipmaps cant handle CI properly
-			lodLevel = max(0.0, lodLevel);
-			vec4 indexA = textureLod(img, texCoord, floor(lodLevel));
-			vec4 indexB = textureLod(img, texCoord, ceil(lodLevel));
-			vec4 texelA = texture(pal, indexA.x);
-			vec4 texelB = texture(pal, indexB.x);
-			texel = mix(texelA, texelB, fract(lodLevel));
-		}
-		else
-		{
-			//lodLevel = max(0.0, lodLevel);
-			vec4 index = textureLod(img, texCoord, 0.0);
-			texel = texture(pal, index.x);
-		}
+		// Palette lookup must happen before filtering or blending mip levels.
+		vec4 index = textureLod(img, texCoord, float(lodLevel));
+		texel = texture(pal, index.x);
 	} break;
 	case 0: // RGBA
 	{
-		texel = textureLod(img, texCoord, lodLevel);
+		texel = textureLod(img, texCoord, float(lodLevel));
 	} break;
 	default: // unsupported or invalid
 		texel = vec4(1.0f, 0.0f, 1.0f, 1.0f);
@@ -127,9 +113,9 @@ vec4 getTexel(in sampler2D img, in sampler1D pal, in int fmt, in vec2 texCoord, 
 
 #define TEX_OFFSET(off) getTexel(img, pal, fmt, texCoord - (off)/texSize, lodLevel)
 
-vec4 filter3point(in sampler2D img, in sampler1D pal, in int fmt, in vec2 texCoord, float lodLevel)
+vec4 filter3point(in sampler2D img, in sampler1D pal, in int fmt, in vec2 texCoord, int lodLevel)
 {
-	vec2 texSize = vec2(textureSize(img,0));
+	vec2 texSize = vec2(textureSize(img, lodLevel));
 	vec2 offset = fract(texCoord*texSize - vec2(0.5));
 	offset -= step(1.0, offset.x + offset.y);
 	vec4 c0 = TEX_OFFSET(offset);
@@ -138,20 +124,49 @@ vec4 filter3point(in sampler2D img, in sampler1D pal, in int fmt, in vec2 texCoo
 	return c0 + abs(offset.x)*(c1-c0) + abs(offset.y)*(c2-c0);
 }
 
-vec4 sampleTexture(in sampler2D img, in sampler1D pal, in int fmt, in vec2 texCoord)
+vec4 sampleTextureLevel(in sampler2D img, in sampler1D pal, in int fmt, in vec2 texCoord, int lodLevel)
 {
-	// see n64 manual section 13.7 'Texture Mapping -- Tile Selection'
-	vec2 t_Dx = abs(dFdx(texCoord)) * g_viewport.zw;
-	float t_Lod = max(t_Dx.x, t_Dx.y);
-	float t_LodTile = floor(log2(floor(t_Lod)));
-	float t_LodFrac = fract(t_Lod/pow(2.0, t_LodTile));
-	float t_LodLevel = (t_LodTile + t_LodFrac);
-//	t_LodLevel -= 0.5; //XXX using 0.5 here gives correct LOD for grass in mac_00
+	vec2 baseSize = vec2(textureSize(img, 0));
+	vec2 levelSize = vec2(textureSize(img, lodLevel));
+	vec2 levelScale = baseSize / levelSize;
+	vec2 baseTexelCoord = texCoord * baseSize - vec2(0.5);
+	vec2 levelTexCoord = (baseTexelCoord / levelScale + vec2(0.5)) / levelSize;
 
 	if(useFiltering)
-		return filter3point(img, pal, fmt, texCoord, t_LodLevel);
+		return filter3point(img, pal, fmt, levelTexCoord, lodLevel);
 	else
-		return getTexel(img, pal, fmt, texCoord, t_LodLevel);
+		return getTexel(img, pal, fmt, levelTexCoord, lodLevel);
+}
+
+vec4 sampleTexture(in sampler2D img, in sampler1D pal, in int fmt, in vec2 texCoord)
+{
+	if(!useLOD || maxLOD <= 0)
+		return sampleTextureLevel(img, pal, fmt, texCoord, 0);
+
+	// See N64 manual section 13.7, "Texture Mapping -- Tile Selection".
+	// LOD is the largest perspective-corrected texture-coordinate change between
+	// adjacent pixels, expressed in texels rather than normalized texture units.
+	vec2 texelCoord = texCoord * vec2(textureSize(img, 0));
+	vec2 maxDerivative = max(abs(dFdx(texelCoord)), abs(dFdy(texelCoord)));
+	// Halving the footprint delays mip selection by one level to match the N64.
+	float lod = 0.5 * max(maxDerivative.x, maxDerivative.y);
+
+	float lodTile = 0.0;
+	float lodFrac = 0.0;
+	if(lod > 1.0)
+	{
+		lodTile = floor(log2(lod));
+		lodFrac = clamp(lod / exp2(lodTile) - 1.0, 0.0, 1.0);
+	}
+
+	int tile0 = clamp(int(lodTile), 0, maxLOD);
+	int tile1 = clamp(tile0 + 1, 0, maxLOD);
+	vec4 color0 = sampleTextureLevel(img, pal, fmt, texCoord, tile0);
+	if(tile0 == tile1)
+		return color0;
+
+	vec4 color1 = sampleTextureLevel(img, pal, fmt, texCoord, tile1);
+	return mix(color0, color1, lodFrac);
 }
 
 float calcScaleForShift(int shift)

@@ -23,11 +23,13 @@ import util.ui.FilteredListPanel;
 
 public class AssetListTab extends JPanel
 {
+	private final MessageEditor editor;
 	private final FilteredListPanel<MessageAsset> filteredList;
 	private final ArrayList<MessageAsset> assets;
 
 	public AssetListTab(MessageEditor editor, MessageListTab listPanel)
 	{
+		this.editor = editor;
 		assets = new ArrayList<>();
 
 		filteredList = new FilteredListPanel<>(new AssetCellRenderer()) {
@@ -63,26 +65,24 @@ public class AssetListTab extends JPanel
 
 	public void saveChanges()
 	{
-		/*
-		Stack<StringTreeNode> nodes = new Stack<>();
-		nodes.push(startNode);
-		while(!nodes.isEmpty())
-		{
-			StringTreeNode node = nodes.pop();
-			FileMetadata nodeData = node.getUserObject();
-		
-			if(nodeData.getType() == FileType.Resource && nodeData.modified)
-			{
-				StringResource res = nodeData.getResource();
-				if(!editor.resourcesToSave.contains(res))
-					editor.resourcesToSave.add(res);
-			}
-		
-			for(int i = 0; i < node.getChildCount(); i++)
-				nodes.push(node.getChildAt(i));
+		editor.saveAllMessages();
+	}
+
+	void queueModifiedAssets()
+	{
+		for (MessageAsset asset : assets) {
+			if (asset.hasModified)
+				editor.queueSave(asset);
 		}
-		*/
-		//TODO
+	}
+
+	boolean hasModifiedAssets()
+	{
+		for (MessageAsset asset : assets) {
+			if (asset.hasModified)
+				return true;
+		}
+		return false;
 	}
 
 	public void fullReload()

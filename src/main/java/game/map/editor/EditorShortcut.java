@@ -2,12 +2,14 @@ package game.map.editor;
 
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
-import java.util.HashMap;
 
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
 import javax.swing.JMenuItem;
 import javax.swing.KeyStroke;
+
+import common.KeyBinding;
+import common.KeyInput;
 
 /**
  * Key combinations that execute some action when pressed in the editor window
@@ -15,16 +17,14 @@ import javax.swing.KeyStroke;
  * JMenuItem, which the Editor can use to sync boolean fields with the GUI. This
  * also causes the keyboard shortcut to show up in the JMenu.<br>
  * <br>
- * When adding a new shortcut, be sure to add a corresponding entry to {@link ShortcutListPanel},
- * add a handler in the Editor class, and (optionally) bind a JMenuItem.
+ * Bindings are configured per editor; these enum values retain the default keys.
  */
-// NOTE: when adding a new shortcut, be sure to add an entry for it in
-public enum EditorShortcut
+public enum EditorShortcut implements KeyInput
 {
 	// @formatter:off
-	// UNDO/REDO key listening are handled by a KeyEventDispatcher in SwingGUI
-	UNDO				(),
-	REDO				(),
+	// Undo/redo also work in editor panels through the editor key dispatcher.
+	UNDO				(Modifier.CTRL, KeyEvent.VK_Z),
+	REDO				(Modifier.CTRL, KeyEvent.VK_Y),
 
 	SELECT_ALL			(Modifier.CTRL, KeyEvent.VK_A),
 	FIND_OBJECT			(Modifier.CTRL, KeyEvent.VK_F),
@@ -41,7 +41,19 @@ public enum EditorShortcut
 
 	PLAY_IN_EDITOR_TOGGLE	(KeyEvent.VK_P),
 	PLAY_IN_EDITOR_JUMP		(KeyEvent.VK_J),
+	PLAY_IN_EDITOR_SPIN		(KeyEvent.VK_R),
 	PLAY_IN_EDITOR_HOVER	(KeyEvent.VK_K),
+	PLAY_IN_EDITOR_RUN		(KeyEvent.VK_SHIFT),
+
+	MOVE_FORWARD		(KeyEvent.VK_W),
+	MOVE_BACKWARD		(KeyEvent.VK_S),
+	MOVE_LEFT			(KeyEvent.VK_A),
+	MOVE_RIGHT			(KeyEvent.VK_D),
+
+	DRAW_CONVEX			(KeyEvent.VK_COMMA),
+	DRAW_CONCAVE		(KeyEvent.VK_PERIOD),
+	DRAW_WALLS			(KeyEvent.VK_SLASH),
+	CUT_GEOMETRY		(KeyEvent.VK_BACK_QUOTE),
 	PIE_IGNORE_HIDDEN_COL	(),
 	PIE_IGNORE_HIDDEN_ZONE	(),
 	PIE_SHOW_ACTIVE_CAMERA	(),
@@ -137,7 +149,7 @@ public enum EditorShortcut
 	}
 
 	private final Modifier keyMod;
-	public final int key;
+	private final int key;
 
 	// toggle shortcuts can be bound to checkboxes
 	private JCheckBoxMenuItem checkbox = null;
@@ -163,37 +175,38 @@ public enum EditorShortcut
 		this.key = keyCode;
 	}
 
-	private KeyStroke getKeyStoke()
+	@Override
+	public KeyBinding getDefaultBinding()
 	{
-		// get the swing key stroke for this shortcut
-		int awtMask = 0;
-		switch (keyMod) {
-			case NONE:
-				awtMask = 0;
-				break;
-			case CTRL:
-				awtMask = InputEvent.CTRL_DOWN_MASK;
-				break;
-			case SHFT:
-				awtMask = InputEvent.SHIFT_DOWN_MASK;
-				break;
-		}
+		int modifiers = switch (keyMod) {
+			case CTRL -> InputEvent.CTRL_DOWN_MASK;
+			case SHFT -> InputEvent.SHIFT_DOWN_MASK;
+			default -> 0;
+		};
+		return new KeyBinding(key, modifiers);
+	}
 
-		return KeyStroke.getKeyStroke(key, awtMask);
+	@Override
+	public boolean allowsModifierKey()
+	{
+		return this == PLAY_IN_EDITOR_RUN;
 	}
 
 	public void bindMenuItem(MapEditor editor, JMenuItem item)
 	{
-		if (key != NO_KEY) {
-			// set the accelerator, but unbind the input. we only want the shortcut to appear.
-			KeyStroke awtKeyStroke = getKeyStoke();
-			item.setAccelerator(awtKeyStroke);
-			item.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(awtKeyStroke, "none");
-		}
-
-		item.addActionListener((e) -> {
-			editor.enqueueKeyEvent(this);
-		});
+		Runnable updateAccelerator = () -> {
+			KeyStroke oldStroke = item.getAccelerator();
+			if (oldStroke != null)
+				item.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).remove(oldStroke);
+			KeyStroke stroke = editor.keyConfig.getBinding(this).toKeyStroke();
+			item.setAccelerator(stroke);
+			// Display the shortcut; the canvas and global dispatcher handle key events.
+			if (stroke != null)
+				item.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(stroke, "none");
+		};
+		updateAccelerator.run();
+		editor.keyConfig.addListener(updateAccelerator);
+		item.addActionListener(e -> editor.executeShortcut(this));
 	}
 
 	public void bindMenuCheckbox(MapEditor editor, JCheckBoxMenuItem checkbox)
@@ -205,13 +218,13 @@ public enum EditorShortcut
 	public void setCheckBoxText(String text)
 	{
 		assert (checkbox != null);
-		checkbox.setText(text);
+		MapEditor.instance().runInEDT(() -> checkbox.setText(text));
 	}
 
 	public void setCheckbox(boolean newValue)
 	{
 		assert (checkbox != null);
-		checkbox.setSelected(newValue);
+		MapEditor.instance().runInEDT(() -> checkbox.setSelected(newValue));
 	}
 
 	public JCheckBoxMenuItem getCheckBox()
@@ -219,45 +232,168 @@ public enum EditorShortcut
 		return checkbox;
 	}
 
-	private static final HashMap<Integer, EditorShortcut> inputKeyMap;
-	private static final HashMap<Integer, EditorShortcut> inputCtrlKeyMap;
-	private static final HashMap<Integer, EditorShortcut> inputShiftKeyMap;
-
-	static {
-		inputKeyMap = new HashMap<>();
-		inputCtrlKeyMap = new HashMap<>();
-		inputShiftKeyMap = new HashMap<>();
-
-		for (EditorShortcut shortcut : EditorShortcut.values()) {
-			if (shortcut.key == NO_KEY)
-				continue;
-
-			switch (shortcut.keyMod) {
-				case NONE:
-					inputKeyMap.put(shortcut.key, shortcut);
-					break;
-				case CTRL:
-					inputCtrlKeyMap.put(shortcut.key, shortcut);
-					break;
-				case SHFT:
-					inputShiftKeyMap.put(shortcut.key, shortcut);
-					break;
-			}
+	@Override
+	public String getDisplayName()
+	{
+		switch (this) {
+			case OPEN_TRANSFORM_DIALOG:
+				return "Open Transform Menu";
+			case TOGGLE_TWO_SIDED:
+				return "Toggle Double Sided";
+			case PLAY_IN_EDITOR_TOGGLE:
+				return "Start / Stop Play in Editor";
+			case PLAY_IN_EDITOR_JUMP:
+				return "Play in Editor Jump";
+			case PLAY_IN_EDITOR_SPIN:
+				return "Play in Editor Spin";
+			case PLAY_IN_EDITOR_HOVER:
+				return "Play in Editor Hover";
+			case SELECT_VERTICIES:
+				return "Select Vertices";
+			case OPEN_MODEL_TAB:
+				return "Open Models Tab";
+			case OPEN_COLLIDER_TAB:
+				return "Open Colliders Tab";
+			case OPEN_ZONE_TAB:
+				return "Open Zones Tab";
+			case OPEN_MARKER_TAB:
+				return "Open Markers Tab";
+			case INCREASE_GRID_POWER:
+				return "Increase Grid Spacing";
+			case DECREASE_GRID_POWER:
+				return "Decrease Grid Spacing";
+			case VERTEX_SNAP_LIMIT:
+				return "Vertex Snap to All";
+			case SNAP_SCALE_GRID:
+				return "Toggle Scale Snap Mode";
+			case ROUND_VERTICIES:
+				return "Nudge to Grid";
+			case SHOW_ONLY_MODELS:
+				return "Show Only Models";
+			case SHOW_ONLY_COLLIDERS:
+				return "Show Only Colliders";
+			case SHOW_ONLY_ZONES:
+				return "Show Only Zones";
+			case SHOW_ONLY_MARKERS:
+				return "Show Only Markers";
+			case USE_GEOMETRY_FLAGS:
+				return "Toggle Geometry Flags";
+			case NUDGE_OUT:
+				return "Nudge Out";
+			case NUDGE_IN:
+				return "Nudge In";
+			case TOGGLE_QUADVIEW:
+				return "Toggle Four Views";
+			case SWITCH:
+				return "Quit to Menu";
+			case DRAW_CONVEX:
+				return "Draw Convex Polygon";
+			case DRAW_CONCAVE:
+				return "Draw Concave Polygon";
+			case CUT_GEOMETRY:
+				return "Cut Geometry";
+			default:
+				return KeyInput.super.getDisplayName();
 		}
 	}
 
-	public static EditorShortcut get(int keycode)
+	@Override
+	public String getCategory()
 	{
-		return inputKeyMap.get(keycode);
-	}
+		switch (this) {
+			case UNDO:
+			case REDO:
+			case SAVE:
+			case SWITCH:
+			case QUIT:
+				return "General";
 
-	public static EditorShortcut getCtrl(int keycode)
-	{
-		return inputCtrlKeyMap.get(keycode);
-	}
+			case SELECT_OBJECTS:
+			case SELECT_TRIANGLES:
+			case SELECT_VERTICIES:
+			case SELECT_POINTS:
+			case OPEN_MODEL_TAB:
+			case OPEN_COLLIDER_TAB:
+			case OPEN_ZONE_TAB:
+			case OPEN_MARKER_TAB:
+			case TOGGLE_UV_EDIT:
+			case TOGGLE_INFO_PANEL:
+				return "Editing Modes";
 
-	public static EditorShortcut getShift(int keycode)
-	{
-		return inputShiftKeyMap.get(keycode);
+			case MOVE_FORWARD:
+			case MOVE_BACKWARD:
+			case MOVE_LEFT:
+			case MOVE_RIGHT:
+			case CENTER_VIEW:
+				return "Navigation";
+
+			case SELECT_ALL:
+			case FIND_OBJECT:
+			case COPY_OBJECTS:
+			case PASTE_OBJECTS:
+			case DELETE_SELECTED:
+			case HIDE_SELECTED:
+				return "Selection";
+
+			case OPEN_TRANSFORM_DIALOG:
+			case ROUND_VERTICIES:
+			case FLIP_SELECTED_X:
+			case FLIP_SELECTED_Y:
+			case FLIP_SELECTED_Z:
+			case FLIP_NORMALS:
+			case TOGGLE_TWO_SIDED:
+			case NUDGE_UP:
+			case NUDGE_DOWN:
+			case NUDGE_LEFT:
+			case NUDGE_RIGHT:
+			case NUDGE_OUT:
+			case NUDGE_IN:
+				return "Transform";
+
+			case DRAW_CONVEX:
+			case DRAW_CONCAVE:
+			case DRAW_WALLS:
+			case CUT_GEOMETRY:
+				return "Drawing";
+
+			case PLAY_IN_EDITOR_TOGGLE:
+			case PLAY_IN_EDITOR_JUMP:
+			case PLAY_IN_EDITOR_SPIN:
+			case PLAY_IN_EDITOR_HOVER:
+			case PLAY_IN_EDITOR_RUN:
+				return "Play in Editor";
+
+			case TOGGLE_GRID:
+			case TOGGLE_GRID_TYPE:
+			case INCREASE_GRID_POWER:
+			case DECREASE_GRID_POWER:
+			case VERTEX_SNAP:
+			case VERTEX_SNAP_LIMIT:
+			case SNAP_TRANSLATION:
+			case SNAP_ROTATION:
+			case SNAP_SCALE:
+			case SNAP_SCALE_GRID:
+				return "Grid and Snap";
+
+			case SHOW_MODELS:
+			case SHOW_COLLIDERS:
+			case SHOW_ZONES:
+			case SHOW_MARKERS:
+			case SHOW_ONLY_MODELS:
+			case SHOW_ONLY_COLLIDERS:
+			case SHOW_ONLY_ZONES:
+			case SHOW_ONLY_MARKERS:
+			case SHOW_NORMALS:
+			case SHOW_GIZMO:
+			case SHOW_AABB:
+			case TOGGLE_QUADVIEW:
+			case TOGGLE_WIREFRAME:
+			case TOGGLE_EDGES:
+			case USE_GEOMETRY_FLAGS:
+				return "Visibility";
+
+			default:
+				return "Other";
+		}
 	}
 }

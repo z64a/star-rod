@@ -36,11 +36,12 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.WindowConstants;
 
+import common.BaseEditor;
+
 import app.input.InvalidInputException;
 import assets.AssetHandle;
 import assets.AssetManager;
 import assets.ExpectedAsset;
-import common.BaseEditor;
 import game.audio.AudioTasks;
 import game.audio.booth.AudioBooth;
 import game.globals.editor.GlobalsEditor;
@@ -188,7 +189,7 @@ public class StarRodMain extends StarRodFrame
 		buttons.add(imageEditorButton);
 
 		JButton audioBoothButton = new JButton("Audio Booth");
-		SwingUtils.addBorderPadding(audioBoothButton);
+		trySetIcon(audioBoothButton, ExpectedAsset.ICON_AUDIO_BOOTH);
 		SwingUtils.setFontSize(audioBoothButton, 12);
 		audioBoothButton.addActionListener((e) -> {
 			action_openAudioBooth();
@@ -202,17 +203,6 @@ public class StarRodMain extends StarRodFrame
 			action_openThemesMenu();
 		});
 		buttons.add(themesMenuButton);
-
-		// not ready
-		/*
-		JButton captureThumbnailsButton = new JButton("Capture Thumbnails");
-		trySetIcon(captureThumbnailsButton, ExpectedAsset.ICON_THEMES);
-		SwingUtils.setFontSize(captureThumbnailsButton, 12);
-		captureThumbnailsButton.addActionListener((e) -> {
-			action_captureThumbnails();
-		});
-		buttons.add(captureThumbnailsButton);
-		*/
 
 		JButton openConfigDirButton = new JButton("Open Config Dir");
 		trySetIcon(openConfigDirButton, ExpectedAsset.ICON_SILVER);
@@ -302,7 +292,7 @@ public class StarRodMain extends StarRodFrame
 		add(imageEditorButton, "grow");
 
 		add(themesMenuButton, "grow");
-		add(new JLabel(""), "grow");
+		add(audioBoothButton, "grow");
 
 		add(openConfigDirButton, "grow");
 		add(openProjectDirButton, "grow");
@@ -408,7 +398,14 @@ public class StarRodMain extends StarRodFrame
 	{
 		new EditorWorker(() -> {
 			CountDownLatch editorClosedSignal = new CountDownLatch(1);
-			new AudioBooth(editorClosedSignal);
+			LoadingBar.show("Please Wait");
+			try {
+				Logger.log("Loading Audio Booth...");
+				new AudioBooth(editorClosedSignal);
+			}
+			finally {
+				LoadingBar.dismiss();
+			}
 			editorClosedSignal.await();
 		});
 	}

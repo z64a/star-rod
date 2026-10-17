@@ -1,0 +1,20 @@
+Splash photography
+==================
+
+These photographs are used under the Pexels License, not Star Rod's code license.
+License: https://www.pexels.com/legal-pages/license/
+Terms: https://www.pexels.com/terms-of-service/
+Retrieved: 2026-10-17
+
+Pexels permits free use and modification, including use in apps. Its restrictions
+include resale of unaltered images, redistribution on stock/wallpaper platforms,
+implied endorsement, offensive use of identifiable people, and use as trademarks.
+See the linked license and terms for the complete conditions.
+
+catalog.tsv records the photographer and original page for every bundled photo.
+The photographers do not endorse Star Rod. The photos are decorative splash
+backgrounds; they are not the application's logo or trademark.
+
+JPEG previews are bounded to 800 pixels per side and recompressed without metadata
+to at most 80 KiB each. Star Rod crops, grades, composites and overlays type at runtime.
+No images are downloaded by Star Rod at startup.

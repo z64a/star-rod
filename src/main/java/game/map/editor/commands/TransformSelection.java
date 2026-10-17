@@ -3,6 +3,7 @@ package game.map.editor.commands;
 import java.util.LinkedList;
 
 import common.commands.AbstractCommand;
+import game.map.MapObject;
 import game.map.ReversibleTransform;
 import game.map.editor.MapEditor;
 import game.map.editor.selection.Selectable;
@@ -13,6 +14,7 @@ public class TransformSelection<T extends Selectable> extends AbstractCommand
 {
 	private final LinkedList<ReversibleTransform> transformerList;
 	private final Selection<T> selection;
+	private final boolean modifiesData;
 
 	public TransformSelection(Selection<T> selection, TransformMatrix m)
 	{
@@ -20,7 +22,11 @@ public class TransformSelection<T extends Selectable> extends AbstractCommand
 		this.selection = selection;
 
 		transformerList = new LinkedList<>();
+		boolean modifiesData = false;
 		for (T item : selection.selectableList) {
+			if (!(item instanceof MapObject obj) || !obj.editorOnly())
+				modifiesData = true;
+
 			if (!item.transforms())
 				continue;
 
@@ -31,6 +37,13 @@ public class TransformSelection<T extends Selectable> extends AbstractCommand
 
 			item.endTransformation();
 		}
+		this.modifiesData = modifiesData;
+	}
+
+	@Override
+	public boolean modifiesData()
+	{
+		return modifiesData;
 	}
 
 	@Override

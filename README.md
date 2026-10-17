@@ -11,6 +11,8 @@ Star Rod supports Windows, Linux, and macOS.
 
 **[Download Star Rod][download]**
 
+Release archives include a platform-specific Java runtime. Extract the complete archive, then run `StarRod.bat` on Windows or `StarRod` on Linux and macOS; no separate Java installation is required.
+
 To get started with modding Paper Mario, see [docs.starhaven.dev](https://docs.starhaven.dev/tools/decomp/setup.html).
 
 [discord]: https://discord.gg/star-haven
@@ -36,4 +38,4 @@ https://github.com/z64a/star-rod/blob/110ea7d6268f98a2bf565880572203bd066a9c1f/s
 
 ### Creating a ZIP locally
 
-Use the _release_ - _createReleaseZip_ task in Gradle.
+Run `./gradlew createReleaseZip`. The archive in `build/release` includes the runtime and launcher for the current operating system and CPU architecture.

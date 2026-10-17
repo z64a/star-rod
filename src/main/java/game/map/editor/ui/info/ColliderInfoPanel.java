@@ -54,12 +54,12 @@ public class ColliderInfoPanel extends MapInfoPanel<Collider>
 		idLabel = new JLabel();
 
 		nameField = new NameTextField((name) -> {
-			MapEditor.execute(new SetObjectName(getData(), name));
+			MapEditor.execute(() -> new SetObjectName(getData(), name));
 		});
 		SwingUtils.addBorderPadding(nameField);
 
 		flagsField = new HexTextField((flags) -> {
-			MapEditor.execute(getData().flags.mutator(flags));
+			MapEditor.execute(() -> getData().flags.mutator(flags));
 		});
 		SwingUtils.addBorderPadding(flagsField);
 
@@ -87,7 +87,7 @@ public class ColliderInfoPanel extends MapInfoPanel<Collider>
 		surfaceTypeBox.addActionListener((e) -> {
 			if (ignoreEvents())
 				return;
-			MapEditor.execute(getData().surface.mutator(surfaceTypeBox.getSelectedIndex()));
+			MapEditor.execute(() -> getData().surface.mutator(surfaceTypeBox.getSelectedIndex()));
 		});
 		surfaceTypeBox.setMaximumRowCount(surfaceTypeBox.getItemCount());
 		SwingUtils.addBorderPadding(surfaceTypeBox);
@@ -122,7 +122,8 @@ public class ColliderInfoPanel extends MapInfoPanel<Collider>
 		else
 			flagBits &= ~bit;
 
-		MapEditor.execute(getData().flags.mutator(flagBits));
+		int newFlags = flagBits;
+		MapEditor.execute(() -> getData().flags.mutator(newFlags));
 	}
 
 	@Override

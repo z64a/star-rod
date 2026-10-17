@@ -87,6 +87,7 @@ public class PatchFileParser
 		// character state
 		ScanState scanState = ScanState.NORMAL;
 		boolean escaping = false;
+		Line stringStartLine = null;
 
 		Line mostRecentLine = null;
 		for (Line currentLine : lines) {
@@ -122,8 +123,10 @@ public class PatchFileParser
 									lineBuilder.append(c);
 									break;
 								case '"':
-									if (!stringMode)
+									if (!stringMode) {
 										scanState = ScanState.STRING_LITERAL;
+										stringStartLine = currentLine;
+									}
 									lineBuilder.append(c);
 									break;
 								case '{':
@@ -171,8 +174,10 @@ public class PatchFileParser
 							break;
 
 						case STRING_LITERAL:
-							if (c == '"')
+							if (c == '"') {
 								scanState = ScanState.NORMAL;
+								stringStartLine = null;
+							}
 							lineBuilder.append(c);
 							break;
 
@@ -187,14 +192,11 @@ public class PatchFileParser
 				addLine(currentLine, lineBuilder.toString());
 		}
 
+		if (scanState == ScanState.STRING_LITERAL)
+			throw new InputFileException(stringStartLine, "Missing \" -- string was not closed by end of file!");
+
 		if (parseMode == ParseMode.BODY)
 			throw new InputFileException(mostRecentLine, "Missing } -- brace was not closed by end of file!");
-
-		if (scanState == ScanState.MULTI_COMMENT)
-			throw new InputFileException(mostRecentLine, "Missing %/ -- comment was not closed by end of file!");
-
-		if (scanState == ScanState.STRING_LITERAL)
-			throw new InputFileException(mostRecentLine, "Missing \" -- string was not closed by end of file!");
 	}
 
 	private void addLine(Line currentLine, String line)
@@ -244,7 +246,7 @@ public class PatchFileParser
 	{
 		List<Line> out = new ArrayList<>(in.size());
 
-		// distinction due to lines 'joined' by /% ... %/
+		// distinction due to lines joined by /* ... */
 		Line currentOutLine = null;
 
 		boolean beginNextLine = true;
@@ -252,9 +254,10 @@ public class PatchFileParser
 
 		ScanState state = ScanState.NORMAL;
 		boolean escaping = false;
+		Line commentStartLine = null;
 
 		final char multilineCommentChar = '*';
-		final char cantLookaheadChar = '?'; // dummy character that satisfies (c != '*' && c != '%')
+		final char cantLookaheadChar = '?'; // dummy character that cannot begin or end a multiline comment
 
 		for (Line currentParseLine : in) {
 			if (beginNextLine) {
@@ -263,8 +266,8 @@ public class PatchFileParser
 				beginNextLine = false;
 			}
 
-			// non-strings:		%	\%	/%	%/  \"	"
-			// strings:			%	\%	/%	%/
+			// non-strings:		%	\%	/*	*/	//	\"	"
+			// quoted strings:	comment markers are preserved
 			String sourceText = currentParseLine.str;
 			scan_chars:
 			for (int i = 0; i < sourceText.length(); i++) {
@@ -278,11 +281,12 @@ public class PatchFileParser
 						// multiline comment
 						if ((c == '/') && lookahead == multilineCommentChar) {
 							state = ScanState.MULTI_COMMENT;
+							commentStartLine = currentParseLine;
 							lineBuilder.append(" "); // treat multi-line comments as whitespace
 							i++;
 							break;
 						}
-						else if (lookahead == '/') {
+						else if ((c == '/') && lookahead == '/') {
 							// can't escape c-style comments
 							state = ScanState.SINGLE_COMMENT;
 							break scan_chars;
@@ -331,6 +335,7 @@ public class PatchFileParser
 						// can't be escaped
 						if ((sourceText.length() > i + 1) && (c == multilineCommentChar) && (sourceText.charAt(i + 1) == '/')) {
 							state = ScanState.NORMAL;
+							commentStartLine = null;
 							i++;
 							break;
 						}
@@ -352,12 +357,16 @@ public class PatchFileParser
 					beginNextLine = !escaping;
 					break;
 				case MULTI_COMMENT:
+					beginNextLine = false;
 					break;
 			}
 
-			if (beginNextLine && lineBuilder.length() > 0)
+			if (beginNextLine)
 				out.add(currentOutLine.createLine(lineBuilder.toString()));
 		}
+
+		if (state == ScanState.MULTI_COMMENT)
+			throw new InputFileException(commentStartLine, "Missing */ -- comment was not closed by end of file!");
 
 		return out;
 	}
@@ -392,13 +401,19 @@ public class PatchFileParser
 	{
 		public final Line declaringLine;
 		public final String declaration;
+		public final boolean parentActive;
 
-		public If(Line declaringLine, String declaration)
+		public If(Line declaringLine, String declaration, boolean parentActive, boolean conditionMet)
 		{
 			this.declaringLine = declaringLine;
 			this.declaration = declaration;
+			this.parentActive = parentActive;
+			this.branchMatched = conditionMet;
+			this.active = parentActive && conditionMet;
 		}
 
+		boolean branchMatched;
+		boolean active;
 		boolean foundElse = false;
 	}
 
@@ -412,8 +427,6 @@ public class PatchFileParser
 		List<Line> out = new ArrayList<>(in.size());
 		Stack<If> stack = new Stack<>();
 
-		boolean skipping = false;
-
 		for (Line line : in) {
 			StringBuffer sbuf = new StringBuffer(line.str.length());
 
@@ -422,48 +435,60 @@ public class PatchFileParser
 				String directive = PPDirectiveMatcher.group(1);
 				String[] tokens = directive.split(":");
 				String value;
+				boolean conditionMet;
+				If currentIf;
 
 				switch (tokens[0].toUpperCase()) {
 					case "IF":
-					case "ELSEIF":
-						if (!tokens[0].startsWith("ELSE")) {
-							If newIf = new If(line, directive);
-							stack.push(newIf);
-						}
-						else if (stack.size() < 1)
-							throw new InputFileException(line, "ElseIf found without initial If: " + directive);
-						if (skipping)
-							continue;
 						if (tokens.length != 2 && tokens.length != 3)
 							throw new InputFileException(line, "Invalid If directive: " + directive);
 						value = rules.get(tokens[1]);
+						conditionMet = (tokens.length == 3) ? tokens[2].equalsIgnoreCase(value) : value != null;
+						stack.push(new If(line, directive, isActive(stack), conditionMet));
 
-						if (tokens.length == 3)
-							skipping = !tokens[2].equalsIgnoreCase(value);
-						else
-							skipping = (value == null);
+						PPDirectiveMatcher.appendReplacement(sbuf, "");
+						break;
+
+					case "ELSEIF":
+						if (stack.size() < 1)
+							throw new InputFileException(line, "ElseIf found without initial If: " + directive);
+						if (stack.peek().foundElse)
+							throw new InputFileException(line, "ElseIf found after Else: " + directive);
+						if (tokens.length != 2 && tokens.length != 3)
+							throw new InputFileException(line, "Invalid If directive: " + directive);
+						value = rules.get(tokens[1]);
+						conditionMet = (tokens.length == 3) ? tokens[2].equalsIgnoreCase(value) : value != null;
+
+						currentIf = stack.peek();
+						currentIf.active = currentIf.parentActive && !currentIf.branchMatched && conditionMet;
+						currentIf.branchMatched |= conditionMet;
 
 						PPDirectiveMatcher.appendReplacement(sbuf, "");
 						break;
 
 					case "IFNOT":
-					case "ELSEIFNOT":
-						if (!tokens[0].startsWith("ELSE")) {
-							If newIf = new If(line, directive);
-							stack.push(newIf);
-						}
-						else if (stack.size() < 1)
-							throw new InputFileException(line, "ElseIf found without initial If: " + directive);
-						if (skipping)
-							continue;
 						if (tokens.length != 2 && tokens.length != 3)
 							throw new InputFileException(line, "Invalid If directive: " + directive);
 						value = rules.get(tokens[1]);
+						conditionMet = (tokens.length == 3) ? !tokens[2].equalsIgnoreCase(value) : value == null;
+						stack.push(new If(line, directive, isActive(stack), conditionMet));
 
-						if (tokens.length == 3)
-							skipping = tokens[2].equalsIgnoreCase(value);
-						else
-							skipping = (value != null);
+						PPDirectiveMatcher.appendReplacement(sbuf, "");
+						break;
+
+					case "ELSEIFNOT":
+						if (stack.size() < 1)
+							throw new InputFileException(line, "ElseIf found without initial If: " + directive);
+						if (stack.peek().foundElse)
+							throw new InputFileException(line, "ElseIf found after Else: " + directive);
+						if (tokens.length != 2 && tokens.length != 3)
+							throw new InputFileException(line, "Invalid If directive: " + directive);
+						value = rules.get(tokens[1]);
+						conditionMet = (tokens.length == 3) ? !tokens[2].equalsIgnoreCase(value) : value == null;
+
+						currentIf = stack.peek();
+						currentIf.active = currentIf.parentActive && !currentIf.branchMatched && conditionMet;
+						currentIf.branchMatched |= conditionMet;
 
 						PPDirectiveMatcher.appendReplacement(sbuf, "");
 						break;
@@ -478,8 +503,10 @@ public class PatchFileParser
 						if (stack.peek().foundElse)
 							throw new InputFileException(line, "Duplicate Else found for If: " + directive);
 
-						stack.peek().foundElse = true;
-						skipping = !skipping;
+						currentIf = stack.peek();
+						currentIf.foundElse = true;
+						currentIf.active = currentIf.parentActive && !currentIf.branchMatched;
+						currentIf.branchMatched = true;
 						PPDirectiveMatcher.appendReplacement(sbuf, "");
 						break;
 
@@ -491,13 +518,14 @@ public class PatchFileParser
 							throw new InputFileException(line, "EndIf directive with no matching If: " + directive);
 						stack.pop();
 
-						skipping = false;
 						PPDirectiveMatcher.appendReplacement(sbuf, "");
 						break;
 
 					case "VALUE":
-						if (skipping)
-							continue;
+						if (!isActive(stack)) {
+							PPDirectiveMatcher.appendReplacement(sbuf, "");
+							break;
+						}
 						if (tokens.length != 2)
 							throw new InputFileException(line, "Invalid Value directive: " + directive);
 						value = rules.get(tokens[1]);
@@ -509,7 +537,7 @@ public class PatchFileParser
 				}
 			}
 
-			if (!skipping) {
+			if (isActive(stack)) {
 				PPDirectiveMatcher.appendTail(sbuf);
 				for (String newline : sbuf.toString().split("\r?\n"))
 					out.add(line.createLine(newline));
@@ -522,5 +550,10 @@ public class PatchFileParser
 				"If directive is not closed: " + stack.peek().declaration);
 
 		return out;
+	}
+
+	private static boolean isActive(Stack<If> stack)
+	{
+		return stack.isEmpty() || stack.peek().active;
 	}
 }

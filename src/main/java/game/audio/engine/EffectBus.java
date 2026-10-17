@@ -174,34 +174,34 @@ public class EffectBus
 		private final float[] fccoef = new float[16];
 		private float[] state = new float[4]; // past input/output values
 		private boolean first = true;
-	
+
 		public PoleFilter(int fc)
 		{
 			float timeConstant = (fc >> 1) / FILTER_SCALE;
 			this.fgain = 1.0f - timeConstant;
-	
+
 			Arrays.fill(fccoef, 0.0f);
 			fccoef[8] = timeConstant;
-	
+
 			double attenuation = timeConstant;
 			for (int i = 9; i < fccoef.length; i++) {
 				attenuation *= timeConstant;
 				fccoef[i] = (float) attenuation;
 			}
-	
+
 		}
-	
+
 		public float process(float input)
 		{
 			float output = input * fccoef[8]
 				+ state[0] * fccoef[9]
 				+ state[1] * fccoef[10];
-	
+
 			output *= fgain;
-	
+
 			state[1] = state[0];
 			state[0] = output;
-	
+
 			return output;
 		}
 	}

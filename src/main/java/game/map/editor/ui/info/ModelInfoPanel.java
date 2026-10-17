@@ -285,7 +285,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 		idLabel = new JLabel();
 
 		nameField = new NameTextField((newValue) -> {
-			MapEditor.execute(new SetObjectName(getData(), newValue));
+			MapEditor.execute(() -> new SetObjectName(getData(), newValue));
 		});
 		SwingUtils.addBorderPadding(nameField);
 
@@ -312,7 +312,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 			}
 
 			if (allow) {
-				MapEditor.execute(getData().modelType.mutator(type));
+				MapEditor.execute(() -> getData().modelType.mutator(type));
 			}
 			else {
 				Toolkit.getDefaultToolkit().beep();
@@ -357,25 +357,25 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 		prop60Checkbox = new JCheckBox();
 		prop60Checkbox.addActionListener((e) -> {
 			if (!ignoreEvents())
-				MapEditor.execute(getData().hasProp60.mutator(prop60Checkbox.isSelected()));
+				MapEditor.execute(() -> getData().hasProp60.mutator(prop60Checkbox.isSelected()));
 		});
 
 		prop60aField = new HexTextField(2, (newValue) -> {
 			if (!ignoreEvents())
-				MapEditor.execute(getData().prop60a.mutator(newValue));
+				MapEditor.execute(() -> getData().prop60a.mutator(newValue));
 		});
 		SwingUtils.addBorderPadding(prop60aField);
 
 		prop60bField = new HexTextField(2, (newValue) -> {
 			if (!ignoreEvents())
-				MapEditor.execute(getData().prop60b.mutator(newValue));
+				MapEditor.execute(() -> getData().prop60b.mutator(newValue));
 		});
 		SwingUtils.addBorderPadding(prop60bField);
 
 		hasMeshCheckbox = new JCheckBox();
 		hasMeshCheckbox.addActionListener((e) -> {
 			if (!ignoreEvents())
-				MapEditor.execute(getData().hasMesh.mutator(hasMeshCheckbox.isSelected()));
+				MapEditor.execute(() -> getData().hasMesh.mutator(hasMeshCheckbox.isSelected()));
 		});
 
 		// create panel and do layout
@@ -406,7 +406,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 			if (ignoreEvents())
 				return;
 			RenderMode mode = (RenderMode) renderModeBox.getSelectedItem();
-			MapEditor.execute(getData().renderMode.mutator(mode));
+			MapEditor.execute(() -> getData().renderMode.mutator(mode));
 		});
 		SwingUtils.addBorderPadding(renderModeBox);
 		renderModeBox.setRenderer(new RenderModeComboBoxRenderer());
@@ -416,7 +416,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 				"8", "9", "10", "11", "12", "13", "14", "15" });
 		previewScrollUnitBox.addActionListener((e) -> {
 			if (!ignoreEvents())
-				MapEditor.execute(getData().pannerID.mutator(previewScrollUnitBox.getSelectedIndex() - 1));
+				MapEditor.execute(() -> getData().pannerID.mutator(previewScrollUnitBox.getSelectedIndex() - 1));
 		});
 		previewScrollUnitBox.setMaximumRowCount(17);
 		SwingUtils.centerComboBoxText(previewScrollUnitBox);
@@ -436,7 +436,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 		cbAuxProperties = new JCheckBox(" Has Special Properties");
 		cbAuxProperties.addActionListener((e) -> {
 			if (!ignoreEvents())
-				MapEditor.execute(getData().hasAuxProperties.mutator(cbAuxProperties.isSelected()));
+				MapEditor.execute(() -> getData().hasAuxProperties.mutator(cbAuxProperties.isSelected()));
 		});
 
 		NumberEditor editor;
@@ -450,7 +450,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 			if (ignoreEvents())
 				return;
 			int value = (int) Math.round((Double) auxOffsetTSpinner.getValue() * 4.0);
-			MapEditor.execute(getData().auxOffsetT.mutator(value));
+			MapEditor.execute(() -> getData().auxOffsetT.mutator(value));
 		});
 		SwingUtils.setFontSize(auxOffsetTSpinner, 12);
 		SwingUtils.centerSpinnerText(auxOffsetTSpinner);
@@ -463,7 +463,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 			if (ignoreEvents())
 				return;
 			int value = (int) Math.round((Double) auxOffsetSSpinner.getValue() * 4.0);
-			MapEditor.execute(getData().auxOffsetS.mutator(value));
+			MapEditor.execute(() -> getData().auxOffsetS.mutator(value));
 		});
 		SwingUtils.setFontSize(auxOffsetSSpinner, 12);
 		SwingUtils.centerSpinnerText(auxOffsetSSpinner);
@@ -473,7 +473,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 			if (ignoreEvents())
 				return;
 			AuxScale scale = (AuxScale) auxShiftTBox.getSelectedItem();
-			MapEditor.execute(getData().auxShiftT.mutator(scale.shift));
+			MapEditor.execute(() -> getData().auxShiftT.mutator(scale.shift));
 		});
 		auxShiftTBox.setMaximumRowCount(AUX_SCALES.length);
 		SwingUtils.centerComboBoxText(auxShiftTBox);
@@ -483,7 +483,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 			if (ignoreEvents())
 				return;
 			AuxScale scale = (AuxScale) auxShiftSBox.getSelectedItem();
-			MapEditor.execute(getData().auxShiftS.mutator(scale.shift));
+			MapEditor.execute(() -> getData().auxShiftS.mutator(scale.shift));
 		});
 		auxShiftSBox.setMaximumRowCount(AUX_SCALES.length);
 		SwingUtils.centerComboBoxText(auxShiftSBox);
@@ -493,7 +493,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 			if (ignoreEvents())
 				return;
 			ModelReplaceType type = (ModelReplaceType) replaceTypeBox.getSelectedItem();
-			MapEditor.execute(getData().replaceWith.mutator(type));
+			MapEditor.execute(() -> getData().replaceWith.mutator(type));
 		});
 		SwingUtils.centerComboBoxText(replaceTypeBox);
 
@@ -502,7 +502,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 			if (ignoreEvents())
 				return;
 			int newValue = (Integer) presetPannerBox.getSelectedItem();
-			MapEditor.execute(getData().defaultPannerID.mutator(newValue));
+			MapEditor.execute(() -> getData().defaultPannerID.mutator(newValue));
 		});
 		presetPannerBox.setMaximumRowCount(16);
 		SwingUtils.centerComboBoxText(presetPannerBox);

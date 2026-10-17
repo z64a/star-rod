@@ -30,7 +30,7 @@ public class TexturePreview extends JPanel
 		button.setMargin(new Insets(0, 0, 0, 0));
 		button.setPreferredSize(new Dimension(96, 96));
 		button.addActionListener((e) -> {
-			editor.doNextFrame(() -> {
+			editor.runEditorAction(() -> {
 				editor.setSelectedTexture(texture);
 			});
 		});

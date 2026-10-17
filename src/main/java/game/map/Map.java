@@ -5,6 +5,7 @@ import static game.map.MapKey.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -17,7 +18,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.w3c.dom.Element;
 
@@ -83,7 +83,7 @@ public class Map implements XmlSerializable
 
 	private boolean loadedJson = false;
 	private boolean readFeatures = true;
-	private boolean writeLegacyXML = false;
+	private boolean readBackup = false;
 
 	public MapEditorMetadata editorData = null;
 
@@ -121,7 +121,7 @@ public class Map implements XmlSerializable
 	public transient Queue<String> d_zoneNames;
 
 	// used by the editor for bookkeeping
-	public transient boolean modified = false;
+	public transient volatile boolean modified = false;
 	public transient BufferedImage bgImage = null;
 	public transient int glBackgroundTexID = -1;
 	public transient long lastModified;
@@ -181,7 +181,7 @@ public class Map implements XmlSerializable
 
 			Element scriptsElem = xmr.getUniqueTag(mapElem, TAG_SCRIPT_DATA);
 			if (readFeatures && scriptsElem != null)
-				features.fromXML(xmr, scriptsElem);
+				features.fromXML(xmr, scriptsElem, !readBackup);
 		}
 
 		Element editorElem = xmr.getUniqueTag(mapElem, TAG_EDITOR);
@@ -218,7 +218,14 @@ public class Map implements XmlSerializable
 	@Override
 	public void toXML(XmlWriter xmw)
 	{
+		toXML(xmw, false);
+	}
+
+	private void toXML(XmlWriter xmw, boolean writeLegacyXML)
+	{
 		XmlTag root = xmw.createTag(TAG_MAP, false);
+		if (writeLegacyXML)
+			xmw.addBoolean(root, ATTR_MAP_BACKUP, true);
 
 		if (desc != null && !desc.isBlank())
 			xmw.addAttribute(root, ATTR_DESC, desc);
@@ -331,7 +338,7 @@ public class Map implements XmlSerializable
 	{
 		this.name = name;
 		areaAffix = getAreaAffix(name);
-		projDir = Directories.PROJ_SRC.file(getSourcePath(name));
+		projDir = deriveProjectDirectory(name);
 	}
 
 	private static String getAreaAffix(String name)
@@ -377,6 +384,11 @@ public class Map implements XmlSerializable
 			}
 		}
 		return getAreaPath(areaAffix) + name + "/";
+	}
+
+	private static File deriveProjectDirectory(String name)
+	{
+		return Directories.PROJ_SRC.file(getSourcePath(name));
 	}
 
 	public String getName()
@@ -759,12 +771,16 @@ public class Map implements XmlSerializable
 
 		map.setName(deriveName(f));
 		map.readFeatures = loadFeatures;
-		if (loadFeatures)
+		map.readBackup = xmr.hasAttribute(xmr.getRootElement(), ATTR_MAP_BACKUP)
+			&& xmr.readBoolean(xmr.getRootElement(), ATTR_MAP_BACKUP);
+		// A recovery snapshot must not be overwritten by the last manually saved features.json.
+		if (loadFeatures && !map.readBackup)
 			map.tryLoadFeatures();
 
 		map.fromXML(xmr, xmr.getRootElement());
 
 		map.lastModified = f.lastModified();
+		map.modified = map.readBackup;
 		validateObjectData(map);
 
 		long t1 = System.nanoTime();
@@ -1039,20 +1055,23 @@ public class Map implements XmlSerializable
 
 	private void saveMapAs_impl(File file, boolean saveFeatures) throws Exception
 	{
-		FileUtils.touch(file);
-		File tempFile = new File(file.getAbsolutePath() + ".temp");
+		String savedName = Map.deriveName(file);
+		File targetProjectDirectory = deriveProjectDirectory(savedName);
+		File mapDirectory = file.getAbsoluteFile().getParentFile();
+		if (mapDirectory == null)
+			throw new IOException("Map output has no parent directory: " + file);
+		Files.createDirectories(mapDirectory.toPath());
+		if (saveFeatures)
+			Files.createDirectories(targetProjectDirectory.toPath());
 
 		long t0 = System.nanoTime();
 
 		markerTree.recalculateIndicies();
 
-		try (XmlWriter xmw = new XmlWriter(tempFile)) {
+		try (XmlWriter xmw = new XmlWriter(file)) {
 			toXML(xmw);
 			xmw.save();
 		} // flushed on auto-close
-
-		FileUtils.copyFile(tempFile, file);
-		FileUtils.deleteQuietly(tempFile);
 
 		long t1 = System.nanoTime();
 		double sec = (t1 - t0) / 1e9;
@@ -1061,31 +1080,30 @@ public class Map implements XmlSerializable
 		else
 			Logger.logf("Saved %s in %.02f ms", file.getName(), sec * 1e3);
 
-		setName(Map.deriveName(file));
+		if (saveFeatures)
+			saveFeatures(targetProjectDirectory);
+
+		setName(savedName);
 		lastModified = file.lastModified();
 		modified = false;
-
-		if (saveFeatures) {
-			saveFeatures();
-		}
 	}
 
 	/**
-	 * Similar to the saveMap family of methods, but does not update map name of modification time fields.
+	 * Writes a self-contained recovery snapshot without changing the map's name, timestamp, or dirty state.
 	 */
-	public void saveBackup(File f)
+	public void saveBackup(File f) throws IOException
 	{
+		File backupDirectory = f.getAbsoluteFile().getParentFile();
+		if (backupDirectory == null)
+			throw new IOException("Map backup has no parent directory: " + f);
+		Files.createDirectories(backupDirectory.toPath());
+
 		markerTree.recalculateIndicies();
 
 		try (XmlWriter xmw = new XmlWriter(f)) {
-			toXML(xmw);
+			toXML(xmw, true);
 			xmw.save();
 		} // flushed on auto-close
-		catch (Exception e) {
-			Logger.printStackTrace(e);
-			Logger.logError("Error during map backup: " + e.getMessage());
-			return;
-		}
 
 		Logger.log("Saved backup for " + name);
 	}
@@ -1788,10 +1806,9 @@ public class Map implements XmlSerializable
 		}
 	}
 
-	private void saveFeatures() throws IOException
+	private void saveFeatures(File targetProjectDirectory) throws IOException
 	{
-		File featuresJson = new File(projDir, "features.json");
-		FileUtils.touch(featuresJson);
+		File featuresJson = new File(targetProjectDirectory, "features.json");
 
 		JsonMap out = new JsonMap();
 		features.toJson(out);

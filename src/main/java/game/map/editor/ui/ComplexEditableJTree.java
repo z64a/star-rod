@@ -24,8 +24,9 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 
-import game.map.editor.MapEditor;
 import common.commands.AbstractCommand;
+
+import game.map.editor.MapEditor;
 import util.BasicNode;
 import util.Logger;
 import util.identity.IdentityArrayList;
@@ -231,7 +232,7 @@ public class ComplexEditableJTree extends JTree
 			if (selectedNodes.isEmpty())
 				return false;
 
-			MapEditor.execute(new MoveNodes(
+			MapEditor.execute(() -> new MoveNodes(
 				ComplexEditableJTree.this,
 				preCallback,
 				postCallback,
@@ -423,17 +424,16 @@ public class ComplexEditableJTree extends JTree
 			super.exec();
 
 			// must run in the swing thread
-			SwingUtilities.invokeLater(() -> {
-				preCallback.run();
+			assert SwingUtilities.isEventDispatchThread();
+			preCallback.run();
 
-				setTree(newTreeTemplate);
-				tree.restoreExtendedState(wasExtended);
+			setTree(newTreeTemplate);
+			tree.restoreExtendedState(wasExtended);
 
-				for (DefaultMutableTreeNode node : selectedNodes)
-					tree.addSelectionPath(new TreePath(node.getPath()));
+			for (DefaultMutableTreeNode node : selectedNodes)
+				tree.addSelectionPath(new TreePath(node.getPath()));
 
-				postCallback.run();
-			});
+			postCallback.run();
 		}
 
 		@Override
@@ -442,17 +442,16 @@ public class ComplexEditableJTree extends JTree
 			super.undo();
 
 			// must run in the swing thread
-			SwingUtilities.invokeLater(() -> {
-				preCallback.run();
+			assert SwingUtilities.isEventDispatchThread();
+			preCallback.run();
 
-				setTree(oldTreeTemplate);
-				tree.restoreExtendedState(wasExtended);
+			setTree(oldTreeTemplate);
+			tree.restoreExtendedState(wasExtended);
 
-				for (DefaultMutableTreeNode node : selectedNodes)
-					tree.addSelectionPath(new TreePath(node.getPath()));
+			for (DefaultMutableTreeNode node : selectedNodes)
+				tree.addSelectionPath(new TreePath(node.getPath()));
 
-				postCallback.run();
-			});
+			postCallback.run();
 		}
 	}
 }

@@ -27,6 +27,7 @@ import javax.swing.SwingUtilities;
 
 import app.Environment;
 import app.SwingUtils;
+import app.input.IOUtils;
 import common.BaseEditor;
 import common.BaseEditorSettings;
 import common.BasicCamera;
@@ -822,49 +823,63 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 
 	public void onModified()
 	{
-		// nothing to do
+		runThreadsafe(() -> modified = true);
 	}
 
 	@Override
 	protected boolean isModified()
 	{
-		return modified;
+		return callThreadsafe(() -> modified);
 	}
 
 	@Override
-	protected void saveChanges()
+	protected boolean saveChanges()
 	{
-		exportImage();
+		return exportImage();
 	}
 
-	private void exportImage()
+	private boolean exportImage()
 	{
 		assert (SwingUtilities.isEventDispatchThread());
 
-		if (image == null)
-			return;
+		EditorImage imageToSave = callThreadsafe(() -> image);
+		if (imageToSave == null)
+			return true;
 
 		File file = null;
 
-		if (image.source == null)
+		if (imageToSave.source == null)
 			file = promptChooseExportFile(null);
 		else
-			file = promptOverwrite(image.source);
+			file = promptOverwrite(imageToSave.source);
 
 		if (file == null)
-			return;
+			return false;
 
-		Tile out = image.getTile();
+		File targetFile = file;
+		return callThreadsafe(() -> exportImageLocked(imageToSave, targetFile));
+	}
+
+	private boolean exportImageLocked(EditorImage imageToSave, File file)
+	{
+		if (image != imageToSave) {
+			Logger.logWarning("The image changed while choosing an export destination; export was cancelled.");
+			return false;
+		}
+
+		Tile out = imageToSave.getTile();
 
 		try {
-			out.savePNG(file.getAbsolutePath());
-			image.source = file;
+			IOUtils.atomicWrite(file, ".png", temporaryFile -> out.savePNG(temporaryFile.getAbsolutePath()));
+			imageToSave.source = file;
 			modified = false;
-			imageLabel.setText((image.source != null) ? image.source.getName() : "New Image");
+			imageLabel.setText(imageToSave.source.getName());
 			Logger.log("Exported " + file.getName());
+			return true;
 		}
 		catch (IOException e) {
 			super.showStackTrace(e);
+			return false;
 		}
 	}
 

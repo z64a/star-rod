@@ -8,9 +8,8 @@ import util.Logger;
 /**
  * Manages undo and redo operations for editor commands in a thread-safe manner.
  * <p>
- * This class schedules command execution outside the critical section of an editor's main loop.
- * It ensures that any undoable editor state remains immutable during the main loop by using
- * a lock to synchronize access.
+ * Commands execute synchronously on the calling thread, using the same lock as the editor's
+ * update/render loop. Callers remain responsible for Swing and OpenGL thread requirements.
  */
 public class ThreadSafeCommandManager
 {
@@ -45,7 +44,9 @@ public class ThreadSafeCommandManager
 	*/
 	public void setUndoLimit(int undoLimit)
 	{
-		undoStack.setCapacity(undoLimit);
+		synchronized (modifyLock) {
+			undoStack.setCapacity(undoLimit);
+		}
 	}
 
 	/**
@@ -58,10 +59,10 @@ public class ThreadSafeCommandManager
 	 */
 	public void executeCommand(AbstractCommand cmd)
 	{
-		if (!cmd.shouldExec())
-			return;
-
 		synchronized (modifyLock) {
+			if (!cmd.shouldExec())
+				return;
+
 			cmd.exec();
 
 			undoStack.push(cmd);
@@ -95,15 +96,18 @@ public class ThreadSafeCommandManager
 	 */
 	public void undo()
 	{
-		if (undoStack.size() > 0) {
-			synchronized (modifyLock) {
+		synchronized (modifyLock) {
+			if (undoStack.size() > 0) {
 				AbstractCommand cmd = undoStack.pop();
 				cmd.undo();
 				redoStack.push(cmd);
+
+				if (cmd.modifiesData())
+					modifyCallback.run();
 			}
-		}
-		else {
-			Logger.log("Can't undo any more.");
+			else {
+				Logger.log("Can't undo any more.");
+			}
 		}
 	}
 
@@ -114,15 +118,18 @@ public class ThreadSafeCommandManager
 	 */
 	public void redo()
 	{
-		if (redoStack.size() > 0) {
-			synchronized (modifyLock) {
+		synchronized (modifyLock) {
+			if (redoStack.size() > 0) {
 				AbstractCommand cmd = redoStack.pop();
 				cmd.exec();
 				undoStack.push(cmd);
+
+				if (cmd.modifiesData())
+					modifyCallback.run();
 			}
-		}
-		else {
-			Logger.log("Can't redo anything.");
+			else {
+				Logger.log("Can't redo anything.");
+			}
 		}
 	}
 
@@ -133,7 +140,9 @@ public class ThreadSafeCommandManager
 	 */
 	public void flush()
 	{
-		undoStack.clear();
-		redoStack.clear();
+		synchronized (modifyLock) {
+			undoStack.clear();
+			redoStack.clear();
+		}
 	}
 }

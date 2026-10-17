@@ -15,9 +15,10 @@ import java.util.Random;
 
 import org.lwjgl.BufferUtils;
 
-import assets.ExpectedAsset;
 import common.MouseInput;
 import common.Vector3f;
+
+import assets.ExpectedAsset;
 import game.SimpleItem;
 import game.map.Axis;
 import game.map.editor.render.PresetColor;
@@ -360,7 +361,7 @@ public class MessageRenderer
 		if (useDepth) {
 			// this is the expensive part, reading z from the depth buffer
 			FloatBuffer fb = BufferUtils.createFloatBuffer(1);
-			glReadPixels(mouseX, mouseY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, fb);
+			glReadPixels(RenderState.toFramebufferX(mouseX), RenderState.toFramebufferY(mouseY), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, fb);
 			winZ = fb.get();
 		}
 

@@ -6,8 +6,9 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
-import app.SwingUtils;
 import common.Vector3f;
+
+import app.SwingUtils;
 import game.map.MutablePoint.SetPosition;
 import game.map.editor.MapEditor;
 import game.map.editor.ui.info.CameraInfoPanel;
@@ -43,43 +44,43 @@ public class CamTargetSubpanel extends JPanel
 		this.parent = parent;
 
 		boomLengthField = new FloatTextField((newValue) -> {
-			MapEditor.execute(parent.getData().cameraComponent.boomLength.mutator(newValue));
+			MapEditor.execute(() -> parent.getData().cameraComponent.boomLength.mutator(newValue));
 		});
 		boomLengthField.setHorizontalAlignment(SwingConstants.CENTER);
 
 		boomPitchField = new FloatTextField((newValue) -> {
-			MapEditor.execute(parent.getData().cameraComponent.boomPitch.mutator(newValue));
+			MapEditor.execute(() -> parent.getData().cameraComponent.boomPitch.mutator(newValue));
 		});
 		boomPitchField.setHorizontalAlignment(SwingConstants.CENTER);
 
 		viewPitchField = new FloatTextField((newValue) -> {
-			MapEditor.execute(parent.getData().cameraComponent.viewPitch.mutator(newValue));
+			MapEditor.execute(() -> parent.getData().cameraComponent.viewPitch.mutator(newValue));
 		});
 		viewPitchField.setHorizontalAlignment(SwingConstants.CENTER);
 
 		camMoveSpeedField = new FloatTextField((newValue) -> {
-			MapEditor.execute(parent.getData().cameraComponent.moveSpeed.mutator(newValue));
+			MapEditor.execute(() -> parent.getData().cameraComponent.moveSpeed.mutator(newValue));
 		});
 		camMoveSpeedField.setHorizontalAlignment(SwingConstants.CENTER);
 
 		cbCamSampleZone = new JCheckBox(" Use settings from zone below");
 		cbCamSampleZone.addActionListener((e) -> {
-			MapEditor.execute(parent.getData().cameraComponent.useZone.mutator(cbCamSampleZone.isSelected()));
+			MapEditor.execute(() -> parent.getData().cameraComponent.useZone.mutator(cbCamSampleZone.isSelected()));
 		});
 
 		cbCamOverrideLength = new JCheckBox(" Override boom length");
 		cbCamOverrideLength.addActionListener((e) -> {
-			MapEditor.execute(parent.getData().cameraComponent.overrideDist.mutator(cbCamOverrideLength.isSelected()));
+			MapEditor.execute(() -> parent.getData().cameraComponent.overrideDist.mutator(cbCamOverrideLength.isSelected()));
 		});
 
 		cbCamOverrideAngles = new JCheckBox(" Override pitch angles");
 		cbCamOverrideAngles.addActionListener((e) -> {
-			MapEditor.execute(parent.getData().cameraComponent.overrideAngles.mutator(cbCamOverrideAngles.isSelected()));
+			MapEditor.execute(() -> parent.getData().cameraComponent.overrideAngles.mutator(cbCamOverrideAngles.isSelected()));
 		});
 
 		cbCamGeneratePan = new JCheckBox(" Generate pan motion");
 		cbCamGeneratePan.addActionListener((e) -> {
-			MapEditor.execute(parent.getData().cameraComponent.generatePan.mutator(cbCamGeneratePan.isSelected()));
+			MapEditor.execute(() -> parent.getData().cameraComponent.generatePan.mutator(cbCamGeneratePan.isSelected()));
 		});
 
 		sampleNameLabel = new JLabel();
@@ -134,7 +135,7 @@ public class CamTargetSubpanel extends JPanel
 
 				Vector3f newPos = MapEditor.instance().getPointAhead(boomLen);
 
-				MapEditor.execute(new SetPosition(m.position, newPos));
+				MapEditor.execute(() -> new SetPosition(m.position, newPos));
 			}
 		});
 		btCenterMarker.setToolTipText("Move marker to viewport center, with distance = boomLength.");

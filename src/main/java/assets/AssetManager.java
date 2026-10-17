@@ -50,6 +50,25 @@ public class AssetManager
 		return new AssetHandle(getTopLevelAssetDir(), source.assetPath);
 	}
 
+	/**
+	 * Resolves an asset into the writable overlay and prepares only its parent
+	 * directories. The configured overlay root itself must already exist.
+	 */
+	public static AssetHandle getTopLevelForSave(AssetHandle source) throws IOException
+	{
+		AssetHandle destination = getTopLevel(source);
+		Path assetRoot = destination.assetDir.toPath().toAbsolutePath().normalize();
+		if (!Files.isDirectory(assetRoot))
+			throw new IOException("Top-level asset directory does not exist: " + destination.assetDir);
+
+		Path parent = destination.toPath().toAbsolutePath().normalize().getParent();
+		if (parent == null || !parent.startsWith(assetRoot))
+			throw new IOException("Asset output is outside the top-level asset directory: " + destination);
+
+		Files.createDirectories(parent);
+		return destination;
+	}
+
 	public static AssetHandle getBase(AssetSubdir subdir, String path)
 	{
 		return new AssetHandle(getBaseAssetDir(), subdir + path);

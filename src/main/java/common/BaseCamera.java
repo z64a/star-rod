@@ -114,14 +114,14 @@ public abstract class BaseCamera
 		{
 			// this is the expensive part, reading z from the depth buffer
 			FloatBuffer fb = BufferUtils.createFloatBuffer(1);
-			glReadPixels(mouseX, mouseY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, fb);
+			glReadPixels(RenderState.toFramebufferX(mouseX), RenderState.toFramebufferY(mouseY), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, fb);
 			winZ = fb.get();
 		}
 		*/
 
 		IntBuffer stencilValue = BufferUtils.createIntBuffer(1);
 		if (readStencil)
-			glReadPixels(mouseX, mouseY, 1, 1, GL_STENCIL_INDEX, GL_UNSIGNED_INT, stencilValue);
+			glReadPixels(RenderState.toFramebufferX(mouseX), RenderState.toFramebufferY(mouseY), 1, 1, GL_STENCIL_INDEX, GL_UNSIGNED_INT, stencilValue);
 
 		FloatBuffer position = BufferUtils.createFloatBuffer(3);
 		GLUtils.gluUnProject(winX, winY, winZ, viewMatrix.toFloatBuffer(), projMatrix.toFloatBuffer(), viewport, position);

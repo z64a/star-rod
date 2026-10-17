@@ -6,12 +6,14 @@ public abstract class MapInfoPanel<T extends UpdateProvider> extends JPanel impl
 {
 	private T data;
 	private int ignoreChangeConter = 0;
+	private final MapEditor editor;
 
 	public MapInfoPanel(boolean doesTick)
 	{
-		MapEditor.instance().registerInfoPanel(this);
+		editor = MapEditor.instance();
+		editor.registerInfoPanel(this);
 		if (doesTick)
-			MapEditor.instance().registerTickable(this);
+			editor.registerTickable(this);
 	}
 
 	public final T getData()
@@ -44,11 +46,17 @@ public abstract class MapInfoPanel<T extends UpdateProvider> extends JPanel impl
 	@Override
 	public final void update(String tag)
 	{
-		if (getData() != null) {
-			ignoreChangeConter++;
-			updateFields(getData(), tag);
-			ignoreChangeConter--;
-		}
+		editor.runInEDT(() -> {
+			if (getData() != null) {
+				ignoreChangeConter++;
+				try {
+					updateFields(getData(), tag);
+				}
+				finally {
+					ignoreChangeConter--;
+				}
+			}
+		});
 	}
 
 	public final boolean ignoreEvents()

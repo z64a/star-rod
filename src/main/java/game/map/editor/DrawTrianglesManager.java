@@ -1,11 +1,11 @@
 package game.map.editor;
 
-import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import common.Vector3f;
+
 import game.map.Axis;
 import game.map.MapObject;
 import game.map.MapObject.MapObjectType;
@@ -138,7 +138,7 @@ public class DrawTrianglesManager
 
 			if (pointList.size() > 2) {
 				done = true;
-				success = true;
+				success = false;
 
 				Vector3f AB = Vector3f.sub(pointList.get(1), pointList.get(0));
 				Vector3f AC = Vector3f.sub(pointList.get(2), pointList.get(0));
@@ -149,8 +149,11 @@ public class DrawTrianglesManager
 				Vector3f delta = Vector3f.sub(AC, proj);
 
 				if (delta.length() > MathUtil.SMALL_NUMBER) {
-					new TriangleCutter(pointList.get(0), delta.normalize(), editor.selectionManager.getSelectedObjects());
+					TriangleCutter cutter = new TriangleCutter(pointList.get(0), delta.normalize(), editor.selectionManager.getSelectedObjects());
+					success = cutter.wasSuccessful();
 				}
+				else
+					Logger.logWarning("Cannot cut with collinear points.");
 			}
 		}
 	}
@@ -209,10 +212,10 @@ public class DrawTrianglesManager
 	public void tick(MapEditViewport activeView)
 	{
 		if (editor.getEditorMode() == EditorMode.Modify) {
-			boolean trisModeKey = editor.keyboard.isKeyDown(KeyEvent.VK_COMMA);
-			boolean edgeModeKey = editor.keyboard.isKeyDown(KeyEvent.VK_SLASH);
-			boolean polyModeKey = editor.keyboard.isKeyDown(KeyEvent.VK_PERIOD);
-			boolean cutModeKey = editor.keyboard.isKeyDown(KeyEvent.VK_BACK_QUOTE);
+			boolean trisModeKey = editor.keyboard.isDown(EditorShortcut.DRAW_CONVEX);
+			boolean edgeModeKey = editor.keyboard.isDown(EditorShortcut.DRAW_WALLS);
+			boolean polyModeKey = editor.keyboard.isDown(EditorShortcut.DRAW_CONCAVE);
+			boolean cutModeKey = editor.keyboard.isDown(EditorShortcut.CUT_GEOMETRY);
 
 			switch (drawMode) {
 				case Inactive: {
@@ -376,7 +379,7 @@ public class DrawTrianglesManager
 
 		// create new object of current type
 		MapObject newObj = getDrawnObject(batch, currentType);
-		editor.executeNextFrame(new CreateObject(newObj));
+		MapEditor.execute(new CreateObject(newObj));
 
 		success = true;
 	}

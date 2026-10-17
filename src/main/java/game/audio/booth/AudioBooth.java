@@ -31,7 +31,7 @@ import net.miginfocom.swing.MigLayout;
 import util.Logger;
 import util.ui.ThemedIcon;
 
-/** Previews the audio of the project as it would build: the samples, sound effects, and ambient sequences of the merged asset stack. */
+/** Previews the project's samples, sound effects, ambient sequences, and music from the merged asset stack. */
 public class AudioBooth
 {
 	private static final int VOLUME_SLIDER_MAX = 100;
@@ -203,6 +203,7 @@ public class AudioBooth
 		tabs.add(new SamplesTab(this, engine, library));
 		tabs.add(new SfxTab(this, engine, library));
 		tabs.add(new MseqTab(this, engine, library));
+		tabs.add(new BgmTab(this, engine, library));
 		return tabs;
 	}
 

@@ -9,6 +9,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -29,6 +30,7 @@ import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
 import common.commands.AbstractCommand;
+
 import game.map.MapObject;
 import game.map.editor.EditorShortcut;
 import game.map.editor.MapEditor;
@@ -45,6 +47,41 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 	// required to bind button events to gui command callbacks
 	protected final MapEditor editor;
 	private final MapObjectPanel objectPanel;
+
+	/** Rebuild Swing's view after commands executed on the editor thread. */
+	void reloadFromModel()
+	{
+		assert SwingUtilities.isEventDispatchThread();
+		MapObjectTreeModel<?> model = (MapObjectTreeModel<?>) getModel();
+		Enumeration<TreePath> expanded = getExpandedDescendants(new TreePath(model.getRoot()));
+		List<TreePath> expandedPaths = expanded == null ? List.of() : Collections.list(expanded);
+		boolean wasDisabled = objectPanel.disableListener;
+		objectPanel.disableListener = true;
+		try {
+			model.reload();
+			for (TreePath path : expandedPaths)
+				expandPath(path);
+			refreshSelection();
+		}
+		finally {
+			objectPanel.disableListener = wasDisabled;
+		}
+	}
+
+	private void refreshSelection()
+	{
+		boolean wasDisabled = objectPanel.disableListener;
+		objectPanel.disableListener = true;
+		try {
+			clearSelection();
+			for (MapObject obj : (MapObjectTreeModel<?>) getModel())
+				if (obj.selected)
+					addSelectionPath(new TreePath(obj.getNode().getPath()));
+		}
+		finally {
+			objectPanel.disableListener = wasDisabled;
+		}
+	}
 
 	protected static enum TreeCommand
 	{
@@ -180,7 +217,7 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 			@Override
 			public void actionPerformed(ActionEvent e)
 			{
-				editor.enqueueKeyEvent(EditorShortcut.SELECT_ALL);
+				editor.executeShortcut(EditorShortcut.SELECT_ALL);
 			}
 		});
 		 */
@@ -196,7 +233,7 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 				if (lastSelected == null)
 					return;
 
-				editor.enqueueKeyEvent(EditorShortcut.COPY_OBJECTS);
+				editor.executeShortcut(EditorShortcut.COPY_OBJECTS);
 			}
 		});
 
@@ -211,7 +248,7 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 				if (lastSelected == null)
 					return;
 
-				editor.enqueueKeyEvent(EditorShortcut.PASTE_OBJECTS);
+				editor.executeShortcut(EditorShortcut.PASTE_OBJECTS);
 			}
 		});
 
@@ -226,7 +263,7 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 				if (lastSelected == null)
 					return;
 
-				editor.enqueueKeyEvent(EditorShortcut.DUPLICATE_SELECTED);
+				editor.executeShortcut(EditorShortcut.DUPLICATE_SELECTED);
 			}
 		});
 
@@ -253,7 +290,7 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 			@Override
 			public void actionPerformed(ActionEvent e)
 			{
-				editor.enqueueKeyEvent(EditorShortcut.DELETE_SELECTED);
+				editor.executeShortcut(EditorShortcut.DELETE_SELECTED);
 			}
 		});
 	}
@@ -279,7 +316,7 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 				break;
 
 			case POPUP_NEW_GROUP:
-				editor.doNextFrame(() -> {
+				editor.runEditorAction(() -> {
 					editor.action_CreateGroup(popupSource);
 				});
 				break;
@@ -289,7 +326,7 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 				break;
 
 			case POPUP_PASTE_HERE:
-				editor.doNextFrame(() -> {
+				editor.runEditorAction(() -> {
 					editor.action_PasteObjectsTo(popupSource);
 				});
 
@@ -542,7 +579,8 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 				copyParent.addChild(bnode, insertionIndex++);
 			}
 
-			saveExtendedState();
+			if (SwingUtilities.isEventDispatchThread())
+				saveExtendedState();
 
 			if (printTreeDebug) {
 				System.out.println(" ================== OLD TREE ================== ");
@@ -585,7 +623,7 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 				MapObjectNode<T> node = nodes.pop();
 				TreePath nodePath = new TreePath(node.getPath());
 
-				if (!node.isLeaf())
+				if (!node.isLeaf() && wasExtended.containsKey(node))
 					jtree.setExpandedState(nodePath, wasExtended.get(node));
 
 				for (int i = 0; i < node.getChildCount(); i++)
@@ -654,44 +692,32 @@ public abstract class MapObjectJTree<T extends MapObject> extends JTree implemen
 			return moveList.size() > 0;
 		}
 
+		private void applyTree(BasicNode<MapObjectNode<T>> template)
+		{
+			// The model and undo history must agree before this command returns.
+			setTree(template);
+			treeModel.recalculateIndicies();
+			editor.runInEDT(() -> {
+				if (getModel() != treeModel)
+					return;
+				if (wasExtended != null)
+					restoreExtendedState();
+				refreshSelection();
+			});
+		}
+
 		@Override
 		public void exec()
 		{
 			super.exec();
-
-			// must run in the swing thread
-			SwingUtilities.invokeLater(() -> {
-				objectPanel.disableListener = true;
-
-				setTree(newTreeTemplate);
-				restoreExtendedState();
-
-				for (MapObjectNode<T> node : selectedNodes)
-					addSelectionPath(new TreePath(node.getPath()));
-
-				treeModel.recalculateIndicies();
-				objectPanel.disableListener = false;
-			});
+			applyTree(newTreeTemplate);
 		}
 
 		@Override
 		public void undo()
 		{
 			super.undo();
-
-			// must run in the swing thread
-			SwingUtilities.invokeLater(() -> {
-				objectPanel.disableListener = true;
-
-				setTree(oldTreeTemplate);
-				restoreExtendedState();
-
-				for (MapObjectNode<T> node : selectedNodes)
-					addSelectionPath(new TreePath(node.getPath()));
-
-				treeModel.recalculateIndicies();
-				objectPanel.disableListener = false;
-			});
+			applyTree(oldTreeTemplate);
 		}
 	}
 }

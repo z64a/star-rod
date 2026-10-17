@@ -1,32 +1,51 @@
 package game.map.editor.camera;
 
 import common.Vector3f;
+
 import game.map.hit.CameraZoneData;
 import game.map.hit.ControlType;
 import util.MathUtil;
 
 public class CameraController
 {
+	private static final float ENGINE_TICKS_PER_SECOND = 30.0f;
+	private static final float DEFAULT_BOOM_LENGTH = 450.0f;
+	private static final float DEFAULT_BOOM_PITCH = 15.0f;
+	private static final float DEFAULT_VIEW_PITCH = -6.0f;
+
 	// saved values from last controller
 	public ControlType type = ControlType.TYPE_3;
-	public float boomLength = 450;
-	public float boomPitch = 15;
-	public float viewPitch = -6;
+	public float boomLength = DEFAULT_BOOM_LENGTH;
+	public float boomPitch = DEFAULT_BOOM_PITCH;
+	public float viewPitch = DEFAULT_VIEW_PITCH;
 
 	private Vector3f samplePosition = new Vector3f();
 	private Vector3f targetPos = new Vector3f();
-	private double targetBoomLength = 450;
+	private double targetBoomLength = DEFAULT_BOOM_LENGTH;
 	private double targetYaw = 0;
 
-	private Vector3f lookAt = new Vector3f();
-
-	private Vector3f goalPos = new Vector3f();
-	private float goalYaw = 0;
-	private float goalPitch = 0;
-
 	private Vector3f currentPos = new Vector3f();
+	private Vector3f previousPos = new Vector3f();
 	private float currentYaw = 0;
 	private float currentPitch = 0;
+	private float previousYaw = 0;
+	private float previousPitch = 0;
+
+	// Zone changes interpolate between complete camera rigs. This mirrors CAM_UPDATE_FROM_ZONE rather than smoothing the final transform.
+	private CameraSettings previousSettings;
+	private CameraSettings currentSettings;
+	private final CameraRig previousRig = new CameraRig();
+	private final CameraRig nextRig = new CameraRig();
+	private final CameraRig currentRig = new CameraRig();
+	private final Vector3f previousTargetOffset = new Vector3f();
+	private boolean previousTracksNext;
+	private boolean initialized;
+	private float linearInterp;
+	private float interpAlpha = 1.0f;
+
+	private float yinterpGoal;
+	private float yinterpCurrent;
+	private float yinterpAlpha = 1.0f;
 
 	// breaks o863 from kzn_20, which erroneously uses -100000 (FFFE7960) for the flag
 	public boolean flag;
@@ -41,12 +60,25 @@ public class CameraController
 
 	public Vector3f getPosition()
 	{
-		return currentPos;
+		return new Vector3f(currentPos);
+	}
+
+	public Vector3f getPosition(float alpha)
+	{
+		return new Vector3f(
+			MathUtil.lerp(alpha, previousPos.x, currentPos.x),
+			MathUtil.lerp(alpha, previousPos.y, currentPos.y),
+			MathUtil.lerp(alpha, previousPos.z, currentPos.z));
 	}
 
 	public Vector3f getRotation()
 	{
 		return new Vector3f(currentPitch, currentYaw, 0);
+	}
+
+	public Vector3f getRotation(float alpha)
+	{
+		return new Vector3f(interpolateAngle(previousPitch, currentPitch, alpha), interpolateAngle(previousYaw, currentYaw, alpha), 0);
 	}
 
 	public Vector3f getSamplePosition()
@@ -59,135 +91,321 @@ public class CameraController
 		return new Vector3f(targetPos);
 	}
 
+	public boolean isInitialized()
+	{
+		return initialized;
+	}
+
+	public void reset(Vector3f position)
+	{
+		initialized = false;
+		type = ControlType.TYPE_3;
+		flag = false;
+		boomLength = DEFAULT_BOOM_LENGTH;
+		boomPitch = DEFAULT_BOOM_PITCH;
+		viewPitch = DEFAULT_VIEW_PITCH;
+		samplePosition.set(position);
+		targetPos.set(position);
+		previousSettings = null;
+		currentSettings = null;
+		previousTracksNext = false;
+		linearInterp = 0.0f;
+		interpAlpha = 1.0f;
+		yinterpGoal = position.y;
+		yinterpCurrent = position.y;
+		yinterpAlpha = 1.0f;
+
+		nextRig.setDefaults(position);
+		previousRig.set(nextRig);
+		currentRig.set(nextRig);
+		updateOutput(currentRig);
+		previousPos.set(currentPos);
+		previousPitch = currentPitch;
+		previousYaw = currentYaw;
+	}
+
 	public void update(CameraZoneData data, Vector3f position, boolean allowVertical, double deltaTime)
 	{
+		update(data, position, allowVertical, 24.0f, deltaTime);
+	}
+
+	public void update(CameraZoneData data, Vector3f position, boolean allowVertical, float yinterpRate, double deltaTime)
+	{
 		samplePosition.set(position);
-		loadData(data);
-		updateTarget(samplePosition.x, samplePosition.y, samplePosition.z);
-		updateGoal();
-		computeAngles();
-		blend(allowVertical, deltaTime);
+
+		float tickScale = Math.max(0.0f, (float) deltaTime * ENGINE_TICKS_PER_SECOND);
+		CameraSettings settings = CameraSettings.from(data);
+
+		if (!initialized) {
+			initialize(settings, position);
+			return;
+		}
+
+		previousPos.set(currentPos);
+		previousPitch = currentPitch;
+		previousYaw = currentYaw;
+
+		updateVerticalTarget(position.y, allowVertical, yinterpRate, tickScale);
+		Vector3f cameraTarget = new Vector3f(position.x, yinterpCurrent, position.z);
+		boolean changingZone = !CameraSettings.same(currentSettings, settings);
+
+		if (changingZone) {
+			boolean interruptedTransition = interpAlpha < 1.0f;
+			previousRig.set(currentRig);
+			previousSettings = interruptedTransition ? null : currentSettings;
+			currentSettings = settings;
+			nextRig.set(evaluateRig(currentSettings, cameraTarget, nextRig, false, true));
+
+			previousTracksNext = interruptedTransition || isLineConstraint(previousSettings) || isLineConstraint(currentSettings);
+			if (previousTracksNext) {
+				previousTargetOffset.set(
+					previousRig.targetPos.x - nextRig.targetPos.x,
+					previousRig.targetPos.y - nextRig.targetPos.y,
+					previousRig.targetPos.z - nextRig.targetPos.z);
+			}
+			else if (currentSettings != null && currentSettings.type == ControlType.TYPE_4) {
+				previousSettings = null;
+			}
+
+			linearInterp = 0.0f;
+			interpAlpha = 0.0f;
+		}
+
+		nextRig.set(evaluateRig(currentSettings, cameraTarget, nextRig, false, false));
+		if (interpAlpha < 1.0f) {
+			if (previousTracksNext) {
+				previousRig.targetPos.set(
+					nextRig.targetPos.x + previousTargetOffset.x,
+					nextRig.targetPos.y + previousTargetOffset.y,
+					nextRig.targetPos.z + previousTargetOffset.z);
+			}
+			else if (previousSettings != null) {
+				previousRig.set(evaluateRig(previousSettings, cameraTarget, previousRig, false, false));
+			}
+
+			advanceTransition(tickScale);
+			interpolateRig(currentRig, previousRig, nextRig, interpAlpha);
+		}
+		else {
+			currentRig.set(nextRig);
+			previousRig.set(nextRig);
+		}
+
+		targetPos.set(nextRig.targetPos);
+		updateOutput(currentRig);
+		if (currentSettings != null)
+			loadSettings(currentSettings);
 	}
 
-	private void loadData(CameraZoneData data)
+	private void initialize(CameraSettings settings, Vector3f position)
 	{
-		if (data != null) {
-			type = data.getType();
-			flag = data.getFlag();
-			boomLength = data.boomLength.get();
-			boomPitch = data.boomPitch.get();
-			viewPitch = data.viewPitch.get();
-			Ax = data.posA.getX();
-			Az = data.posA.getZ();
-			Bx = data.posB.getX();
-			By = data.posB.getY();
-			Bz = data.posB.getZ();
-			Cx = data.posC.getX();
-			Cz = data.posC.getZ();
+		currentSettings = settings;
+		previousSettings = settings;
+		yinterpGoal = position.y;
+		yinterpCurrent = position.y;
+		yinterpAlpha = 1.0f;
+
+		Vector3f cameraTarget = new Vector3f(position);
+		nextRig.set(evaluateRig(settings, cameraTarget, nextRig, true, false));
+		previousRig.set(nextRig);
+		currentRig.set(nextRig);
+		targetPos.set(nextRig.targetPos);
+		linearInterp = 0.0f;
+		interpAlpha = 1.0f;
+		previousTracksNext = false;
+		updateOutput(currentRig);
+		previousPos.set(currentPos);
+		previousPitch = currentPitch;
+		previousYaw = currentYaw;
+		initialized = true;
+	}
+
+	private CameraRig evaluateRig(CameraSettings settings, Vector3f position, CameraRig basis, boolean initializing, boolean changingZone)
+	{
+		CameraRig rig = new CameraRig(basis);
+		if (settings == null) {
+			rig.targetPos.set(position);
+			return rig;
+		}
+
+		loadSettings(settings);
+		if (type == ControlType.TYPE_2) {
+			if (initializing) {
+				rig.boomYaw = (float) Math.toDegrees(Math.atan2(Bx - Ax, -(Bz - Az)));
+				rig.boomLength = Math.abs(boomLength);
+				rig.boomPitch = boomPitch;
+				rig.viewPitch = viewPitch;
+			}
+
+			if (flag) {
+				if (initializing)
+					rig.targetPos.set(Bx, position.y, Bz);
+				else
+					rig.targetPos.y = position.y;
+			}
+			else {
+				targetPos = new Vector3f(rig.targetPos);
+				targetBoomLength = rig.boomLength;
+				targetYaw = Math.toRadians(rig.boomYaw);
+				updateTarget(position.x, position.y, position.z);
+				rig.targetPos.set(targetPos);
+			}
+			return rig;
+		}
+
+		if (type == ControlType.TYPE_5 && flag) {
+			if (initializing) {
+				setFixedLineRig(rig, position.y);
+			}
+			else if (changingZone) {
+				rig.targetPos.set(Bx, position.y, Bz);
+			}
+			else {
+				rig.targetPos.y = position.y;
+			}
+			return rig;
+		}
+
+		if (type == ControlType.TYPE_3) {
+			rig.targetPos.set(position);
+			return rig;
+		}
+
+		targetPos = new Vector3f(rig.targetPos);
+		targetBoomLength = rig.boomLength;
+		targetYaw = Math.toRadians(rig.boomYaw);
+		updateTarget(position.x, position.y, position.z);
+
+		rig.targetPos.set(targetPos);
+		rig.boomLength = (float) targetBoomLength;
+		rig.boomPitch = boomPitch;
+		rig.viewPitch = viewPitch;
+		rig.boomYaw = (float) Math.toDegrees(targetYaw);
+		return rig;
+	}
+
+	private void setFixedLineRig(CameraRig rig, float targetY)
+	{
+		if (boomLength < 0.0f) {
+			rig.boomYaw = (float) Math.toDegrees(Math.atan2(Bx - Ax, -(Bz - Az)));
+			rig.boomLength = -boomLength;
+		}
+		else {
+			rig.boomYaw = (float) Math.toDegrees(Math.atan2(Ax - Bx, -(Az - Bz)));
+			rig.boomLength = boomLength;
+		}
+		rig.boomPitch = boomPitch;
+		rig.viewPitch = viewPitch;
+		rig.targetPos.set(Bx, targetY, Bz);
+	}
+
+	private void loadSettings(CameraSettings settings)
+	{
+		type = settings.type;
+		flag = settings.flag;
+		boomLength = settings.boomLength;
+		boomPitch = settings.boomPitch;
+		viewPitch = settings.viewPitch;
+		Ax = settings.Ax;
+		Az = settings.Az;
+		Bx = settings.Bx;
+		By = settings.By;
+		Bz = settings.Bz;
+		Cx = settings.Cx;
+		Cz = settings.Cz;
+	}
+
+	private void updateVerticalTarget(float targetY, boolean allowVertical, float yinterpRate, float tickScale)
+	{
+		if (!allowVertical) {
+			yinterpAlpha = 0.0f;
+		}
+		else if (yinterpGoal != targetY) {
+			yinterpGoal = targetY;
+			yinterpAlpha = 0.0f;
+		}
+
+		// The engine always follows downward movement immediately, even while player Y is ignored.
+		if (targetY < yinterpGoal && targetY <= yinterpCurrent) {
+			yinterpGoal = targetY;
+			yinterpAlpha = 1.0f;
+		}
+
+		float rate = Math.max(1.0f, yinterpRate);
+		yinterpAlpha += ((1.01f - yinterpAlpha) / rate) * tickScale;
+		yinterpAlpha = MathUtil.clamp(yinterpAlpha, 0.0f, 1.0f);
+		yinterpCurrent += (yinterpGoal - yinterpCurrent) * yinterpAlpha;
+	}
+
+	private void advanceTransition(float tickScale)
+	{
+		float maxDelta = angularDistance(previousRig.boomYaw, nextRig.boomYaw);
+		maxDelta = Math.max(maxDelta, angularDistance(previousRig.boomPitch, nextRig.boomPitch));
+		maxDelta = Math.max(maxDelta, angularDistance(previousRig.viewPitch, nextRig.viewPitch));
+		maxDelta = Math.max(maxDelta, Math.abs(previousRig.boomLength - nextRig.boomLength));
+
+		float dx = previousRig.targetPos.x - nextRig.targetPos.x;
+		float dy = previousRig.targetPos.y - nextRig.targetPos.y;
+		float dz = previousRig.targetPos.z - nextRig.targetPos.z;
+		maxDelta = Math.max(maxDelta, (float) Math.sqrt(dx * dx + dy * dy + dz * dz) * 0.2f);
+		maxDelta = MathUtil.clamp(maxDelta, 20.0f, 90.0f);
+
+		linearInterp += tickScale / maxDelta;
+		linearInterp = Math.min(linearInterp, 1.0f);
+		interpAlpha = (float) ((1.0 - Math.cos(linearInterp * Math.PI)) * 0.5001);
+		if (interpAlpha >= 1.0f) {
+			interpAlpha = 1.0f;
+			linearInterp = 0.0f;
+			previousSettings = currentSettings;
+			previousTracksNext = false;
 		}
 	}
 
-	private void updateGoal()
+	private void updateOutput(CameraRig rig)
 	{
-		if (type == ControlType.TYPE_2 && flag)
-			return; // completely frozen boundary camera
+		double yaw = Math.toRadians(rig.boomYaw);
+		double pitch = Math.toRadians(rig.boomPitch);
+		float length = Math.abs(rig.boomLength) < 0.1f ? 0.1f : rig.boomLength;
 
-		if (Math.abs(targetBoomLength) < 0.1)
-			targetBoomLength = Math.signum(targetBoomLength) * 0.1;
-
-		double thetaRad = Math.toRadians(boomPitch);
-		double phiRad = -Math.toRadians(viewPitch);
-
-		// calculation of cam[3C] from [80031FCC, 80032088]
-		goalPos.x = targetPos.x - (float) (targetBoomLength * Math.cos(thetaRad) * Math.sin(targetYaw));
-		goalPos.y = targetPos.y + (float) (targetBoomLength * Math.sin(thetaRad));
-		goalPos.z = targetPos.z + (float) (targetBoomLength * Math.cos(thetaRad) * Math.cos(targetYaw));
-
-		double R = targetBoomLength * Math.cos(thetaRad);
-		double H = goalPos.y - targetPos.y;
-
-		// calculations of cam[48]
-		lookAt.x = goalPos.x + (float) ((R * Math.cos(phiRad) + H * Math.sin(phiRad)) * Math.sin(targetYaw));
-		lookAt.y = goalPos.y + (float) (R * Math.sin(phiRad) - H * Math.cos(phiRad));
-		lookAt.z = goalPos.z - (float) ((R * Math.cos(phiRad) + H * Math.sin(phiRad)) * Math.cos(targetYaw));
+		currentPos.set(
+			rig.targetPos.x - (float) (length * Math.cos(pitch) * Math.sin(yaw)),
+			rig.targetPos.y + (float) (length * Math.sin(pitch)),
+			rig.targetPos.z + (float) (length * Math.cos(pitch) * Math.cos(yaw)));
+		currentYaw = rig.boomYaw;
+		currentPitch = rig.boomPitch + rig.viewPitch;
 	}
 
-	private void computeAngles()
+	private static boolean isLineConstraint(CameraSettings settings)
 	{
-		// ---------------------------------------
-		// calculate angles
-
-		Vector3f forward = Vector3f.sub(goalPos, lookAt);
-
-		if (forward.length() == 0)
-			forward = new Vector3f(1.0f, 0.0f, 0.0f);
-		forward.normalize();
-
-		goalPitch = (float) Math.toDegrees(Math.asin(forward.y));
-		goalYaw = (float) Math.toDegrees(targetYaw);
+		return settings != null && (settings.type == ControlType.TYPE_2 || settings.type == ControlType.TYPE_5);
 	}
 
-	private void blend(boolean allowVerticalCameraMovement, double deltaTime)
+	private static float angularDistance(float a, float b)
 	{
-		float snapDist = 1.0f;
-		float fraction = 5f;
-
-		if (Math.abs(goalPos.x - currentPos.x) < snapDist)
-			currentPos.x = goalPos.x;
-		else
-			currentPos.x = MathUtil.interp(currentPos.x, goalPos.x, fraction, deltaTime);
-
-		if (allowVerticalCameraMovement) {
-			if (Math.abs(goalPos.y - currentPos.y) < snapDist)
-				currentPos.y = goalPos.y;
-			else
-				currentPos.y = MathUtil.interp(currentPos.y, goalPos.y, fraction, deltaTime);
-		}
-
-		if (Math.abs(goalPos.z - currentPos.z) < snapDist)
-			currentPos.z = goalPos.z;
-		else
-			currentPos.z = MathUtil.interp(currentPos.z, goalPos.z, fraction, deltaTime);
-
-		currentPitch = MathUtil.interpR(currentPitch, goalPitch, 5f, deltaTime);
-		currentYaw = MathUtil.interpR(currentYaw, goalYaw, 5f, deltaTime);
+		float delta = Math.abs(a - b) % 360.0f;
+		return delta > 180.0f ? 360.0f - delta : delta;
 	}
 
-	private double getAlpha()
+	private static float interpolateAngle(float a, float b, float alpha)
 	{
-		float delta, amt;
-
-		// actually, should be three of these for boom yaw, boom pitch, and view pitch
-		// both pitch are combined here
-		delta = Math.abs(currentYaw - goalYaw);
-		if (delta > 180)
+		float delta = (b - a) % 360.0f;
+		if (delta > 180.0f)
 			delta -= 360.0f;
-		amt = delta;
-		delta = Math.abs(currentPitch - goalPitch);
-		if (delta > 180)
-			delta -= 360.0f;
-		if (delta > amt)
-			amt = delta;
-		//XXX also do Math.abs(currentBoomLength - goalBoomLength)
-		float dx = goalPos.x - currentPos.x;
-		float dy = goalPos.y - currentPos.y;
-		float dz = goalPos.z - currentPos.z;
-		delta = (float) (Math.sqrt(dx * dx + dy * dy + dz * dz) * 0.3);
+		if (delta < -180.0f)
+			delta += 360.0f;
+		return a + delta * MathUtil.clamp(alpha, 0.0f, 1.0f);
+	}
 
-		if (delta < 20.0f)
-			delta = 20.0f;
-		if (delta > 70.0f)
-			delta = 70.0f;
-
-		float alpha = 0.0f; // TODO get prev value
-
-		// compute alpha
-		alpha += (1.0f / amt) * 3.0f; // 3.0 = scale
-		if (alpha > 1.0)
-			alpha = 1.0f;
-
-		// final step, add sin blend
-		return 0.5 + (Math.sin((alpha - 0.5) * Math.PI) / 2.0);
+	private static void interpolateRig(CameraRig result, CameraRig a, CameraRig b, float alpha)
+	{
+		result.targetPos.set(
+			MathUtil.lerp(alpha, a.targetPos.x, b.targetPos.x),
+			MathUtil.lerp(alpha, a.targetPos.y, b.targetPos.y),
+			MathUtil.lerp(alpha, a.targetPos.z, b.targetPos.z));
+		result.boomYaw = interpolateAngle(a.boomYaw, b.boomYaw, alpha);
+		result.boomLength = MathUtil.lerp(alpha, a.boomLength, b.boomLength);
+		result.boomPitch = interpolateAngle(a.boomPitch, b.boomPitch, alpha);
+		result.viewPitch = interpolateAngle(a.viewPitch, b.viewPitch, alpha);
 	}
 
 	// reverse engineered from func_800304FC, starting with the switch at 800308AC
@@ -210,6 +428,10 @@ public class CameraController
 				else {
 					// only move camera along the line perpendicular to AB passing through B
 					double d2 = BAx * BAx + BAz * BAz;
+					if (d2 == 0.0) {
+						targetPos.y = Y;
+						break;
+					}
 					double perpdot = BAx * (Z - Bz) - BAz * (X - Bx);
 
 					targetPos.y = Y;
@@ -276,21 +498,14 @@ public class CameraController
 					double BPx = Bx - X;
 					double BPz = Bz - Z;
 
-					if (BCx == 0) {
-						double Q = (BCx * BKx / BCz) + BKz;
-						double V = (BPz * BCx / BCz) - BPx;
-
-						targetPos.y = Y;
-						targetPos.x = (float) (X - BKz * V / Q);
-						targetPos.z = (float) (Z + BKx * V / Q);
-					}
-					else {
-						double Q = -(BCz * BKz / BCx) - BKx;
-						double V = (BPx * BCz / BCx) - BPz;
-
-						targetPos.y = Y;
-						targetPos.x = (float) (X - BKz * V / Q);
-						targetPos.z = (float) (Z + BKx * V / Q);
+					// Project along the perpendicular to BK onto BC. Coincident or
+					// perpendicular control lines cannot define a unique projection.
+					double denominator = BCx * BKx + BCz * BKz;
+					targetPos.y = Y;
+					if (denominator != 0.0) {
+						double correction = (BPz * BCx - BPx * BCz) / denominator;
+						targetPos.x = (float) (X - BKz * correction);
+						targetPos.z = (float) (Z + BKx * correction);
 					}
 
 					targetBoomLength = Math.abs(boomLength);
@@ -337,7 +552,12 @@ public class CameraController
 					double PCx = X - Cx;
 					double PCz = Z - Cz;
 
-					double t = (PCx * BCx + PCz * BCz) / (BCx * BCx + BCz * BCz);
+					double lengthSquared = BCx * BCx + BCz * BCz;
+					if (lengthSquared == 0.0) {
+						targetPos.y = Y;
+						break;
+					}
+					double t = (PCx * BCx + PCz * BCz) / lengthSquared;
 
 					targetPos.y = Y;
 					targetPos.x = (float) (Cx + t * BCx);
@@ -378,7 +598,12 @@ public class CameraController
 				targetBoomLength = Math.abs(boomLength);
 
 				// project on to line
-				double t = (BAx * (X - Ax) + BAz * (Z - Az)) / (BAx * BAx + BAz * BAz);
+				double lengthSquared = BAx * BAx + BAz * BAz;
+				if (lengthSquared == 0.0) {
+					targetPos.y = Y;
+					break;
+				}
+				double t = (BAx * (X - Ax) + BAz * (Z - Az)) / lengthSquared;
 				double Px = t * BAx + Ax;
 				double Pz = t * BAz + Az;
 
@@ -434,6 +659,97 @@ public class CameraController
 
 			default:
 				// default is to not update the camera (but no such zones exist)
+		}
+	}
+
+	private static class CameraRig
+	{
+		public final Vector3f targetPos = new Vector3f();
+		public float boomLength = DEFAULT_BOOM_LENGTH;
+		public float boomPitch = DEFAULT_BOOM_PITCH;
+		public float viewPitch = DEFAULT_VIEW_PITCH;
+		public float boomYaw;
+
+		public CameraRig()
+		{}
+
+		public CameraRig(CameraRig other)
+		{
+			set(other);
+		}
+
+		public void set(CameraRig other)
+		{
+			targetPos.set(other.targetPos);
+			boomLength = other.boomLength;
+			boomPitch = other.boomPitch;
+			viewPitch = other.viewPitch;
+			boomYaw = other.boomYaw;
+		}
+
+		public void setDefaults(Vector3f position)
+		{
+			targetPos.set(position);
+			boomLength = DEFAULT_BOOM_LENGTH;
+			boomPitch = DEFAULT_BOOM_PITCH;
+			viewPitch = DEFAULT_VIEW_PITCH;
+			boomYaw = 0.0f;
+		}
+	}
+
+	private static class CameraSettings
+	{
+		public final ControlType type;
+		public final boolean flag;
+		public final float boomLength;
+		public final float boomPitch;
+		public final float viewPitch;
+		public final float Ax;
+		public final float Az;
+		public final float Bx;
+		public final float By;
+		public final float Bz;
+		public final float Cx;
+		public final float Cz;
+
+		private CameraSettings(CameraZoneData data)
+		{
+			type = data.getType();
+			flag = data.getFlag();
+			boomLength = data.boomLength.get();
+			boomPitch = data.boomPitch.get();
+			viewPitch = data.viewPitch.get();
+			Ax = data.posA.getX();
+			Az = data.posA.getZ();
+			Bx = data.posB.getX();
+			By = data.posB.getY();
+			Bz = data.posB.getZ();
+			Cx = data.posC.getX();
+			Cz = data.posC.getZ();
+		}
+
+		public static CameraSettings from(CameraZoneData data)
+		{
+			return data == null ? null : new CameraSettings(data);
+		}
+
+		public static boolean same(CameraSettings a, CameraSettings b)
+		{
+			if (a == null || b == null)
+				return a == b;
+
+			return a.type == b.type
+				&& a.flag == b.flag
+				&& a.boomLength == b.boomLength
+				&& a.boomPitch == b.boomPitch
+				&& a.viewPitch == b.viewPitch
+				&& a.Ax == b.Ax
+				&& a.Az == b.Az
+				&& a.Bx == b.Bx
+				&& a.By == b.By
+				&& a.Bz == b.Bz
+				&& a.Cx == b.Cx
+				&& a.Cz == b.Cz;
 		}
 	}
 }

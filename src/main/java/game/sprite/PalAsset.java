@@ -8,6 +8,7 @@ import java.util.List;
 
 import org.apache.commons.io.FilenameUtils;
 
+import app.input.IOUtils;
 import assets.AssetHandle;
 import assets.AssetManager;
 import game.sprite.editor.Editable;
@@ -45,8 +46,9 @@ public class PalAsset implements GLResource, Editable
 
 	public void save() throws IOException
 	{
-		source = AssetManager.getTopLevel(source);
-		sourceImg.savePNG(source.getAbsolutePath());
+		AssetHandle destination = AssetManager.getTopLevelForSave(source);
+		IOUtils.atomicWrite(destination, ".png", temporaryFile -> sourceImg.savePNG(temporaryFile.getAbsolutePath()));
+		source = destination;
 	}
 
 	public AssetHandle getSource()

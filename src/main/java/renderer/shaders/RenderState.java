@@ -5,8 +5,12 @@ import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
 import static org.lwjgl.opengl.GL13.glActiveTexture;
 import static org.lwjgl.opengl.GL15.*;
 import static org.lwjgl.opengl.GL20.glUseProgram;
+import static org.lwjgl.opengl.GL30.GL_DRAW_FRAMEBUFFER;
+import static org.lwjgl.opengl.GL30.GL_FRAMEBUFFER;
+import static org.lwjgl.opengl.GL30.glBindFramebuffer;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
 import static org.lwjgl.opengl.GL31.GL_UNIFORM_BUFFER;
+import static org.lwjgl.opengl.GL32.GL_PROGRAM_POINT_SIZE;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -28,21 +32,15 @@ public abstract class RenderState
 	{
 		rec = new StateRecord();
 		stack = new Stack<>();
+		drawFramebuffer = 0;
 
-		glEnable(GL_POINT_SMOOTH);
-		glHint(GL_POINT_SMOOTH, GL_NICEST);
-
-		glEnable(GL_LINE_SMOOTH);
-		glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-
-		//	glEnable(GL_POLYGON_SMOOTH);
-		//	glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+		glEnable(GL_PROGRAM_POINT_SIZE);
 
 		glActiveTexture(GL_TEXTURE0);
-		glEnable(GL_TEXTURE_2D);
 
 		initProgram();
 		initVAO();
+		initMatrices();
 		initUBO();
 		initPolygonMode();
 		initDepthTest();
@@ -68,7 +66,7 @@ public abstract class RenderState
 		private int glViewSizeY = 256;
 
 		private Color4f glColor = new Color4f();
-		private float glLineWidth = 1.0f;
+		private float lineWidth = 1.0f;
 		private float glPointSize = 1.0f;
 
 		private int glVertexArray;
@@ -92,7 +90,7 @@ public abstract class RenderState
 			glViewSizeY = other.glViewSizeY;
 
 			glColor = new Color4f(other.glColor);
-			glLineWidth = other.glLineWidth;
+			lineWidth = other.lineWidth;
 			glPointSize = other.glPointSize;
 
 			glVertexArray = other.glVertexArray;
@@ -143,7 +141,7 @@ public abstract class RenderState
 		// skip viewport
 
 		setColor(oldRec.glColor.r, oldRec.glColor.g, oldRec.glColor.b, oldRec.glColor.a);
-		setLineWidth(oldRec.glLineWidth);
+		setLineWidth(oldRec.lineWidth);
 		setPointSize(oldRec.glPointSize);
 
 		setVAO(oldRec.glVertexArray);
@@ -202,22 +200,31 @@ public abstract class RenderState
 
 	public static final void initLineWidth()
 	{
-		rec.glLineWidth = 1.0f;
-		glLineWidth(rec.glLineWidth);
+		rec.lineWidth = 1.0f;
 	}
 
 	public static final void setLineWidth(float width)
 	{
-		if (width == rec.glLineWidth)
+		float clampedWidth = Math.max(0.0f, width);
+		if (clampedWidth == rec.lineWidth)
 			return;
 
-		rec.glLineWidth = width;
-		glLineWidth(rec.glLineWidth);
+		rec.lineWidth = clampedWidth;
 	}
 
 	public static final float getLineWidth()
 	{
-		return rec.glLineWidth;
+		return rec.lineWidth;
+	}
+
+	/** Returns the requested line width in pixels of the current render target. */
+	public static final float getLineWidthPixels()
+	{
+		if (drawFramebuffer != 0)
+			return rec.lineWidth;
+
+		double scale = (defaultFramebufferScaleX + defaultFramebufferScaleY) * 0.5;
+		return (float) (rec.lineWidth * scale);
 	}
 
 	// --------------------------------------------------------------------------
@@ -226,7 +233,6 @@ public abstract class RenderState
 	public static final void initPointSize()
 	{
 		rec.glPointSize = 1.0f;
-		glPointSize(rec.glPointSize);
 	}
 
 	public static final void setPointSize(float size)
@@ -235,7 +241,6 @@ public abstract class RenderState
 			return;
 
 		rec.glPointSize = size;
-		glPointSize(rec.glPointSize);
 	}
 
 	public static final float getPointSize()
@@ -294,6 +299,18 @@ public abstract class RenderState
 	private static void initUBO()
 	{
 		ByteBuffer bb = BufferUtils.createByteBuffer(GLOBALS_UBO_TOTAL_SIZE);
+		putMatrix(bb, GLOBALS_UBO_POS_PERSPMTX, projectionMatrix);
+		putMatrix(bb, GLOBALS_UBO_POS_VIEWMTX, viewMatrix);
+		putMatrix(bb, GLOBALS_UBO_POS_MODELMTX, modelMatrix);
+
+		bb.position(GLOBALS_UBO_POS_VIEWPORT);
+		bb.putInt(0);
+		bb.putInt(0);
+		bb.putInt(rec.glViewSizeX);
+		bb.putInt(rec.glViewSizeY);
+		bb.position(GLOBALS_UBO_POS_TIME);
+		bb.putFloat(0.0f);
+		bb.rewind();
 
 		matrixUBO = glGenBuffers();
 		glBindBuffer(GL_UNIFORM_BUFFER, matrixUBO);
@@ -385,18 +402,64 @@ public abstract class RenderState
 	// --------------------------------------------------------------------------
 	// save viewport size -- do NOT cache this
 
+	private static double defaultFramebufferScaleX = 1.0;
+	private static double defaultFramebufferScaleY = 1.0;
+	private static int drawFramebuffer;
+
+	public static void setDefaultFramebufferScale(double scaleX, double scaleY)
+	{
+		defaultFramebufferScaleX = validScale(scaleX) ? scaleX : 1.0;
+		defaultFramebufferScaleY = validScale(scaleY) ? scaleY : 1.0;
+	}
+
+	private static boolean validScale(double scale)
+	{
+		return Double.isFinite(scale) && scale > 0.0;
+	}
+
+	public static int toFramebufferX(int logicalX)
+	{
+		return (int) Math.round(logicalX * defaultFramebufferScaleX);
+	}
+
+	public static int toFramebufferY(int logicalY)
+	{
+		return (int) Math.round(logicalY * defaultFramebufferScaleY);
+	}
+
+	public static void bindFramebuffer(int target, int framebuffer)
+	{
+		glBindFramebuffer(target, framebuffer);
+
+		// Viewports need HiDPI scaling only when drawing to the on-screen surface.
+		if (target == GL_FRAMEBUFFER || target == GL_DRAW_FRAMEBUFFER)
+			drawFramebuffer = framebuffer;
+	}
+
 	public static void setViewport(int minX, int minY, int sizeX, int sizeY)
 	{
-		glViewport(minX, minY, sizeX, sizeY);
-		glScissor(minX, minY, sizeX, sizeY);
+		int viewportMinX = minX;
+		int viewportMinY = minY;
+		int viewportSizeX = sizeX;
+		int viewportSizeY = sizeY;
+
+		if (drawFramebuffer == 0) {
+			viewportMinX = toFramebufferX(minX);
+			viewportMinY = toFramebufferY(minY);
+			viewportSizeX = toFramebufferX(minX + sizeX) - viewportMinX;
+			viewportSizeY = toFramebufferY(minY + sizeY) - viewportMinY;
+		}
+
+		glViewport(viewportMinX, viewportMinY, viewportSizeX, viewportSizeY);
+		glScissor(viewportMinX, viewportMinY, viewportSizeX, viewportSizeY);
 		rec.glViewSizeX = sizeX;
 		rec.glViewSizeY = sizeY;
 
 		IntBuffer ib = BufferUtils.createIntBuffer(4);
-		ib.put(minX);
-		ib.put(minY);
-		ib.put(sizeX);
-		ib.put(sizeY);
+		ib.put(viewportMinX);
+		ib.put(viewportMinY);
+		ib.put(viewportSizeX);
+		ib.put(viewportSizeY);
 		ib.rewind();
 
 		glBindBuffer(GL_UNIFORM_BUFFER, matrixUBO);
@@ -443,6 +506,11 @@ public abstract class RenderState
 			rec.glPolygonMode = mode;
 			glPolygonMode(GL_FRONT_AND_BACK, mode.value);
 		}
+	}
+
+	public static final PolygonMode getPolygonMode()
+	{
+		return rec.glPolygonMode;
 	}
 
 	// --------------------------------------------------------------------------
@@ -553,5 +621,28 @@ public abstract class RenderState
 		rec.blendDestFactor = destFactor;
 
 		glBlendFunc(rec.blendSrcFactor, rec.blendDestFactor);
+	}
+
+	public static final float getPointSizePixels(float size)
+	{
+		if (drawFramebuffer != 0)
+			return size;
+
+		double scale = (defaultFramebufferScaleX + defaultFramebufferScaleY) * 0.5;
+		return (float) (size * scale);
+	}
+
+	private static void putMatrix(ByteBuffer bb, int pos, TransformMatrix mtx)
+	{
+		bb.position(pos);
+		bb.asFloatBuffer().put(mtx.toFloatBuffer());
+	}
+
+	private static void initMatrices()
+	{
+		projectionMatrix.set(defaultProjectionMatrix);
+		viewMatrix.set(defaultViewMatrix);
+		modelMatrix.set(defaultModelMatrix);
+		modelMatrixStack.clear();
 	}
 }

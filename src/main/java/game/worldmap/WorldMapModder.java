@@ -11,10 +11,8 @@ import java.util.List;
 import org.w3c.dom.Element;
 
 import app.Directories;
-import app.StarRodMain;
 import app.input.InputFileException;
 import common.commands.AbstractCommand;
-import util.Logger;
 import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
@@ -87,45 +85,71 @@ public class WorldMapModder
 	{
 		List<WorldLocation> locations = new ArrayList<>();
 
-		XmlReader xmr = new XmlReader(xmlFile);
-		Element rootElem = xmr.getRootElement();
+		try {
+			XmlReader xmr = new XmlReader(xmlFile);
+			Element rootElem = xmr.getRootElement();
+			if (!rootElem.getTagName().equals(TAG_ROOT.toString()))
+				xmr.complain("World map XML must use a " + TAG_ROOT + " root element.");
 
-		List<Element> locationElems = xmr.getRequiredTags(rootElem, TAG_LOCATION);
-		for (Element locationElem : locationElems) {
-			int x = xmr.readInt(locationElem, ATTR_START_X);
-			int y = xmr.readInt(locationElem, ATTR_START_Y);
+			List<Element> locationElems = xmr.getRequiredTags(rootElem, TAG_LOCATION);
+			for (Element locationElem : locationElems) {
+				xmr.requiresAttribute(locationElem, ATTR_NAME);
+				xmr.requiresAttribute(locationElem, ATTR_START_X);
+				xmr.requiresAttribute(locationElem, ATTR_START_Y);
+				if (!locationElem.hasAttribute(ATTR_PARENT.toString()))
+					xmr.complain(TAG_LOCATION + " is missing required attribute: " + ATTR_PARENT);
+				if (!locationElem.hasAttribute(ATTR_REQUIRES.toString()))
+					xmr.complain(TAG_LOCATION + " is missing required attribute: " + ATTR_REQUIRES);
+				if (!locationElem.hasAttribute(ATTR_PATH.toString()))
+					xmr.complain(TAG_LOCATION + " is missing required attribute: " + ATTR_PATH);
 
-			WorldLocation loc = new WorldLocation(x, MAP_SIZE - y);
-			locations.add(loc);
-			loc.name = stripPrefix(xmr.getAttribute(locationElem, ATTR_NAME), PREFIX_LOC);
-			loc.parentName = stripPrefix(xmr.getAttribute(locationElem, ATTR_PARENT), PREFIX_LOC);
-			loc.descUpdate = stripPrefix(xmr.getAttribute(locationElem, ATTR_REQUIRES), PREFIX_STORY);
+				int x = xmr.readInt(locationElem, ATTR_START_X);
+				int y = xmr.readInt(locationElem, ATTR_START_Y);
 
-			String pathStr = xmr.getAttribute(locationElem, ATTR_PATH);
-			pathStr = pathStr.replaceAll("//s+", "");
-			if (!pathStr.isEmpty()) {
-				String[] points = pathStr.split(";");
-				if (points.length > 0x20)
-					throw new InputFileException(xmlFile, "Path length exceeds limit: (" + points.length + " / 32)");
+				WorldLocation loc = new WorldLocation(x, MAP_SIZE - y);
+				locations.add(loc);
+				loc.name = stripPrefix(xmr.getAttribute(locationElem, ATTR_NAME), PREFIX_LOC);
+				loc.parentName = stripPrefix(xmr.getAttribute(locationElem, ATTR_PARENT), PREFIX_LOC);
+				loc.descUpdate = stripPrefix(xmr.getAttribute(locationElem, ATTR_REQUIRES), PREFIX_STORY);
 
-				int curX = loc.x;
-				int curY = loc.y;
-				for (String point : points) {
-					String[] coords = point.split(",");
-					if (coords.length != 2)
-						throw new InputFileException(xmlFile, "Path has invalid coordinate: " + point);
+				String pathStr = xmr.getAttribute(locationElem, ATTR_PATH).replaceAll("\\s+", "");
+				if (!pathStr.isEmpty()) {
+					String[] points = pathStr.split(";");
+					if (points.length > 0x20)
+						xmr.complain("Path length exceeds limit: (" + points.length + " / 32)");
 
-					curX += (byte) Integer.parseInt(coords[0]);
-					curY -= (byte) Integer.parseInt(coords[1]);
-					loc.path.add(new WorldPathElement(loc, curX, curY));
+					int curX = loc.x;
+					int curY = loc.y;
+					for (String point : points) {
+						String[] coords = point.split(",");
+						if (coords.length != 2)
+							xmr.complain("Path has invalid coordinate: " + point);
+
+						int deltaX = 0;
+						int deltaY = 0;
+						try {
+							deltaX = Integer.parseInt(coords[0]);
+							deltaY = Integer.parseInt(coords[1]);
+						}
+						catch (NumberFormatException e) {
+							xmr.complain("Path has invalid coordinate: " + point);
+						}
+
+						curX += (byte) deltaX;
+						curY -= (byte) deltaY;
+						loc.path.add(new WorldPathElement(loc, curX, curY));
+					}
 				}
 			}
+		}
+		catch (InputFileException e) {
+			throw new IOException("Could not read world map XML: " + xmlFile, e);
 		}
 
 		return locations;
 	}
 
-	private static void writeXML(List<WorldLocation> locations, File xmlFile)
+	private static void writeXML(List<WorldLocation> locations, File xmlFile) throws IOException
 	{
 		try (XmlWriter xmw = new XmlWriter(xmlFile)) {
 			XmlTag root = xmw.createTag(TAG_ROOT, false);
@@ -159,11 +183,6 @@ public class WorldMapModder
 
 			xmw.closeTag(root);
 			xmw.save();
-			Logger.log("Saved world map");
-		}
-		catch (Throwable t) {
-			Logger.logError("Failed to save world map");
-			StarRodMain.displayStackTrace(t);
 		}
 	}
 
@@ -183,7 +202,7 @@ public class WorldMapModder
 		return locations;
 	}
 
-	public static void saveLocations(List<WorldLocation> locations)
+	public static void saveLocations(List<WorldLocation> locations) throws IOException
 	{
 		for (WorldLocation loc : locations) {
 			if (loc.parent == null)

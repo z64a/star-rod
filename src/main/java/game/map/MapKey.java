@@ -20,6 +20,7 @@ public enum MapKey implements XmlKey
 	ATTR_TYPE			("type"),
 
 	TAG_MAP				("Map"),
+	ATTR_MAP_BACKUP		("backup"),
 	ATTR_MAP_STAGE		("stage"),
 	ATTR_MAP_BG			("background"),
 	ATTR_MAP_TEX		("textures"),
@@ -236,6 +237,7 @@ public enum MapKey implements XmlKey
 	ATTR_CAM_FAR		("far"),
 	ATTR_CAM_BGCOL		("bgcolor"),
 	ATTR_CAM_LEADS		("leadsPlayer"),
+	ATTR_CAM_ENABLED_LAST	("enabledLast"),
 
 	TAG_FOG				("Fog"),
 	ATTR_FOG_WORLD		("world"),
@@ -251,6 +253,8 @@ public enum MapKey implements XmlKey
 	ATTR_LOCATION		("location"),
 	ATTR_HAS_SHADING	("hasShading"),
 	ATTR_SHADING_NAME	("shadingName"),
+	ATTR_SHADING_COLOR	("shadingColor"),
+	ATTR_SHADING_OFFSET	("shadingOffset"),
 	ATTR_DARK			("dark");
 	// @formatter:on
 

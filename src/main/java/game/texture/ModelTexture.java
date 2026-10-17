@@ -164,6 +164,7 @@ public class ModelTexture
 
 		shader.useFiltering.set(useFiltering && tx.filter);
 		shader.enableLOD.set(useLOD && tx.hasMipmaps);
+		shader.maxLOD.set((useLOD && tx.hasMipmaps) ? tx.mipmapList.size() : 0);
 
 		if (fmt == TileFormat.TYPE_CI)
 			tx.main.palette.glBind(shader.mainPal);
@@ -171,7 +172,7 @@ public class ModelTexture
 			TextureManager.missingPalette.glBind(shader.mainPal);
 
 		if (tx.hasAux) {
-			fmt = tx.main.format.type;
+			fmt = tx.aux.format.type;
 			shader.auxFmt.set(fmt);
 			tx.aux.glBind(shader.auxImg);
 
@@ -198,6 +199,7 @@ public class ModelTexture
 		}
 		else {
 			shader.auxFmt.set(0);
+			shader.auxCombineMode.set(0);
 
 			shader.auxImg.bind(TextureManager.glMissingTextureID);
 			TextureManager.missingPalette.glBind(shader.auxPal);

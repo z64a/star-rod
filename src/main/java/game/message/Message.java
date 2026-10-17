@@ -2,6 +2,7 @@ package game.message;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,8 +27,8 @@ public class Message implements FilterListable
 	private String errorMessage = "";
 	private boolean hasError;
 
-	public boolean modified;
-	public boolean editorShouldSync;
+	public volatile boolean modified;
+	public volatile boolean editorShouldSync;
 
 	private String markup;
 	private String previewText;
@@ -86,6 +87,21 @@ public class Message implements FilterListable
 
 	public void setMarkup(String s)
 	{
+		synchronized (source) {
+			setMarkupImpl(s);
+		}
+	}
+
+	public void setMarkupAndModified(String s)
+	{
+		synchronized (source) {
+			setMarkupImpl(s);
+			source.markModified(this);
+		}
+	}
+
+	private void setMarkupImpl(String s)
+	{
 		markup = s;
 		previewText = markup.replaceAll("(?i)\\[" + ControlCharacter.ENDL + "\\]", " ")
 			.replaceAll("\\\\", "") // remove escape sequences
@@ -96,18 +112,60 @@ public class Message implements FilterListable
 
 	public String getMarkup()
 	{
-		return markup;
+		synchronized (source) {
+			return markup;
+		}
 	}
 
 	public void sanitize()
 	{
+		synchronized (source) {
+			String sanitized = getSanitizedMarkup(markup);
+			if (!sanitized.equals(markup)) {
+				editorShouldSync = true;
+				setMarkupImpl(sanitized);
+			}
+		}
+	}
+
+	public static String getSanitizedMarkup(String markup)
+	{
 		String unescapedControlChar = "[\\s\\S]*(?<!\\\\)[{}%][\\s\\S]*";
 		String invalidEscapedChar = "[\\s\\S]*\\\\[^{}%\\[\\]][\\s\\S]*";
-		if (markup.matches(unescapedControlChar) || markup.matches(invalidEscapedChar)) {
-			editorShouldSync = true;
-			String fixed = markup.replaceAll("(?<!\\\\)([{}%])", "\\\\$1");
-			fixed = fixed.replaceAll("\\\\*([^{}%\\[\\]])", "$1");
-			setMarkup(fixed);
+		if (!markup.matches(unescapedControlChar) && !markup.matches(invalidEscapedChar))
+			return markup;
+
+		String fixed = markup.replaceAll("(?<!\\\\)([{}%])", "\\\\$1");
+		return fixed.replaceAll("\\\\*([^{}%\\[\\]])", "$1");
+	}
+
+	public void applySavedMarkup(String savedMarkup)
+	{
+		synchronized (source) {
+			if (!Objects.equals(markup, savedMarkup)) {
+				editorShouldSync = true;
+				setMarkupImpl(savedMarkup);
+			}
+		}
+	}
+
+	public void setName(String newName)
+	{
+		synchronized (source) {
+			if (Objects.equals(name, newName))
+				return;
+			name = newName;
+			source.markModified(this);
+		}
+	}
+
+	public void setSection(int newSection)
+	{
+		synchronized (source) {
+			if (section == newSection)
+				return;
+			section = newSection;
+			source.markModified(this);
 		}
 	}
 
@@ -150,8 +208,7 @@ public class Message implements FilterListable
 	public void setModified()
 	{
 		assert (source != null);
-		modified = true;
-		source.hasModified = true;
+		source.markModified(this);
 	}
 
 	public boolean isModified()

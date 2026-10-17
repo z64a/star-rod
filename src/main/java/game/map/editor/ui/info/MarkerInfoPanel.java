@@ -98,7 +98,7 @@ public class MarkerInfoPanel extends MapInfoPanel<Marker> implements ActionListe
 
 	private JPanel createGeneralTab()
 	{
-		nameField = new NameTextField((name) -> MapEditor.execute(new SetObjectName(getData(), name)));
+		nameField = new NameTextField((name) -> MapEditor.execute(() -> new SetObjectName(getData(), name)));
 		SwingUtils.addBorderPadding(nameField);
 
 		markerTypeBox = new JComboBox<>(MarkerType.values());
@@ -110,13 +110,13 @@ public class MarkerInfoPanel extends MapInfoPanel<Marker> implements ActionListe
 				return;
 
 			MarkerType type = (MarkerType) markerTypeBox.getSelectedItem();
-			MapEditor.execute(new SetType(getData(), type));
+			MapEditor.execute(() -> new SetType(getData(), type));
 		});
 		SwingUtils.addBorderPadding(markerTypeBox);
 
-		posXField = new IntTextField((v) -> MapEditor.execute(new SetX(getData(), v)));
-		posYField = new IntTextField((v) -> MapEditor.execute(new SetY(getData(), v)));
-		posZField = new IntTextField((v) -> MapEditor.execute(new SetZ(getData(), v)));
+		posXField = new IntTextField((v) -> MapEditor.execute(() -> new SetX(getData(), v)));
+		posYField = new IntTextField((v) -> MapEditor.execute(() -> new SetY(getData(), v)));
+		posZField = new IntTextField((v) -> MapEditor.execute(() -> new SetZ(getData(), v)));
 		posXField.setHorizontalAlignment(SwingConstants.CENTER);
 		posYField.setHorizontalAlignment(SwingConstants.CENTER);
 		posZField.setHorizontalAlignment(SwingConstants.CENTER);
@@ -126,7 +126,7 @@ public class MarkerInfoPanel extends MapInfoPanel<Marker> implements ActionListe
 
 		heightAboveGroundLabel = new JLabel("", SwingConstants.CENTER);
 
-		angleField = new FloatTextField((angle) -> MapEditor.execute(new SetAngle(getData(), angle)));
+		angleField = new FloatTextField((angle) -> MapEditor.execute(() -> new SetAngle(getData(), angle)));
 		angleField.setHorizontalAlignment(SwingConstants.CENTER);
 		SwingUtils.addVerticalBorderPadding(angleField);
 
@@ -179,7 +179,7 @@ public class MarkerInfoPanel extends MapInfoPanel<Marker> implements ActionListe
 
 		String cmd = e.getActionCommand();
 		EntityType type = EntityType.valueOf(cmd);
-		MapEditor.execute(getData().entityComponent.type.mutator(type));
+		MapEditor.execute(() -> getData().entityComponent.type.mutator(type));
 	}
 
 	@Override

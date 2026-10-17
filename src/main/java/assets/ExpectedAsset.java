@@ -13,6 +13,7 @@ public enum ExpectedAsset
 	ICON_MSG_EDITOR		(AssetSubdir.ICON, "key/dictionary.png", true),
 	ICON_WORLD_EDITOR	(AssetSubdir.UI_PAUSE, "unused_compass.png", true),
 	ICON_IMAGE_EDITOR	(AssetSubdir.ICON, "food/TastyTonic.png", true),
+	ICON_AUDIO_BOOTH		(AssetSubdir.ICON, "key/boo_record.png", true),
 	ICON_THEMES			(AssetSubdir.ICON, "badge/PUpDDown.png", true),
 	ICON_EXTRACT		(AssetSubdir.ICON, "badge/Peekaboo.png", true),
 	ICON_GOLD			(AssetSubdir.ICON, "key/card_gold.png", true),

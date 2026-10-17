@@ -1,9 +1,8 @@
 package app.config;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map.Entry;
@@ -35,71 +34,79 @@ public class Config
 
 	public void readConfig() throws IOException
 	{
-		List<String> lines = IOUtils.readFormattedTextFile(file, false);
+		readConfig(file);
+	}
+
+	public void readConfig(File source) throws IOException
+	{
+		List<String> lines = IOUtils.readFormattedTextFile(source, false);
+		Config loadedConfig = new Config(source, allowedScopes);
 
 		for (String line : lines) {
-			if (!line.contains("="))
-				throw new InputFileException(file, "Missing assignment on line: %n%s", line);
+			int assignmentPos = line.indexOf('=');
+			if (assignmentPos < 0)
+				throw new InputFileException(source, "Missing assignment on line: %n%s", line);
 
-			String[] tokens = line.split("\\s*=\\s*");
+			String key = line.substring(0, assignmentPos).trim();
+			String value = line.substring(assignmentPos + 1).trim();
 
-			if (tokens.length > 2)
-				throw new InputFileException(file, "Multiple assignments on line: %n%s", line);
-
-			Options opt = Options.getOption(tokens[0]);
+			Options opt = Options.getOption(key);
 			if (opt == null) {
-				Logger.logWarning("Unknown config entry: " + tokens[0]);
+				Logger.logWarning("Unknown config entry: " + key);
 				continue;
 			}
 
-			if (tokens.length == 1) {
-				settings.put(tokens[0], opt.defaultValue);
+			if (value.isEmpty()) {
+				loadedConfig.settings.put(opt.key, opt.defaultValue);
 				continue;
 			}
 
 			try {
 				switch (opt.type) {
 					case Boolean:
-						setBoolean(opt, tokens[1]);
+						loadedConfig.setBoolean(opt, value);
 						break;
 					case Integer:
-						setInteger(opt, tokens[1]);
+						loadedConfig.setInteger(opt, value);
 						break;
 					case Hex:
-						setHex(opt, tokens[1]);
+						loadedConfig.setHex(opt, value);
 						break;
 					case Float:
-						setFloat(opt, tokens[1]);
+						loadedConfig.setFloat(opt, value);
 						break;
 					case String:
-						setString(opt, tokens[1]);
+						loadedConfig.setString(opt, value);
 						break;
 				}
 			}
 			catch (ConfigEntryException e) {
 				Logger.logWarning(e.getMessage());
-				settings.put(tokens[0], opt.defaultValue);
+				loadedConfig.settings.put(opt.key, opt.defaultValue);
 			}
 		}
 
 		for (Options opt : Options.values()) {
-			if (allowed(opt) && !settings.containsKey(opt.key) && opt.required)
-				settings.put(opt.key, opt.defaultValue);
+			if (loadedConfig.allowed(opt) && !loadedConfig.settings.containsKey(opt.key) && opt.required)
+				loadedConfig.settings.put(opt.key, opt.defaultValue);
 		}
+
+		settings.clear();
+		settings.putAll(loadedConfig.settings);
 	}
 
 	public void saveConfigFile()
 	{
 		try {
-			PrintWriter pw = new PrintWriter(file);
-			pw.println("% Auto-generated config file, modify with care.");
+			List<String> lines = new ArrayList<>(settings.size() + 1);
+			lines.add("% Auto-generated config file, modify with care.");
 
 			for (Entry<String, String> entry : settings.entrySet())
-				pw.printf("%s = %s%n", entry.getKey(), entry.getValue());
+				lines.add(String.format("%s = %s", entry.getKey(), entry.getValue()));
 
-			pw.close();
+			IOUtils.atomicWriteLines(lines, file);
 		}
-		catch (FileNotFoundException e) {
+		catch (IOException e) {
 			SwingUtils.getErrorDialog()
 				.setTitle("Config Write Exception")
 				.setMessage("Could not update config:", file.getAbsolutePath())

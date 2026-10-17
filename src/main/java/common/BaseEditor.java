@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.function.Supplier;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -213,6 +214,19 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	}
 
 	/**
+	 * Runs a value-producing operation outside the GL thread's critical section.
+	 *
+	 * @param supplier operation to run while editor state is stable
+	 * @return the operation result
+	 */
+	public <T> T callThreadsafe(Supplier<T> supplier)
+	{
+		synchronized (modifyLock) {
+			return supplier.get();
+		}
+	}
+
+	/**
 	 * Registers a callback that will execute during every iteration of the main loop
 	 * @param ticker the callback to register
 	 */
@@ -393,10 +407,12 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			@Override
 			public void windowClosing(WindowEvent e)
 			{
-				openDialogs.increment();
-				closeRequested = !isModified() || promptForSave();
-				if (!closeRequested)
-					openDialogs.decrement();
+				synchronized (modifyLock) {
+					openDialogs.increment();
+					closeRequested = !isModified() || promptForSave();
+					if (!closeRequested)
+						openDialogs.decrement();
+				}
 			}
 		});
 	}
@@ -416,10 +432,12 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		logScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
 		logListener = msg -> {
-			logTextArea.append(msg.text + System.lineSeparator());
+			SwingUtilities.invokeLater(() -> {
+				logTextArea.append(msg.text + System.lineSeparator());
 
-			JScrollBar vertical = logScrollPane.getVerticalScrollBar();
-			vertical.setValue(vertical.getMaximum());
+				JScrollBar vertical = logScrollPane.getVerticalScrollBar();
+				vertical.setValue(vertical.getMaximum());
+			});
 		};
 		Logger.addSwingListener(logListener);
 
@@ -530,16 +548,14 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 
 		switch (choice) {
 			case JOptionPane.YES_OPTION:
-				saveChanges();
-				break;
+				return saveChanges();
 			case JOptionPane.NO_OPTION:
-				break;
+				return true;
 			case JOptionPane.CANCEL_OPTION:
-				closeRequested = false;
+			case JOptionPane.CLOSED_OPTION:
+			default:
 				return false;
 		}
-
-		return true;
 	}
 
 	public final DialogBuilder getMessageDialog(String title, Object message)
@@ -616,7 +632,12 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 
 	protected abstract boolean isModified();
 
-	protected abstract void saveChanges();
+	/**
+	 * Saves pending editor changes.
+	 *
+	 * @return {@code true} only when it is safe to discard the in-memory changes
+	 */
+	protected abstract boolean saveChanges();
 
 	// -------------------------------------------------------------------
 	// Exposed for children
@@ -693,16 +714,18 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 	@Override
 	public void post(Message msg)
 	{
-		Color c = null;
-		switch (msg.priority) {
-			case WARNING:
-			case ERROR:
-				c = SwingUtils.getRedTextColor();
-				break;
-			default:
-				c = SwingUtils.getTextColor();
-				break;
-		}
-		infoLabel.setMessage(msg.text, c);
+		SwingUtilities.invokeLater(() -> {
+			Color c = null;
+			switch (msg.priority) {
+				case WARNING:
+				case ERROR:
+					c = SwingUtils.getRedTextColor();
+					break;
+				default:
+					c = SwingUtils.getTextColor();
+					break;
+			}
+			infoLabel.setMessage(msg.text, c);
+		});
 	}
 }

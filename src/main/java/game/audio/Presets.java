@@ -81,12 +81,69 @@ public abstract class Presets
 
 		public String name(File source, String user, int bank, int patch)
 		{
-			String wav = byAddress.get((bank >> 4 & 7) << 8 | patch);
+			int set = bank >> 4 & 7;
+			String wav = byAddress.get((set == 7 ? 0 : set) << 8 | patch);
 			if (wav == null)
 				throw new InputFileException(source, "%s uses bank %02X patch %02X, which no bank in banks.xml provides", user,
 					bank, patch);
 			return wav;
 		}
+	}
+
+	/** Reads one preset from a BGM or PRG stream. Empty engine slots have a null sample. */
+	public static Preset readPreset(File source, ByteBuffer bb, int id, Addresses addresses)
+	{
+		int bank = bb.get() & 0xFF;
+		int patch = bb.get() & 0xFF;
+		String wav = (bank >> 4 & 7) == 2 ? null : addresses.name(source, "preset " + id, bank, patch);
+		Preset preset = new Preset("Preset" + id, id, wav, bank & 3, bb.get() & 0xFF, bb.get(),
+			bb.get() & 0xFF, bb.get(), bb.get(), source);
+		bb.get();
+		return preset;
+	}
+
+	/** Reads one drum from a BGM or PER stream. */
+	public static Drum readDrum(File source, ByteBuffer bb, int id, Addresses addresses)
+	{
+		int bank = bb.get() & 0xFF;
+		int patch = bb.get() & 0xFF;
+		String wav = (bank >> 4 & 7) == 2 ? null : addresses.name(source, "drum " + id, bank, patch);
+		Drum drum = new Drum("Drum" + id, id, wav, bank & 3, bb.getShort() & 0xFFFF,
+			bb.get() & 0xFF, bb.get(), bb.get() & 0xFF, bb.get() & 0xFF, bb.get() & 0xFF,
+			bb.get() & 0xFF, bb.get() & 0xFF, source);
+		bb.get();
+		return drum;
+	}
+
+	public static Preset[] readPresets(File source, byte[] data, Addresses addresses)
+	{
+		ByteBuffer bb = readHeader(source, data, 0x50524720, PRESET_SIZE);
+		Preset[] presets = new Preset[bb.remaining() / PRESET_SIZE];
+		for (int i = 0; i < presets.length; i++)
+			presets[i] = readPreset(source, bb, i, addresses);
+		return presets;
+	}
+
+	public static Drum[] readDrums(File source, byte[] data, Addresses addresses)
+	{
+		ByteBuffer bb = readHeader(source, data, 0x50455220, DRUM_SIZE);
+		Drum[] drums = new Drum[bb.remaining() / DRUM_SIZE];
+		for (int i = 0; i < drums.length; i++)
+			drums[i] = readDrum(source, bb, i, addresses);
+		return drums;
+	}
+
+	private static ByteBuffer readHeader(File source, byte[] data, int magic, int entrySize)
+	{
+		ByteBuffer bb = ByteBuffer.wrap(data);
+		if (data.length < HEADER_SIZE || bb.getInt() != magic)
+			throw new InputFileException(source, "invalid preset table header");
+		int length = bb.getInt();
+		if (length < HEADER_SIZE || length > data.length || (length - HEADER_SIZE) % entrySize != 0)
+			throw new InputFileException(source, "invalid preset table length");
+		bb.limit(length);
+		bb.position(HEADER_SIZE);
+		return bb;
 	}
 
 	public static byte[] writePresets(Preset[] presets, Addresses addresses)

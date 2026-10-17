@@ -4,6 +4,7 @@ import static game.message.StringConstants.*;
 import static game.message.StringConstants.ControlCharacter.STYLE;
 
 import java.nio.ByteBuffer;
+import java.util.Locale;
 import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -227,7 +228,7 @@ public class StringDecoder
 	{
 		msg.appendMarkup(OPEN_TAG);
 		msg.appendMarkup(ControlCharacter.PAUSE.name);
-		msg.appendMarkup(" %d", buffer.get());
+		msg.appendMarkup(" %d", buffer.get() & 0xFF);
 		msg.appendMarkup(CLOSE_TAG);
 		return msg;
 	}
@@ -304,7 +305,7 @@ public class StringDecoder
 				case COLOR:
 					msg.appendMarkup(func.name);
 					for (int i = 0; i < func.args; i++)
-						msg.appendMarkup(" 0x%02X", buffer.get());
+						msg.appendMarkup(" 0x%02X", buffer.get() & 0xFF);
 					break;
 
 				case SIZE:
@@ -319,7 +320,7 @@ public class StringDecoder
 
 				case SPEED:
 					msg.appendMarkup(func.name);
-					msg.appendMarkup(" delay=%d chars=%d", buffer.get(), buffer.get());
+					msg.appendMarkup(" delay=%d chars=%d", buffer.get() & 0xFF, buffer.get() & 0xFF);
 					break;
 
 				case SET_X:
@@ -344,7 +345,9 @@ public class StringDecoder
 
 				case VOLUME:
 					msg.appendMarkup(func.name);
-					msg.appendMarkup(" percent=%d", buffer.get());
+					int volume = buffer.get() & 0xFF;
+					String percent = String.format(Locale.ROOT, "%.2f", volume * 100.0f / 255.0f);
+					msg.appendMarkup(" percent=%s", percent);
 					break;
 
 				case ANIM_SPRITE:
@@ -380,6 +383,11 @@ public class StringDecoder
 				case HIDE_IMAGE:
 					msg.appendMarkup(func.name);
 					msg.appendMarkup(" fadeAmount=%d", buffer.get() & 0xFF);
+					break;
+
+				case SET_CURSOR:
+					msg.appendMarkup(func.name);
+					msg.appendMarkup(" index=%d pos=%d,%d", buffer.get() & 0xFF, buffer.get() & 0xFF, buffer.get() & 0xFF);
 					break;
 
 				case SET_REWIND:

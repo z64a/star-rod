@@ -8,10 +8,11 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
+import common.commands.AbstractCommand;
+
 import app.SwingUtils;
 import game.map.editor.MapEditor;
 import game.map.editor.MapInfoPanel;
-import common.commands.AbstractCommand;
 import game.map.editor.selection.SelectablePoint;
 import game.map.hit.CameraZoneData;
 import game.map.hit.CameraZoneData.SetCameraFlag;
@@ -45,24 +46,24 @@ public class CameraInfoPanel extends MapInfoPanel<CameraZoneData>
 			if (updatingFields)
 				return;
 			ControlType type = (ControlType) typeComboBox.getSelectedItem();
-			MapEditor.execute(new SetCameraType(getData(), type));
+			MapEditor.execute(() -> new SetCameraType(getData(), type));
 		});
 		SwingUtils.addBorderPadding(typeComboBox);
 
 		boomLengthField = new FloatTextField((newValue) -> {
-			MapEditor.execute(getData().boomLength.mutator(newValue));
+			MapEditor.execute(() -> getData().boomLength.mutator(newValue));
 		});
 		boomLengthField.setHorizontalAlignment(SwingConstants.CENTER);
 		SwingUtils.addBorderPadding(boomLengthField);
 
 		boomPitchField = new FloatTextField((newValue) -> {
-			MapEditor.execute(getData().boomPitch.mutator(newValue));
+			MapEditor.execute(() -> getData().boomPitch.mutator(newValue));
 		});
 		boomPitchField.setHorizontalAlignment(SwingConstants.CENTER);
 		SwingUtils.addBorderPadding(boomPitchField);
 
 		viewPitchField = new FloatTextField((newValue) -> {
-			MapEditor.execute(getData().viewPitch.mutator(newValue));
+			MapEditor.execute(() -> getData().viewPitch.mutator(newValue));
 		});
 		viewPitchField.setHorizontalAlignment(SwingConstants.CENTER);
 		SwingUtils.addBorderPadding(viewPitchField);
@@ -73,7 +74,7 @@ public class CameraInfoPanel extends MapInfoPanel<CameraZoneData>
 
 		cbFlag = new JCheckBox();
 		cbFlag.addActionListener((e) -> {
-			MapEditor.execute(new SetCameraFlag(getData(), cbFlag.isSelected()));
+			MapEditor.execute(() -> new SetCameraFlag(getData(), cbFlag.isSelected()));
 		});
 
 		JLabel boomLabel = new JLabel("Boom*");

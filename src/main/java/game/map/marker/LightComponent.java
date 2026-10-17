@@ -106,6 +106,10 @@ public class LightComponent extends BaseMarkerComponent
 	@Override
 	public void fromXML(XmlReader xmr, Element elem)
 	{
+		Element lightElem = xmr.getUniqueTag(elem, TAG_LIGHT);
+		if (lightElem != null)
+			elem = lightElem;
+
 		if (xmr.hasAttribute(elem, ATTR_LIGHT_FLAGS))
 			setFromFlags((byte) xmr.readHex(elem, ATTR_LIGHT_FLAGS));
 
@@ -130,7 +134,7 @@ public class LightComponent extends BaseMarkerComponent
 
 		xmw.addHex(lightTag, ATTR_LIGHT_FLAGS, getFlags());
 		xmw.addIntArray(lightTag, ATTR_LIGHT_COLOR, getColor());
-		xmw.addDouble(lightTag, ATTR_LIGHT_COEFFICIENT, falloffDist);
+		xmw.addFloat(lightTag, ATTR_LIGHT_COEFFICIENT, falloffCoeff);
 
 		xmw.printTag(lightTag);
 	}

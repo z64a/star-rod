@@ -1,13 +1,13 @@
 package game.map.editor.camera;
 
-import java.awt.event.KeyEvent;
-
 import common.KeyboardInput;
 import common.MouseInput;
 import common.MousePixelRead;
 import common.Vector3f;
+
 import game.map.Axis;
 import game.map.BoundingBox;
+import game.map.editor.EditorShortcut;
 import game.map.editor.render.PresetColor;
 import game.map.editor.selection.PickRay;
 import game.map.editor.selection.PickRay.Channel;
@@ -218,13 +218,13 @@ public class OrthographicCamera extends MapEditCamera
 
 		int pv = 0;
 		int ph = 0;
-		if (keyboard.isKeyDown(KeyEvent.VK_W))
+		if (keyboard.isDown(EditorShortcut.MOVE_FORWARD))
 			pv -= 1;
-		if (keyboard.isKeyDown(KeyEvent.VK_S))
+		if (keyboard.isDown(EditorShortcut.MOVE_BACKWARD))
 			pv += 1;
-		if (keyboard.isKeyDown(KeyEvent.VK_A))
+		if (keyboard.isDown(EditorShortcut.MOVE_LEFT))
 			ph -= 1;
-		if (keyboard.isKeyDown(KeyEvent.VK_D))
+		if (keyboard.isDown(EditorShortcut.MOVE_RIGHT))
 			ph += 1;
 
 		float dv = zv;
@@ -282,17 +282,19 @@ public class OrthographicCamera extends MapEditCamera
 	@Override
 	public void drawBackground()
 	{
+		if (!editor.gridEnabled && !editor.showAxes)
+			return;
+
+		RenderState.setDepthWrite(false);
+
 		if (editor.gridEnabled)
 			drawGrid();
 
 		if (editor.showAxes)
 			drawAxes();
 
-		if (editor.gridEnabled || editor.showAxes) {
-			RenderState.setDepthWrite(false);
-			LineRenderQueue.render(true);
-			RenderState.setDepthWrite(true);
-		}
+		LineRenderQueue.render(true);
+		RenderState.setDepthWrite(true);
 	}
 
 	/**
@@ -407,6 +409,9 @@ public class OrthographicCamera extends MapEditCamera
 					break;
 			}
 		}
+
+		// render grid before changing line width for coordinate boundaries
+		LineRenderQueue.render(true);
 
 		RenderState.setLineWidth(2.0f);
 		RenderState.setColor(0.35f, 0.35f, 0.35f, 1.0f);
