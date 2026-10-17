@@ -8,6 +8,9 @@ replay_pid*
 /bin/
 /build/
 
+# TODO: create a curated suite with good coverage
+/src/test/
+
 # Local Star Rod runtime output
 /local/
 

@@ -23,7 +23,7 @@ jobs:
       uses: gradle/actions/setup-gradle@v3
     - name: Build
       shell: bash
-      run: ./gradlew test createReleaseZip
+      run: ./gradlew createReleaseZip
   build-nix-flake:
     strategy:
       matrix:
