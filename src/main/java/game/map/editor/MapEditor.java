@@ -25,6 +25,8 @@ import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.imageio.ImageIO;
@@ -542,7 +544,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		keyboard = new KeyboardInput(glCanvas);
 		mouse = new MouseInput(glCanvas);
 		gui = new SwingGUI(this, glCanvas, logFile);
-		Logger.addListener(gui);
+		Logger.addSwingListener(gui);
 
 		if (Environment.isMacOS())
 			setFullScreenEnabled(gui, false);
@@ -3435,37 +3437,42 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		gui.setSelectedTexture(null);
 	}
 
-	/**
-	 * Determines which assets are required by OpenGL and initializes them. Currently this involves: - Loading all required
-	 * textures. - Set texture IDs on mesh objects.
-	 *
-	 * @param map
-	 */
-	private void loadMapResources(boolean reloadTextures)
+	/** Prompts on the event dispatch thread, after the caller has released the OpenGL context. */
+	private File promptForTextureArchive()
 	{
-		boolean loadedTextures = !reloadTextures;
-		if (!loadedTextures)
-			loadedTextures = TextureManager.load(map.texName);
+		FutureTask<File> prompt = new FutureTask<>(() -> {
+			while (true) {
+				int choice = SwingUtils.getConfirmDialog()
+					.setParent(gui)
+					.setTitle("Missing Texture Archive")
+					.setMessage("Could not open texture archive \"" + map.texName + "\", select a different one?")
+					.setOptionsType(JOptionPane.YES_NO_OPTION)
+					.choose();
 
-		while (!loadedTextures) {
-			int choice = SwingUtils.getConfirmDialog()
-				.setParent(gui)
-				.setTitle("Missing Texture Archive")
-				.setMessage("Could not open texture archive \"" + map.texName + "\", select a different one?")
-				.setOptionsType(JOptionPane.YES_NO_OPTION)
-				.choose();
+				if (choice != JOptionPane.YES_OPTION)
+					return null;
 
-			if (choice == JOptionPane.YES_OPTION) {
 				File texFile = SelectTexDialog.showPrompt();
-				if (texFile != null) {
-					String texName = FilenameUtils.getBaseName(texFile.getName());
-					loadedTextures = TextureManager.load(texName);
-				}
+				if (texFile != null)
+					return texFile;
 			}
-			else
-				break;
+		});
+		SwingUtilities.invokeLater(prompt);
+		try {
+			return prompt.get();
 		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new StarRodException(e);
+		}
+		catch (ExecutionException e) {
+			throw new StarRodException(e.getCause());
+		}
+	}
 
+	/** Assigns loaded textures and initializes the remaining map resources with the OpenGL context available. */
+	private void loadMapResources()
+	{
 		TextureManager.assignModelTextures(map);
 
 		for (Model mdl : map.modelTree)
@@ -3696,19 +3703,33 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		if (newMap == null)
 			return;
 
-		// this MUST run with GLContext available
-		runInContext(() -> {
-			String prevTexName = (thumbnailMode || map == null) ? null : map.texName;
-			boolean reloadTextures = !newMap.texName.equals(prevTexName);
+		String prevTexName = (thumbnailMode || map == null) ? null : map.texName;
+		boolean reloadTextures = !newMap.texName.equals(prevTexName);
+		boolean[] loadedTextures = { !reloadTextures };
 
+		// Release the context before asking Swing to show a modal dialog.
+		runInContext(() -> {
 			if (map != null)
 				releaseMapResources(reloadTextures);
 
 			loading = true;
 			map = newMap;
 
-			loadMapResources(reloadTextures);
+			if (reloadTextures)
+				loadedTextures[0] = TextureManager.load(map.texName);
+		});
 
+		while (!loadedTextures[0]) {
+			File texFile = promptForTextureArchive();
+			if (texFile == null)
+				break;
+
+			String texName = FilenameUtils.getBaseName(texFile.getName());
+			runInContext(() -> loadedTextures[0] = TextureManager.load(texName));
+		}
+
+		runInContext(() -> {
+			loadMapResources();
 			loadOverrides();
 
 			updateRecentMaps();

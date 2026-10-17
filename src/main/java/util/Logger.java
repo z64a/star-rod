@@ -1,18 +1,17 @@
 package util;
 
-import static util.Priority.MILESTONE;
 import static util.Priority.STANDARD;
 
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import javax.swing.SwingUtilities;
 
 public abstract class Logger
 {
-	private static List<ListenerReference> listeners = new LinkedList<>();
-	private static Priority minListenerPriority = STANDARD;
+	private static final List<ListenerReference> listeners = new CopyOnWriteArrayList<>();
 
-	private static Listener progressListener;
+	private static volatile Listener progressListener;
 
 	private static Priority defaultPriority = STANDARD;
 	private static boolean enabled = true;
@@ -38,47 +37,44 @@ public abstract class Logger
 	{
 		private final Listener listener;
 		private final Priority priority;
+		private final boolean useEDT;
 
-		private ListenerReference(Listener listener, Priority p)
+		private ListenerReference(Listener listener, Priority p, boolean useEDT)
 		{
 			this.listener = listener;
 			this.priority = p;
+			this.useEDT = useEDT;
 		}
 	}
 
 	public static void addListener(Listener listener)
 	{
-		listeners.add(new ListenerReference(listener, defaultPriority));
-
-		if (minListenerPriority.greaterThan(defaultPriority))
-			minListenerPriority = defaultPriority;
+		addListener(listener, defaultPriority);
 	}
 
+	/** Registers a listener called synchronously, such as a log file that must be written before it closes. */
 	public static void addListener(Listener listener, Priority p)
 	{
-		listeners.add(new ListenerReference(listener, p));
+		listeners.add(new ListenerReference(listener, p, false));
+	}
 
-		if (minListenerPriority.greaterThan(p))
-			minListenerPriority = p;
+	public static void addSwingListener(Listener listener)
+	{
+		addSwingListener(listener, defaultPriority);
+	}
+
+	/** Registers a UI listener without making a logging thread wait for the event dispatch thread. */
+	public static void addSwingListener(Listener listener, Priority p)
+	{
+		listeners.add(new ListenerReference(listener, p, true));
 	}
 
 	public static void removeListener(Listener listener)
 	{
-		Iterator<ListenerReference> iter = listeners.iterator();
-		while (iter.hasNext()) {
-			ListenerReference ref = iter.next();
-			if (ref.listener == listener) {
-				iter.remove();
-			}
-		}
-
-		minListenerPriority = MILESTONE;
-		for (ListenerReference r : listeners) {
-			if (minListenerPriority.greaterThan(r.priority))
-				minListenerPriority = r.priority;
-		}
+		listeners.removeIf(ref -> ref.listener == listener);
 	}
 
+	/** The progress listener receives UPDATE and MILESTONE messages on the event dispatch thread. */
 	public static void setProgressListener(Listener listener)
 	{
 		progressListener = listener;
@@ -99,13 +95,11 @@ public abstract class Logger
 		switch (p) {
 			case UPDATE:
 				// update messages are only intended for the progress listener
-				if (progressListener != null)
-					progressListener.post(msg);
+				postOnEDT(progressListener, msg);
 				return;
 			case MILESTONE:
-				// progress listener also recieves milestone messages
-				if (progressListener != null)
-					progressListener.post(msg);
+				// progress listener also receives milestone messages
+				postOnEDT(progressListener, msg);
 				break;
 			case WARNING:
 				text = "WARNING: " + text;
@@ -123,13 +117,21 @@ public abstract class Logger
 				System.out.println("> " + text);
 		}
 
-		if (p.lessThan(minListenerPriority))
-			return;
-
 		for (ListenerReference ref : listeners) {
-			if (!p.lessThan(ref.priority))
-				ref.listener.post(msg);
+			if (!p.lessThan(ref.priority)) {
+				if (ref.useEDT)
+					postOnEDT(ref.listener, msg);
+				else
+					ref.listener.post(msg);
+			}
 		}
+	}
+
+	private static void postOnEDT(Listener listener, Message msg)
+	{
+		if (listener == null)
+			return;
+		SwingUtilities.invokeLater(() -> listener.post(msg));
 	}
 
 	public static void logError(String message)

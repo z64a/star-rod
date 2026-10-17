@@ -313,7 +313,7 @@ public class StarRodMain extends StarRodFrame
 		setLocationRelativeTo(null);
 		setVisible(true);
 
-		Logger.addListener(consoleListener);
+		Logger.addSwingListener(consoleListener);
 	}
 
 	public interface EditorWork

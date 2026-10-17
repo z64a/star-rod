@@ -283,7 +283,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			JScrollBar vertical = logScrollPane.getVerticalScrollBar();
 			vertical.setValue(vertical.getMaximum());
 		};
-		Logger.addListener(logListener);
+		Logger.addSwingListener(logListener);
 
 		JButton openLog = new JButton("Open Log");
 		SwingUtils.setFontSize(openLog, 10);
