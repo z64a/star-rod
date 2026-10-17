@@ -48,6 +48,10 @@ import javax.swing.WindowConstants;
 import org.apache.commons.io.FilenameUtils;
 import org.lwjgl.assimp.Assimp;
 
+import common.EditorCanvas;
+import common.KeyBindingsPanel;
+import common.commands.AbstractCommand;
+
 import app.Environment;
 import app.StarRodFrame;
 import app.StarRodMain;
@@ -58,8 +62,6 @@ import assets.AssetManager;
 import assets.ui.SelectBackgroundDialog;
 import assets.ui.SelectMapDialog;
 import assets.ui.SelectTexDialog;
-import common.EditorCanvas;
-import common.commands.AbstractCommand;
 import game.ProjectDatabase;
 import game.map.Map;
 import game.map.Map.SetBackground;
@@ -649,6 +651,10 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		checkbox.setPreferredSize(menuItemDimension);
 
 		menu.addSeparator();
+
+		item = new JMenuItem("Key Bindings...");
+		addButtonCommand(item, GuiCommand.SHOW_KEY_BINDINGS);
+		menu.add(item);
 
 		item = new JMenuItem("View Shortcuts");
 		addButtonCommand(item, GuiCommand.SHOW_SHORTCUTS);
@@ -1290,6 +1296,10 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 				editor.submitGuiCommand(cmd);
 				break;
 
+			case SHOW_KEY_BINDINGS:
+				showKeyBindings();
+				break;
+
 			case SHOW_SHORTCUTS:
 				showControls();
 				break;
@@ -1795,13 +1805,39 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		}
 	}
 
+	private void showKeyBindings()
+	{
+		KeyBindingsPanel bindings = new KeyBindingsPanel(editor.keyConfig);
+		while (SwingUtils.getConfirmDialog()
+			.setParent(this)
+			.setCounter(openDialogCount)
+			.setTitle("Map Editor Key Bindings")
+			.setMessage(bindings)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
+			.choose() == JOptionPane.OK_OPTION) {
+			try {
+				editor.saveKeyBindings(bindings.getBindings());
+				Logger.log("Saved Map Editor key bindings.");
+				return;
+			}
+			catch (IOException e) {
+				SwingUtils.getMessageDialog()
+					.setParent(this).setCounter(openDialogCount)
+					.setTitle("Could Not Save Key Bindings")
+					.setMessage(e.getMessage())
+					.setMessageType(JOptionPane.ERROR_MESSAGE).show();
+			}
+		}
+	}
+
 	private void showControls()
 	{
 		SwingUtils.getMessageDialog()
 			.setParent(this)
 			.setCounter(openDialogCount)
 			.setTitle("Controls and Shortcuts")
-			.setMessage(new MapShortcutsPanel())
+			.setMessage(new MapShortcutsPanel(editor.keyConfig))
 			.setMessageType(JOptionPane.PLAIN_MESSAGE)
 			.show();
 	}

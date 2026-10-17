@@ -238,6 +238,42 @@ class CursorSimulationTest
 		assertEquals(camera.getPosition().y, camera.getPosition(player.getSimulationInterpolation()).y);
 	}
 
+	@Test
+	void simulationUsesReboundMovementRunJumpAndHoverControls()
+	{
+		MapKeyConfig config = new MapKeyConfig();
+		var bindings = config.copyBindings();
+		bindings.put(EditorShortcut.MOVE_RIGHT, new common.KeyBinding(KeyEvent.VK_F9, 0));
+		bindings.put(EditorShortcut.PLAY_IN_EDITOR_RUN, new common.KeyBinding(KeyEvent.VK_F10, 0));
+		bindings.put(EditorShortcut.PLAY_IN_EDITOR_JUMP, new common.KeyBinding(KeyEvent.VK_F11, 0));
+		bindings.put(EditorShortcut.PLAY_IN_EDITOR_HOVER, new common.KeyBinding(KeyEvent.VK_F12, 0));
+		config.setBindings(bindings);
+		KeyboardInput input = new KeyboardInput(inputSource, config);
+		CursorObject player = player(0, 0, 0);
+		MapKeyInput actions = new MapKeyInput(config, () -> true, (action, pressed) -> {
+			if (action == EditorShortcut.PLAY_IN_EDITOR_JUMP) {
+				if (pressed)
+					player.startInputJump();
+				else
+					player.endInputJump();
+			}
+		});
+		for (int key : new int[] { KeyEvent.VK_F9, KeyEvent.VK_F10 })
+			input.keyPressed(new KeyEvent(inputSource, KeyEvent.KEY_PRESSED, 0, 0, key, KeyEvent.CHAR_UNDEFINED));
+		input.update(actions, true);
+		player.tickSimulation(input, floor(), () -> 0, TICK, true, true, dt -> {});
+		assertTrue(player.getSimulationPosition().x > 4, "Rebound run and movement keys must reach physics");
+		input.keyPressed(new KeyEvent(inputSource, KeyEvent.KEY_PRESSED, 0, 0, KeyEvent.VK_F11, KeyEvent.CHAR_UNDEFINED));
+		input.update(actions, true);
+		player.tickSimulation(input, floor(), () -> 0, TICK, true, true, dt -> {});
+		assertTrue(player.getSimulationPosition().y > 0);
+		input.reset(actions);
+		player.setPosition(new Vector3f());
+		input.keyPressed(new KeyEvent(inputSource, KeyEvent.KEY_PRESSED, 0, 0, KeyEvent.VK_F12, KeyEvent.CHAR_UNDEFINED));
+		player.tickSimulation(input, floor(), () -> 0, TICK, true, true, dt -> {});
+		assertEquals(4, player.getSimulationPosition().y, 0.001);
+	}
+
 	private CursorObject player(float x, float y, float z)
 	{
 		CursorObject player = new CursorObject(new Vector3f(x, y, z), false);

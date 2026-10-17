@@ -7,7 +7,9 @@ import java.awt.event.KeyEvent;
 import common.KeyboardInput;
 import common.MouseInput;
 import common.Vector3f;
+
 import game.map.BoundingBox;
+import game.map.editor.EditorShortcut;
 
 public class PerspFreeCamera extends PerspBaseCamera
 {
@@ -110,10 +112,10 @@ public class PerspFreeCamera extends PerspBaseCamera
 
 			int vx = 0, vz = 0;
 
-			boolean moveForward = keyboard.isKeyDown(KeyEvent.VK_W);
-			boolean moveBackward = keyboard.isKeyDown(KeyEvent.VK_S);
-			boolean moveLeft = keyboard.isKeyDown(KeyEvent.VK_A);
-			boolean moveRight = keyboard.isKeyDown(KeyEvent.VK_D);
+			boolean moveForward = keyboard.isDown(EditorShortcut.MOVE_FORWARD);
+			boolean moveBackward = keyboard.isDown(EditorShortcut.MOVE_BACKWARD);
+			boolean moveLeft = keyboard.isDown(EditorShortcut.MOVE_LEFT);
+			boolean moveRight = keyboard.isDown(EditorShortcut.MOVE_RIGHT);
 
 			float mod = 1.0f;
 			if (mouse.isHoldingLMB())

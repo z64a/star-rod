@@ -15,6 +15,7 @@ import javax.swing.JProgressBar;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
+import app.splash.LoadingSplashPanel;
 import net.miginfocom.swing.MigLayout;
 
 public class RomValidator
@@ -56,11 +57,13 @@ public class RomValidator
 		progressBar.setIndeterminate(true);
 
 		pleaseWait.setLayout(new MigLayout("fill"));
+		pleaseWait.add(new LoadingSplashPanel(false), "growx, wrap");
 		pleaseWait.add(new JLabel("Validating selected ROM..."), "wrap");
 		pleaseWait.add(progressBar, "growx");
 
 		pleaseWait.setMinimumSize(new Dimension(240, 80));
 		pleaseWait.pack();
+		pleaseWait.setLocationRelativeTo(null);
 		pleaseWait.setResizable(false);
 		pleaseWait.setVisible(false);
 

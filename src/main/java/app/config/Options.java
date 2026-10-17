@@ -24,6 +24,7 @@ public enum Options
 	Theme				(true, Scope.Main, Type.String, "Theme", "FlatDark"),
 	ExitToMenu			(true, Scope.Main, Type.Boolean, "ExitToMenu", "true"),
 	CheckForUpdates		(true, Scope.Main, Type.Boolean, "CheckForUpdates", "true"),
+	SplashUnhinged		(true, Scope.Main, Type.Integer, "SplashUnhinged", "55", 0.0, 100.0, 1.0),
 
 	ExtractedMapData	(true, Scope.Project, Type.Boolean, "ExtractedMapData", "false"),
 

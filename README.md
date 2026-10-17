@@ -23,6 +23,31 @@ To get started with modding Paper Mario, see [docs.starhaven.dev](https://docs.s
 
 ## Development
 
+### Splash screens
+
+Startup splashes are composed locally from bundled stock photography with randomized
+collages, color treatments, and varied Star Rod lettering. Open **Splash Screens...** in the
+main window to preview compositions, reroll, and save an **Unhinged** intensity from
+0 to 100 (default 55). The setting is also stored as `SplashUnhinged` in `main.cfg`.
+Startup never downloads photos or waits for the composition to finish.
+Please-wait and ROM-validation windows use a compact 480 × 144 banner with the same
+photos, fonts, and Unhinged setting. Their lettering varies between “Loading” and
+“Please wait,” above the status and progress bar.
+
+Run `./gradlew previewSplashes` to render a comparison sheet at intensities 0, 55,
+and 100 in `build/splash-preview`, plus sheets of font treatments and compact banners.
+The title is usually `STAR ROD`, `Star Rod`, or `star rod`, with a combined 6% chance
+of punctuation variants such as `[ star rod ]` and `star.rod`.
+Photo credits, source links and license information
+are bundled in `src/main/resources/splash/photos/`; these photos use the Pexels
+License, separately from the source code license. Add new photos to `catalog.tsv`
+and keep JPEG dimensions at or below 800 pixels per side and each file under 80 KiB.
+The seven bundled display fonts use the SIL Open Font License; their notices and
+source URLs are in `src/main/resources/splash/fonts/`. They are small, provider-supplied
+TrueType subsets containing only splash-title characters.
+
+### Setup
+
 Star Rod is written in [Java](https://dev.java/) and uses the build tool [Gradle](https://gradle.org/). We recommend [Visual Studio Code](https://code.visualstudio.com/) as your editor.
 
 To set up Star Rod for local development, follow these instructions:

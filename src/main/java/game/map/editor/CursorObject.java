@@ -3,7 +3,6 @@ package game.map.editor;
 import static app.Directories.*;
 import static java.lang.Math.toRadians;
 
-import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
@@ -313,10 +312,10 @@ public class CursorObject extends EditorObject
 
 	private void getMovementInput(KeyboardInput keyboard, float camYaw)
 	{
-		boolean moveForward = keyboard.isKeyDown(KeyEvent.VK_W);
-		boolean moveBackward = keyboard.isKeyDown(KeyEvent.VK_S);
-		boolean moveLeft = keyboard.isKeyDown(KeyEvent.VK_A);
-		boolean moveRight = keyboard.isKeyDown(KeyEvent.VK_D);
+		boolean moveForward = keyboard.isDown(EditorShortcut.MOVE_FORWARD);
+		boolean moveBackward = keyboard.isDown(EditorShortcut.MOVE_BACKWARD);
+		boolean moveLeft = keyboard.isDown(EditorShortcut.MOVE_LEFT);
+		boolean moveRight = keyboard.isDown(EditorShortcut.MOVE_RIGHT);
 
 		double dr = 0, df = 0;
 		if (moveForward)
@@ -340,7 +339,7 @@ public class CursorObject extends EditorObject
 		double dz = dr * Math.sin(toRadians(camYaw)) - df * Math.cos(toRadians(camYaw));
 
 		moveYaw = Math.atan2(dz, dx);
-		movementInputMagnitude = keyboard.isShiftDown() ? RUN_INPUT_MAGNITUDE : WALK_INPUT_MAGNITUDE;
+		movementInputMagnitude = keyboard.isDown(EditorShortcut.PLAY_IN_EDITOR_RUN) ? RUN_INPUT_MAGNITUDE : WALK_INPUT_MAGNITUDE;
 	}
 
 	public void startInputJump()
@@ -1296,7 +1295,7 @@ public class CursorObject extends EditorObject
 				getMovementInput(keyboard, (float) cameraYaw.getAsDouble());
 		}
 
-		if (checkInput && hasFocus && keyboard.isKeyDown(EditorShortcut.PLAY_IN_EDITOR_HOVER.key)) {
+		if (checkInput && hasFocus && keyboard.isDown(EditorShortcut.PLAY_IN_EDITOR_HOVER)) {
 			updateFacing((float) cameraYaw.getAsDouble(), deltaTime);
 			float hoverMoveDist = movementInputMagnitude > RUN_THRESHOLD ? PLAYER_RUN_SPEED : PLAYER_WALK_SPEED;
 			if (movementInputMagnitude == 0.0f)

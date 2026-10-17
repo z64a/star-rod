@@ -123,6 +123,16 @@ tasks.test {
     useJUnitPlatform()
 }
 
+tasks.register<JavaExec>("previewSplashes") {
+    group = "application"
+    description = "Render splash examples at Unhinged 0, 55 and 100 without opening a project"
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("app.splash.SplashPreview")
+    systemProperty("java.awt.headless", "true")
+    args(layout.buildDirectory.dir("splash-preview").get().asFile.absolutePath)
+}
+
 
 val licenseBuildDir = layout.buildDirectory.dir("reports/licenses/licenseReport")
 val releaseBuildDir = layout.buildDirectory.dir("release")

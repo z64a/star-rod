@@ -36,11 +36,13 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.WindowConstants;
 
+import common.BaseEditor;
+
 import app.input.InvalidInputException;
+import app.splash.SplashSettings;
 import assets.AssetHandle;
 import assets.AssetManager;
 import assets.ExpectedAsset;
-import common.BaseEditor;
 import game.audio.AudioTasks;
 import game.audio.booth.AudioBooth;
 import game.globals.editor.GlobalsEditor;
@@ -203,6 +205,11 @@ public class StarRodMain extends StarRodFrame
 		});
 		buttons.add(themesMenuButton);
 
+		JButton splashButton = new JButton("Splash Screens...");
+		SwingUtils.setFontSize(splashButton, 12);
+		splashButton.addActionListener(e -> new SplashSettings(this).setVisible(true));
+		buttons.add(splashButton);
+
 		// not ready
 		/*
 		JButton captureThumbnailsButton = new JButton("Capture Thumbnails");
@@ -303,6 +310,7 @@ public class StarRodMain extends StarRodFrame
 
 		add(themesMenuButton, "grow");
 		add(audioBoothButton, "grow");
+		add(splashButton, "span, grow");
 
 		add(openConfigDirButton, "grow");
 		add(openProjectDirButton, "grow");
@@ -408,7 +416,14 @@ public class StarRodMain extends StarRodFrame
 	{
 		new EditorWorker(() -> {
 			CountDownLatch editorClosedSignal = new CountDownLatch(1);
-			new AudioBooth(editorClosedSignal);
+			LoadingBar.show("Please Wait");
+			try {
+				Logger.log("Loading Audio Booth...");
+				new AudioBooth(editorClosedSignal);
+			}
+			finally {
+				LoadingBar.dismiss();
+			}
 			editorClosedSignal.await();
 		});
 	}

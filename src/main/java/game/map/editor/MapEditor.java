@@ -5,6 +5,7 @@ import static game.map.MapKey.*;
 import static game.map.editor.EditorShortcut.*;
 import static org.lwjgl.opengl.GL11.*;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.KeyEventDispatcher;
@@ -404,6 +405,10 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	 */
 	private LinkedBlockingQueue<Runnable> guiEventQueue;
 	private final LinkedBlockingQueue<Runnable> mapChangeQueue = new LinkedBlockingQueue<>();
+	public final MapKeyConfig keyConfig = new MapKeyConfig();
+	private final MapKeyInput keyInput = new MapKeyInput(keyConfig, () -> isPlayInEditorMode, this::handleShortcutEvent);
+	private File keyBindingsFile;
+
 	private LinkedBlockingQueue<EditorShortcut> keyEventQueue;
 
 	/**
@@ -513,6 +518,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		File editorConfigFile = new File(PROJ_CFG + "/" + FN_MAP_EDITOR_CONFIG);
 
 		editorConfig = readEditorConfig(editorConfigFile);
+		keyBindingsFile = new File(PROJ_CFG + "/map_key_bindings.cfg");
+		MapKeyBindingsConfig.load(keyBindingsFile, keyConfig);
 		loadRecentMaps();
 
 		// ------------------------------------------------------------
@@ -543,7 +550,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		spriteLoader = new SpriteLoader();
 		SpriteLoader.loadAnimsMetadata(true);
 
-		keyboard = new KeyboardInput(glCanvas);
+		keyboard = new KeyboardInput(glCanvas, keyConfig);
 		mouse = new MouseInput(glCanvas);
 		gui = new SwingGUI(this, glCanvas, logFile);
 		Logger.addSwingListener(gui);
@@ -595,6 +602,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			});
 
 			Logger.removeListener(gui);
+			KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
 			gui.destroyGUI();
 
 			editorLog.close();
@@ -664,6 +672,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		EditableField.setCallbacksEnabled(false);
 		TextureManager.clear();
 		Logger.removeListener(gui);
+		KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
 		gui.destroyGUI();
 
 		// update recent/crashed maps and flush the config
@@ -737,6 +746,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	{
 		TextureManager.clear();
 		Logger.removeListener(gui);
+		KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(this);
 
 		gui.destroyGUI();
 
@@ -1293,7 +1303,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		selectionManager.testGizmoMouseover(editorMode, currentRay, activeView);
 
 		// handle input
-		keyboard.update(this, gui.isFocused());
+		keyboard.update(this, glCanvas.isFocusOwner() && !gui.isModalDialogOpen());
 		mouse.update(this, gui.isFocused());
 
 		if (activeView == perspectiveView && cursor3D.isSelected()) {
@@ -2275,17 +2285,17 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	@Override
 	public boolean dispatchKeyEvent(KeyEvent e)
 	{
-		if (e.getID() == KeyEvent.KEY_PRESSED) {
-			switch (e.getKeyCode()) {
-				case KeyEvent.VK_Z:
-					if (e.isControlDown())
-						enqueueKeyEvent(EditorShortcut.UNDO);
-					break;
-				case KeyEvent.VK_Y:
-					if (e.isControlDown())
-						enqueueKeyEvent(EditorShortcut.REDO);
-					break;
-			}
+		if (gui == null || gui.isModalDialogOpen() || !gui.isActive() || e.getSource() == glCanvas
+			|| e.getID() != KeyEvent.KEY_PRESSED)
+			return false;
+		// Text fields keep their own editing shortcuts; dialogs must be able to capture any key.
+		if (!(e.getSource() instanceof Component component) || !SwingUtilities.isDescendingFrom(component, gui)
+			|| component instanceof javax.swing.text.JTextComponent)
+			return false;
+		EditorShortcut input = keyConfig.resolve(e.getKeyCode(), e.getModifiersEx(), false);
+		if (input == UNDO || input == REDO) {
+			enqueueKeyEvent(input);
+			return true;
 		}
 		return false;
 	}
@@ -2293,64 +2303,40 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	@Override
 	public void keyPress(KeyInputEvent evt)
 	{
-		handleKeyEvent(evt, true);
+		keyInput.keyPress(evt);
 	}
 
 	@Override
 	public void keyRelease(KeyInputEvent evt)
 	{
-		handleKeyEvent(evt, false);
+		keyInput.keyRelease(evt);
 	}
 
 	// map key events to symbolic shortcuts and dispatch them
-	private void handleKeyEvent(KeyInputEvent key, boolean press)
+	private void handleShortcutEvent(EditorShortcut shortcut, boolean press)
 	{
-		boolean ctrl = keyboard.isCtrlDown();
-		boolean shift = keyboard.isShiftDown();
-
-		// Simulation controls remain usable while Shift is held to run. Releases must also
-		// reach the player when modifiers or the active viewport change.
-		EditorShortcut playerInput = EditorShortcut.getPlayInEditorInput(key.code);
-		if (playerInput != null && (!press || (isPlayInEditorMode && !ctrl))) {
-			if (press)
-				handleShortcutPress(playerInput, false);
-			else
-				handleShortcutRelease(playerInput);
+		// Releases must survive modifier changes, lost focus, and transformations.
+		if (!press) {
+			handleShortcutRelease(shortcut);
 			return;
 		}
-
-		if (key.code == KeyEvent.VK_CONTROL || key.code == KeyEvent.VK_SHIFT)
+		if (isPlayInEditorMode && (shortcut == PLAY_IN_EDITOR_JUMP || shortcut == PLAY_IN_EDITOR_SPIN)) {
+			handleShortcutPress(shortcut, false);
 			return;
-
-		if (ctrl && shift)
+		}
+		if (editorMode == EditorMode.EditUVs) {
+			if (selectionManager.uvSelection.transforming())
+				return;
+		}
+		else if (selectionManager.currentSelection.transforming())
 			return;
+		handleShortcutPress(shortcut, false);
+	}
 
-		// don't allow key events during transformations
-		switch (editorMode) {
-			default:
-				if (selectionManager.currentSelection.transforming())
-					return;
-				break;
-			case EditUVs:
-				if (selectionManager.uvSelection.transforming())
-					return;
-				break;
-		}
-
-		EditorShortcut shortcut = null;
-		if (ctrl)
-			shortcut = EditorShortcut.getCtrl(key.code);
-		else if (shift)
-			shortcut = EditorShortcut.getShift(key.code);
-		else
-			shortcut = EditorShortcut.get(key.code);
-
-		if (shortcut != null) {
-			if (press)
-				handleShortcutPress(shortcut, false);
-			else
-				handleShortcutRelease(shortcut);
-		}
+	public void saveKeyBindings(java.util.Map<common.KeyInput, common.KeyBinding> bindings) throws IOException
+	{
+		MapKeyBindingsConfig.save(keyBindingsFile, bindings);
+		keyConfig.setBindings(bindings);
 	}
 
 	private Vector3f getNudgeVector(NudgeDirection dir)
@@ -2427,7 +2413,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		Vector3f translateDir;
 		int keysHeld = 0;
 
-		if (keyboard.isKeyDown(NUDGE_UP.key)) {
+		if (keyboard.isDown(NUDGE_UP)) {
 			if (!selection.transforming()) {
 				startKeyboardTranslation();
 				return;
@@ -2438,7 +2424,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			keysHeld++;
 		}
 
-		if (keyboard.isKeyDown(NUDGE_DOWN.key)) {
+		if (keyboard.isDown(NUDGE_DOWN)) {
 			if (!selection.transforming()) {
 				startKeyboardTranslation();
 				return;
@@ -2449,7 +2435,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			keysHeld++;
 		}
 
-		if (keyboard.isKeyDown(NUDGE_LEFT.key)) {
+		if (keyboard.isDown(NUDGE_LEFT)) {
 			if (!selection.transforming()) {
 				startKeyboardTranslation();
 				return;
@@ -2460,7 +2446,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			keysHeld++;
 		}
 
-		if (keyboard.isKeyDown(NUDGE_RIGHT.key)) {
+		if (keyboard.isDown(NUDGE_RIGHT)) {
 			if (!selection.transforming()) {
 				startKeyboardTranslation();
 				return;
@@ -2471,7 +2457,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			keysHeld++;
 		}
 
-		if (keyboard.isKeyDown(NUDGE_IN.key)) {
+		if (keyboard.isDown(NUDGE_IN)) {
 			if (!selection.transforming()) {
 				startKeyboardTranslation();
 				return;
@@ -2482,7 +2468,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			keysHeld++;
 		}
 
-		if (keyboard.isKeyDown(NUDGE_OUT.key)) {
+		if (keyboard.isDown(NUDGE_OUT)) {
 			if (!selection.transforming()) {
 				startKeyboardTranslation();
 				return;
