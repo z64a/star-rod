@@ -54,7 +54,7 @@ public class NpcSubpanel extends JPanel
 				return;
 			SpriteMetadata spr = (SpriteMetadata) spriteBox.getSelectedItem();
 			NpcComponent npc = parent.getData().npcComponent;
-			MapEditor.execute(npc.spriteID.mutator(spr.id));
+			MapEditor.execute(() -> npc.spriteID.mutator(spr.id));
 		});
 
 		paletteBox = new RangeCheckComboBox<>();
@@ -66,7 +66,7 @@ public class NpcSubpanel extends JPanel
 				return;
 			int palID = paletteBox.getSelectedIndex();
 			NpcComponent npc = parent.getData().npcComponent;
-			MapEditor.execute(npc.paletteID.mutator(palID));
+			MapEditor.execute(() -> npc.paletteID.mutator(palID));
 		});
 
 		animBox = new RangeCheckComboBox<>();
@@ -78,7 +78,7 @@ public class NpcSubpanel extends JPanel
 				return;
 			int animID = animBox.getSelectedIndex();
 			NpcComponent npc = parent.getData().npcComponent;
-			MapEditor.execute(npc.animIndex.mutator(animID));
+			MapEditor.execute(() -> npc.animIndex.mutator(animID));
 		});
 
 		npcAnimPanel = new JPanel(new MigLayout("ins 0, wrap, fill"));

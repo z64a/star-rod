@@ -65,7 +65,7 @@ public class EditPannerDialog extends JDialog
 		JButton selectButton = new JButton("OK");
 		SwingUtils.addBorderPadding(selectButton);
 		selectButton.addActionListener((e) -> {
-			MapEditor.execute(new SetTexPannerParams(selectedPanner, originalParams));
+			MapEditor.execute(() -> new SetTexPannerParams(selectedPanner, originalParams));
 			selectedPanner = null;
 			setVisible(false);
 		});

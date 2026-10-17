@@ -30,8 +30,9 @@ import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
 import javax.swing.border.EtchedBorder;
 
-import app.SwingUtils;
 import common.commands.AbstractCommand;
+
+import app.SwingUtils;
 import game.map.editor.MapEditor;
 import game.map.editor.selection.SelectablePoint.SetPointPosition;
 import game.map.marker.PathPoint;
@@ -75,36 +76,17 @@ public class PathList extends JList<PathPoint>
 
 		setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 
-		addListSelectionListener((e) -> {
-			if (e.getValueIsAdjusting() || ignoreListSelectionEvents)
+		addListSelectionListener((e) -> MapEditor.instance().runEditorAction(() -> {
+			if (e.getValueIsAdjusting() || ignoreListSelectionEvents || MapEditor.instance().isApplyingChanges())
 				return;
 
-			List<PathPoint> added = new LinkedList<>();
+			List<PathPoint> selected = getSelectedValuesList();
 			List<PathPoint> removed = new LinkedList<>();
-
-			if (!additiveSelection)
-				MapEditor.instance().selectionManager.clearPointsFromGUI();
-
-			IterableListModel<PathPoint> listModel = getIterableModel();
-			boolean[] lastState = new boolean[listModel.size()];
-			boolean[] newState = new boolean[listModel.size()];
-
-			for (int i = 0; i < listModel.size(); i++) {
-				PathPoint wp = listModel.getElementAt(i);
-				lastState[i] = wp.isSelected();
-				newState[i] = isSelectedIndex(i);
-
-				if ((lastState[i] != newState[i])) {
-					if (newState[i])
-						added.add(wp);
-					else
-						removed.add(wp);
-				}
-			}
-
-			MapEditor.instance().selectionManager.selectPointsFromGUI(added);
-			MapEditor.instance().selectionManager.deselectPointsFromGUI(removed);
-		});
+			for (PathPoint point : getIterableModel())
+				if (point.isSelected() && !selected.contains(point))
+					removed.add(point);
+			MapEditor.instance().selectionManager.selectPointsFromGUI(selected, removed, additiveSelection);
+		}));
 
 		// drag and drop
 
@@ -130,7 +112,7 @@ public class PathList extends JList<PathPoint>
 						int pos[] = SwingGUI.instance().prompt_GetPositionVector(
 							point.getX(), point.getY(), point.getZ());
 						if (pos != null) {
-							MapEditor.execute(new SetPointPosition("Set Path Point Position",
+							MapEditor.execute(() -> new SetPointPosition("Set Path Point Position",
 								point, pos[0], pos[1], pos[2]));
 						}
 					}
@@ -146,7 +128,7 @@ public class PathList extends JList<PathPoint>
 			public void actionPerformed(ActionEvent e)
 			{
 				if (!isSelectionEmpty())
-					MapEditor.execute(new DuplicatePathPoints(getIterableModel()));
+					MapEditor.execute(() -> new DuplicatePathPoints(getIterableModel()));
 			}
 		});
 
@@ -156,7 +138,7 @@ public class PathList extends JList<PathPoint>
 			public void actionPerformed(ActionEvent e)
 			{
 				if (!isSelectionEmpty())
-					MapEditor.execute(new RemovePathPoints(getIterableModel()));
+					MapEditor.execute(() -> new RemovePathPoints(getIterableModel()));
 			}
 		});
 	}
@@ -236,7 +218,7 @@ public class PathList extends JList<PathPoint>
 			if (!canImport(support))
 				return false;
 
-			MapEditor.execute(new ReorderPathPoints(getIterableModel(), dropDestination));
+			MapEditor.execute(() -> new ReorderPathPoints(getIterableModel(), dropDestination));
 			return true;
 		}
 
@@ -423,20 +405,19 @@ public class PathList extends JList<PathPoint>
 		{
 			super.exec();
 
-			SwingUtilities.invokeLater(() -> {
-				ignoreListSelectionEvents = true;
-				listModel.clear();
+			assert SwingUtilities.isEventDispatchThread();
+			ignoreListSelectionEvents = true;
+			listModel.clear();
 
-				for (PathPoint wp : newOrder) {
-					listModel.addElement(wp);
-				}
+			for (PathPoint wp : newOrder) {
+				listModel.addElement(wp);
+			}
 
-				setSelectedIndices(newSelected);
-				ignoreListSelectionEvents = false;
+			setSelectedIndices(newSelected);
+			ignoreListSelectionEvents = false;
 
-				for (AbstractCommand cmd : additionalEDTCommands)
-					cmd.exec();
-			});
+			for (AbstractCommand cmd : additionalEDTCommands)
+				cmd.exec();
 		}
 
 		@Override
@@ -444,20 +425,19 @@ public class PathList extends JList<PathPoint>
 		{
 			super.undo();
 
-			SwingUtilities.invokeLater(() -> {
-				for (AbstractCommand cmd : additionalEDTCommands)
-					cmd.undo();
+			assert SwingUtilities.isEventDispatchThread();
+			for (AbstractCommand cmd : additionalEDTCommands)
+				cmd.undo();
 
-				ignoreListSelectionEvents = true;
-				listModel.clear();
+			ignoreListSelectionEvents = true;
+			listModel.clear();
 
-				for (PathPoint wp : oldOrder) {
-					listModel.addElement(wp);
-				}
+			for (PathPoint wp : oldOrder) {
+				listModel.addElement(wp);
+			}
 
-				setSelectedIndices(oldSelected);
-				ignoreListSelectionEvents = false;
-			});
+			setSelectedIndices(oldSelected);
+			ignoreListSelectionEvents = false;
 		}
 	}
 
@@ -479,9 +459,8 @@ public class PathList extends JList<PathPoint>
 		{
 			super.exec();
 
-			SwingUtilities.invokeLater(() -> {
-				listModel.addElement(point);
-			});
+			assert SwingUtilities.isEventDispatchThread();
+			listModel.addElement(point);
 		}
 
 		@Override
@@ -489,9 +468,8 @@ public class PathList extends JList<PathPoint>
 		{
 			super.undo();
 
-			SwingUtilities.invokeLater(() -> {
-				listModel.removeElement(point);
-			});
+			assert SwingUtilities.isEventDispatchThread();
+			listModel.removeElement(point);
 		}
 	}
 

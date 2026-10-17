@@ -57,13 +57,13 @@ public class ColliderJTree extends MapObjectJTree<Collider>
 
 		switch (cmd) {
 			case DND_MOVE_SELECTION:
-				editor.doNextFrame(() -> {
+				editor.runEditorAction(() -> {
 					editor.action_MoveSelectedColliders(dropDestination, dropChildIndex);
 				});
 				break;
 
 			case POPUP_MOVE_SELECTION:
-				editor.doNextFrame(() -> {
+				editor.runEditorAction(() -> {
 					editor.action_MoveSelectedColliders(popupSource, -1);
 				});
 				break;

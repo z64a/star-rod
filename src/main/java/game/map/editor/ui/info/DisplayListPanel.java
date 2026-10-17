@@ -143,7 +143,7 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 			public void actionPerformed(ActionEvent e)
 			{
 				if (!commandList.isSelectionEmpty())
-					MapEditor.execute(new DuplicateDisplayCommands(mdl));
+					MapEditor.execute(() -> new DuplicateDisplayCommands(mdl));
 			}
 		});
 
@@ -153,7 +153,7 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 			public void actionPerformed(ActionEvent e)
 			{
 				if (!commandList.isSelectionEmpty())
-					MapEditor.execute(new RemoveDisplayCommands(mdl));
+					MapEditor.execute(() -> new RemoveDisplayCommands(mdl));
 			}
 		});
 
@@ -175,7 +175,7 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 
 		JMenuItem mergeMenuItem = new JMenuItem("Add Selected Triangles");
 		mergeMenuItem.addActionListener((e) -> {
-			MapEditor.execute(new MoveTriangles((TriangleBatch) popupCommand, MapEditor.instance().selectionManager));
+			MapEditor.execute(() -> new MoveTriangles((TriangleBatch) popupCommand, MapEditor.instance().selectionManager));
 		});
 
 		JMenuItem primitiveMenuItem = new JMenuItem("Add Primitive Triangles");
@@ -280,7 +280,7 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 				else {
 					// click in blank region clears selection (called twice per click)
 					if (index < 0)
-						MapEditor.instance().selectionManager.clearDisplayCommandsFromGUI();
+						MapEditor.instance().selectionManager.selectDisplayCommandsFromGUI(List.of(), List.of(), false);
 				}
 			}
 		});
@@ -289,7 +289,7 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 
 		JButton cleanupButton = new JButton("Clean Up");
 		cleanupButton.addActionListener(e -> {
-			MapEditor.execute(new CleanupDisplayList(mdl));
+			MapEditor.execute(() -> new CleanupDisplayList(mdl));
 		});
 		cleanupButton.setToolTipText("Merge adjacent triangle batches and remove degenerates.");
 		SwingUtils.addBorderPadding(cleanupButton);
@@ -306,31 +306,31 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 		item.addActionListener(e -> {
 			TriangleBatch newBatch = new TriangleBatch(mdl.getMesh());
 			newBatch.setParent(mdl.getMesh());
-			MapEditor.execute(new AddDisplayCommand(mdl, newBatch));
+			MapEditor.execute(() -> new AddDisplayCommand(mdl, newBatch));
 		});
 		commandMenu.add(item);
 
 		item = new JMenuItem(CmdType.PipeSync.toString());
 		item.addActionListener(e -> {
-			MapEditor.execute(new AddDisplayCommand(mdl, new FlushPipeline(mdl.getMesh())));
+			MapEditor.execute(() -> new AddDisplayCommand(mdl, new FlushPipeline(mdl.getMesh())));
 		});
 		commandMenu.add(item);
 
 		item = new JMenuItem(CmdType.SetGeometryFlags.toString());
 		item.addActionListener(e -> {
-			MapEditor.execute(new AddDisplayCommand(mdl, new SetGeometryFlags(mdl.getMesh())));
+			MapEditor.execute(() -> new AddDisplayCommand(mdl, new SetGeometryFlags(mdl.getMesh())));
 		});
 		commandMenu.add(item);
 
 		item = new JMenuItem(CmdType.ClrGeometryFlags.toString());
 		item.addActionListener(e -> {
-			MapEditor.execute(new AddDisplayCommand(mdl, new ClearGeometryFlags(mdl.getMesh())));
+			MapEditor.execute(() -> new AddDisplayCommand(mdl, new ClearGeometryFlags(mdl.getMesh())));
 		});
 		commandMenu.add(item);
 
 		item = new JMenuItem(CmdType.Custom.toString());
 		item.addActionListener(e -> {
-			MapEditor.execute(new AddDisplayCommand(mdl, new CustomCommand(mdl.getMesh())));
+			MapEditor.execute(() -> new AddDisplayCommand(mdl, new CustomCommand(mdl.getMesh())));
 		});
 		commandMenu.add(item);
 
@@ -364,34 +364,23 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 	@Override
 	public void valueChanged(ListSelectionEvent e)
 	{
-		if (e.getValueIsAdjusting() || ignoreListSelectionEvents)
-			return;
+		MapEditor.instance().runEditorAction(() -> {
+			if (e.getValueIsAdjusting() || ignoreListSelectionEvents || MapEditor.instance().isApplyingChanges())
+				return;
 
-		List<DisplayCommand> added = new LinkedList<>();
-		List<DisplayCommand> removed = new LinkedList<>();
+			List<DisplayCommand> added = new LinkedList<>();
+			List<DisplayCommand> removed = new LinkedList<>();
 
-		if (!additiveSelection)
-			MapEditor.instance().selectionManager.clearDisplayCommandsFromGUI();
-
-		DefaultListModel<DisplayCommand> listModel = mdl.getMesh().displayListModel;
-		boolean[] lastState = new boolean[listModel.size()];
-		boolean[] newState = new boolean[listModel.size()];
-
-		for (int i = 0; i < listModel.size(); i++) {
-			DisplayCommand cmd = listModel.getElementAt(i);
-			lastState[i] = cmd.selected;
-			newState[i] = commandList.isSelectedIndex(i);
-
-			if ((lastState[i] != newState[i])) {
-				if (newState[i])
+			DefaultListModel<DisplayCommand> listModel = mdl.getMesh().displayListModel;
+			for (int i = 0; i < listModel.size(); i++) {
+				DisplayCommand cmd = listModel.getElementAt(i);
+				if (commandList.isSelectedIndex(i))
 					added.add(cmd);
-				else
+				else if (cmd.selected)
 					removed.add(cmd);
 			}
-		}
-
-		MapEditor.instance().selectionManager.selectDisplayCommandsFromGUI(added);
-		MapEditor.instance().selectionManager.deselectDisplayCommandsFromGUI(removed);
+			MapEditor.instance().selectionManager.selectDisplayCommandsFromGUI(added, removed, additiveSelection);
+		});
 	}
 
 	private class DisplayCommandTransferHandler extends TransferHandler
@@ -452,7 +441,7 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 			if (!canImport(support))
 				return false;
 
-			MapEditor.execute(new MoveCommandsTo(mdl, dropDestination));
+			MapEditor.execute(() -> new MoveCommandsTo(mdl, dropDestination));
 			return true;
 		}
 
@@ -576,22 +565,21 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 		{
 			super.exec();
 
-			SwingUtilities.invokeLater(() -> {
-				ignoreListSelectionEvents = true;
-				mdl.getMesh().displayListModel.clear();
+			assert SwingUtilities.isEventDispatchThread();
+			ignoreListSelectionEvents = true;
+			mdl.getMesh().displayListModel.clear();
 
-				for (DisplayCommand cmd : newOrder) {
-					mdl.getMesh().displayListModel.addElement(cmd);
-				}
+			for (DisplayCommand cmd : newOrder) {
+				mdl.getMesh().displayListModel.addElement(cmd);
+			}
 
-				commandList.setSelectedIndices(newSelected);
-				ignoreListSelectionEvents = false;
+			commandList.setSelectedIndices(newSelected);
+			ignoreListSelectionEvents = false;
 
-				for (AbstractCommand cmd : additionalEDTCommands)
-					cmd.exec();
+			for (AbstractCommand cmd : additionalEDTCommands)
+				cmd.exec();
 
-				mdl.displayListChanged();
-			});
+			mdl.displayListChanged();
 		}
 
 		@Override
@@ -599,22 +587,21 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 		{
 			super.undo();
 
-			SwingUtilities.invokeLater(() -> {
-				for (AbstractCommand cmd : additionalEDTCommands)
-					cmd.undo();
+			assert SwingUtilities.isEventDispatchThread();
+			for (AbstractCommand cmd : additionalEDTCommands)
+				cmd.undo();
 
-				ignoreListSelectionEvents = true;
-				mdl.getMesh().displayListModel.clear();
+			ignoreListSelectionEvents = true;
+			mdl.getMesh().displayListModel.clear();
 
-				for (DisplayCommand cmd : oldOrder) {
-					mdl.getMesh().displayListModel.addElement(cmd);
-				}
+			for (DisplayCommand cmd : oldOrder) {
+				mdl.getMesh().displayListModel.addElement(cmd);
+			}
 
-				commandList.setSelectedIndices(oldSelected);
-				ignoreListSelectionEvents = false;
+			commandList.setSelectedIndices(oldSelected);
+			ignoreListSelectionEvents = false;
 
-				mdl.displayListChanged();
-			});
+			mdl.displayListChanged();
 		}
 	}
 
@@ -636,10 +623,9 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 		{
 			super.exec();
 
-			SwingUtilities.invokeLater(() -> {
-				mdl.getMesh().displayListModel.addElement(cmd);
-				mdl.displayListChanged();
-			});
+			assert SwingUtilities.isEventDispatchThread();
+			mdl.getMesh().displayListModel.addElement(cmd);
+			mdl.displayListChanged();
 		}
 
 		@Override
@@ -647,10 +633,9 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 		{
 			super.undo();
 
-			SwingUtilities.invokeLater(() -> {
-				mdl.getMesh().displayListModel.removeElement(cmd);
-				mdl.displayListChanged();
-			});
+			assert SwingUtilities.isEventDispatchThread();
+			mdl.getMesh().displayListModel.removeElement(cmd);
+			mdl.displayListChanged();
 		}
 	}
 

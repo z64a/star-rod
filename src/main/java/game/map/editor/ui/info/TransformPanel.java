@@ -54,20 +54,20 @@ public class TransformPanel extends JPanel
 		useTransformMatrix = new JCheckBox("  Enable Transform Matrix");
 		useTransformMatrix.addActionListener((e) -> {
 			if (!ignoreChanges)
-				MapEditor.execute(model.hasTransformMatrix.mutator(useTransformMatrix.isSelected()));
+				MapEditor.execute(() -> model.hasTransformMatrix.mutator(useTransformMatrix.isSelected()));
 		});
 
 		translateX = new FloatTextField((newX) -> {
 			if (!ignoreChanges)
-				MapEditor.execute(new SetMatrixElement(model, 0, 3, newX));
+				MapEditor.execute(() -> new SetMatrixElement(model, 0, 3, newX));
 		});
 		translateY = new FloatTextField((newY) -> {
 			if (!ignoreChanges)
-				MapEditor.execute(new SetMatrixElement(model, 1, 3, newY));
+				MapEditor.execute(() -> new SetMatrixElement(model, 1, 3, newY));
 		});
 		translateZ = new FloatTextField((newZ) -> {
 			if (!ignoreChanges)
-				MapEditor.execute(new SetMatrixElement(model, 2, 3, newZ));
+				MapEditor.execute(() -> new SetMatrixElement(model, 2, 3, newZ));
 		});
 
 		rotTable = new FloatTextField[3][3];
@@ -76,13 +76,13 @@ public class TransformPanel extends JPanel
 				final int row = i;
 				final int col = j;
 				rotTable[i][j] = new FloatTextField((newValue) -> {
-					MapEditor.execute(new SetMatrixElement(model, row, col, newValue));
+					MapEditor.execute(() -> new SetMatrixElement(model, row, col, newValue));
 				});
 			}
 
 		bakeButton = new JButton("Bake Transform", ICON_UP);
 		bakeButton.addActionListener((e) -> {
-			MapEditor.execute(new SetMatrix(model,
+			MapEditor.execute(() -> new SetMatrix(model,
 				model.localTransformMatrix.getBakedMatrix(),
 				model.localTransformMatrix.baked));
 			setModel(model);

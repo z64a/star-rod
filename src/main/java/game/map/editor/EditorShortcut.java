@@ -206,7 +206,7 @@ public enum EditorShortcut implements KeyInput
 		};
 		updateAccelerator.run();
 		editor.keyConfig.addListener(updateAccelerator);
-		item.addActionListener(e -> editor.enqueueKeyEvent(this));
+		item.addActionListener(e -> editor.executeShortcut(this));
 	}
 
 	public void bindMenuCheckbox(MapEditor editor, JCheckBoxMenuItem checkbox)
@@ -218,13 +218,13 @@ public enum EditorShortcut implements KeyInput
 	public void setCheckBoxText(String text)
 	{
 		assert (checkbox != null);
-		checkbox.setText(text);
+		MapEditor.instance().runInEDT(() -> checkbox.setText(text));
 	}
 
 	public void setCheckbox(boolean newValue)
 	{
 		assert (checkbox != null);
-		checkbox.setSelected(newValue);
+		MapEditor.instance().runInEDT(() -> checkbox.setSelected(newValue));
 	}
 
 	public JCheckBoxMenuItem getCheckBox()

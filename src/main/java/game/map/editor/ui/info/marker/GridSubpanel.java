@@ -8,8 +8,9 @@ import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 
-import app.SwingUtils;
 import common.commands.EditableField;
+
+import app.SwingUtils;
 import game.map.editor.MapEditor;
 import game.map.editor.ui.info.MarkerInfoPanel;
 import game.map.marker.GridComponent;
@@ -61,7 +62,7 @@ public class GridSubpanel extends JPanel
 		btEnableEditing = new JButton("Enable Interactive Editing");
 		btEnableEditing.addActionListener((e) -> {
 			EditableField<Boolean> field = parent.getData().gridComponent.showEditHandles;
-			MapEditor.execute(field.mutator(!field.get()));
+			MapEditor.execute(() -> field.mutator(!field.get()));
 		});
 
 		setLayout(new MigLayout("fillx, ins 0", MarkerInfoPanel.FOUR_COLUMNS));

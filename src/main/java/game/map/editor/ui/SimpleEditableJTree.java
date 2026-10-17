@@ -23,8 +23,9 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
-import game.map.editor.MapEditor;
 import common.commands.AbstractCommand;
+
+import game.map.editor.MapEditor;
 import util.BasicNode;
 import util.Logger;
 import util.identity.IdentityHashSet;
@@ -282,7 +283,7 @@ public class SimpleEditableJTree extends JTree
 				return false;
 			}
 
-			MapEditor.execute(new MoveNode(
+			MapEditor.execute(() -> new MoveNode(
 				SimpleEditableJTree.this,
 				preCallback,
 				postCallback,
@@ -469,16 +470,15 @@ public class SimpleEditableJTree extends JTree
 			super.exec();
 
 			// must run in the swing thread
-			SwingUtilities.invokeLater(() -> {
-				preCallback.run();
+			assert SwingUtilities.isEventDispatchThread();
+			preCallback.run();
 
-				setTree(newTreeTemplate);
-				tree.restoreExtendedState(extendedState);
+			setTree(newTreeTemplate);
+			tree.restoreExtendedState(extendedState);
 
-				tree.addSelectionPath(new TreePath(moveNode.getPath()));
+			tree.addSelectionPath(new TreePath(moveNode.getPath()));
 
-				postCallback.run();
-			});
+			postCallback.run();
 		}
 
 		@Override
@@ -487,16 +487,15 @@ public class SimpleEditableJTree extends JTree
 			super.undo();
 
 			// must run in the swing thread
-			SwingUtilities.invokeLater(() -> {
-				preCallback.run();
+			assert SwingUtilities.isEventDispatchThread();
+			preCallback.run();
 
-				setTree(oldTreeTemplate);
-				tree.restoreExtendedState(extendedState);
+			setTree(oldTreeTemplate);
+			tree.restoreExtendedState(extendedState);
 
-				tree.addSelectionPath(new TreePath(moveNode.getPath()));
+			tree.addSelectionPath(new TreePath(moveNode.getPath()));
 
-				postCallback.run();
-			});
+			postCallback.run();
 		}
 	}
 }

@@ -379,7 +379,7 @@ public class DrawTrianglesManager
 
 		// create new object of current type
 		MapObject newObj = getDrawnObject(batch, currentType);
-		editor.executeNextFrame(new CreateObject(newObj));
+		MapEditor.execute(new CreateObject(newObj));
 
 		success = true;
 	}

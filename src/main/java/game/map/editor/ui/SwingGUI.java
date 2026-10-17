@@ -232,19 +232,25 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			@Override
 			public void windowClosing(WindowEvent e)
 			{
+				if (editor.isLoading())
+					return;
+				openDialogCount.increment();
+				boolean shadeDirty;
+				boolean mapDirty;
 				synchronized (editor.modifyLock) {
-					openDialogCount.increment();
-
-					boolean shadeDirty = false;
+					shadeDirty = false;
 					if (!Environment.isDX()) {
 						editor.map.syncCurrentShadingToProfile();
 						shadeDirty = ProjectDatabase.hasModifiedShadingData();
 					}
-
+					mapDirty = editor.map.modified;
+				}
+				try {
 					boolean shadeOK = !shadeDirty || promptSaveShading();
-					boolean mapOK = !editor.map.modified || promptSaveMap();
-
-					closeRequested = (shadeOK && mapOK);
+					boolean mapOK = !mapDirty || promptSaveMap();
+					closeRequested = shadeOK && mapOK;
+				}
+				finally {
 					if (!closeRequested)
 						openDialogCount.decrement();
 				}
@@ -371,10 +377,10 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	public void setEditorMode(MapEditor.EditorMode oldMode, MapEditor.EditorMode newMode)
 	{
-		SwingUtilities.invokeLater(() -> {
+		editor.runInEDT(() -> {
 			// set the new tab
 			int index = 0;
-			switch (newMode) {
+			switch (editor.getEditorMode()) {
 				case Modify:
 					index = TAB_IDX_MODIFY;
 					break;
@@ -435,10 +441,12 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	public void closePopupMenus()
 	{
-		for (JPopupMenu menu : popups) {
-			if (menu.isVisible())
-				menu.setVisible(false);
-		}
+		editor.runInEDT(() -> {
+			for (JPopupMenu menu : popups) {
+				if (menu.isVisible())
+					menu.setVisible(false);
+			}
+		});
 	}
 
 	public boolean isCloseRequested()
@@ -509,20 +517,22 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	public void setRecentMaps(Deque<String> recentMaps)
 	{
-		recentMapsMenu.removeAll();
+		editor.runInEDT(() -> {
+			recentMapsMenu.removeAll();
 
-		int i = 0;
-		for (String s : recentMaps) {
-			// do not list current map
-			if (i++ == 0)
-				continue;
+			int i = 0;
+			for (String s : recentMaps) {
+				// do not list current map
+				if (i++ == 0)
+					continue;
 
-			JMenuItem item = new JMenuItem(s);
-			item.addActionListener(evt -> {
-				prompt_OpenMap(s);
-			});
-			recentMapsMenu.add(item);
-		}
+				JMenuItem item = new JMenuItem(s);
+				item.addActionListener(evt -> {
+					prompt_OpenMap(s);
+				});
+				recentMapsMenu.add(item);
+			}
+		});
 	}
 
 	private void addFileMenu(JMenuBar menuBar)
@@ -692,21 +702,21 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		hasBackgroundCheckbox = new JCheckBoxMenuItem("Has Background");
 		hasBackgroundCheckbox.setSelected(false);
 		hasBackgroundCheckbox.addActionListener((e) -> {
-			editor.executeNextFrame(new ToggleBackground());
+			MapEditor.execute(() -> new ToggleBackground());
 		});
 		menu.add(hasBackgroundCheckbox);
 
 		isStageCheckbox = new JCheckBoxMenuItem("Is Battle Stage");
 		isStageCheckbox.setSelected(false);
 		isStageCheckbox.addActionListener((e) -> {
-			editor.executeNextFrame(new ToggleStage());
+			MapEditor.execute(() -> new ToggleStage());
 		});
 		menu.add(isStageCheckbox);
 
 		item = new JMenuItem("Add Stage Markers");
 		item.addActionListener((e) -> {
 			List<Marker> markers = editor.map.getStageMarkers();
-			MapEditor.execute(new CreateObjects(markers));
+			MapEditor.execute(() -> new CreateObjects(markers));
 		});
 		menu.add(item);
 
@@ -871,7 +881,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			if (effect == PostProcessFX.NONE)
 				button.setSelected(true);
 			button.addActionListener((e) -> {
-				editor.doNextFrame(() -> {
+				editor.runEditorAction(() -> {
 					editor.postProcessFX = effect;
 				});
 			});
@@ -976,7 +986,8 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 					break; // workaround to initialize mode
 			}
 
-			editor.executeNextFrame(editor.new ChangeMode(mode));
+			EditorMode selectedMode = mode;
+			MapEditor.execute(() -> editor.new ChangeMode(selectedMode));
 		});
 
 		sidePanelContainer.setLayout(new MigLayout("fill, ins 0"));
@@ -1042,24 +1053,26 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	public void setSelectionMode(SelectionManager.SelectionMode mode)
 	{
-		ignoreSelectionRadioButtonChanges = true;
+		editor.runInEDT(() -> {
+			ignoreSelectionRadioButtonChanges = true;
 
-		switch (mode) {
-			case OBJECT:
-				objectRadioButton.setSelected(true);
-				break;
-			case TRIANGLE:
-				triangleRadioButton.setSelected(true);
-				break;
-			case VERTEX:
-				vertexRadioButton.setSelected(true);
-				break;
-			case POINT:
-				pointRadioButton.setSelected(true);
-				break;
-		}
+			switch (editor.selectionManager.getSelectionMode()) {
+				case OBJECT:
+					objectRadioButton.setSelected(true);
+					break;
+				case TRIANGLE:
+					triangleRadioButton.setSelected(true);
+					break;
+				case VERTEX:
+					vertexRadioButton.setSelected(true);
+					break;
+				case POINT:
+					pointRadioButton.setSelected(true);
+					break;
+			}
 
-		ignoreSelectionRadioButtonChanges = false;
+			ignoreSelectionRadioButtonChanges = false;
+		});
 	}
 
 	public MapObjectType getObjectTab()
@@ -1080,27 +1093,42 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	public void setObjectTab(MapObjectType type)
 	{
-		switch (type) {
-			case MODEL:
-				objectPanel.setSelectedIndex(0);
-				break;
-			case COLLIDER:
-				objectPanel.setSelectedIndex(1);
-				break;
-			case ZONE:
-				objectPanel.setSelectedIndex(2);
-				break;
-			case MARKER:
-				objectPanel.setSelectedIndex(3);
-				break;
-			case EDITOR:
-				throw new IllegalStateException("Cannot setObjectTab for EditorObjects!");
-		}
+		editor.runInEDT(() -> {
+			switch (type) {
+				case MODEL:
+					objectPanel.setSelectedIndex(0);
+					break;
+				case COLLIDER:
+					objectPanel.setSelectedIndex(1);
+					break;
+				case ZONE:
+					objectPanel.setSelectedIndex(2);
+					break;
+				case MARKER:
+					objectPanel.setSelectedIndex(3);
+					break;
+				case EDITOR:
+					throw new IllegalStateException("Cannot setObjectTab for EditorObjects!");
+			}
+		});
 	}
+
+	private boolean selectionSyncPending;
 
 	public void syncSelectionWith(SelectionManager sm)
 	{
-		sm.syncGUI(objectPanel);
+		if (SwingUtilities.isEventDispatchThread()) {
+			if (!editor.isLoading() && sm == editor.selectionManager)
+				editor.runInEDT(() -> sm.syncGUI(objectPanel));
+		}
+		else if (!selectionSyncPending) {
+			selectionSyncPending = true;
+			editor.runInEDT(() -> {
+				selectionSyncPending = false;
+				if (!editor.isLoading())
+					editor.selectionManager.syncGUI(objectPanel);
+			});
+		}
 	}
 
 	public void repaintObjectPanel()
@@ -1115,18 +1143,26 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	public void reloadObjectInTree(MapObject obj)
 	{
-		objectPanel.reload(obj);
+		editor.runInEDT(() -> {
+			objectPanel.reload(obj);
+
+		});
 	}
 
 	public void toggleInfoPanel()
 	{
-		infoPanelHidden = !infoPanelHidden;
-		objectSplitPane.setDividerLocation(infoPanelHidden ? 1.0 : DEFAULT_SPLIT_FACTOR);
+		editor.runInEDT(() -> {
+			infoPanelHidden = !infoPanelHidden;
+			objectSplitPane.setDividerLocation(infoPanelHidden ? 1.0 : DEFAULT_SPLIT_FACTOR);
+		});
 	}
 
 	public void loadMapObjects()
 	{
-		objectPanel.loadMapObjects();
+		editor.runInEDT(() -> {
+			objectPanel.loadMapObjects();
+
+		});
 	}
 
 	private JPanel createPannersTab()
@@ -1145,7 +1181,10 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	public void updatePannersTab()
 	{
-		pannersTab.updateFields();
+		editor.runInEDT(() -> {
+			pannersTab.updateFields();
+
+		});
 	}
 
 	private JPanel createTextureTab()
@@ -1170,19 +1209,24 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	public void setSelectedTexture(ModelTexture selectedTexture)
 	{
-		currentTexturePanel.setTexture(selectedTexture);
+		editor.runInEDT(() -> {
+			currentTexturePanel.setTexture(selectedTexture);
+
+		});
 	}
 
 	public void loadTexturePreviews()
 	{
-		texturePreviewPanel.removeAll();
-		texturePreviewPanel.setLayout(new MigLayout("wrap 2, fillx"));
-		texturePreviewPanel.add(new TexturePreview(editor, null), "center");
+		editor.runInEDT(() -> {
+			texturePreviewPanel.removeAll();
+			texturePreviewPanel.setLayout(new MigLayout("wrap 2, fillx"));
+			texturePreviewPanel.add(new TexturePreview(editor, null), "center");
 
-		for (ModelTexture t : TextureManager.textureList)
-			texturePreviewPanel.add(new TexturePreview(editor, t), "center");
+			for (ModelTexture t : TextureManager.textureList)
+				texturePreviewPanel.add(new TexturePreview(editor, t), "center");
 
-		repaint();
+			repaint();
+		});
 	}
 
 	public void addButtonCommand(AbstractButton button, GuiCommand cmd)
@@ -1191,20 +1235,8 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		button.addActionListener(this);
 	}
 
-	/*
-	 * This method lives in the Swing EDT (Event Dispatch Thread), but the main loop
-	 * of the Editor class lives in a different thread (which has the GL context).
-	 * Communication between these threads follows a producer-consumer pattern using
-	 * anonymous EditorEvent objects or GuiCommands. During the next frame of the
-	 * main loop, and pending events from the GUI and handled.
-	 *
-	 * User input from the GUI is represented by the GuiCommand enum. Certain supported
-	 * GuiCommands can be forwarded directly to the Editor. This is the default behavior.
-	 * For more complicated cases, we need to use EditorEvents.
-	 *
-	 * EditorEvents are more generalized and allow us to safely invoke public methods
-	 * in the Editor thread from this class.
-	 */
+	// Editing actions run synchronously under modifyLock. Map loading uses its own
+	// queue because it may wait for an EDT dialog and must release that lock.
 	@Override
 	public void actionPerformed(ActionEvent e)
 	{
@@ -1379,7 +1411,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		openDialogCount.decrement();
 
 		if (newMapFile != null) {
-			editor.doNextFrame(() -> {
+			editor.runEditorAction(() -> {
 				editor.action_SaveMapAs(newMapFile);
 			});
 		}
@@ -1393,7 +1425,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 		if (texFile != null) {
 			String texName = FilenameUtils.getBaseName(texFile.getName());
-			editor.doNextFrame(() -> {
+			editor.runEditorAction(() -> {
 				AbstractCommand cmd = new ChangeTextureArchive(texName);
 				MapEditor.execute(cmd);
 			});
@@ -1407,11 +1439,11 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		openDialogCount.decrement();
 
 		if (bgFile != null) {
-			editor.doNextFrame(() -> {
+			editor.runEditorAction(() -> {
 				try {
 					String bgName = FilenameUtils.getBaseName(bgFile.getName());
 					BufferedImage bgImage = ImageIO.read(bgFile);
-					MapEditor.execute(new SetBackground(bgName, bgImage));
+					MapEditor.execute(() -> new SetBackground(bgName, bgImage));
 				}
 				catch (IOException e) {
 					MapEditor.instance().displayStackTrace(e, "Could not load background image!");
@@ -1578,7 +1610,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		if (choice == JOptionPane.YES_OPTION) {
 			final TransformMatrix m = transformSelectionPanel.createTransformMatrix();
 			if (m != null) {
-				editor.doNextFrame(() -> {
+				editor.runEditorAction(() -> {
 					editor.action_TransformSelection(m, selection);
 				});
 			}
@@ -1628,7 +1660,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 					PreviewGeneratorPrimitive preview = editor.generatePrimitivePreview;
 					if (preview.targetBatch != null)
-						MapEditor.execute(new AddTriangles(preview.targetBatch, batch.triangles));
+						MapEditor.execute(() -> new AddTriangles(preview.targetBatch, batch.triangles));
 					else
 						createObjectFromBatch(batch, generatePrimitiveDialog.getTypeName(), preview.parentObj);
 				});
@@ -1702,17 +1734,17 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 		switch (type) {
 			case MODEL:
-				editor.doNextFrame(() -> {
+				editor.runEditorAction(() -> {
 					editor.action_CreateModel(batch, namePrefix + "Model", (MapObjectNode<Model>) parent);
 				});
 				break;
 			case COLLIDER:
-				editor.doNextFrame(() -> {
+				editor.runEditorAction(() -> {
 					editor.action_CreateCollider(batch, namePrefix + "Collider", (MapObjectNode<Collider>) parent);
 				});
 				break;
 			case ZONE:
-				editor.doNextFrame(() -> {
+				editor.runEditorAction(() -> {
 					editor.action_CreateZone(batch, namePrefix + "Zone", (MapObjectNode<Zone>) parent);
 				});
 				break;
@@ -1733,7 +1765,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			.choose();
 
 		if (choice == JOptionPane.OK_OPTION) {
-			editor.doNextFrame(() -> {
+			editor.runEditorAction(() -> {
 				editor.action_CreateMarker(
 					MarkerOptionsPanel.getMarkerName(),
 					MarkerOptionsPanel.getMarkerType(),
@@ -1755,7 +1787,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 		if (choice == JOptionPane.OK_OPTION) {
 			final UVGenerator gen = uvOptionsPanel.getUVGenerator();
-			editor.doNextFrame(() -> {
+			editor.runEditorAction(() -> {
 				editor.action_GenerateUVs(gen);
 			});
 		}
@@ -1889,83 +1921,103 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	public void post(String text)
 	{
-		infoLabel.setForeground(null);
-		infoLabel.setText(text);
+		editor.runInEDT(() -> {
+			infoLabel.setForeground(null);
+			infoLabel.setText(text);
+		});
 	}
 
 	public void setTransformInfo(String fmt, Object ... args)
 	{
-		extraInfoLabel.setText(String.format(fmt, args));
+		editor.runInEDT(() -> {
+			extraInfoLabel.setText(String.format(fmt, args));
+
+		});
 	}
 
 	public void setLastSelectedInfo(MapObject obj)
 	{
-		if (obj != null && obj.getName() != null) {
-			String name = obj.getName();
-			if (name.length() > 30)
-				name = name.substring(0, 30) + "...";
-			extraInfoLabel.setText("Last selected: " + name);
-		}
-		else
-			extraInfoLabel.setText("");
+		editor.runInEDT(() -> {
+			if (obj != null && obj.getName() != null) {
+				String name = obj.getName();
+				if (name.length() > 30)
+					name = name.substring(0, 30) + "...";
+				extraInfoLabel.setText("Last selected: " + name);
+			}
+			else
+				extraInfoLabel.setText("");
+		});
 	}
 
 	public void displayFPS(double current, double max, double ms)
 	{
-		fpsLabel.setText(String.format("%s FPS  (%.1f ms)", (int) max, ms));
+		editor.runInEDT(() -> {
+			fpsLabel.setText(String.format("%s FPS  (%.1f ms)", (int) max, ms));
+
+		});
 	}
 
 	public void updateSnapLabel()
 	{
-		List<String> modes = new ArrayList<>(4);
-		if (editor.vertexSnap)
-			modes.add("Vertex");
-		if (editor.snapTranslation)
-			modes.add("Translation");
-		if (editor.snapRotation)
-			modes.add("Rotation");
-		if (editor.snapScale) {
-			if (editor.snapScaleToGrid)
-				modes.add("Scale-to-Grid");
-			else
-				modes.add("Scale");
-		}
-
-		String text;
-		if (modes.size() == 0)
-			text = "Snap = [None]";
-		else {
-			StringBuilder sb = new StringBuilder("Snap = [");
-			sb.append(modes.get(0));
-
-			for (int i = 1; i < modes.size(); i++) {
-				sb.append(",");
-				sb.append(modes.get(i));
+		editor.runInEDT(() -> {
+			List<String> modes = new ArrayList<>(4);
+			if (editor.vertexSnap)
+				modes.add("Vertex");
+			if (editor.snapTranslation)
+				modes.add("Translation");
+			if (editor.snapRotation)
+				modes.add("Rotation");
+			if (editor.snapScale) {
+				if (editor.snapScaleToGrid)
+					modes.add("Scale-to-Grid");
+				else
+					modes.add("Scale");
 			}
 
-			sb.append("]");
+			String text;
+			if (modes.size() == 0)
+				text = "Snap = [None]";
+			else {
+				StringBuilder sb = new StringBuilder("Snap = [");
+				sb.append(modes.get(0));
 
-			text = sb.toString();
-		}
-		snapModeLabel.setText(text);
+				for (int i = 1; i < modes.size(); i++) {
+					sb.append(",");
+					sb.append(modes.get(i));
+				}
+
+				sb.append("]");
+
+				text = sb.toString();
+			}
+			snapModeLabel.setText(text);
+		});
 	}
 
 	public void updateGridSize()
 	{
-		if (editor.gridEnabled)
-			gridSizeLabel.setText("Grid spacing = " + editor.grid.getSpacing());
-		else
-			gridSizeLabel.setText("Grid Disabled");
+		editor.runInEDT(() -> {
+			if (editor.gridEnabled)
+				gridSizeLabel.setText("Grid spacing = " + editor.grid.getSpacing());
+			else
+				gridSizeLabel.setText("Grid Disabled");
+		});
 	}
 
 	public void updateTextureCount(ModelTexture texture)
 	{
-		currentTexturePanel.updateCount(texture);
+		editor.runInEDT(() -> {
+			currentTexturePanel.updateCount(texture);
+
+		});
 	}
 
 	public void showAdvancedOptions(boolean debugShowLightSets)
 	{
-		objectPanel.showAdvancedOptions(debugShowLightSets);
+		editor.runInEDT(() -> {
+			objectPanel.showAdvancedOptions(debugShowLightSets);
+
+		});
 	}
 
 	public void setScrollSensitivity(int sensitivity)

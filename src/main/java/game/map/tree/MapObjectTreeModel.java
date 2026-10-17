@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Stack;
 
+import javax.swing.SwingUtilities;
 import javax.swing.tree.DefaultTreeModel;
 
 import org.w3c.dom.Element;
@@ -38,6 +39,64 @@ public abstract class MapObjectTreeModel<T extends MapObject> extends DefaultTre
 	public MapObjectJTree<T> getTree()
 	{
 		return tree;
+	}
+
+	private boolean refreshPending;
+
+	private void notifyTreeListeners(Runnable notification)
+	{
+		if (tree != null && !SwingUtilities.isEventDispatchThread()) {
+			// Several commands may finish before Swing catches up. Reload the current
+			// structure instead of replaying insert/remove indices from older states.
+			if (!refreshPending) {
+				refreshPending = true;
+				tree.editor.runInEDT(() -> {
+					if (!refreshPending)
+						return;
+					refreshPending = false;
+					if (tree.getModel() == this)
+						tree.reloadFromModel();
+				});
+			}
+			return;
+		}
+		if (refreshPending) {
+			refreshPending = false;
+			tree.reloadFromModel();
+			return;
+		}
+		boolean wasIgnoring = ignoreSelectionChanges;
+		ignoreSelectionChanges = true;
+		try {
+			notification.run();
+		}
+		finally {
+			ignoreSelectionChanges = wasIgnoring;
+		}
+	}
+
+	@Override
+	protected void fireTreeNodesChanged(Object source, Object[] path, int[] childIndices, Object[] children)
+	{
+		notifyTreeListeners(() -> super.fireTreeNodesChanged(source, path, childIndices, children));
+	}
+
+	@Override
+	protected void fireTreeNodesInserted(Object source, Object[] path, int[] childIndices, Object[] children)
+	{
+		notifyTreeListeners(() -> super.fireTreeNodesInserted(source, path, childIndices, children));
+	}
+
+	@Override
+	protected void fireTreeNodesRemoved(Object source, Object[] path, int[] childIndices, Object[] children)
+	{
+		notifyTreeListeners(() -> super.fireTreeNodesRemoved(source, path, childIndices, children));
+	}
+
+	@Override
+	protected void fireTreeStructureChanged(Object source, Object[] path, int[] childIndices, Object[] children)
+	{
+		notifyTreeListeners(() -> super.fireTreeStructureChanged(source, path, childIndices, children));
 	}
 
 	public static <T extends MapObject> MapObjectNode<T> load(XmlReader xmr, Element objTreeElement, HashMap<Integer, T> objMap)

@@ -19,7 +19,7 @@ import javax.swing.SwingUtilities;
 import org.junit.jupiter.api.Test;
 
 import common.commands.AbstractCommand;
-import common.commands.CommandManager;
+import common.commands.ThreadSafeCommandManager;
 
 class PaintManagerTest
 {
@@ -78,15 +78,15 @@ class PaintManagerTest
 				AbstractCommand command = (AbstractCommand) construct(nested("SetPaintColor"), oldValues, newValues, Color.RED, Color.RED);
 				assertTrue(command.shouldExec());
 				assertFalse(command.modifiesData());
-				CommandManager manager = new CommandManager(10, () -> fail("Paint settings must not dirty the map"));
+				ThreadSafeCommandManager manager = new ThreadSafeCommandManager(10, new Object(), () -> fail("Paint settings must not dirty the map"));
 				manager.executeCommand(command);
 				assertEquals(0, invoke(hue, "getValue"));
-				manager.action_Undo();
+				manager.undo();
 				assertEquals(3600, invoke(hue, "getValue"));
 				assertEquals(Color.RED, PaintManager.getSelectedColor());
-				manager.action_Redo();
+				manager.redo();
 				assertEquals(0, invoke(hue, "getValue"));
-				manager.action_Undo();
+				manager.undo();
 				// Switching models also crosses the red seam; undo must restore the exact HSL controls.
 				Object rgb = nested("ColorModel").getEnumConstants()[0];
 				invoke(panel, "applyColorModel", rgb);
@@ -95,7 +95,7 @@ class PaintManagerTest
 				AbstractCommand modelCommand = (AbstractCommand) construct(commandType, panel, hsl, rgb,
 					oldValues, invoke(panel, "getColorValues"));
 				manager.executeCommand(modelCommand);
-				manager.action_Undo();
+				manager.undo();
 				assertArrayEquals(oldValues, (int[]) invoke(panel, "getColorValues"));
 				assertEquals(3600, invoke(hue, "getValue"));
 			}

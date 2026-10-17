@@ -43,7 +43,7 @@ public class ZoneInfoPanel extends MapInfoPanel<Zone>
 		idLabel = new JLabel();
 
 		nameField = new NameTextField((name) -> {
-			MapEditor.execute(new SetObjectName(getData(), name));
+			MapEditor.execute(() -> new SetObjectName(getData(), name));
 		});
 		SwingUtils.addBorderPadding(nameField);
 
@@ -51,7 +51,7 @@ public class ZoneInfoPanel extends MapInfoPanel<Zone>
 		hasDataCheckbox.addItemListener(e -> {
 			final boolean value = hasDataCheckbox.isSelected();
 			if (!ignoreEvents())
-				MapEditor.execute(getData().hasCameraData.mutator(value));
+				MapEditor.execute(() -> getData().hasCameraData.mutator(value));
 		});
 
 		cameraPanel = new CameraInfoPanel();

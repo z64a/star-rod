@@ -1,6 +1,7 @@
 package game.map.scripts;
 
 import java.awt.Dimension;
+import java.util.function.Supplier;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -10,9 +11,10 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 
+import common.commands.AbstractCommand;
+
 import app.Environment;
 import app.SwingUtils;
-import common.commands.AbstractCommand;
 import game.ProjectDatabase;
 import game.map.Map;
 import game.map.editor.MapEditor;
@@ -67,49 +69,49 @@ public class OptionsPanel extends JPanel implements UpdateListener
 	private ColorChoicePanel shadingColorPanel;
 	private IntTextField shadingOffsetField;
 
-	private void tryExec(AbstractCommand cmd)
+	private void tryExec(Supplier<AbstractCommand> factory)
 	{
 		if (ignoreChanges || map.features == null)
 			return;
-		MapEditor.execute(cmd);
+		MapEditor.execute(factory);
 	}
 
 	private void createOverrideComponents()
 	{
 		cbOverrideShape = new JCheckBox(" Geometry");
 		cbOverrideShape.addActionListener((e) -> {
-			tryExec(map.features.overrideShape.mutator(cbOverrideShape.isSelected()));
+			tryExec(() -> map.features.overrideShape.mutator(cbOverrideShape.isSelected()));
 		});
 
 		overrideShapeText = new StringField(SwingConstants.LEFT, (s) -> {
-			tryExec(map.features.shapeOverrideName.mutator(s));
+			tryExec(() -> map.features.shapeOverrideName.mutator(s));
 		});
 
 		cbOverrideHit = new JCheckBox(" Collision");
 		cbOverrideHit.addActionListener((e) -> {
-			tryExec(map.features.overrideHit.mutator(cbOverrideHit.isSelected()));
+			tryExec(() -> map.features.overrideHit.mutator(cbOverrideHit.isSelected()));
 		});
 
 		overrideHitText = new StringField(SwingConstants.LEFT, (s) -> {
-			tryExec(map.features.hitOverrideName.mutator(s));
+			tryExec(() -> map.features.hitOverrideName.mutator(s));
 		});
 
 		cbOverrideTex = new JCheckBox(" Textures");
 		cbOverrideTex.addActionListener((e) -> {
-			tryExec(map.features.overrideTex.mutator(cbOverrideTex.isSelected()));
+			tryExec(() -> map.features.overrideTex.mutator(cbOverrideTex.isSelected()));
 		});
 
 		overrideTexText = new StringField(SwingConstants.LEFT, (s) -> {
-			tryExec(map.features.texOverrideName.mutator(s));
+			tryExec(() -> map.features.texOverrideName.mutator(s));
 		});
 
 		cbHasBackground = new JCheckBox(" Background");
 		cbOverrideTex.addActionListener((e) -> {
-			tryExec(map.features.overrideTex.mutator(cbOverrideTex.isSelected()));
+			tryExec(() -> map.features.overrideTex.mutator(cbOverrideTex.isSelected()));
 		});
 
 		overrideTexText = new StringField(SwingConstants.LEFT, (s) -> {
-			tryExec(map.features.texOverrideName.mutator(s));
+			tryExec(() -> map.features.texOverrideName.mutator(s));
 		});
 	}
 
@@ -117,11 +119,11 @@ public class OptionsPanel extends JPanel implements UpdateListener
 	{
 		cbLeadPlayer = new JCheckBox(" Camera leads player motion");
 		cbLeadPlayer.addActionListener((e) -> {
-			tryExec(map.features.camLeadsPlayer.mutator(cbLeadPlayer.isSelected()));
+			tryExec(() -> map.features.camLeadsPlayer.mutator(cbLeadPlayer.isSelected()));
 		});
 
 		camVfovField = new IntTextField((v) -> {
-			tryExec(map.features.camVfov.mutator(v));
+			tryExec(() -> map.features.camVfov.mutator(v));
 		});
 		camVfovField.setHorizontalAlignment(SwingConstants.CENTER);
 		SwingUtils.addVerticalBorderPadding(camVfovField);
@@ -130,20 +132,20 @@ public class OptionsPanel extends JPanel implements UpdateListener
 			if (ignoreChanges || map.features == null)
 				return;
 			if (index == 0)
-				MapEditor.execute(map.features.camNearClip.mutator(value));
+				MapEditor.execute(() -> map.features.camNearClip.mutator(value));
 			else if (index == 1)
-				MapEditor.execute(map.features.camFarClip.mutator(value));
+				MapEditor.execute(() -> map.features.camFarClip.mutator(value));
 		});
 
 		camBackgroundColor = new IntVectorPanel(true, 3, (index, value) -> {
 			if (ignoreChanges || map.features == null)
 				return;
 			if (index == 0)
-				MapEditor.execute(map.features.bgColorR.mutator(value));
+				MapEditor.execute(() -> map.features.bgColorR.mutator(value));
 			else if (index == 1)
-				MapEditor.execute(map.features.bgColorG.mutator(value));
+				MapEditor.execute(() -> map.features.bgColorG.mutator(value));
 			else if (index == 2)
-				MapEditor.execute(map.features.bgColorB.mutator(value));
+				MapEditor.execute(() -> map.features.bgColorB.mutator(value));
 		});
 	}
 
@@ -151,43 +153,43 @@ public class OptionsPanel extends JPanel implements UpdateListener
 	{
 		cbWorldFog = new JCheckBox(" World Fog");
 		cbWorldFog.addActionListener((e) -> {
-			tryExec(map.features.worldFog.enabled.mutator(cbWorldFog.isSelected()));
+			tryExec(() -> map.features.worldFog.enabled.mutator(cbWorldFog.isSelected()));
 		});
 		worldFogDist = new IntVectorPanel(true, 2, (index, value) -> {
 			if (index == 0)
-				tryExec(map.features.worldFog.start.mutator(value));
+				tryExec(() -> map.features.worldFog.start.mutator(value));
 			else if (index == 1)
-				tryExec(map.features.worldFog.end.mutator(value));
+				tryExec(() -> map.features.worldFog.end.mutator(value));
 
 		});
 		worldFogColor = new IntVectorPanel(true, 3, (index, value) -> {
 			if (index == 0)
-				tryExec(map.features.worldFog.R.mutator(value));
+				tryExec(() -> map.features.worldFog.R.mutator(value));
 			else if (index == 1)
-				tryExec(map.features.worldFog.G.mutator(value));
+				tryExec(() -> map.features.worldFog.G.mutator(value));
 			else if (index == 2)
-				tryExec(map.features.worldFog.B.mutator(value));
+				tryExec(() -> map.features.worldFog.B.mutator(value));
 
 		});
 
 		cbEntityFog = new JCheckBox(" Entity Fog");
 		cbEntityFog.addActionListener((e) -> {
-			tryExec(map.features.entityFog.enabled.mutator(cbEntityFog.isSelected()));
+			tryExec(() -> map.features.entityFog.enabled.mutator(cbEntityFog.isSelected()));
 		});
 		entityFogDist = new IntVectorPanel(true, 2, (index, value) -> {
 			if (index == 0)
-				tryExec(map.features.entityFog.start.mutator(value));
+				tryExec(() -> map.features.entityFog.start.mutator(value));
 			else if (index == 1)
-				tryExec(map.features.entityFog.end.mutator(value));
+				tryExec(() -> map.features.entityFog.end.mutator(value));
 
 		});
 		entityFogColor = new IntVectorPanel(true, 3, (index, value) -> {
 			if (index == 0)
-				tryExec(map.features.entityFog.R.mutator(value));
+				tryExec(() -> map.features.entityFog.R.mutator(value));
 			else if (index == 1)
-				tryExec(map.features.entityFog.G.mutator(value));
+				tryExec(() -> map.features.entityFog.G.mutator(value));
 			else if (index == 2)
-				tryExec(map.features.entityFog.B.mutator(value));
+				tryExec(() -> map.features.entityFog.B.mutator(value));
 
 		});
 	}
@@ -196,7 +198,7 @@ public class OptionsPanel extends JPanel implements UpdateListener
 	{
 		cbHasShading = new JCheckBox(" Sprite Shading");
 		cbHasShading.addActionListener((e) -> {
-			tryExec(map.features.hasSpriteShading.mutator(cbHasShading.isSelected()));
+			tryExec(() -> map.features.hasSpriteShading.mutator(cbHasShading.isSelected()));
 		});
 		cbHasShading.setVerticalAlignment(SwingConstants.CENTER);
 
@@ -247,11 +249,11 @@ public class OptionsPanel extends JPanel implements UpdateListener
 				return map.features.shadingBaseColor.get();
 			},
 			(v) -> {
-				tryExec(map.features.shadingBaseColor.mutator(v));
+				tryExec(() -> map.features.shadingBaseColor.mutator(v));
 			});
 
 		shadingOffsetField = new IntTextField((newValue) -> {
-			tryExec(map.features.shadingOffset.mutator(newValue & 0xFF));
+			tryExec(() -> map.features.shadingOffset.mutator(newValue & 0xFF));
 		});
 		shadingOffsetField.setHorizontalAlignment(SwingConstants.CENTER);
 		SwingUtils.addBorderPadding(shadingOffsetField);
@@ -320,7 +322,7 @@ public class OptionsPanel extends JPanel implements UpdateListener
 	@Override
 	public void update(String tag)
 	{
-		updateFields(map.features);
+		MapEditor.instance().runInEDT(() -> updateFields(map.features));
 	}
 
 	public void setMap(Map m)

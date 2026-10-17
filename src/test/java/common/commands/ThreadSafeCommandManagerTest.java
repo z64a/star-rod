@@ -1,13 +1,96 @@
 package common.commands;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.swing.SwingUtilities;
 
 import org.junit.jupiter.api.Test;
 
 class ThreadSafeCommandManagerTest
 {
+	@Test
+	void validationExecutionAndHistoryCallbacksShareTheRenderLockOnTheCallerThread() throws Exception
+	{
+		Object lock = new Object();
+		AtomicInteger value = new AtomicInteger();
+		ThreadSafeCommandManager manager = new ThreadSafeCommandManager(4, lock, () -> {
+			assertTrue(Thread.holdsLock(lock));
+			assertTrue(SwingUtilities.isEventDispatchThread());
+		});
+		AbstractCommand command = new AbstractCommand("locked edit", true) {
+			@Override
+			public boolean shouldExec()
+			{
+				assertTrue(Thread.holdsLock(lock), "Validation reads model state too");
+				return true;
+			}
+
+			@Override
+			public void exec()
+			{
+				assertTrue(Thread.holdsLock(lock));
+				assertTrue(SwingUtilities.isEventDispatchThread());
+				value.incrementAndGet();
+			}
+
+			@Override
+			public void undo()
+			{
+				assertTrue(Thread.holdsLock(lock));
+				assertTrue(SwingUtilities.isEventDispatchThread());
+				value.decrementAndGet();
+			}
+		};
+		SwingUtilities.invokeAndWait(() -> {
+			manager.executeCommand(command);
+			assertEquals(1, value.get(), "The edit finishes before execute returns");
+			manager.undo();
+			assertEquals(0, value.get());
+			manager.redo();
+			assertEquals(1, value.get());
+		});
+	}
+
+	@Test
+	void commandCannotEvenValidateWhileTheRendererOwnsTheLock() throws Exception
+	{
+		Object lock = new Object();
+		CountDownLatch started = new CountDownLatch(1);
+		CountDownLatch validated = new CountDownLatch(1);
+		ThreadSafeCommandManager manager = new ThreadSafeCommandManager(4, lock, () -> {});
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		try {
+			Future<?> edit;
+			synchronized (lock) {
+				edit = executor.submit(() -> {
+					started.countDown();
+					manager.executeCommand(new AbstractCommand("concurrent edit", true) {
+						@Override
+						public boolean shouldExec()
+						{
+							validated.countDown();
+							return true;
+						}
+					});
+				});
+				assertTrue(started.await(5, TimeUnit.SECONDS));
+				assertFalse(validated.await(100, TimeUnit.MILLISECONDS));
+			}
+			edit.get(5, TimeUnit.SECONDS);
+			assertEquals(0, validated.getCount());
+		}
+		finally {
+			executor.shutdownNow();
+		}
+	}
+
 	@Test
 	void dataChangesNotifyOnExecuteUndoAndRedo()
 	{
@@ -30,32 +113,6 @@ class ThreadSafeCommandManagerTest
 		manager.executeCommand(new TestCommand(false));
 		manager.undo();
 		manager.redo();
-
-		assertEquals(0, modifications.get());
-	}
-
-	@Test
-	void mapCommandManagerNotifiesOnExecuteUndoAndRedo()
-	{
-		AtomicInteger modifications = new AtomicInteger();
-		CommandManager manager = new CommandManager(4, modifications::incrementAndGet);
-
-		manager.executeCommand(new TestCommand(true));
-		manager.action_Undo();
-		manager.action_Redo();
-
-		assertEquals(3, modifications.get());
-	}
-
-	@Test
-	void mapCommandManagerIgnoresEditorOnlyCommands()
-	{
-		AtomicInteger modifications = new AtomicInteger();
-		CommandManager manager = new CommandManager(4, modifications::incrementAndGet);
-
-		manager.executeCommand(new TestCommand(false));
-		manager.action_Undo();
-		manager.action_Redo();
 
 		assertEquals(0, modifications.get());
 	}

@@ -42,7 +42,7 @@ public class LightSubpanel extends JPanel
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
 			LightComponent light = parent.getData().lightComponent;
-			MapEditor.execute(light.color.mutator(newValue));
+			MapEditor.execute(() -> light.color.mutator(newValue));
 		});
 		colorField.setHorizontalAlignment(SwingConstants.CENTER);
 		SwingUtils.addBorderPadding(colorField);
@@ -56,14 +56,14 @@ public class LightSubpanel extends JPanel
 			Color oldColor = new Color(light.color.get());
 			Color newColor = SwingGUI.instance().prompt_ChooseColor("Choose Light Color", oldColor);
 			if (newColor != null)
-				MapEditor.execute(light.color.mutator(newColor.getRGB() & 0xFFFFFF));
+				MapEditor.execute(() -> light.color.mutator(newColor.getRGB() & 0xFFFFFF));
 		});
 
 		falloffField = new DoubleTextField((newValue) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
 			LightComponent light = parent.getData().lightComponent;
-			MapEditor.execute(new SetLightFalloff(light, newValue));
+			MapEditor.execute(() -> new SetLightFalloff(light, newValue));
 		});
 		falloffField.setHorizontalAlignment(SwingConstants.CENTER);
 		falloffField.setColumns(16);
@@ -76,7 +76,7 @@ public class LightSubpanel extends JPanel
 			LightComponent light = parent.getData().lightComponent;
 
 			FalloffType newValue = (FalloffType) falloffBox.getSelectedItem();
-			MapEditor.execute(new SetFalloffType(light, newValue));
+			MapEditor.execute(() -> new SetFalloffType(light, newValue));
 		});
 		SwingUtils.addBorderPadding(falloffBox);
 
@@ -86,7 +86,7 @@ public class LightSubpanel extends JPanel
 				return;
 			LightComponent light = parent.getData().lightComponent;
 
-			MapEditor.execute(light.enabled.mutator(cbEnabled.isSelected()));
+			MapEditor.execute(() -> light.enabled.mutator(cbEnabled.isSelected()));
 		});
 		// SwingUtils.setFontSize(cbEnabled, 12);
 

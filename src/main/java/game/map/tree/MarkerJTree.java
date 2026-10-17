@@ -57,13 +57,13 @@ public class MarkerJTree extends MapObjectJTree<Marker>
 
 		switch (cmd) {
 			case DND_MOVE_SELECTION:
-				editor.doNextFrame(() -> {
+				editor.runEditorAction(() -> {
 					editor.action_MoveSelectedMarkers(dropDestination, dropChildIndex);
 				});
 				break;
 
 			case POPUP_MOVE_SELECTION:
-				editor.doNextFrame(() -> {
+				editor.runEditorAction(() -> {
 					editor.action_MoveSelectedMarkers(popupSource, -1);
 				});
 				break;

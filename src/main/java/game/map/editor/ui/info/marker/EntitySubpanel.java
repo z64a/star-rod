@@ -18,9 +18,9 @@ import javax.swing.JPopupMenu;
 import javax.swing.SwingConstants;
 
 import com.alexandriasoftware.swing.JSplitButton;
+import common.commands.EditableField;
 
 import app.SwingUtils;
-import common.commands.EditableField;
 import game.ProjectDatabase;
 import game.entity.EntityInfo.EntityParam;
 import game.entity.EntityInfo.EntityType;
@@ -234,14 +234,14 @@ public class EntitySubpanel extends JPanel
 		itemBox = new StandardEditableComboBox((s) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.itemName.mutator(s));
+			MapEditor.execute(() -> parent.getData().entityComponent.itemName.mutator(s));
 		}, ProjectDatabase.getItemNames());
 
 		selectItemButton = new JButton("~");
 		selectItemButton.addActionListener((e) -> {
 			String newName = openBoxChooserDialog(itemBox, "Choose Item");
 			if (newName != null)
-				MapEditor.execute(parent.getData().entityComponent.itemName.mutator(newName));
+				MapEditor.execute(() -> parent.getData().entityComponent.itemName.mutator(newName));
 		});
 		SwingUtils.addBorderPadding(selectItemButton);
 
@@ -259,7 +259,7 @@ public class EntitySubpanel extends JPanel
 		gameFlagBox = new StandardEditableComboBox((s) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.gameFlagName.mutator(s));
+			MapEditor.execute(() -> parent.getData().entityComponent.gameFlagName.mutator(s));
 		}, ProjectDatabase.getSavedFlagNames());
 
 		selectGameFlagButton = new JButton("~");
@@ -267,7 +267,7 @@ public class EntitySubpanel extends JPanel
 		selectGameFlagButton.addActionListener((e) -> {
 			String newFlag = openBoxChooserDialog(gameFlagBox, "Choose Game Flag");
 			if (newFlag != null)
-				MapEditor.execute(parent.getData().entityComponent.gameFlagName.mutator(newFlag));
+				MapEditor.execute(() -> parent.getData().entityComponent.gameFlagName.mutator(newFlag));
 		});
 		SwingUtils.addBorderPadding(selectGameFlagButton);
 
@@ -285,7 +285,7 @@ public class EntitySubpanel extends JPanel
 		areaFlagBox = new StandardEditableComboBox((s) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.areaFlagName.mutator(s));
+			MapEditor.execute(() -> parent.getData().entityComponent.areaFlagName.mutator(s));
 		}, new String[] {}); // empty initial list
 
 		selectAreaFlagButton = new JButton("~");
@@ -293,7 +293,7 @@ public class EntitySubpanel extends JPanel
 		selectAreaFlagButton.addActionListener((e) -> {
 			String newFlag = openBoxChooserDialog(areaFlagBox, "Choose Area Flag");
 			if (newFlag != null)
-				MapEditor.execute(parent.getData().entityComponent.areaFlagName.mutator(newFlag));
+				MapEditor.execute(() -> parent.getData().entityComponent.areaFlagName.mutator(newFlag));
 		});
 		SwingUtils.addBorderPadding(selectAreaFlagButton);
 
@@ -311,7 +311,7 @@ public class EntitySubpanel extends JPanel
 		mapVarBox = new StandardEditableComboBox((s) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.mapVarName.mutator(s));
+			MapEditor.execute(() -> parent.getData().entityComponent.mapVarName.mutator(s));
 		}, new String[] {}); // empty initial list
 
 		selectMapVarButton = new JButton("~");
@@ -319,7 +319,7 @@ public class EntitySubpanel extends JPanel
 		selectMapVarButton.addActionListener((e) -> {
 			String newFlag = openBoxChooserDialog(mapVarBox, "Choose Map Var");
 			if (newFlag != null)
-				MapEditor.execute(parent.getData().entityComponent.mapVarName.mutator(newFlag));
+				MapEditor.execute(() -> parent.getData().entityComponent.mapVarName.mutator(newFlag));
 		});
 		SwingUtils.addBorderPadding(selectMapVarButton);
 
@@ -337,7 +337,7 @@ public class EntitySubpanel extends JPanel
 		scriptField = new StringField(SwingConstants.LEFT, (s) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.scriptName.mutator(s));
+			MapEditor.execute(() -> parent.getData().entityComponent.scriptName.mutator(s));
 		});
 
 		scriptPanel = new FieldPanel("Script", cbHasScript, scriptField);
@@ -354,7 +354,7 @@ public class EntitySubpanel extends JPanel
 		indexField = new IntTextField((v) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.index.mutator(v));
+			MapEditor.execute(() -> parent.getData().entityComponent.index.mutator(v));
 		});
 		SwingUtils.addBorderPadding(indexField);
 
@@ -372,7 +372,7 @@ public class EntitySubpanel extends JPanel
 		styleField = new IntTextField((v) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.style.mutator(v));
+			MapEditor.execute(() -> parent.getData().entityComponent.style.mutator(v));
 		});
 		SwingUtils.addBorderPadding(styleField);
 
@@ -390,7 +390,7 @@ public class EntitySubpanel extends JPanel
 		modelNameBox = new MapObjectComboBox(MapObjectType.MODEL, (s) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.modelName.mutator(s));
+			MapEditor.execute(() -> parent.getData().entityComponent.modelName.mutator(s));
 		});
 
 		selectModelButton = new JButton("~");
@@ -398,7 +398,7 @@ public class EntitySubpanel extends JPanel
 		selectModelButton.addActionListener((e) -> {
 			String newModel = openBoxChooserDialog(modelNameBox, "Choose Model");
 			if (newModel != null)
-				MapEditor.execute(parent.getData().entityComponent.modelName.mutator(newModel));
+				MapEditor.execute(() -> parent.getData().entityComponent.modelName.mutator(newModel));
 		});
 		SwingUtils.addBorderPadding(selectModelButton);
 
@@ -416,7 +416,7 @@ public class EntitySubpanel extends JPanel
 		colliderNameBox = new MapObjectComboBox(MapObjectType.COLLIDER, (s) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.colliderName.mutator(s));
+			MapEditor.execute(() -> parent.getData().entityComponent.colliderName.mutator(s));
 		});
 
 		selectColliderButton = new JButton("~");
@@ -424,7 +424,7 @@ public class EntitySubpanel extends JPanel
 		selectColliderButton.addActionListener((e) -> {
 			String newCollider = openBoxChooserDialog(colliderNameBox, "Choose Collider");
 			if (newCollider != null)
-				MapEditor.execute(parent.getData().entityComponent.colliderName.mutator(newCollider));
+				MapEditor.execute(() -> parent.getData().entityComponent.colliderName.mutator(newCollider));
 		});
 		SwingUtils.addBorderPadding(selectColliderButton);
 
@@ -442,7 +442,7 @@ public class EntitySubpanel extends JPanel
 		targetNameBox = new MapObjectComboBox(MarkerType.Position, (s) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.targetName.mutator(s));
+			MapEditor.execute(() -> parent.getData().entityComponent.targetName.mutator(s));
 		});
 
 		selectTargetButton = new JButton("~");
@@ -450,7 +450,7 @@ public class EntitySubpanel extends JPanel
 		selectTargetButton.addActionListener((e) -> {
 			String newTarget = openBoxChooserDialog(targetNameBox, "Choose Target Marker");
 			if (newTarget != null)
-				MapEditor.execute(parent.getData().entityComponent.targetName.mutator(newTarget));
+				MapEditor.execute(() -> parent.getData().entityComponent.targetName.mutator(newTarget));
 		});
 		SwingUtils.addBorderPadding(selectTargetButton);
 
@@ -468,7 +468,7 @@ public class EntitySubpanel extends JPanel
 		entryField = new StringField(SwingConstants.LEFT, (s) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.entryName.mutator(s));
+			MapEditor.execute(() -> parent.getData().entityComponent.entryName.mutator(s));
 		});
 
 		entryPanel = new FieldPanel("Entry", cbHasEntry, entryField);
@@ -485,7 +485,7 @@ public class EntitySubpanel extends JPanel
 		pathsField = new StringField(SwingConstants.LEFT, (s) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.pathsName.mutator(s));
+			MapEditor.execute(() -> parent.getData().entityComponent.pathsName.mutator(s));
 		});
 
 		pathsPanel = new FieldPanel("Paths", cbHasPaths, pathsField);
@@ -502,7 +502,7 @@ public class EntitySubpanel extends JPanel
 		angleField = new IntTextField((v) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.angle.mutator(v));
+			MapEditor.execute(() -> parent.getData().entityComponent.angle.mutator(v));
 		});
 		SwingUtils.addBorderPadding(angleField);
 
@@ -520,7 +520,7 @@ public class EntitySubpanel extends JPanel
 		launchDistField = new IntTextField((v) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.launchDist.mutator(v));
+			MapEditor.execute(() -> parent.getData().entityComponent.launchDist.mutator(v));
 		});
 		SwingUtils.addBorderPadding(launchDistField);
 
@@ -538,14 +538,14 @@ public class EntitySubpanel extends JPanel
 		spawnModeBox = new StandardEditableComboBox((s) -> {
 			if (parent.ignoreEvents() || parent.getData() == null)
 				return;
-			MapEditor.execute(parent.getData().entityComponent.spawnMode.mutator(s));
+			MapEditor.execute(() -> parent.getData().entityComponent.spawnMode.mutator(s));
 		}, ProjectDatabase.EItemSpawnModes.getValues());
 
 		selectSpawnModeButton = new JButton("~");
 		selectSpawnModeButton.addActionListener((e) -> {
 			String newName = openBoxChooserDialog(spawnModeBox, "Choose Spawn Mode");
 			if (newName != null)
-				MapEditor.execute(parent.getData().entityComponent.spawnMode.mutator(newName));
+				MapEditor.execute(() -> parent.getData().entityComponent.spawnMode.mutator(newName));
 		});
 		SwingUtils.addBorderPadding(selectSpawnModeButton);
 

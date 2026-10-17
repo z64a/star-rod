@@ -36,6 +36,7 @@ import game.map.shape.Model;
 import game.map.tree.ColliderJTree;
 import game.map.tree.MapObjectJTree;
 import game.map.tree.MapObjectNode;
+import game.map.tree.MapObjectTreeModel;
 import game.map.tree.MarkerJTree;
 import game.map.tree.ModelJTree;
 import game.map.tree.ZoneJTree;
@@ -196,12 +197,12 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 
 		JMenuItem invertNormalsButton = new JMenuItem("Invert Normals");
 		invertNormalsButton.setToolTipText("Invert normals for selected triangles.");
-		invertNormalsButton.addActionListener((e) -> editor.enqueueKeyEvent(EditorShortcut.FLIP_NORMALS));
+		invertNormalsButton.addActionListener((e) -> editor.executeShortcut(EditorShortcut.FLIP_NORMALS));
 		modifyMenu.add(invertNormalsButton);
 
 		JMenuItem cameraNormalsButton = new JMenuItem("Normals to Camera");
 		cameraNormalsButton.setToolTipText("Orients normals of selected triangles toward the camera position of the 3D viewport.");
-		cameraNormalsButton.addActionListener((e) -> editor.enqueueKeyEvent(EditorShortcut.NORMALS_TO_CAMERA));
+		cameraNormalsButton.addActionListener((e) -> editor.executeShortcut(EditorShortcut.NORMALS_TO_CAMERA));
 		modifyMenu.add(cameraNormalsButton);
 
 		modifyMenu.addSeparator();
@@ -297,12 +298,12 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 
 		JMenuItem invertNormalsButton = new JMenuItem("Invert Normals");
 		invertNormalsButton.setToolTipText("Invert normals for selected triangles.");
-		invertNormalsButton.addActionListener((e) -> editor.enqueueKeyEvent(EditorShortcut.FLIP_NORMALS));
+		invertNormalsButton.addActionListener((e) -> editor.executeShortcut(EditorShortcut.FLIP_NORMALS));
 		modifyMenu.add(invertNormalsButton);
 
 		JMenuItem cameraNormalsButton = new JMenuItem("Normals to Camera");
 		cameraNormalsButton.setToolTipText("Orients normals of selected triangles toward the camera position of the 3D viewport.");
-		cameraNormalsButton.addActionListener((e) -> editor.enqueueKeyEvent(EditorShortcut.NORMALS_TO_CAMERA));
+		cameraNormalsButton.addActionListener((e) -> editor.executeShortcut(EditorShortcut.NORMALS_TO_CAMERA));
 		modifyMenu.add(cameraNormalsButton);
 
 		modifyMenu.addSeparator();
@@ -400,12 +401,12 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 
 		JMenuItem invertNormalsButton = new JMenuItem("Invert Normals");
 		invertNormalsButton.setToolTipText("Invert normals for selected triangles.");
-		invertNormalsButton.addActionListener((e) -> editor.enqueueKeyEvent(EditorShortcut.FLIP_NORMALS));
+		invertNormalsButton.addActionListener((e) -> editor.executeShortcut(EditorShortcut.FLIP_NORMALS));
 		modifyMenu.add(invertNormalsButton);
 
 		JMenuItem cameraNormalsButton = new JMenuItem("Normals to Camera");
 		cameraNormalsButton.setToolTipText("Orient normals of selected triangles toward the 3D camera position.");
-		cameraNormalsButton.addActionListener((e) -> editor.enqueueKeyEvent(EditorShortcut.NORMALS_TO_CAMERA));
+		cameraNormalsButton.addActionListener((e) -> editor.executeShortcut(EditorShortcut.NORMALS_TO_CAMERA));
 		modifyMenu.add(cameraNormalsButton);
 
 		modifyMenu.addSeparator();
@@ -649,56 +650,48 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 	@Override
 	public void valueChanged(TreeSelectionEvent e)
 	{
-		if (disableListener)
-			return;
+		editor.runEditorAction(() -> {
+			MapObjectJTree<?> sourceTree = (MapObjectJTree<?>) e.getSource();
+			if (disableListener || ((MapObjectTreeModel<?>) sourceTree.getModel()).ignoreSelectionChanges
+				|| editor.isApplyingChanges())
+				return;
 
-		/*
-		MapObjectJTree<?> sourceTree = (MapObjectJTree<?>)e.getSource();
-		MapObjectTreeModel<?> sourceModel = ((MapObjectTreeModel<?>)sourceTree.getModel());
-		if(sourceModel.ignoreMe)
-		{
-			sourceModel.ignoreMe = false;
-			return;
-		}
-		*/
+			ArrayList<MapObject> added = new ArrayList<>();
+			ArrayList<MapObject> removed = new ArrayList<>();
 
-		ArrayList<MapObject> added = new ArrayList<>();
-		ArrayList<MapObject> removed = new ArrayList<>();
+			TreePath[] paths = e.getPaths();
+			for (int i = 0; i < paths.length; i++) {
+				DefaultMutableTreeNode node = (DefaultMutableTreeNode) paths[i].getLastPathComponent();
+				MapObject obj = (MapObject) node.getUserObject();
 
-		TreePath[] paths = e.getPaths();
-		for (int i = 0; i < paths.length; i++) {
-			DefaultMutableTreeNode node = (DefaultMutableTreeNode) paths[i].getLastPathComponent();
-			MapObject obj = (MapObject) node.getUserObject();
+				if (e.isAddedPath(i))
+					added.add(obj);
+				else
+					removed.add(obj);
+			}
 
-			if (e.isAddedPath(i))
-				added.add(obj);
-			else
-				removed.add(obj);
-		}
+			// ugly workaround to handle additive vs replacement selection events
+			if (!sourceTree.additiveSelection) {
+				disableListener = true;
+				if (sourceTree != modelJTree)
+					modelJTree.clearSelection();
+				if (sourceTree != colliderJTree)
+					colliderJTree.clearSelection();
+				if (sourceTree != zoneJTree)
+					zoneJTree.clearSelection();
+				if (sourceTree != markerJTree)
+					markerJTree.clearSelection();
+				disableListener = false;
 
-		// ugly workaround to handle additive vs replacement selection events
-		MapObjectJTree<?> sourceTree = (MapObjectJTree<?>) e.getSource();
-		if (!sourceTree.additiveSelection) {
-			disableListener = true;
-			if (sourceTree != modelJTree)
-				modelJTree.clearSelection();
-			if (sourceTree != colliderJTree)
-				colliderJTree.clearSelection();
-			if (sourceTree != zoneJTree)
-				zoneJTree.clearSelection();
-			if (sourceTree != markerJTree)
-				markerJTree.clearSelection();
-			disableListener = false;
-
-			// replacement selection events clear the previous selection
-			editor.selectionManager.clearObjectsFromGUI();
-		}
-		else {
-			// additive selection events
-			editor.selectionManager.deselectObjectsFromGUI(removed);
-		}
-
-		editor.selectionManager.selectObjectsFromGUI(added);
+				// Include unchanged selected paths when replacing selection across trees.
+				added.clear();
+				TreePath[] selectedPaths = sourceTree.getSelectionPaths();
+				if (selectedPaths != null)
+					for (TreePath path : selectedPaths)
+						added.add((MapObject) ((DefaultMutableTreeNode) path.getLastPathComponent()).getUserObject());
+			}
+			editor.selectionManager.selectObjectsFromGUI(added, removed, sourceTree.additiveSelection);
+		});
 	}
 
 	@Override

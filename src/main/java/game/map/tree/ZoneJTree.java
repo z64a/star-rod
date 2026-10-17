@@ -57,13 +57,13 @@ public class ZoneJTree extends MapObjectJTree<Zone>
 
 		switch (cmd) {
 			case DND_MOVE_SELECTION:
-				editor.doNextFrame(() -> {
+				editor.runEditorAction(() -> {
 					editor.action_MoveSelectedZones(dropDestination, dropChildIndex);
 				});
 				break;
 
 			case POPUP_MOVE_SELECTION:
-				editor.doNextFrame(() -> {
+				editor.runEditorAction(() -> {
 					editor.action_MoveSelectedZones(popupSource, -1);
 				});
 				break;
