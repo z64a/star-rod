@@ -51,7 +51,7 @@ public class LoadingBar
 			Logger.removeListener(instance);
 		}
 
-		Logger.addListener(instance, priority);
+		Logger.addSwingListener(instance, priority);
 	}
 
 	public static void dismiss()

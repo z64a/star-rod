@@ -80,7 +80,7 @@ public abstract class SingleListTab<T extends GlobalsRecord> extends GlobalEdito
 		add(listPanel, "w 270!, growy");
 		add(infoPanel, "grow, push");
 
-		Logger.addListener(this);
+		Logger.addSwingListener(this);
 	}
 
 	private final void createListPanel(DefaultListModel<T> listModel)
