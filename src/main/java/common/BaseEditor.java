@@ -175,7 +175,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 			setFullScreenEnabled(frame, false);
 		frame.pack();
 
-		Logger.addListener(this);
+		Logger.addSwingListener(this);
 
 		afterCreateGui();
 	}
@@ -439,7 +439,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 				vertical.setValue(vertical.getMaximum());
 			});
 		};
-		Logger.addListener(logListener);
+		Logger.addSwingListener(logListener);
 
 		return ((e) -> {
 			boolean success = false;

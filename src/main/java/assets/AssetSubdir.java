@@ -32,7 +32,9 @@ public enum AssetSubdir
 
 	PAUSE				(			"/pause/"),
 
-	ICON				(			"/icon/");
+	ICON				(			"/icon/"),
+
+	AUDIO				(			"/audio/");
 	// @formatter:on
 
 	private final String path;

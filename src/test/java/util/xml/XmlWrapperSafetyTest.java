@@ -61,6 +61,21 @@ public class XmlWrapperSafetyTest
 	}
 
 	@Test
+	public void stringAttributesRoundTripSpecialCharactersAndWhitespace() throws IOException
+	{
+		Path destination = tempDir.resolve("attributes.xml");
+		String text = "Mario & Luigi <test> \"quoted\"\nnext\tline\r";
+		try (XmlWriter writer = new XmlWriter(destination.toFile())) {
+			XmlTag root = writer.createTag(Key.ROOT, true);
+			writer.addAttribute(root, Key.ROOT, text);
+			writer.printTag(root);
+			writer.save();
+		}
+		XmlReader reader = new XmlReader(destination.toFile());
+		assertEquals(text, reader.getRootElement().getAttribute(Key.ROOT.toString()));
+	}
+
+	@Test
 	public void saveAtomicallyReplacesDestination() throws IOException
 	{
 		Path destination = tempDir.resolve("output.xml");

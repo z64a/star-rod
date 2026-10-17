@@ -58,6 +58,7 @@ public abstract class Environment
 	private static final String FN_PROJ_CONFIG = "star_rod.cfg";
 	private static final String FN_BASEROM = "ver/us/baserom.z64";
 	private static final String FN_SPLAT = "splat.yaml";
+	private static final String FN_LAYOUT = "layout.yaml";
 
 	public static ImageIcon ICON_DEFAULT = loadIconResource(ResourceType.Icon, "icon.png");
 	public static ImageIcon ICON_ERROR = null;
@@ -119,6 +120,33 @@ public abstract class Environment
 	public static boolean usingTexturePool()
 	{
 		return isDX(); //TODO
+	}
+
+	/** Prints the version and build commit from the jar's manifest, without starting up. */
+	public static void printVersion()
+	{
+		try {
+			System.out.print(readBuildInfo());
+		}
+		catch (IOException e) {
+			exitWithError(e.getMessage());
+		}
+	}
+
+	/** The version and build commit from the jar's manifest, as VERSION= and COMMIT= lines. */
+	public static String readBuildInfo() throws IOException
+	{
+		try {
+			Attributes attr = new Manifest(Environment.class.getClassLoader().getResourceAsStream("META-INF/MANIFEST.MF")).getMainAttributes();
+			StringBuilder sb = new StringBuilder("VERSION=").append(attr.getValue("App-Version")).append("\n");
+			String commit = attr.getValue("Build-Commit");
+			if (commit != null && !commit.isEmpty())
+				sb.append("COMMIT=").append(commit).append("\n");
+			return sb.toString();
+		}
+		catch (IOException | NullPointerException e) {
+			throw new IOException("Could not read MANIFEST.MF: " + e, e);
+		}
 	}
 
 	public static String getVersionString()
@@ -261,7 +289,7 @@ public abstract class Environment
 			LoadingBar.show("Loading Project", true);
 			boolean validProject = loadProject(projDir);
 			if (!validProject)
-				exit();
+				exit(1);
 		}
 		catch (Throwable t) {
 			StarRodMain.handleEarlyCrash(t);
@@ -273,6 +301,42 @@ public abstract class Environment
 		initialized = true;
 	}
 
+	/**
+	 * Sets up only what the audio and map tasks need: the decomp project in the current directory, and its asset
+	 * stack if readAssetStack is set.
+	 */
+	public static void initializeBuildTask(boolean readAssetStack)
+	{
+		commandLine = true;
+		// the map compilers report every map they write, which would bury the build's own output
+		Logger.setDefaultOuputPriority(Priority.WARNING);
+
+		File decompCfg = new File("./ver/us/", FN_SPLAT);
+		if (!decompCfg.isFile())
+			exitWithError("The current directory is not a decomp project: could not find " + decompCfg.getPath());
+
+		if (readAssetStack) {
+			try {
+				assetDirectories = getAssetDirs(new File("."), decompCfg.getParentFile(), decompCfg);
+			}
+			catch (IOException | RuntimeException e) {
+				exitWithError(decompCfg.getPath() + ": could not read the asset stack: " + e);
+			}
+		}
+
+		projectDirectory = new File(".").getAbsoluteFile();
+		Directories.setProjectDirectory(projectDirectory.getAbsolutePath());
+		gameVersion = decompCfg.getParentFile().getName();
+
+		initialized = true;
+	}
+
+	private static void exitWithError(String message)
+	{
+		System.err.println(message);
+		exit(1);
+	}
+
 	public static void exit()
 	{
 		exit(0);
@@ -281,6 +345,12 @@ public abstract class Environment
 	public static void exit(int status)
 	{
 		System.exit(status);
+	}
+
+	/** The build directory of the project's game version, such as ver/us/build. */
+	public static File getBuildDirectory()
+	{
+		return new File(projectDirectory, "ver/" + gameVersion + "/build");
 	}
 
 	public static boolean isCommandLine()
@@ -521,12 +591,12 @@ public abstract class Environment
 
 		// resolve asset dirs
 		try {
-			assetDirectories = getAssetDirs(projectDir, decompCfg);
+			assetDirectories = getAssetDirs(projectDir, versionDir, decompCfg);
 		}
 		catch (IOException e) {
 			Logger.printStackTrace(e);
-			showErrorMessage("Splat Read Exception",
-				"IOException while attempting to read splat file: %n%s %n%s", decompCfg.getAbsolutePath(),
+			showErrorMessage("Asset Stack Read Exception",
+				"IOException while attempting to read the asset stack in: %n%s %n%s", versionDir.getAbsolutePath(),
 				e.getMessage());
 			return false;
 		}
@@ -622,20 +692,40 @@ public abstract class Environment
 		return romBytes;
 	}
 
-	private static List<File> getAssetDirs(File directory, File splatFile) throws IOException
+	/**
+	 * The project's asset layers, highest priority first, from its layout file, or its splat
+	 * file for a project without one.
+	 */
+	private static List<File> getAssetDirs(File directory, File versionDir, File splatFile) throws IOException
 	{
-		Map<String, Object> topLevelMap = new Yaml().load(new FileInputStream(splatFile));
+		File layoutFile = new File(versionDir, FN_LAYOUT);
+		File configFile = layoutFile.exists() ? layoutFile : splatFile;
+
+		Map<String, Object> topLevelMap;
+		try (FileInputStream in = new FileInputStream(configFile)) {
+			topLevelMap = new Yaml().load(in);
+		}
 
 		@SuppressWarnings("unchecked")
-		List<String> assetDirNames = (List<String>) topLevelMap.get("asset_stack");
-
-		File assetsDir = new File(directory, "assets");
+		List<String> assetStack = (List<String>) topLevelMap.get("asset_stack");
 
 		List<File> assetDirectories = new ArrayList<>();
-		for (String dirName : assetDirNames) {
-			assetDirectories.add(new File(assetsDir, dirName));
+		for (String layer : assetStack) {
+			assetDirectories.add(getAssetDir(directory, layer));
 		}
 		return assetDirectories;
+	}
+
+	/**
+	 * A layer of the asset stack. Layers are directories from the project root, such as src or
+	 * assets/us; older projects name them within assets instead, as in mod or us.
+	 */
+	private static File getAssetDir(File directory, String layer)
+	{
+		File fromRoot = new File(directory, layer);
+		if (layer.contains("/") || fromRoot.isDirectory())
+			return fromRoot;
+		return new File(new File(directory, "assets"), layer);
 	}
 
 	public static boolean isWindows()

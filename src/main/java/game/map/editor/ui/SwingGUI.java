@@ -287,7 +287,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 				vertical.setValue(vertical.getMaximum());
 			});
 		};
-		Logger.addListener(logListener);
+		Logger.addSwingListener(logListener);
 
 		JButton openLog = new JButton("Open Log");
 		SwingUtils.setFontSize(openLog, 10);
@@ -666,13 +666,16 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		menuBar.add(menu);
 		JMenuItem item;
 
-		item = new JMenuItem("Build Geometry");
-		addButtonCommand(item, GuiCommand.COMPILE_SHAPE);
-		menu.add(item);
+		// papermario-dx compiles each saved map source as part of its own build
+		if (!Map.hasAreaDirs()) {
+			item = new JMenuItem("Build Geometry");
+			addButtonCommand(item, GuiCommand.COMPILE_SHAPE);
+			menu.add(item);
 
-		item = new JMenuItem("Build Collision");
-		addButtonCommand(item, GuiCommand.COMPILE_COLLISION);
-		menu.add(item);
+			item = new JMenuItem("Build Collision");
+			addButtonCommand(item, GuiCommand.COMPILE_COLLISION);
+			menu.add(item);
+		}
 
 		item = new JMenuItem("Generate Script");
 		addButtonCommand(item, GuiCommand.GENERATE_SCRIPT);
@@ -1332,9 +1335,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 	public void changeMap(Map map)
 	{
 		if (!editor.map.modified || promptSaveMap()) {
-			editor.doNextFrame(() -> {
-				editor.action_OpenMap(map);
-			});
+			editor.changeMapNextFrame(map);
 		}
 	}
 
@@ -1346,9 +1347,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			openDialogCount.decrement();
 
 			if (mapFile != null) {
-				editor.doNextFrame(() -> {
-					editor.action_OpenMap(mapFile);
-				});
+				editor.changeMapNextFrame(mapFile);
 			}
 		}
 	}
@@ -1358,9 +1357,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		if (!editor.map.modified || promptSaveMap()) {
 			AssetHandle ah = AssetManager.getMap(mapName);
 			if (ah.exists()) {
-				editor.doNextFrame(() -> {
-					editor.action_OpenMap(ah);
-				});
+				editor.changeMapNextFrame(ah);
 			}
 		}
 	}

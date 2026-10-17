@@ -15,6 +15,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.commons.text.StringEscapeUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -653,17 +654,19 @@ public class XmlWrapper
 		public void addNonEmptyAttribute(XmlTag tag, XmlKey key, String value)
 		{
 			if (value != null && !value.isBlank())
-				tag.add(key + "=\"" + value + "\"");
+				addAttribute(tag, key, value);
 		}
 
 		public void addAttribute(XmlTag tag, XmlKey key, String value)
 		{
-			tag.add(key + "=\"" + value + "\"");
+			String escaped = StringEscapeUtils.escapeXml10(String.valueOf(value))
+				.replace("\r", "&#13;").replace("\n", "&#10;").replace("\t", "&#9;");
+			tag.add(key + "=\"" + escaped + "\"");
 		}
 
 		public void addAttribute(XmlTag tag, XmlKey key, String fmt, Object ... args)
 		{
-			tag.add(String.format(key + "=\"" + fmt + "\"", args));
+			addAttribute(tag, key, String.format(fmt, args));
 		}
 
 		public <E extends Enum<?>> void addEnum(XmlTag tag, XmlKey key, E val)

@@ -1,0 +1,21 @@
+AmbientSounds	% namespace
+ambientSFX 		% library name
+false			% reversed
+
+00 = Spooky
+01 = Wind
+02 = Beach
+03 = Jungle
+04 = Lava1
+05 = Lava2
+06 = SilentLava
+07 = Lava3
+08 = Lava4
+09 = Lava5
+0A = Lava6
+0B = Lava7
+0C = Birds
+0D = Sea
+0E = Unused_0E
+0F = Unused_0F
+10 = Radio

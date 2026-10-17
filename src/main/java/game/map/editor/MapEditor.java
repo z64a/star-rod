@@ -25,6 +25,8 @@ import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.imageio.ImageIO;
@@ -400,6 +402,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	 * submitGuiCommand(). (3) EditorKeyEvents are submitted to the keyEventQueue via enqueueKeyEvent().
 	 */
 	private LinkedBlockingQueue<Runnable> guiEventQueue;
+	private final LinkedBlockingQueue<Runnable> mapChangeQueue = new LinkedBlockingQueue<>();
 	private LinkedBlockingQueue<EditorShortcut> keyEventQueue;
 
 	/**
@@ -542,7 +545,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		keyboard = new KeyboardInput(glCanvas);
 		mouse = new MouseInput(glCanvas);
 		gui = new SwingGUI(this, glCanvas, logFile);
-		Logger.addListener(gui);
+		Logger.addSwingListener(gui);
 
 		if (Environment.isMacOS())
 			setFullScreenEnabled(gui, false);
@@ -798,7 +801,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	{
 		synchronized (modifyLock) {
 			try {
-				map.saveBackup(AssetManager.getSaveMapFile(map.getName() + Directories.MAP_CRASH_SUFFIX));
+				map.saveBackup(AssetManager.getMapRecoveryFile(map.getName(), Directories.MAP_CRASH_SUFFIX));
 				DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
 				Logger.log("Saved crash at " + dateFormatter.format(LocalDateTime.now()));
 			}
@@ -813,7 +816,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	{
 		synchronized (modifyLock) {
 			try {
-				map.saveBackup(AssetManager.getSaveMapFile(map.getName() + Directories.MAP_BACKUP_SUFFIX));
+				map.saveBackup(AssetManager.getMapRecoveryFile(map.getName(), Directories.MAP_BACKUP_SUFFIX));
 				DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
 				Logger.log("Saved backup at " + dateFormatter.format(LocalDateTime.now()));
 			}
@@ -834,7 +837,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		if (crashedMapName.isBlank())
 			return null;
 
-		File crashMapFile = AssetManager.getSaveMapFile(crashedMapName + Directories.MAP_CRASH_SUFFIX);
+		File crashMapFile = AssetManager.getMapRecoveryFile(crashedMapName, Directories.MAP_CRASH_SUFFIX);
 		if (!crashMapFile.exists()) {
 			Logger.logWarning("Failed to locate crash data for " + crashedMapName);
 			return null;
@@ -866,7 +869,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	private Map checkForBackup(Map baseMap)
 	{
 		try {
-			File backupFile = AssetManager.getSaveMapFile(baseMap.getName() + Directories.MAP_BACKUP_SUFFIX);
+			File backupFile = AssetManager.getMapRecoveryFile(baseMap.getName(), Directories.MAP_BACKUP_SUFFIX);
 
 			if (!backupFile.exists() || backupFile.lastModified() <= baseMap.lastModified)
 				return baseMap;
@@ -1226,6 +1229,11 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		while (!gui.isCloseRequested()) {
 			long t_start = System.nanoTime();
 
+			// Map loading may wait for a Swing dialog; it must not hold modifyLock while doing so.
+			Runnable mapChange;
+			while ((mapChange = mapChangeQueue.poll()) != null)
+				mapChange.run();
+
 			synchronized (modifyLock) {
 				step();
 				glCanvas.render();
@@ -1474,6 +1482,16 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	public void doNextFrame(Runnable event)
 	{
 		guiEventQueue.add(event);
+	}
+
+	public void changeMapNextFrame(File file)
+	{
+		mapChangeQueue.add(() -> action_OpenMap(file));
+	}
+
+	public void changeMapNextFrame(Map newMap)
+	{
+		mapChangeQueue.add(() -> action_OpenMap(newMap));
 	}
 
 	public void executeNextFrame(AbstractCommand cmd)
@@ -3447,37 +3465,43 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		gui.setSelectedTexture(null);
 	}
 
-	/**
-	 * Determines which assets are required by OpenGL and initializes them. Currently this involves: - Loading all required
-	 * textures. - Set texture IDs on mesh objects.
-	 *
-	 * @param map
-	 */
-	private void loadMapResources(boolean reloadTextures)
+	/** Prompts on the event dispatch thread, after the caller has released the OpenGL context. */
+	private File promptForTextureArchive()
 	{
-		boolean loadedTextures = !reloadTextures;
-		if (!loadedTextures)
-			loadedTextures = TextureManager.load(map.texName);
+		assert (!Thread.holdsLock(modifyLock));
+		FutureTask<File> prompt = new FutureTask<>(() -> {
+			while (true) {
+				int choice = SwingUtils.getConfirmDialog()
+					.setParent(gui)
+					.setTitle("Missing Texture Archive")
+					.setMessage("Could not open texture archive \"" + map.texName + "\", select a different one?")
+					.setOptionsType(JOptionPane.YES_NO_OPTION)
+					.choose();
 
-		while (!loadedTextures) {
-			int choice = SwingUtils.getConfirmDialog()
-				.setParent(gui)
-				.setTitle("Missing Texture Archive")
-				.setMessage("Could not open texture archive \"" + map.texName + "\", select a different one?")
-				.setOptionsType(JOptionPane.YES_NO_OPTION)
-				.choose();
+				if (choice != JOptionPane.YES_OPTION)
+					return null;
 
-			if (choice == JOptionPane.YES_OPTION) {
 				File texFile = SelectTexDialog.showPrompt();
-				if (texFile != null) {
-					String texName = FilenameUtils.getBaseName(texFile.getName());
-					loadedTextures = TextureManager.load(texName);
-				}
+				if (texFile != null)
+					return texFile;
 			}
-			else
-				break;
+		});
+		SwingUtilities.invokeLater(prompt);
+		try {
+			return prompt.get();
 		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new StarRodException(e);
+		}
+		catch (ExecutionException e) {
+			throw new StarRodException(e.getCause());
+		}
+	}
 
+	/** Assigns loaded textures and initializes the remaining map resources with the OpenGL context available. */
+	private void loadMapResources()
+	{
 		TextureManager.assignModelTextures(map);
 
 		for (Model mdl : map.modelTree)
@@ -3720,57 +3744,79 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	private void openMap(Map newMap, boolean thumbnailMode)
 	{
 		assert (!SwingUtilities.isEventDispatchThread());
+		assert (!Thread.holdsLock(modifyLock));
 
 		if (newMap == null)
 			return;
 
-		// this MUST run with GLContext available
-		runInContext(() -> {
+		boolean[] loadedTextures = { false };
+		synchronized (modifyLock) {
 			String prevTexName = (thumbnailMode || map == null) ? null : map.texName;
 			boolean reloadTextures = !newMap.texName.equals(prevTexName);
+			loadedTextures[0] = !reloadTextures;
 
-			if (map != null)
-				releaseMapResources(reloadTextures);
+			runInContext(() -> {
+				if (map != null)
+					releaseMapResources(reloadTextures);
 
-			loading = true;
-			map = newMap;
+				loading = true;
+				map = newMap;
 
-			loadMapResources(reloadTextures);
+				if (reloadTextures)
+					loadedTextures[0] = TextureManager.load(map.texName);
+			});
+		}
 
-			loadOverrides();
+		// Release both the GL context and modifyLock before waiting for a modal Swing dialog.
+		while (!loadedTextures[0]) {
+			File texFile = promptForTextureArchive();
+			if (texFile == null)
+				break;
 
-			updateRecentMaps();
-			gui.setRecentMaps(recentMaps);
-
-			resetEditorSettings();
-			map.initializeAllObjects();
-			map.loadVarNames();
-
-			if (!thumbnailMode) {
-				final Map guiMap = newMap;
-				SwingUtilities.invokeLater(() -> {
-					updateWindowTitle();
-					gui.setMap(guiMap);
-				});
-
-				if (map.editorData != null) {
-					for (int i = 0; i < 4; i++) {
-						MapEditCamera cam = fourViews[i].camera;
-						if (cam.pos.x != 0x10000)
-							cam.pos.x = Float.isNaN(map.editorData.cameraPos[i][0]) ? 0 : map.editorData.cameraPos[i][0];
-						if (cam.pos.y != 0x10000)
-							cam.pos.y = Float.isNaN(map.editorData.cameraPos[i][1]) ? 0 : map.editorData.cameraPos[i][1];
-						if (cam.pos.z != 0x10000)
-							cam.pos.z = Float.isNaN(map.editorData.cameraPos[i][2]) ? 0 : map.editorData.cameraPos[i][2];
-					}
-
-					perspectiveView.camera.pitch = Float.isNaN(map.editorData.perspPitch) ? 0 : map.editorData.perspPitch;
-					perspectiveView.camera.yaw = Float.isNaN(map.editorData.perspYaw) ? 0 : map.editorData.perspYaw;
-				}
+			String texName = FilenameUtils.getBaseName(texFile.getName());
+			synchronized (modifyLock) {
+				runInContext(() -> loadedTextures[0] = TextureManager.load(texName));
 			}
-		});
+		}
 
-		loading = false;
+		synchronized (modifyLock) {
+			runInContext(() -> {
+				loadMapResources();
+				loadOverrides();
+
+				updateRecentMaps();
+				gui.setRecentMaps(recentMaps);
+
+				resetEditorSettings();
+				map.initializeAllObjects();
+				map.loadVarNames();
+
+				if (!thumbnailMode) {
+					final Map guiMap = newMap;
+					SwingUtilities.invokeLater(() -> {
+						updateWindowTitle();
+						gui.setMap(guiMap);
+					});
+
+					if (map.editorData != null) {
+						for (int i = 0; i < 4; i++) {
+							MapEditCamera cam = fourViews[i].camera;
+							if (cam.pos.x != 0x10000)
+								cam.pos.x = Float.isNaN(map.editorData.cameraPos[i][0]) ? 0 : map.editorData.cameraPos[i][0];
+							if (cam.pos.y != 0x10000)
+								cam.pos.y = Float.isNaN(map.editorData.cameraPos[i][1]) ? 0 : map.editorData.cameraPos[i][1];
+							if (cam.pos.z != 0x10000)
+								cam.pos.z = Float.isNaN(map.editorData.cameraPos[i][2]) ? 0 : map.editorData.cameraPos[i][2];
+						}
+
+						perspectiveView.camera.pitch = Float.isNaN(map.editorData.perspPitch) ? 0 : map.editorData.perspPitch;
+						perspectiveView.camera.yaw = Float.isNaN(map.editorData.perspYaw) ? 0 : map.editorData.perspYaw;
+					}
+				}
+			});
+
+			loading = false;
+		}
 	}
 
 	private void updateWindowTitle()

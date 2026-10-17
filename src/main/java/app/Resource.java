@@ -33,6 +33,7 @@ public abstract class Resource
 		EntityModelRoots	("entity/"),
 		Font				("font/"),
 		Icon                ("icon/"),
+		Audio               ("audio/"),
 		Deluxe              ("deluxe/"),
 		Splash              ("splash/"),
 		Shader              ("shader/");

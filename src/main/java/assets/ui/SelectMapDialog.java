@@ -3,19 +3,24 @@ package assets.ui;
 import java.awt.Component;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JDialog;
+import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
@@ -94,7 +99,7 @@ public class SelectMapDialog extends JDialog
 			return null;
 
 		// create the new map
-		String newMapName = FilenameUtils.getBaseName(newMapFile.getName());
+		String newMapName = Map.deriveName(newMapFile);
 		Map newMap = Map.loadMap(selectedFile);
 
 		// prompt for a description
@@ -127,7 +132,7 @@ public class SelectMapDialog extends JDialog
 			return null;
 
 		// create the new map
-		String newMapName = FilenameUtils.getBaseName(newMapFile.getName());
+		String newMapName = Map.deriveName(newMapFile);
 		Map newMap = new Map(newMapName);
 
 		// prompt for a description
@@ -163,7 +168,23 @@ public class SelectMapDialog extends JDialog
 		return newMapFile;
 	}
 
+	/** Asks for a new map's name, and in papermario-dx the area it belongs to, and returns where to save it. */
 	public static File requestNewMapFile()
+	{
+		File file = Map.hasAreaDirs() ? promptAreaAndName() : promptName();
+		if (file == null || !file.exists())
+			return file;
+
+		int choice = SwingUtils.getConfirmDialog()
+			.setTitle("Map Already Exists")
+			.setMessage(Map.deriveName(file) + " already exists. Overwrite it?")
+			.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
+			.choose();
+
+		return (choice == JOptionPane.YES_OPTION) ? file : null;
+	}
+
+	private static File promptName()
 	{
 		String name = SwingUtils.getInputDialog()
 			.setTitle("New Map Name")
@@ -174,27 +195,122 @@ public class SelectMapDialog extends JDialog
 		if (name == null)
 			return null;
 
-		// sanitize name
-		name = name.trim().toLowerCase();
-		String ext = Directories.EXT_MAP;
-		if (name.endsWith(ext)) {
-			name = name.substring(0, name.length() - ext.length());
-		}
-
+		name = sanitizeName(name);
 		if (name.isBlank())
 			return null;
 
-		File existing = AssetManager.getSaveMapFile(name);
-		if (!existing.exists())
-			return existing;
+		return AssetManager.getSaveMapFile(name);
+	}
+
+	/**
+	 * Asks for a map's area and name together. A map whose code folder already exists keeps that folder's area,
+	 * and a stage, named like kzn_bt05, has no area to choose.
+	 */
+	private static File promptAreaAndName()
+	{
+		String[] areas = Directories.PROJ_SRC_WORLD.file("area").list((dir, n) -> new File(dir, n).isDirectory());
+		Arrays.sort(areas);
+
+		JComboBox<String> areaBox = new JComboBox<>(areas);
+		areaBox.setEditable(true);
+		areaBox.setSelectedItem("");
+		JTextField nameField = new JTextField(32);
+		JLabel pathLabel = new JLabel(" ");
+
+		Runnable update = () -> {
+			String name = sanitizeName(nameField.getText());
+			boolean isStage = name.contains("_bt");
+			File existing = name.isEmpty() ? null : Directories.PROJ_SRC.file(Map.getSourcePath(name));
+			boolean fixedArea = isStage || (existing != null && existing.isDirectory());
+			areaBox.setEnabled(!fixedArea);
+
+			// show the area the map is fixed to; a listener can't edit the text it's notified about, so this waits
+			if (fixedArea) {
+				String area = isStage ? "" : existing.getParentFile().getName();
+				if (!area.equals(areaBox.getEditor().getItem()))
+					SwingUtilities.invokeLater(() -> areaBox.getEditor().setItem(area));
+			}
+
+			File file = getNewMapFile(name, (String) areaBox.getEditor().getItem());
+			pathLabel.setText(file == null ? " " : relativeToProject(file));
+		};
+		nameField.getDocument().addDocumentListener(onChange(update));
+		((JTextField) areaBox.getEditor().getEditorComponent()).getDocument().addDocumentListener(onChange(update));
+		areaBox.addActionListener(e -> update.run());
+
+		JPanel panel = new JPanel(new MigLayout("fillx, ins 0", "[][grow, fill]"));
+		panel.add(new JLabel("Area:"));
+		panel.add(areaBox, "wrap");
+		panel.add(new JLabel("Name:"));
+		panel.add(nameField, "wrap");
+		panel.add(new JLabel("Saves to:"), "span, gaptop 8, wrap");
+		panel.add(pathLabel, "span");
 
 		int choice = SwingUtils.getConfirmDialog()
-			.setTitle("Map Already Exists")
-			.setMessage(name + " already exists. Overwrite it?")
-			.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
+			.setTitle("New Map")
+			.setMessage(panel)
+			.setMessageType(JOptionPane.PLAIN_MESSAGE)
+			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
 			.choose();
 
-		return (choice == JOptionPane.YES_OPTION) ? existing : null;
+		if (choice != JOptionPane.OK_OPTION)
+			return null;
+
+		return getNewMapFile(sanitizeName(nameField.getText()), (String) areaBox.getEditor().getItem());
+	}
+
+	/** Where a new map is saved: beside its code if that exists, else in the chosen area. Null if either is missing. */
+	private static File getNewMapFile(String name, String area)
+	{
+		if (name.isBlank())
+			return null;
+
+		if (name.contains("_bt") || Directories.PROJ_SRC.file(Map.getSourcePath(name)).isDirectory())
+			return AssetManager.getSaveMapFile(name);
+
+		area = area == null ? "" : area.trim();
+		if (area.isBlank())
+			return null;
+
+		String path = "world/area/" + area + "/" + name + "/" + Directories.MAP_SOURCE_NAME + Directories.EXT_MAP;
+		return new AssetHandle(AssetManager.getTopLevelAssetDir(), path);
+	}
+
+	private static String relativeToProject(File file)
+	{
+		return Environment.getProjectDirectory().toPath().toAbsolutePath().normalize()
+			.relativize(file.toPath().toAbsolutePath().normalize()).toString().replace('\\', '/');
+	}
+
+	private static String sanitizeName(String name)
+	{
+		name = name.trim().toLowerCase();
+		if (name.endsWith(Directories.EXT_MAP))
+			name = name.substring(0, name.length() - Directories.EXT_MAP.length());
+		return name;
+	}
+
+	private static DocumentListener onChange(Runnable action)
+	{
+		return new DocumentListener() {
+			@Override
+			public void insertUpdate(DocumentEvent e)
+			{
+				action.run();
+			}
+
+			@Override
+			public void removeUpdate(DocumentEvent e)
+			{
+				action.run();
+			}
+
+			@Override
+			public void changedUpdate(DocumentEvent e)
+			{
+				action.run();
+			}
+		};
 	}
 
 	private final JList<MapAsset> list;
