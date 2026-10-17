@@ -797,7 +797,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	private void saveCrashFile()
 	{
 		try {
-			map.saveMapAs(AssetManager.getSaveMapFile(map.getName() + Directories.MAP_CRASH_SUFFIX));
+			map.saveMapAs(AssetManager.getMapRecoveryFile(map.getName(), Directories.MAP_CRASH_SUFFIX));
 			DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
 			Logger.log("Saved crash at " + dateFormatter.format(LocalDateTime.now()));
 		}
@@ -810,7 +810,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	private void saveBackup()
 	{
 		try {
-			map.saveMapAs(AssetManager.getSaveMapFile(map.getName() + Directories.MAP_BACKUP_SUFFIX));
+			map.saveMapAs(AssetManager.getMapRecoveryFile(map.getName(), Directories.MAP_BACKUP_SUFFIX));
 			DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
 			Logger.log("Saved backup at " + dateFormatter.format(LocalDateTime.now()));
 		}
@@ -830,7 +830,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		if (crashedMapName.isBlank())
 			return null;
 
-		File crashMapFile = AssetManager.getSaveMapFile(crashedMapName + Directories.MAP_CRASH_SUFFIX);
+		File crashMapFile = AssetManager.getMapRecoveryFile(crashedMapName, Directories.MAP_CRASH_SUFFIX);
 		if (!crashMapFile.exists()) {
 			Logger.logWarning("Failed to locate crash data for " + crashedMapName);
 			return null;
@@ -862,7 +862,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	private Map checkForBackup(Map baseMap)
 	{
 		try {
-			File backupFile = AssetManager.getSaveMapFile(baseMap.getName() + Directories.MAP_BACKUP_SUFFIX);
+			File backupFile = AssetManager.getMapRecoveryFile(baseMap.getName(), Directories.MAP_BACKUP_SUFFIX);
 
 			if (!backupFile.exists() || backupFile.lastModified() <= baseMap.lastModified)
 				return baseMap;

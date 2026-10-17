@@ -662,13 +662,16 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		menuBar.add(menu);
 		JMenuItem item;
 
-		item = new JMenuItem("Build Geometry");
-		addButtonCommand(item, GuiCommand.COMPILE_SHAPE);
-		menu.add(item);
+		// papermario-dx compiles each saved map source as part of its own build
+		if (!Map.hasAreaDirs()) {
+			item = new JMenuItem("Build Geometry");
+			addButtonCommand(item, GuiCommand.COMPILE_SHAPE);
+			menu.add(item);
 
-		item = new JMenuItem("Build Collision");
-		addButtonCommand(item, GuiCommand.COMPILE_COLLISION);
-		menu.add(item);
+			item = new JMenuItem("Build Collision");
+			addButtonCommand(item, GuiCommand.COMPILE_COLLISION);
+			menu.add(item);
+		}
 
 		item = new JMenuItem("Generate Script");
 		addButtonCommand(item, GuiCommand.GENERATE_SCRIPT);

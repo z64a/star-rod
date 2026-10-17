@@ -126,14 +126,26 @@ public abstract class Environment
 	public static void printVersion()
 	{
 		try {
+			System.out.print(readBuildInfo());
+		}
+		catch (IOException e) {
+			exitWithError(e.getMessage());
+		}
+	}
+
+	/** The version and build commit from the jar's manifest, as VERSION= and COMMIT= lines. */
+	public static String readBuildInfo() throws IOException
+	{
+		try {
 			Attributes attr = new Manifest(Environment.class.getClassLoader().getResourceAsStream("META-INF/MANIFEST.MF")).getMainAttributes();
-			System.out.println("VERSION=" + attr.getValue("App-Version"));
+			StringBuilder sb = new StringBuilder("VERSION=").append(attr.getValue("App-Version")).append("\n");
 			String commit = attr.getValue("Build-Commit");
 			if (commit != null && !commit.isEmpty())
-				System.out.println("COMMIT=" + commit);
+				sb.append("COMMIT=").append(commit).append("\n");
+			return sb.toString();
 		}
 		catch (IOException | NullPointerException e) {
-			exitWithError("Could not read MANIFEST.MF: " + e);
+			throw new IOException("Could not read MANIFEST.MF: " + e, e);
 		}
 	}
 
@@ -289,21 +301,32 @@ public abstract class Environment
 		initialized = true;
 	}
 
-	/** Sets up only what the audio tasks need: the asset stack of the decomp project in the current directory. */
-	public static void initializeAudio()
+	/**
+	 * Sets up only what the audio and map tasks need: the decomp project in the current directory, and its asset
+	 * stack if readAssetStack is set.
+	 */
+	public static void initializeBuildTask(boolean readAssetStack)
 	{
 		commandLine = true;
+		// the map compilers report every map they write, which would bury the build's own output
+		Logger.setDefaultOuputPriority(Priority.WARNING);
 
 		File decompCfg = new File("./ver/us/", FN_SPLAT);
 		if (!decompCfg.isFile())
 			exitWithError("The current directory is not a decomp project: could not find " + decompCfg.getPath());
 
-		try {
-			assetDirectories = getAssetDirs(new File("."), decompCfg.getParentFile(), decompCfg);
+		if (readAssetStack) {
+			try {
+				assetDirectories = getAssetDirs(new File("."), decompCfg.getParentFile(), decompCfg);
+			}
+			catch (IOException | RuntimeException e) {
+				exitWithError(decompCfg.getPath() + ": could not read the asset stack: " + e);
+			}
 		}
-		catch (IOException | RuntimeException e) {
-			exitWithError(decompCfg.getPath() + ": could not read the asset stack: " + e);
-		}
+
+		projectDirectory = new File(".").getAbsoluteFile();
+		Directories.setProjectDirectory(projectDirectory.getAbsolutePath());
+		gameVersion = decompCfg.getParentFile().getName();
 
 		initialized = true;
 	}
@@ -322,6 +345,12 @@ public abstract class Environment
 	public static void exit(int status)
 	{
 		System.exit(status);
+	}
+
+	/** The build directory of the project's game version, such as ver/us/build. */
+	public static File getBuildDirectory()
+	{
+		return new File(projectDirectory, "ver/" + gameVersion + "/build");
 	}
 
 	public static boolean isCommandLine()

@@ -8,9 +8,9 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.ListCellRenderer;
 
-import org.apache.commons.io.FilenameUtils;
 
 import app.SwingUtils;
+import game.map.Map;
 import net.miginfocom.swing.MigLayout;
 
 public class MapAssetCellRenderer extends JPanel implements ListCellRenderer<MapAsset>
@@ -50,7 +50,7 @@ public class MapAssetCellRenderer extends JPanel implements ListCellRenderer<Map
 
 		if (map != null) {
 			String assetDirName = map.assetDir.getName();
-			String mapFileName = FilenameUtils.getBaseName(map.assetPath);
+			String mapFileName = Map.deriveName(map);
 			nameLabel.setText(assetDirName + " / " + mapFileName);
 
 			String s = map.desc.toString();

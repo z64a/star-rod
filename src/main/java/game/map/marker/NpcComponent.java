@@ -351,6 +351,7 @@ public class NpcComponent extends BaseMarkerComponent
 		if (spriteElement != null) {
 			if (xmr.hasAttribute(spriteElement, ATTR_ANIMATION)) {
 				animName = xmr.getAttribute(spriteElement, ATTR_ANIMATION);
+				SpriteLoader.loadAnimsMetadata(false);
 				AnimMetadata anim = SpriteLoader.getAnimMetadata(animName);
 				if (anim != null) {
 					spriteID.set(anim.spriteIndex);

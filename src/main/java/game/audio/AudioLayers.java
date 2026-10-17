@@ -1,24 +1,19 @@
 package game.audio;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.error.YAMLException;
 
 import app.Environment;
 import app.input.InputFileException;
 import assets.AssetSubdir;
+import assets.Sidecars;
 
 /**
  * A merged view of the audio directories in the asset stack. Tables merge by entry (see AudioTables),
@@ -37,16 +32,15 @@ public class AudioLayers
 		"SoundEffects.xml", "sound_effects.xml", "Presets.xml", "presets.xml", "Drums.xml", "drums.xml",
 		"sfx/Envelopes.xml", "sfx/envelopes.xml");
 
-	private static final String SIDECAR = ".meta";
-
 	/** Asset stack roots, highest priority first. */
 	private final List<File> layers;
 	private final Set<File> inputs = new TreeSet<>();
-	private final Map<File, Optional<Boolean>> sidecars = new HashMap<>();
+	private final Sidecars sidecars;
 
 	public AudioLayers(List<File> layers)
 	{
 		this.layers = layers;
+		sidecars = new Sidecars(layers);
 	}
 
 	public static AudioLayers fromEnvironment()
@@ -57,7 +51,9 @@ public class AudioLayers
 	/** Every file that was read so far, including sidecars. */
 	public Set<File> getInputs()
 	{
-		return inputs;
+		Set<File> all = new TreeSet<>(inputs);
+		all.addAll(sidecars.getRead());
+		return all;
 	}
 
 	/** Errors if a sidecar deletes a table file, or a layer has a file under a name from before the names were snake case. */
@@ -189,57 +185,8 @@ public class AudioLayers
 		return new ArrayList<>(names);
 	}
 
-	/**
-	 * Applies the sidecars that could name a path in every layer, lowest priority first, so the
-	 * nearest declaration wins. A directory is declared by the `.meta` inside it, a file by
-	 * `<file>.meta`. Sidecars above a layer's root are not consulted.
-	 */
 	private boolean isDeleted(String path)
 	{
-		boolean isDirectory = layers.stream()
-			.anyMatch(layer -> new File(AssetSubdir.AUDIO.get(layer), path).isDirectory());
-		String[] parts = path.split("/");
-
-		boolean deleted = false;
-		for (int i = layers.size() - 1; i >= 0; i--) {
-			List<File> declarations = new ArrayList<>();
-			declarations.add(new File(layers.get(i), SIDECAR));
-
-			File dir = AssetSubdir.AUDIO.get(layers.get(i));
-			for (int j = 0; j < parts.length - 1; j++) {
-				declarations.add(new File(dir, SIDECAR));
-				dir = new File(dir, parts[j]);
-			}
-			declarations.add(new File(dir, SIDECAR));
-
-			String name = parts[parts.length - 1];
-			declarations.add(isDirectory ? new File(new File(dir, name), SIDECAR) : new File(dir, name + SIDECAR));
-
-			for (File declaration : declarations) {
-				Optional<Boolean> delete = readDelete(declaration);
-				if (delete.isPresent())
-					deleted = delete.get();
-			}
-		}
-		return deleted;
-	}
-
-	private Optional<Boolean> readDelete(File sidecar)
-	{
-		return sidecars.computeIfAbsent(sidecar, file -> {
-			if (!file.isFile())
-				return Optional.empty();
-
-			inputs.add(file);
-			try (Reader reader = new FileReader(file)) {
-				Object values = new Yaml().load(reader);
-				if (values instanceof Map<?, ?> map && map.containsKey("delete"))
-					return Optional.of(Boolean.TRUE.equals(map.get("delete")));
-				return Optional.empty();
-			}
-			catch (IOException | YAMLException e) {
-				throw new InputFileException(file, e.getMessage());
-			}
-		});
+		return sidecars.isDeleted("audio/" + path);
 	}
 }

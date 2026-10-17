@@ -8,7 +8,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Objects;
 
-import app.Directories;
+import org.apache.commons.io.FileUtils;
+
 import app.input.IOUtils;
 import assets.AssetManager;
 import common.Vector3f;
@@ -27,8 +28,15 @@ public class CollisionCompiler
 {
 	public CollisionCompiler(Map map) throws IOException
 	{
-		File build_dec = new File(AssetManager.getMapBuildDir(), map.getName() + "_hit.bin");
+		this(map, new File(AssetManager.getMapBuildDir(), map.getName() + "_hit.bin"),
+			new File(AssetManager.getMapHeaderDir(), map.getName() + "_hit.h"));
+	}
 
+	/** Compiles the map's collision to build_dec, and writes the index of each collider and zone to headerFile. */
+	public CollisionCompiler(Map map, File build_dec, File headerFile) throws IOException
+	{
+		FileUtils.forceMkdir(build_dec.getParentFile());
+		FileUtils.forceMkdir(headerFile.getParentFile());
 		Logger.log("Compiling map collision to " + build_dec.getPath());
 
 		if (build_dec.exists())
@@ -44,7 +52,6 @@ public class CollisionCompiler
 		raf.writeInt(zoneHeaderOffset);
 		raf.close();
 
-		File headerFile = Directories.PROJ_INCLUDE_MAPFS.file(map.getName() + "_hit.h");
 		try (PrintWriter pw = IOUtils.getBufferedPrintWriter(headerFile)) {
 			for (Collider c : map.colliderTree.getList()) {
 				pw.printf("#define %-23s 0x%X%n", "COLLIDER_" + c.getName(), c.getNode().getTreeIndex());
