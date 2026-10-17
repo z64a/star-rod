@@ -679,8 +679,6 @@ public abstract class Environment
 
 		@SuppressWarnings("unchecked")
 		List<String> assetStack = (List<String>) topLevelMap.get("asset_stack");
-		if (assetStack == null || assetStack.isEmpty())
-			throw new IOException("asset_stack is missing or empty");
 
 		List<File> assetDirectories = new ArrayList<>();
 		for (String layer : assetStack) {
