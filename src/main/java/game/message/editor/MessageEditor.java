@@ -159,7 +159,7 @@ public class MessageEditor extends BaseEditor
 
 	// current string
 
-	private Message workingString;
+	private volatile Message workingString;
 
 	public static final int MAX_TEXTFIELD_CHARACTERS = 4096;
 	private StyledDocument inputDocument;
@@ -183,7 +183,19 @@ public class MessageEditor extends BaseEditor
 	private volatile boolean modified = false;
 
 	// IO
-	public ArrayList<MessageAsset> resourcesToSave = new ArrayList<>();
+	private static final class PendingSave
+	{
+		private final MessageAsset asset;
+		private long revision;
+
+		private PendingSave(MessageAsset asset, long revision)
+		{
+			this.asset = asset;
+			this.revision = revision;
+		}
+	}
+
+	private final ArrayList<PendingSave> resourcesToSave = new ArrayList<>();
 
 	public static enum PollResult
 	{
@@ -272,9 +284,10 @@ public class MessageEditor extends BaseEditor
 		assert (printer != null);
 		printer.update();
 
-		if (workingString != null && workingString.editorShouldSync) {
-			workingString.editorShouldSync = false;
-			setString(workingString);
+		Message target = workingString;
+		if (target != null && target.editorShouldSync) {
+			target.editorShouldSync = false;
+			syncString(target);
 		}
 	}
 
@@ -320,27 +333,54 @@ public class MessageEditor extends BaseEditor
 
 	private void updateDocumentFormatting()
 	{
-		ignoreDocumentFormatChanges = true;
-		String text = getInputText();
-
-		// clear formatting
-		inputDocument.setCharacterAttributes(0, text.length(), attrDefault, true);
-
-		// highlight current page
-		if (printer.currentPage != null)
-			inputDocument.setCharacterAttributes(printer.currentPage.srcStart,
-				printer.currentPage.srcEnd - printer.currentPage.srcStart,
-				attrCurrent, false);
-
-		// highlight errors
-		for (Sequence seq : printer.sequences) {
-			if (seq.hasError())
-				inputDocument.setCharacterAttributes(seq.srcStart, seq.srcLen, attrError, false);
-			else if (seq.tag)
-				inputDocument.setCharacterAttributes(seq.srcStart, seq.srcLen, attrTag, false);
+		int[] currentPageRange = null;
+		if (printer.currentPage != null) {
+			currentPageRange = new int[] {
+					printer.currentPage.srcStart,
+					printer.currentPage.srcEnd - printer.currentPage.srcStart };
 		}
 
-		ignoreDocumentFormatChanges = false;
+		ArrayList<int[]> errorRanges = new ArrayList<>();
+		ArrayList<int[]> tagRanges = new ArrayList<>();
+		for (Sequence seq : printer.sequences) {
+			if (seq.hasError())
+				errorRanges.add(new int[] { seq.srcStart, seq.srcLen });
+			else if (seq.tag)
+				tagRanges.add(new int[] { seq.srcStart, seq.srcLen });
+		}
+
+		int[] pageRange = currentPageRange;
+		SwingUtilities.invokeLater(() -> {
+			ignoreDocumentFormatChanges = true;
+			try {
+				// clear formatting
+				inputDocument.setCharacterAttributes(0, inputDocument.getLength(), attrDefault, true);
+
+				// highlight current page
+				if (pageRange != null)
+					setDocumentAttributes(pageRange, attrCurrent);
+
+				// highlight errors and tags
+				for (int[] range : errorRanges)
+					setDocumentAttributes(range, attrError);
+				for (int[] range : tagRanges)
+					setDocumentAttributes(range, attrTag);
+			}
+			finally {
+				ignoreDocumentFormatChanges = false;
+			}
+		});
+	}
+
+	private void setDocumentAttributes(int[] range, AttributeSet attributes)
+	{
+		int documentLength = inputDocument.getLength();
+		int start = range[0];
+		if (start < 0 || start >= documentLength || range[1] <= 0)
+			return;
+
+		int length = Math.min(range[1], documentLength - start);
+		inputDocument.setCharacterAttributes(start, length, attributes, false);
 	}
 
 	private void handleInput(double deltaTime)
@@ -397,23 +437,53 @@ public class MessageEditor extends BaseEditor
 		}
 	}
 
-	private void handleSaving()
+	public void queueSave(MessageAsset resource)
 	{
-		if (!resourcesToSave.isEmpty()) {
-			ArrayList<MessageAsset> saved = new ArrayList<>();
-
-			for (MessageAsset res : resourcesToSave) {
-				res.saveChanges();
-				saved.add(res);
+		long revision = resource.getModificationRevision();
+		synchronized (resourcesToSave) {
+			for (PendingSave pending : resourcesToSave) {
+				if (pending.asset == resource) {
+					pending.revision = revision;
+					return;
+				}
 			}
+			resourcesToSave.add(new PendingSave(resource, revision));
+		}
+	}
 
-			if (saved.size() > 1)
-				Logger.logf("Saved %d resources.", saved.size());
-			else if (saved.size() == 1)
-				Logger.log("Saved resource: " + saved.get(0).asset.getName());
+	void saveAllMessages()
+	{
+		if (workingString != null && workingString.isModified())
+			workingString.setMarkup(getInputText());
+		assetListTab.queueModifiedAssets();
+	}
 
+	private synchronized boolean handleSaving()
+	{
+		ArrayList<PendingSave> pending;
+		synchronized (resourcesToSave) {
+			if (resourcesToSave.isEmpty())
+				return true;
+			pending = new ArrayList<>(resourcesToSave);
 			resourcesToSave.clear();
 		}
+
+		ArrayList<MessageAsset> saved = new ArrayList<>();
+		boolean allSucceeded = true;
+		for (PendingSave save : pending) {
+			if (save.asset.saveChanges(save.revision))
+				saved.add(save.asset);
+			else
+				allSucceeded = false;
+		}
+
+		if (saved.size() > 1)
+			Logger.logf("Saved %d resources.", saved.size());
+		else if (saved.size() == 1)
+			Logger.log("Saved resource: " + saved.get(0).asset.getName());
+
+		modified = assetListTab.hasModifiedAssets();
+		return allSucceeded;
 	}
 
 	private ImageIcon getButtonIcon(File imgFile, boolean useInterp) throws IOException
@@ -941,7 +1011,7 @@ public class MessageEditor extends BaseEditor
 					if (!settingString && workingString != null) {
 						if (!syncingString) {
 							modified = true;
-							workingString.setModified();
+							workingString.setMarkupAndModified(getInputText());
 						}
 						assetListTab.repaint();
 						messageListTab.repaint();
@@ -1017,9 +1087,7 @@ public class MessageEditor extends BaseEditor
 	public void undoEDT()
 	{
 		if (history.canUndo()) {
-			ignoreDocumentContentChanges = true;
-			inputTextPane.setText(history.undo());
-			ignoreDocumentContentChanges = false;
+			applyHistoryText(history.undo());
 		}
 		else {
 			Toolkit.getDefaultToolkit().beep();
@@ -1031,13 +1099,29 @@ public class MessageEditor extends BaseEditor
 	public void redoEDT()
 	{
 		if (history.canRedo()) {
-			ignoreDocumentContentChanges = true;
-			inputTextPane.setText(history.redo());
-			ignoreDocumentContentChanges = false;
+			applyHistoryText(history.redo());
 		}
 		else {
 			Toolkit.getDefaultToolkit().beep();
 			Logger.log("Can't redo anything.");
+		}
+	}
+
+	private void applyHistoryText(String text)
+	{
+		ignoreDocumentContentChanges = true;
+		try {
+			inputTextPane.setText(text);
+		}
+		finally {
+			ignoreDocumentContentChanges = false;
+		}
+
+		if (workingString != null) {
+			workingString.setMarkupAndModified(text);
+			modified = true;
+			assetListTab.repaint();
+			messageListTab.repaint();
 		}
 	}
 
@@ -1187,40 +1271,52 @@ public class MessageEditor extends BaseEditor
 	{
 		assert (!SwingUtilities.isEventDispatchThread());
 
-		if (workingString != null && workingString.isModified())
-			workingString.setMarkup(getInputText());
-
-		workingString = selectedValue;
-
-		if (workingString != null)
-			workingString.editorShouldSync = false;
-
+		Message target = selectedValue;
 		SwingUtilities.invokeLater(() -> {
 			settingString = true;
-			inputTextPane.setText(workingString != null ? workingString.getMarkup() : "");
-			inputTextPane.setCaretPosition(0);
-			settingString = false;
+			try {
+				workingString = target;
+				if (target != null)
+					target.editorShouldSync = false;
+				inputTextPane.setText(target != null ? target.getMarkup() : "");
+				inputTextPane.setCaretPosition(0);
+			}
+			finally {
+				settingString = false;
+			}
 
 			history.clear();
 			history.set(getInputText(), false);
 			stringChanged = true;
 		});
 
-		if (workingString != null)
-			Logger.log("Editing " + workingString.name);
+		if (target != null)
+			Logger.log("Editing " + target.name);
 	}
 
 	public void syncString()
 	{
 		assert (!SwingUtilities.isEventDispatchThread());
 
-		if (workingString == null)
+		syncString(workingString);
+	}
+
+	private void syncString(Message target)
+	{
+		if (target == null)
 			return;
 
 		SwingUtilities.invokeLater(() -> {
+			if (workingString != target)
+				return;
+
 			syncingString = true;
-			inputTextPane.setText(workingString.getMarkup());
-			syncingString = false;
+			try {
+				inputTextPane.setText(target.getMarkup());
+			}
+			finally {
+				syncingString = false;
+			}
 		});
 	}
 
@@ -1239,7 +1335,7 @@ public class MessageEditor extends BaseEditor
 		item.addActionListener((e) -> {
 			if (workingString != null && workingString.isModified()) {
 				workingString.setMarkup(getInputText());
-				resourcesToSave.add(workingString.source);
+				queueSave(workingString.source);
 			}
 		});
 		menu.add(item);
@@ -1344,14 +1440,14 @@ public class MessageEditor extends BaseEditor
 	@Override
 	protected boolean isModified()
 	{
-		return modified;
+		return modified || (assetListTab != null && assetListTab.hasModifiedAssets());
 	}
 
 	@Override
-	protected void saveChanges()
+	protected boolean saveChanges()
 	{
-		assetListTab.saveChanges();
-		handleSaving();
+		saveAllMessages();
+		return handleSaving();
 	}
 
 	@Override

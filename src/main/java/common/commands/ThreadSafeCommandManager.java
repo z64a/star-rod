@@ -45,7 +45,9 @@ public class ThreadSafeCommandManager
 	*/
 	public void setUndoLimit(int undoLimit)
 	{
-		undoStack.setCapacity(undoLimit);
+		synchronized (modifyLock) {
+			undoStack.setCapacity(undoLimit);
+		}
 	}
 
 	/**
@@ -95,15 +97,18 @@ public class ThreadSafeCommandManager
 	 */
 	public void undo()
 	{
-		if (undoStack.size() > 0) {
-			synchronized (modifyLock) {
+		synchronized (modifyLock) {
+			if (undoStack.size() > 0) {
 				AbstractCommand cmd = undoStack.pop();
 				cmd.undo();
 				redoStack.push(cmd);
+
+				if (cmd.modifiesData())
+					modifyCallback.run();
 			}
-		}
-		else {
-			Logger.log("Can't undo any more.");
+			else {
+				Logger.log("Can't undo any more.");
+			}
 		}
 	}
 
@@ -114,15 +119,18 @@ public class ThreadSafeCommandManager
 	 */
 	public void redo()
 	{
-		if (redoStack.size() > 0) {
-			synchronized (modifyLock) {
+		synchronized (modifyLock) {
+			if (redoStack.size() > 0) {
 				AbstractCommand cmd = redoStack.pop();
 				cmd.exec();
 				undoStack.push(cmd);
+
+				if (cmd.modifiesData())
+					modifyCallback.run();
 			}
-		}
-		else {
-			Logger.log("Can't redo anything.");
+			else {
+				Logger.log("Can't redo anything.");
+			}
 		}
 	}
 
@@ -133,7 +141,9 @@ public class ThreadSafeCommandManager
 	 */
 	public void flush()
 	{
-		undoStack.clear();
-		redoStack.clear();
+		synchronized (modifyLock) {
+			undoStack.clear();
+			redoStack.clear();
+		}
 	}
 }

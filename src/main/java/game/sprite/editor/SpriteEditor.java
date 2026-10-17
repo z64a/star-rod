@@ -1315,7 +1315,7 @@ public class SpriteEditor extends BaseEditor
 				return;
 			}
 
-			saveSprite(sprite);
+			saveCurrent();
 		});
 		menu.add(item);
 
@@ -1372,22 +1372,7 @@ public class SpriteEditor extends BaseEditor
 		menuBar.add(menu);
 
 		item = new JMenuItem("Reload");
-		item.addActionListener((e) -> {
-			if (sprite == null) {
-				Toolkit.getDefaultToolkit().beep();
-				return;
-			}
-
-			if (promptCannotUndo("Reload sprite")) {
-				// remove sprite from 'modified' list
-				sprite.clearModified();
-				dirtyModifiedSprites.remove(sprite);
-
-				// trigger a full reload of the sprite, bypassing the cache
-				setSprite(curMetadata, true);
-				flushUndoRedo();
-			}
-		});
+		item.addActionListener((e) -> reloadCurrentSprite());
 		menu.add(item);
 
 		menu.addSeparator();
@@ -1956,42 +1941,122 @@ public class SpriteEditor extends BaseEditor
 		decrementDialogsOpen();
 	}
 
-	private void saveCurrent()
+	private boolean saveCurrent()
 	{
-		if (sprite != null) {
-			saveSprite(sprite);
+		return callThreadsafe(this::saveCurrentLocked);
+	}
+
+	private boolean saveCurrentLocked()
+	{
+		if (sprite == null)
+			return true;
+
+		if (!dirtyModifiedSprites.contains(sprite))
+			return true;
+
+		if (saveSprite(sprite)) {
 			dirtyModifiedSprites.remove(sprite);
+			return true;
 		}
+
+		return false;
 	}
 
-	private void saveAllChanges()
+	private boolean saveAllChanges()
 	{
-		for (Sprite spr : dirtyModifiedSprites) {
-			if (spr.isModified())
-				saveSprite(spr);
-		}
-		dirtyModifiedSprites.clear();
+		return callThreadsafe(this::saveAllChangesLocked);
 	}
 
-	private void saveSprite(Sprite spr)
+	private boolean saveAllChangesLocked()
 	{
+		boolean allSucceeded = true;
+		for (Sprite spr : getDirtySprites()) {
+			if (saveSprite(spr))
+				dirtyModifiedSprites.remove(spr);
+			else
+				allSucceeded = false;
+		}
+		return allSucceeded;
+	}
+
+	private List<Sprite> getDirtySprites()
+	{
+		ArrayList<Sprite> sprites = new ArrayList<>(dirtyModifiedSprites.size());
+		for (Sprite spr : dirtyModifiedSprites)
+			sprites.add(spr);
+		return sprites;
+	}
+
+	private void reloadCurrentSprite()
+	{
+		assert (SwingUtilities.isEventDispatchThread());
+
+		runThreadsafe(() -> {
+			if (sprite == null) {
+				Toolkit.getDefaultToolkit().beep();
+				return;
+			}
+
+			Sprite currentSprite = sprite;
+			if (dirtyModifiedSprites.contains(currentSprite)) {
+				int choice = getConfirmDialog("Reload Sprite",
+					"Reloading will discard the current sprite's unsaved changes. Save first?")
+					.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
+					.choose();
+
+				switch (choice) {
+					case JOptionPane.YES_OPTION:
+						if (!saveSprite(currentSprite))
+							return;
+						dirtyModifiedSprites.remove(currentSprite);
+						break;
+					case JOptionPane.NO_OPTION:
+						currentSprite.clearModified();
+						dirtyModifiedSprites.remove(currentSprite);
+						break;
+					case JOptionPane.CANCEL_OPTION:
+					case JOptionPane.CLOSED_OPTION:
+					default:
+						return;
+				}
+			}
+
+			setSprite(curMetadata, true);
+			flushUndoRedo();
+		});
+	}
+
+	private boolean saveSprite(Sprite spr)
+	{
+		// Editable modification counters are relative to the pre-save state. Keeping
+		// commands after a save can make an undo dirty the wrong sprite or drive a
+		// palette counter below zero, so a save attempt establishes a new baseline.
+		flushUndoRedo();
+
 		AssetHandle ah = spr.getAsset();
-		ah = AssetManager.getTopLevel(ah);
 
-		sprite.reindex();
+		try {
+			ah = AssetManager.getTopLevelForSave(ah);
+			spr.reindex();
 
-		try (XmlWriter xmw = new XmlWriter(ah)) {
-			sprite.savePalettes();
-			sprite.toXML(xmw);
-			xmw.save();
+			try (XmlWriter xmw = new XmlWriter(ah)) {
+				if (!spr.savePalettes()) {
+					Logger.logError("Failed to save one or more palettes for " + spr.name);
+					return false;
+				}
+				spr.toXML(xmw);
+				xmw.save();
+			}
 
-			sprite.clearModified();
+			spr.clearModified();
 
 			Logger.log("Saved sprite " + spr.name);
+			return true;
 		}
 		catch (Throwable t) {
 			Logger.logError("Failed to save " + spr.name);
 			super.showStackTrace(t);
+			return false;
 		}
 	}
 
@@ -1999,24 +2064,22 @@ public class SpriteEditor extends BaseEditor
 	// either the app is closed or Save All operation is performed
 	public void onModified()
 	{
-		if (sprite != null)
-			dirtyModifiedSprites.add(sprite);
+		runThreadsafe(() -> {
+			if (sprite != null)
+				dirtyModifiedSprites.add(sprite);
+		});
 	}
 
 	@Override
 	protected boolean isModified()
 	{
-		for (Sprite spr : dirtyModifiedSprites) {
-			if (spr.isModified())
-				return true;
-		}
-		return false;
+		return callThreadsafe(() -> !dirtyModifiedSprites.isEmpty());
 	}
 
 	@Override
-	protected void saveChanges()
+	protected boolean saveChanges()
 	{
-		saveAllChanges();
+		return saveAllChanges();
 	}
 
 	@Override
@@ -2276,7 +2339,10 @@ public class SpriteEditor extends BaseEditor
 	// post the error message when an editable is selected or a new error is detected
 	public void postEditableError(Editable e)
 	{
-		if (e != null && e.hasError())
-			errorLabel.setMessage(e.getErrorMsg(), SwingUtils.getRedTextColor());
+		if (e == null || !e.hasError())
+			return;
+
+		String errorMessage = e.getErrorMsg();
+		SwingUtilities.invokeLater(() -> errorLabel.setMessage(errorMessage, SwingUtils.getRedTextColor()));
 	}
 }

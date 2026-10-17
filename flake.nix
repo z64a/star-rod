@@ -7,7 +7,7 @@ rec {
   outputs = { nixpkgs, gradle-dot-nix, ... }:
     let
       javaVersion = 17;
-      supportedSystems = [ "x86_64-linux" "x86_64-darwin" "x86_64-darwin" "aarch64-darwin" ];
+      supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
         pkgs = import nixpkgs { inherit system; };
       });
@@ -78,7 +78,8 @@ rec {
             '';
             installPhase = ''
               unzip -d $out build/release/StarRod-*.zip
-              rm $out/StarRod.bat
+              rm $out/StarRod
+              rm -r $out/runtime
 
               mkdir -p $out/share/java
               mv $out/StarRod.jar $out/share/java

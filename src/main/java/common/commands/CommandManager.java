@@ -44,6 +44,9 @@ public class CommandManager
 			AbstractCommand cmd = undoStack.pop();
 			cmd.undo();
 			redoStack.push(cmd);
+
+			if (cmd.modifiesData())
+				modifyCallback.run();
 		}
 		else {
 			Logger.log("Can't undo any more.");
@@ -56,6 +59,9 @@ public class CommandManager
 			AbstractCommand cmd = redoStack.pop();
 			cmd.exec();
 			undoStack.push(cmd);
+
+			if (cmd.modifiesData())
+				modifyCallback.run();
 		}
 		else {
 			Logger.log("Can't redo anything.");

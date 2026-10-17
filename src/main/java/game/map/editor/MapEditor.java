@@ -796,29 +796,33 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 	private void saveCrashFile()
 	{
-		try {
-			map.saveMapAs(AssetManager.getSaveMapFile(map.getName() + Directories.MAP_CRASH_SUFFIX));
-			DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-			Logger.log("Saved crash at " + dateFormatter.format(LocalDateTime.now()));
-		}
-		catch (Exception e) {
-			Logger.logError("Failed to save crash for " + map.getName());
-			Logger.printStackTrace(e);
+		synchronized (modifyLock) {
+			try {
+				map.saveBackup(AssetManager.getSaveMapFile(map.getName() + Directories.MAP_CRASH_SUFFIX));
+				DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+				Logger.log("Saved crash at " + dateFormatter.format(LocalDateTime.now()));
+			}
+			catch (Exception e) {
+				Logger.logError("Failed to save crash for " + map.getName());
+				Logger.printStackTrace(e);
+			}
 		}
 	}
 
 	private void saveBackup()
 	{
-		try {
-			map.saveMapAs(AssetManager.getSaveMapFile(map.getName() + Directories.MAP_BACKUP_SUFFIX));
-			DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-			Logger.log("Saved backup at " + dateFormatter.format(LocalDateTime.now()));
+		synchronized (modifyLock) {
+			try {
+				map.saveBackup(AssetManager.getSaveMapFile(map.getName() + Directories.MAP_BACKUP_SUFFIX));
+				DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+				Logger.log("Saved backup at " + dateFormatter.format(LocalDateTime.now()));
+			}
+			catch (Exception e) {
+				Logger.logError("Backup failed for " + map.getName());
+				Logger.printStackTrace(e);
+			}
+			lastBackupTime = time;
 		}
-		catch (Exception e) {
-			Logger.logError("Backup failed for " + map.getName());
-			Logger.printStackTrace(e);
-		}
-		lastBackupTime = time;
 	}
 
 	private Map checkForCrashData()
@@ -1222,8 +1226,10 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		while (!gui.isCloseRequested()) {
 			long t_start = System.nanoTime();
 
-			step();
-			glCanvas.render();
+			synchronized (modifyLock) {
+				step();
+				glCanvas.render();
+			}
 
 			long t_beforesync = System.nanoTime();
 			limiter.sync(TARGET_FPS);
@@ -2500,12 +2506,18 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	private void handleShortcutPress(EditorShortcut key, boolean fromGui)
 	{
 		switch (key) {
-			case UNDO:
-				commandManager.action_Undo();
+			case UNDO: {
+				Selection<?> selection = getSelectionForCurrentMode();
+				if (selection == null || !selection.transforming())
+					commandManager.action_Undo();
 				break;
-			case REDO:
-				commandManager.action_Redo();
+			}
+			case REDO: {
+				Selection<?> selection = getSelectionForCurrentMode();
+				if (selection == null || !selection.transforming())
+					commandManager.action_Redo();
 				break;
+			}
 			case SELECT_ALL:
 				selectAll();
 				break;
@@ -3571,9 +3583,16 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	/**
 	 * Saves the map quietly, will prompt for a filename if this is a newly created map.
 	 *
-	 * @throws IOException
+	 * @return whether the map was saved successfully
 	 */
-	public void action_SaveMap()
+	public boolean action_SaveMap()
+	{
+		synchronized (modifyLock) {
+			return action_SaveMapLocked();
+		}
+	}
+
+	private boolean action_SaveMapLocked()
 	{
 		try {
 			map.saveMap(new MapEditorMetadata(this));
@@ -3582,14 +3601,22 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		}
 		catch (Exception e) {
 			displayStackTrace(e);
-			return;
+			return false;
 		}
 
 		map.modified = false;
 		lastBackupTime = time;
+		return true;
 	}
 
-	public void action_SaveMapAs(File f)
+	public boolean action_SaveMapAs(File f)
+	{
+		synchronized (modifyLock) {
+			return action_SaveMapAsLocked(f);
+		}
+	}
+
+	private boolean action_SaveMapAsLocked(File f)
 	{
 		try {
 			map.saveMapAs(f, new MapEditorMetadata(this));
@@ -3598,7 +3625,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		}
 		catch (Exception e) {
 			displayStackTrace(e);
-			return;
+			return false;
 		}
 
 		map.modified = false;
@@ -3607,6 +3634,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		updateWindowTitle();
 		updateRecentMaps();
 		gui.setRecentMaps(recentMaps);
+		return true;
 	}
 
 	public void action_OpenMap(File f)
@@ -3750,7 +3778,14 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		gui.setTitle(Environment.decorateTitle("Map Editor") + " - " + map.getName());
 	}
 
-	public void action_SaveShading()
+	public boolean action_SaveShading()
+	{
+		synchronized (modifyLock) {
+			return action_SaveShadingLocked();
+		}
+	}
+
+	private boolean action_SaveShadingLocked()
 	{
 		try {
 			if (!Environment.isDX()) {
@@ -3760,7 +3795,9 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		}
 		catch (Exception e) {
 			displayStackTrace(e);
+			return false;
 		}
+		return true;
 	}
 
 	// ==================================================

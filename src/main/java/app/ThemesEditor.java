@@ -100,6 +100,7 @@ public class ThemesEditor
 							SwingUtilities.updateComponentTreeUI(frame);
 							break;
 						case JOptionPane.CANCEL_OPTION:
+						case JOptionPane.CLOSED_OPTION:
 							return;
 					}
 				}

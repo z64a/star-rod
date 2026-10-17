@@ -546,17 +546,18 @@ public class Sprite implements XmlSerializable, Editable
 		}
 	}
 
-	public void savePalettes()
+	public boolean savePalettes()
 	{
 		int count = 0;
+		boolean allSucceeded = true;
 		for (PalAsset asset : palAssets) {
 			if (asset.isModified()) {
 				try {
 					asset.save();
-					asset.clearModified();
 					count++;
 				}
 				catch (IOException e) {
+					allSucceeded = false;
 					Logger.logError("IOException while saving " + asset.getFilename() + ": " + e.getMessage());
 				}
 			}
@@ -568,6 +569,8 @@ public class Sprite implements XmlSerializable, Editable
 			Logger.log("Saved " + count + " modified palette");
 		else
 			Logger.log("Saved " + count + " modified palettes");
+
+		return allSucceeded;
 	}
 
 	@Override

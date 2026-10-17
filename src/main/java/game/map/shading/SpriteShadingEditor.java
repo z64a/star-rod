@@ -2,12 +2,11 @@ package game.map.shading;
 
 import static app.Directories.FN_SPRITE_SHADING;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -15,6 +14,7 @@ import com.google.gson.stream.JsonReader;
 
 import app.Environment;
 import app.StarRodException;
+import app.input.IOUtils;
 import assets.AssetHandle;
 import assets.AssetManager;
 import assets.AssetSubdir;
@@ -26,14 +26,16 @@ public class SpriteShadingEditor
 
 	private static void writeJson(JsonShadingGroup[] groups, File file) throws IOException
 	{
-		try (Writer writer = new FileWriter(file)) {
-			SHADING_GSON.toJson(groups, writer);
-		}
+		IOUtils.atomicWrite(file, ".json", temporaryFile -> {
+			try (Writer writer = Files.newBufferedWriter(temporaryFile.toPath(), StandardCharsets.UTF_8)) {
+				SHADING_GSON.toJson(groups, writer);
+			}
+		});
 	}
 
 	private static JsonShadingGroup[] readJson(File file) throws IOException
 	{
-		try (JsonReader jsonReader = new JsonReader(new BufferedReader(new FileReader(file)))) {
+		try (JsonReader jsonReader = new JsonReader(Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8))) {
 			return SHADING_GSON.fromJson(jsonReader, JsonShadingGroup[].class);
 		}
 	}

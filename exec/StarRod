@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+APP_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+JAVA="$APP_DIR/runtime/bin/java"
+
+if [ ! -x "$JAVA" ]; then
+    echo "Error: the bundled Java runtime is missing or is not executable." >&2
+    echo "Re-extract the complete Star Rod release archive." >&2
+    exit 1
+fi
+
+cd "$APP_DIR"
+exec "$JAVA" -Xmx2G -jar "$APP_DIR/StarRod.jar" "$@"

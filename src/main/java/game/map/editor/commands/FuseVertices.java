@@ -14,36 +14,72 @@ public class FuseVertices extends AbstractCommand
 	private final List<Triangle> triangles;
 	private final List<Vertex> oldVertices;
 	private final List<Vertex> newVertices;
+	private final boolean hasChanges;
 
-	private static class FusionWrapper
+	private static final class FusionKey
 	{
-		private final Vertex v;
+		private final TriangleBatch batch;
+		private final int x;
+		private final int y;
+		private final int z;
+		private final int u;
+		private final int v;
+		private final int r;
+		private final int g;
+		private final int b;
+		private final int a;
+		private final boolean useLocal;
 
-		public FusionWrapper(Vertex vertex)
+		private FusionKey(TriangleBatch batch, Vertex vertex)
 		{
-			this.v = vertex;
+			this.batch = batch;
+			x = vertex.getCurrentX();
+			y = vertex.getCurrentY();
+			z = vertex.getCurrentZ();
+			u = vertex.uv.getU();
+			v = vertex.uv.getV();
+			r = vertex.r;
+			g = vertex.g;
+			b = vertex.b;
+			a = vertex.a;
+			useLocal = vertex.useLocal;
 		}
 
 		@Override
 		public int hashCode()
 		{
 			final int prime = 31;
-			int result = 1;
-			result = prime * result + v.getCurrentX();
-			result = prime * result + v.getCurrentY();
-			return prime * result + v.getCurrentZ();
+			int result = System.identityHashCode(batch);
+			result = prime * result + x;
+			result = prime * result + y;
+			result = prime * result + z;
+			result = prime * result + u;
+			result = prime * result + v;
+			result = prime * result + r;
+			result = prime * result + g;
+			result = prime * result + b;
+			result = prime * result + a;
+			result = prime * result + (useLocal ? 1 : 0);
+			return result;
 		}
 
 		@Override
 		public boolean equals(Object o)
 		{
-			if (o == null)
+			if (!(o instanceof FusionKey other))
 				return false;
-			if (getClass() != o.getClass())
-				return false;
-			FusionWrapper other = (FusionWrapper) o;
 
-			return v.getCurrentPos().equals(other.v.getCurrentPos());
+			return batch == other.batch
+				&& x == other.x
+				&& y == other.y
+				&& z == other.z
+				&& u == other.u
+				&& v == other.v
+				&& r == other.r
+				&& g == other.g
+				&& b == other.b
+				&& a == other.a
+				&& useLocal == other.useLocal;
 		}
 	}
 
@@ -51,34 +87,34 @@ public class FuseVertices extends AbstractCommand
 	{
 		super("Fuse Vertices");
 
-		this.triangles = triangles;
+		this.triangles = new ArrayList<>(triangles);
 		oldVertices = new ArrayList<>(triangles.size() * 3);
 		newVertices = new ArrayList<>(triangles.size() * 3);
 
-		HashMap<FusionWrapper, FusionWrapper> vertexMap = new HashMap<>();
-		HashMap<Vertex, TriangleBatch> batchMap = new HashMap<>();
+		HashMap<FusionKey, Vertex> vertexMap = new HashMap<>();
+		boolean changed = false;
 
-		for (Triangle t : triangles) {
+		for (Triangle t : this.triangles) {
 			for (Vertex v : t.vert) {
-				FusionWrapper wrapped = new FusionWrapper(v);
-				vertexMap.put(wrapped, wrapped);
-				batchMap.put(v, t.parentBatch);
 				oldVertices.add(v);
+
+				FusionKey key = new FusionKey(t.parentBatch, v);
+				Vertex fused = vertexMap.putIfAbsent(key, v);
+				if (fused == null)
+					fused = v;
+				else if (fused != v)
+					changed = true;
+				newVertices.add(fused);
 			}
 		}
 
-		for (Triangle t : triangles) {
-			for (Vertex v : t.vert) {
-				// retrieve vertex with the same hashcode
-				Vertex v2 = vertexMap.get(new FusionWrapper(v)).v;
+		hasChanges = changed;
+	}
 
-				// only fuse vertices among the same triangle batch
-				if (t.parentBatch == batchMap.get(v))
-					newVertices.add(v2);
-				else
-					newVertices.add(v);
-			}
-		}
+	@Override
+	public boolean shouldExec()
+	{
+		return hasChanges;
 	}
 
 	@Override

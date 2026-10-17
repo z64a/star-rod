@@ -230,20 +230,22 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			@Override
 			public void windowClosing(WindowEvent e)
 			{
-				openDialogCount.increment();
+				synchronized (editor.modifyLock) {
+					openDialogCount.increment();
 
-				boolean shadeDirty = false;
-				if (!Environment.isDX()) {
-					editor.map.syncCurrentShadingToProfile();
-					shadeDirty = ProjectDatabase.hasModifiedShadingData();
+					boolean shadeDirty = false;
+					if (!Environment.isDX()) {
+						editor.map.syncCurrentShadingToProfile();
+						shadeDirty = ProjectDatabase.hasModifiedShadingData();
+					}
+
+					boolean shadeOK = !shadeDirty || promptSaveShading();
+					boolean mapOK = !editor.map.modified || promptSaveMap();
+
+					closeRequested = (shadeOK && mapOK);
+					if (!closeRequested)
+						openDialogCount.decrement();
 				}
-
-				boolean shadeOK = !shadeDirty || promptSaveShading();
-				boolean mapOK = !editor.map.modified || promptSaveMap();
-
-				closeRequested = (shadeOK && mapOK);
-				if (!closeRequested)
-					openDialogCount.decrement();
 			}
 		});
 
@@ -278,10 +280,12 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		logScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
 		logListener = msg -> {
-			logTextArea.append(msg.text + System.lineSeparator());
+			SwingUtilities.invokeLater(() -> {
+				logTextArea.append(msg.text + System.lineSeparator());
 
-			JScrollBar vertical = logScrollPane.getVerticalScrollBar();
-			vertical.setValue(vertical.getMaximum());
+				JScrollBar vertical = logScrollPane.getVerticalScrollBar();
+				vertical.setValue(vertical.getMaximum());
+			});
 		};
 		Logger.addListener(logListener);
 
@@ -452,14 +456,14 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 		switch (choice) {
 			case JOptionPane.YES_OPTION:
-				editor.action_SaveMap();
+				return editor.action_SaveMap();
 			case JOptionPane.NO_OPTION:
-				break;
+				return true;
 			case JOptionPane.CANCEL_OPTION:
+			case JOptionPane.CLOSED_OPTION:
+			default:
 				return false;
 		}
-
-		return true;
 	}
 
 	private boolean promptSaveShading()
@@ -474,14 +478,14 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 		switch (choice) {
 			case JOptionPane.YES_OPTION:
-				editor.action_SaveShading();
+				return editor.action_SaveShading();
 			case JOptionPane.NO_OPTION:
-				break;
+				return true;
 			case JOptionPane.CANCEL_OPTION:
+			case JOptionPane.CLOSED_OPTION:
+			default:
 				return false;
 		}
-
-		return true;
 	}
 
 	/**
@@ -1833,19 +1837,21 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 	@Override
 	public void post(Message msg)
 	{
-		Color c = null;
-		switch (msg.priority) {
-			case WARNING:
-			case ERROR:
-				c = SwingUtils.getRedTextColor();
-				break;
-			default:
-				c = null;
-				break;
-		}
+		SwingUtilities.invokeLater(() -> {
+			Color c = null;
+			switch (msg.priority) {
+				case WARNING:
+				case ERROR:
+					c = SwingUtils.getRedTextColor();
+					break;
+				default:
+					c = null;
+					break;
+			}
 
-		infoLabel.setForeground(c);
-		infoLabel.setText(msg.text);
+			infoLabel.setForeground(c);
+			infoLabel.setText(msg.text);
+		});
 	}
 
 	public void post(String text)

@@ -4,11 +4,15 @@ on:
   pull_request:
 jobs:
   build-gradle-project:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
     - name: Make gradlew executable
+      if: runner.os != 'Windows'
       run: chmod +x ./gradlew
     - name: Setup Java
       uses: actions/setup-java@v4
@@ -18,7 +22,8 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
     - name: Build
-      run: ./gradlew createReleaseZip
+      shell: bash
+      run: ./gradlew test createReleaseZip
   build-nix-flake:
     strategy:
       matrix:

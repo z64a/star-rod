@@ -1,34 +1,29 @@
-# Compiled class files
+# Java and JVM artifacts
 *.class
-
-# VM crash logs
 hs_err_pid*
 replay_pid*
 
-# eclipse builds
+# Gradle and generated build output
+/.gradle/
 /bin/
-
-# gradle files
-.gradle
 /build/
 
-# Local experiments
-src/main/java/analysis/**
+# Local Star Rod runtime output
+/local/
 
-# Temporary Star Rod runtime files
-database/include/**
-logs/**
+# Legacy Star Rod config location
+/cfg/
 
-# Eclipse settings
-.settings/*
-!.settings/org.eclipse.core.resources.prefs
-!.settings/org.eclipse.jdt.core.prefs
-!.settings/org.eclipse.jdt.ui.prefs
+# Eclipse: keep shared encoding, compiler, formatter, and cleanup settings
+/.settings/*
+!/.settings/org.eclipse.core.resources.prefs
+!/.settings/org.eclipse.jdt.core.prefs
+!/.settings/org.eclipse.jdt.ui.prefs
 
-# Vscode settings
-.vscode/*
-!.vscode/settings.json
+# VS Code: keep shared workspace settings
+/.vscode/*
+!/.vscode/settings.json
 
 # Nix
-.direnv
-result
+/.direnv/
+/result

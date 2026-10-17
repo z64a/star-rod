@@ -5,6 +5,7 @@ import static game.map.MapKey.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -17,7 +18,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.w3c.dom.Element;
 
@@ -121,7 +121,7 @@ public class Map implements XmlSerializable
 	public transient Queue<String> d_zoneNames;
 
 	// used by the editor for bookkeeping
-	public transient boolean modified = false;
+	public transient volatile boolean modified = false;
 	public transient BufferedImage bgImage = null;
 	public transient int glBackgroundTexID = -1;
 	public transient long lastModified;
@@ -330,14 +330,23 @@ public class Map implements XmlSerializable
 	private void setName(String name)
 	{
 		this.name = name;
-		areaAffix = name.substring(0, 3);
-
-		while (areaAffix.endsWith("_")) {
-			areaAffix = areaAffix.substring(0, areaAffix.length() - 1);
-		}
+		areaAffix = deriveAreaAffix(name);
 
 		areaName = "area_" + areaAffix;
 		projDir = Directories.PROJ_SRC_WORLD.file(areaName + "/" + name);
+	}
+
+	private static String deriveAreaAffix(String name)
+	{
+		String affix = name.substring(0, 3);
+		while (affix.endsWith("_"))
+			affix = affix.substring(0, affix.length() - 1);
+		return affix;
+	}
+
+	private static File deriveProjectDirectory(String name)
+	{
+		return Directories.PROJ_SRC_WORLD.file("area_" + deriveAreaAffix(name) + "/" + name);
 	}
 
 	public String getName()
@@ -979,20 +988,23 @@ public class Map implements XmlSerializable
 
 	private void saveMapAs_impl(File file, boolean saveFeatures) throws Exception
 	{
-		FileUtils.touch(file);
-		File tempFile = new File(file.getAbsolutePath() + ".temp");
+		String savedName = Map.deriveName(file);
+		File targetProjectDirectory = deriveProjectDirectory(savedName);
+		File mapDirectory = file.getAbsoluteFile().getParentFile();
+		if (mapDirectory == null)
+			throw new IOException("Map output has no parent directory: " + file);
+		Files.createDirectories(mapDirectory.toPath());
+		if (saveFeatures)
+			Files.createDirectories(targetProjectDirectory.toPath());
 
 		long t0 = System.nanoTime();
 
 		markerTree.recalculateIndicies();
 
-		try (XmlWriter xmw = new XmlWriter(tempFile)) {
+		try (XmlWriter xmw = new XmlWriter(file)) {
 			toXML(xmw);
 			xmw.save();
 		} // flushed on auto-close
-
-		FileUtils.copyFile(tempFile, file);
-		FileUtils.deleteQuietly(tempFile);
 
 		long t1 = System.nanoTime();
 		double sec = (t1 - t0) / 1e9;
@@ -1001,31 +1013,30 @@ public class Map implements XmlSerializable
 		else
 			Logger.logf("Saved %s in %.02f ms", file.getName(), sec * 1e3);
 
-		setName(Map.deriveName(file));
+		if (saveFeatures)
+			saveFeatures(targetProjectDirectory);
+
+		setName(savedName);
 		lastModified = file.lastModified();
 		modified = false;
-
-		if (saveFeatures) {
-			saveFeatures();
-		}
 	}
 
 	/**
 	 * Similar to the saveMap family of methods, but does not update map name of modification time fields.
 	 */
-	public void saveBackup(File f)
+	public void saveBackup(File f) throws IOException
 	{
+		File backupDirectory = f.getAbsoluteFile().getParentFile();
+		if (backupDirectory == null)
+			throw new IOException("Map backup has no parent directory: " + f);
+		Files.createDirectories(backupDirectory.toPath());
+
 		markerTree.recalculateIndicies();
 
 		try (XmlWriter xmw = new XmlWriter(f)) {
 			toXML(xmw);
 			xmw.save();
 		} // flushed on auto-close
-		catch (Exception e) {
-			Logger.printStackTrace(e);
-			Logger.logError("Error during map backup: " + e.getMessage());
-			return;
-		}
 
 		Logger.log("Saved backup for " + name);
 	}
@@ -1728,10 +1739,9 @@ public class Map implements XmlSerializable
 		}
 	}
 
-	private void saveFeatures() throws IOException
+	private void saveFeatures(File targetProjectDirectory) throws IOException
 	{
-		File featuresJson = new File(projDir, "features.json");
-		FileUtils.touch(featuresJson);
+		File featuresJson = new File(targetProjectDirectory, "features.json");
 
 		JsonMap out = new JsonMap();
 		features.toJson(out);

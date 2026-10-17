@@ -80,7 +80,7 @@ public class MessageListTab extends JPanel
 
 			msg.name = promptForUniqueName(null);
 			if (msg.name != null) {
-				asset.messages.add(msg);
+				asset.addMessage(msg);
 				filteredList.setContent(asset.messages);
 
 				filteredList.setSelected(msg);
@@ -107,7 +107,7 @@ public class MessageListTab extends JPanel
 		String newName = promptForUniqueName(selected.name);
 
 		if (newName != null) {
-			selected.name = newName;
+			selected.setName(newName);
 			filteredList.repaint();
 		}
 	}
@@ -127,7 +127,7 @@ public class MessageListTab extends JPanel
 
 		if (newSection != null) {
 			try {
-				selected.section = Integer.parseInt(newSection, 16);
+				selected.setSection(Integer.parseInt(newSection, 16));
 				filteredList.repaint();
 			}
 			catch (NumberFormatException e) {
