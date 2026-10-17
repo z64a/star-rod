@@ -41,6 +41,7 @@ public enum EditorShortcut
 
 	PLAY_IN_EDITOR_TOGGLE	(KeyEvent.VK_P),
 	PLAY_IN_EDITOR_JUMP		(KeyEvent.VK_J),
+	PLAY_IN_EDITOR_SPIN		(KeyEvent.VK_R),
 	PLAY_IN_EDITOR_HOVER	(KeyEvent.VK_K),
 	PIE_IGNORE_HIDDEN_COL	(),
 	PIE_IGNORE_HIDDEN_ZONE	(),
@@ -244,6 +245,15 @@ public enum EditorShortcut
 					break;
 			}
 		}
+	}
+
+	static EditorShortcut getPlayInEditorInput(int keycode)
+	{
+		if (keycode == PLAY_IN_EDITOR_JUMP.key)
+			return PLAY_IN_EDITOR_JUMP;
+		if (keycode == PLAY_IN_EDITOR_SPIN.key)
+			return PLAY_IN_EDITOR_SPIN;
+		return null;
 	}
 
 	public static EditorShortcut get(int keycode)

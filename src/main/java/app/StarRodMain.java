@@ -188,7 +188,7 @@ public class StarRodMain extends StarRodFrame
 		buttons.add(imageEditorButton);
 
 		JButton audioBoothButton = new JButton("Audio Booth");
-		SwingUtils.addBorderPadding(audioBoothButton);
+		trySetIcon(audioBoothButton, ExpectedAsset.ICON_AUDIO_BOOTH);
 		SwingUtils.setFontSize(audioBoothButton, 12);
 		audioBoothButton.addActionListener((e) -> {
 			action_openAudioBooth();
@@ -302,7 +302,7 @@ public class StarRodMain extends StarRodFrame
 		add(imageEditorButton, "grow");
 
 		add(themesMenuButton, "grow");
-		add(new JLabel(""), "grow");
+		add(audioBoothButton, "grow");
 
 		add(openConfigDirButton, "grow");
 		add(openProjectDirButton, "grow");

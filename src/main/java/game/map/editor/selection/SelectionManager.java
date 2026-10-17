@@ -3,11 +3,15 @@ package game.map.editor.selection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.swing.SwingUtilities;
+
+import common.commands.AbstractCommand;
+import common.commands.CommandBatch;
 
 import game.map.BoundingBox;
 import game.map.Map;
@@ -21,8 +25,6 @@ import game.map.editor.commands.CloneObjects;
 import game.map.editor.commands.CloneTriangles;
 import game.map.editor.commands.DeleteObjects;
 import game.map.editor.commands.DeleteTriangles;
-import common.commands.CommandBatch;
-import common.commands.AbstractCommand;
 import game.map.editor.selection.PickRay.PickHit;
 import game.map.hit.Collider;
 import game.map.hit.Zone;
@@ -409,6 +411,141 @@ public class SelectionManager
 	public List<Vertex> getVertices()
 	{
 		return vertexWorkingSet;
+	}
+
+	public List<Triangle> getTrianglesForVertexOperation()
+	{
+		if (selectionMode != SelectionMode.VERTEX)
+			return getTrianglesFromSelection();
+
+		IdentityHashSet<Vertex> vertices = new IdentityHashSet<>();
+		IdentityHashSet<AbstractMesh> meshes = new IdentityHashSet<>();
+		for (Vertex v : vertexSelection.selectableList) {
+			vertices.add(v);
+			meshes.add(v.parentMesh);
+		}
+
+		List<Triangle> triangles = new ArrayList<>();
+		for (AbstractMesh mesh : meshes) {
+			for (Triangle t : mesh) {
+				for (Vertex v : t.vert) {
+					if (vertices.contains(v)) {
+						triangles.add(t);
+						break;
+					}
+				}
+			}
+		}
+		return triangles;
+	}
+
+	public AbstractCommand getVertexSelectionUpdate(List<Triangle> triangles, List<Vertex> oldVertices, List<Vertex> newVertices)
+	{
+		return new UpdateVertexSelection(triangles, oldVertices, newVertices);
+	}
+
+	private class UpdateVertexSelection extends AbstractCommand
+	{
+		private final List<Vertex> oldWorkingVertices = new ArrayList<>(vertexWorkingSet);
+		private final List<Vertex> oldSelectedVertices = new ArrayList<>(vertexSelection.selectableList);
+		private final List<UV> oldWorkingUVs = new ArrayList<>(uvWorkingSet);
+		private final List<UV> oldSelectedUVs = new ArrayList<>(uvSelection.selectableList);
+		private final List<Vertex> newWorkingVertices;
+		private final List<Vertex> newSelectedVertices;
+		private final List<UV> newWorkingUVs;
+		private final List<UV> newSelectedUVs;
+
+		private UpdateVertexSelection(List<Triangle> triangles, List<Vertex> oldVertices, List<Vertex> newVertices)
+		{
+			super("Update Vertex Selection");
+			IdentityHashMap<Vertex, List<Vertex>> replacements = new IdentityHashMap<>();
+			for (int i = 0; i < oldVertices.size(); i++)
+				replacements.computeIfAbsent(oldVertices.get(i), v -> new ArrayList<>()).add(newVertices.get(i));
+
+			IdentityHashMap<Triangle, Integer> triangleIndices = new IdentityHashMap<>();
+			IdentityHashSet<AbstractMesh> meshes = new IdentityHashSet<>();
+			for (int i = 0; i < triangles.size(); i++) {
+				Triangle t = triangles.get(i);
+				triangleIndices.put(t, i);
+				meshes.add(t.parentBatch.parentMesh);
+			}
+
+			// A vertex can remain in use outside the triangles being edited.
+			IdentityHashSet<Vertex> survivingVertices = new IdentityHashSet<>();
+			for (AbstractMesh mesh : meshes) {
+				for (Triangle t : mesh) {
+					Integer index = triangleIndices.get(t);
+					for (int j = 0; j < 3; j++)
+						survivingVertices.add(index == null ? t.vert[j] : newVertices.get(3 * index + j));
+				}
+			}
+			for (Vertex v : survivingVertices) {
+				List<Vertex> values = replacements.get(v);
+				if (values != null)
+					values.add(v);
+			}
+
+			IdentityHashMap<UV, List<UV>> uvReplacements = new IdentityHashMap<>();
+			for (Vertex v : replacements.keySet()) {
+				List<UV> values = uvReplacements.computeIfAbsent(v.uv, uv -> new ArrayList<>());
+				for (Vertex replacement : replacements.get(v))
+					values.add(replacement.uv);
+			}
+
+			newWorkingVertices = replaceSelectionReferences(oldWorkingVertices, replacements);
+			newSelectedVertices = replaceSelectionReferences(oldSelectedVertices, replacements);
+			newWorkingUVs = replaceSelectionReferences(oldWorkingUVs, uvReplacements);
+			newSelectedUVs = replaceSelectionReferences(oldSelectedUVs, uvReplacements);
+		}
+
+		@Override
+		public boolean modifiesData()
+		{
+			return false;
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+			apply(newWorkingVertices, newSelectedVertices, newWorkingUVs, newSelectedUVs);
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+			apply(oldWorkingVertices, oldSelectedVertices, oldWorkingUVs, oldSelectedUVs);
+		}
+
+		private void apply(List<Vertex> workingVertices, List<Vertex> selectedVertices, List<UV> workingUVs, List<UV> selectedUVs)
+		{
+			vertexSelection.clear();
+			uvSelection.clear();
+			vertexWorkingSet = new ArrayList<>(workingVertices);
+			uvWorkingSet = new ArrayList<>(workingUVs);
+			vertexSelection.addAndSelect(selectedVertices);
+			uvSelection.addAndSelect(selectedUVs);
+		}
+	}
+
+	private static <T> List<T> replaceSelectionReferences(List<T> selection, IdentityHashMap<T, List<T>> replacements)
+	{
+		List<T> result = new ArrayList<>();
+		IdentityHashSet<T> added = new IdentityHashSet<>();
+		for (T selected : selection) {
+			List<T> values = replacements.get(selected);
+			if (values == null) {
+				if (added.add(selected))
+					result.add(selected);
+			}
+			else {
+				for (T value : values)
+					if (added.add(value))
+						result.add(value);
+			}
+		}
+		return result;
 	}
 
 	public void generateUVListFromSelectedModel()

@@ -4,18 +4,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import common.commands.AbstractCommand;
+import game.map.editor.selection.SelectionManager;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
 import game.map.shape.TriangleBatch;
 
-public class FuseVertices extends AbstractCommand
+public class FuseVertices extends ModifyVertices
 {
-	private final List<Triangle> triangles;
-	private final List<Vertex> oldVertices;
-	private final List<Vertex> newVertices;
-	private final boolean hasChanges;
-
 	private static final class FusionKey
 	{
 		private final TriangleBatch batch;
@@ -83,67 +78,28 @@ public class FuseVertices extends AbstractCommand
 		}
 	}
 
-	public FuseVertices(List<Triangle> triangles)
+	public FuseVertices(SelectionManager selectionManager)
 	{
-		super("Fuse Vertices");
-
-		this.triangles = new ArrayList<>(triangles);
-		oldVertices = new ArrayList<>(triangles.size() * 3);
-		newVertices = new ArrayList<>(triangles.size() * 3);
+		super("Fuse Vertices", selectionManager);
+		List<Vertex> newVertices = new ArrayList<>(triangles.size() * 3);
 
 		HashMap<FusionKey, Vertex> vertexMap = new HashMap<>();
-		boolean changed = false;
 
-		for (Triangle t : this.triangles) {
+		for (Triangle t : triangles) {
 			for (Vertex v : t.vert) {
-				oldVertices.add(v);
+				if (!isVertexSelected(v)) {
+					newVertices.add(v);
+					continue;
+				}
 
 				FusionKey key = new FusionKey(t.parentBatch, v);
 				Vertex fused = vertexMap.putIfAbsent(key, v);
 				if (fused == null)
 					fused = v;
-				else if (fused != v)
-					changed = true;
 				newVertices.add(fused);
 			}
 		}
 
-		hasChanges = changed;
-	}
-
-	@Override
-	public boolean shouldExec()
-	{
-		return hasChanges;
-	}
-
-	@Override
-	public void exec()
-	{
-		super.exec();
-
-		for (int i = 0; i < triangles.size(); i++) {
-			Triangle t = triangles.get(i);
-
-			for (int j = 0; j < 3; j++) {
-				Vertex v = newVertices.get(3 * i + j);
-				t.vert[j] = v;
-			}
-		}
-	}
-
-	@Override
-	public void undo()
-	{
-		super.undo();
-
-		for (int i = 0; i < triangles.size(); i++) {
-			Triangle t = triangles.get(i);
-
-			for (int j = 0; j < 3; j++) {
-				Vertex v = oldVertices.get(3 * i + j);
-				t.vert[j] = v;
-			}
-		}
+		setNewVertices(newVertices);
 	}
 }

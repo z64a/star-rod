@@ -1,11 +1,9 @@
 #version 330 core
 
 in vec4 f_color;
-in vec2 f_texCoords;
-in vec4 f_worldPosition;
-in vec4 f_screenPosition;
-
-flat in vec3 f_vertStartPos;
+noperspective in vec2 f_lineCoord;
+flat in float f_lineLength;
+in float f_dashCoord;
 
 out vec4 o_color;
 
@@ -17,6 +15,7 @@ layout (std140) uniform Globals {
 	float g_time;
 };
 
+uniform float u_lineWidth;
 uniform float u_dashSize;
 uniform float u_dashRatio;
 uniform float u_dashSpeedRate;
@@ -24,29 +23,30 @@ uniform float u_dashSpeedRate;
 uniform vec4 u_color;
 uniform bool u_useVertexColor;
 
+const float FEATHER_WIDTH = 1.0;
+
 void main()
 {
-	if(u_useVertexColor)
-		o_color = f_color;
-	else
-		o_color = u_color;
+	vec4 lineColor = u_useVertexColor ? f_color : u_color;
 
-	float dashSize = u_dashSize * (u_dashRatio);
-	float gapSize =  u_dashSize * (1 - u_dashRatio);
+	float nearestX = clamp(f_lineCoord.x, 0.0, f_lineLength);
+	float edgeDistance = length(f_lineCoord - vec2(nearestX, 0.0));
+	float halfWidth = max(u_lineWidth, 0.0) * 0.5;
+	float coverage = 1.0 - smoothstep(halfWidth, halfWidth + FEATHER_WIDTH, edgeDistance);
 
-	if(u_dashRatio < 1.0)
-	{
-		vec3 dir = f_worldPosition.xyz - f_vertStartPos;
-		float dist = length(dir.xyz) + g_time * u_dashSpeedRate * u_dashSize;
-		float phase = fract(dist / (dashSize + gapSize));
-
-		o_color.a = smoothstep(0, 0.08, phase)
-				-   smoothstep(u_dashRatio, u_dashRatio + 0.08, phase);
-
-	//	if (phase > u_dashRatio)
-	//		discard;
+	float dashRatio = clamp(u_dashRatio, 0.0, 1.0);
+	if (dashRatio < 1.0) {
+		float period = max(u_dashSize, 0.0001);
+		float distance = f_dashCoord + g_time * u_dashSpeedRate * period;
+		float distanceInPeriod = mod(mod(distance, period) + period, period);
+		float phase = distanceInPeriod / period;
+		float feather = max(fwidth(f_dashCoord) / period, 0.0001);
+		float dashCoverage = smoothstep(0.0, feather, phase)
+			- smoothstep(dashRatio, dashRatio + feather, phase);
+		coverage *= dashCoverage;
 	}
 
-	if(o_color.a == 0.0f)
+	o_color = vec4(lineColor.rgb, lineColor.a * coverage);
+	if (o_color.a <= 0.0)
 		discard;
 }

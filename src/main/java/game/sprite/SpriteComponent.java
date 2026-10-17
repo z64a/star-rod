@@ -12,6 +12,7 @@ import java.util.Map.Entry;
 import org.w3c.dom.Element;
 
 import common.Vector3f;
+
 import game.map.Axis;
 import game.map.BoundingBox;
 import game.map.editor.render.PresetColor;
@@ -415,6 +416,15 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		boolean enableStencilBuffer, boolean enableSelectedHighlight,
 		boolean useSelectShading, boolean drawBounds, boolean useFiltering)
 	{
+		render(spriteShading, paletteOverride, useBack, enableStencilBuffer, enableSelectedHighlight, useSelectShading, drawBounds, useFiltering, 1.0f, 1.0f,
+			1.0f, 1.0f);
+	}
+
+	public void render(RenderShadingProfile spriteShading, SpritePalette paletteOverride, boolean useBack,
+		boolean enableStencilBuffer, boolean enableSelectedHighlight,
+		boolean useSelectShading, boolean drawBounds, boolean useFiltering,
+		float colorR, float colorG, float colorB, float colorA)
+	{
 		if (sr == null || hidden)
 			return;
 
@@ -494,6 +504,7 @@ public class SpriteComponent implements XmlSerializable, Indexable<SpriteCompone
 		renderPalette.glBind(shader.palette);
 
 		shader.useFiltering.set(useFiltering);
+		shader.color.set(colorR, colorG, colorB, colorA);
 		shader.selectShading.set(useSelectShading);
 		shader.selected.set(enableSelectedHighlight && selected);
 		shader.highlighted.set(highlighted);

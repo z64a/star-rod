@@ -13,6 +13,7 @@ public final class SpriteShader extends BaseShader
 	public final TexUnit2D texture;
 	public final TexUnit1D palette;
 	public final UniformFloat alpha;
+	public final UniformFloatVector color;
 
 	public final UniformBool selectShading;
 	public final UniformBool selected;
@@ -33,6 +34,7 @@ public final class SpriteShader extends BaseShader
 		palette = new TexUnit1D(program, 1, "u_palette");
 
 		alpha = new UniformFloat(program, "u_alpha", 1.0f);
+		color = new UniformFloatVector(program, "u_color", 1.0f, 1.0f, 1.0f, 1.0f);
 
 		selectShading = new UniformBool(program, "u_selectedShading", false);
 		selected = new UniformBool(program, "u_selected", false);

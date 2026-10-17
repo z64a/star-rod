@@ -8,7 +8,6 @@ public class LineBatch implements Comparable<LineBatch>
 	protected ArrayList<BufferLine> lines = new ArrayList<>();
 	protected float lineWidth;
 	protected int priority;
-	protected int startIndex;
 
 	public BufferVertex addVertex()
 	{

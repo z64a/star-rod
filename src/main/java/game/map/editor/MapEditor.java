@@ -40,6 +40,19 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.w3c.dom.Element;
 
+import common.FrameLimiter;
+import common.GLEditor;
+import common.KeyboardInput;
+import common.KeyboardInput.KeyInputEvent;
+import common.KeyboardInput.KeyboardInputListener;
+import common.MouseInput;
+import common.MouseInput.MouseManagerListener;
+import common.Vector3f;
+import common.commands.AbstractCommand;
+import common.commands.CommandBatch;
+import common.commands.CommandManager;
+import common.commands.EditableField;
+
 import app.Directories;
 import app.Environment;
 import app.LoadingBar;
@@ -54,18 +67,6 @@ import assets.AssetHandle;
 import assets.AssetManager;
 import assets.ui.SelectMapDialog;
 import assets.ui.SelectTexDialog;
-import common.FrameLimiter;
-import common.GLEditor;
-import common.KeyboardInput;
-import common.KeyboardInput.KeyInputEvent;
-import common.KeyboardInput.KeyboardInputListener;
-import common.MouseInput;
-import common.MouseInput.MouseManagerListener;
-import common.Vector3f;
-import common.commands.AbstractCommand;
-import common.commands.CommandBatch;
-import common.commands.CommandManager;
-import common.commands.EditableField;
 import game.ProjectDatabase;
 import game.map.Axis;
 import game.map.BoundingBox;
@@ -1361,14 +1362,14 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				break;
 		}
 
+		if (isPlayInEditorMode)
+			updatePlayInEditorSimulation(deltaTime);
+
 		perspectiveView.camera.tick(deltaTime);
 		activeView.camera.handleMovementInput(mouse, keyboard, (float) deltaTime);
 
 		if (doStepProfiling)
 			profiler.record("input");
-
-		if (isPlayInEditorMode)
-			updatePlayInEditorSimulation(deltaTime);
 
 		cursor3D.updateShadow(getCollisionMap(), map, deltaTime);
 
@@ -1587,18 +1588,17 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				break;
 
 			case SEPARATE_VERTS:
-				if (editorMode == EditorMode.Modify) {
-					List<Triangle> triangles = selectionManager.getTrianglesFromSelection();
-					if (triangles.size() > 0)
-						commandManager.executeCommand(new SeparateVertices(triangles));
-				}
+				if (editorMode == EditorMode.Modify && !selectionManager.currentSelection.transforming())
+					commandManager.executeCommand(new SeparateVertices(selectionManager));
 				break;
 
 			case FUSE_VERTS:
-				if (editorMode == EditorMode.Modify) {
-					List<Triangle> triangles = selectionManager.getTrianglesFromSelection();
-					if (triangles.size() > 0)
-						commandManager.executeCommand(new FuseVertices(triangles));
+				if (editorMode == EditorMode.Modify && !selectionManager.currentSelection.transforming()) {
+					FuseVertices command = new FuseVertices(selectionManager);
+					if (command.shouldExec())
+						commandManager.executeCommand(command);
+					else
+						Logger.log("No vertices fused. Select coincident vertices with matching UVs and colors in the same triangle batch.");
 				}
 				break;
 
@@ -1855,8 +1855,14 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			if (mouse.isHoldingMMB()) {
 				clickHitMMB = selectionManager.pickWorld(getGeometryMap(), currentRay, activeView, true);
 
-				if (!clickHitMMB.missed())
-					cursor3D.updateDrag(clickHitMMB.point);
+				if (!clickHitMMB.missed()) {
+					if (isPlayInEditorMode) {
+						cursor3D.setPosition(clickHitMMB.point);
+						requestPlayInEditorCameraCut();
+					}
+					else
+						cursor3D.updateDrag(clickHitMMB.point);
+				}
 			}
 		}
 	}
@@ -2235,8 +2241,10 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		clickRayMMB = currentRay;
 		clickHitMMB = selectionManager.pickWorld(getGeometryMap(), currentRay, activeView, true);
 
-		if (!clickHitMMB.missed())
+		if (!clickHitMMB.missed()) {
 			cursor3D.setPosition(clickHitMMB.point);
+			requestPlayInEditorCameraCut();
+		}
 	}
 
 	@Override
@@ -2299,6 +2307,17 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	{
 		boolean ctrl = keyboard.isCtrlDown();
 		boolean shift = keyboard.isShiftDown();
+
+		// Simulation controls remain usable while Shift is held to run. Releases must also
+		// reach the player when modifiers or the active viewport change.
+		EditorShortcut playerInput = EditorShortcut.getPlayInEditorInput(key.code);
+		if (playerInput != null && (!press || (isPlayInEditorMode && !ctrl))) {
+			if (press)
+				handleShortcutPress(playerInput, false);
+			else
+				handleShortcutRelease(playerInput);
+			return;
+		}
 
 		if (key.code == KeyEvent.VK_CONTROL || key.code == KeyEvent.VK_SHIFT)
 			return;
@@ -2515,6 +2534,10 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 				cursor3D.endInputJump();
 				break;
 
+			case PLAY_IN_EDITOR_SPIN:
+				cursor3D.endInputSpin();
+				break;
+
 			default:
 				// nothing
 				break;
@@ -2658,6 +2681,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			case PLAY_IN_EDITOR_TOGGLE: {
 				if (!isPlayInEditorMode) {
 					cursor3D.startPreviewMode();
+					zoneCam.startPreview(cursor3D.getSimulationPosition());
 					isPlayInEditorMode = true;
 				}
 				else {
@@ -2674,6 +2698,11 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			case PLAY_IN_EDITOR_JUMP:
 				if (isPlayInEditorMode)
 					cursor3D.startInputJump();
+				break;
+
+			case PLAY_IN_EDITOR_SPIN:
+				if (isPlayInEditorMode)
+					cursor3D.startInputSpin();
 				break;
 
 			case PIE_IGNORE_HIDDEN_COL:
@@ -3038,24 +3067,37 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	public void updatePlayInEditorSimulation(double deltaTime)
 	{
 		Map collisionMap = getCollisionMap();
+		List<Zone> cameraCandidates = new ArrayList<>();
+		for (Zone zone : collisionMap.zoneTree)
+			cameraCandidates.add(zone);
 
-		// update 'player'
+		if (!zoneCam.controller.isInitialized())
+			updatePlayInEditorCamera(cameraCandidates, 0.0);
+		zoneCam.prepareSimulation();
 		cursor3D.tickSimulation(keyboard, collisionMap, map, perspectiveView, deltaTime,
-			perspectiveView == activeView, true, false);
+			perspectiveView == activeView, true, pieIgnoreHiddenColliders,
+			stepTime -> updatePlayInEditorCamera(cameraCandidates, stepTime));
+	}
 
-		Vector3f start = cursor3D.getPosition();
-		PickRay traceBelowCursor = new PickRay(Channel.COLLISION, new Vector3f(start.x, start.y + 10, start.z), PickRay.DOWN,
-			perspectiveView);
-
-		// update camera
-		List<Zone> candidates = new ArrayList<>();
-		for (Zone z : collisionMap.zoneTree) {
-			if (z.hasCameraData.get())
-				candidates.add(z);
+	private void updatePlayInEditorCamera(List<Zone> cameraCandidates, double deltaTime)
+	{
+		Vector3f playerPosition = cursor3D.getSimulationPosition();
+		PickRay cameraTrace = new PickRay(Channel.COLLISION,
+			new Vector3f(playerPosition.x, playerPosition.y + 10, playerPosition.z), PickRay.DOWN, perspectiveView);
+		PickHit zoneHit = Map.pickObjectFromSet(cameraTrace, cameraCandidates, pieIgnoreHiddenZones);
+		CameraZoneData cameraData = null;
+		if (!zoneHit.missed()) {
+			Zone zone = (Zone) zoneHit.obj;
+			if (zone.hasCameraData.get())
+				cameraData = zone.camData;
 		}
-		PickHit zoneHit = Map.pickObjectFromSet(traceBelowCursor, candidates, pieIgnoreHiddenZones);
-		if (zoneHit.dist < Float.MAX_VALUE)
-			zoneCam.controlData = ((Zone) zoneHit.obj).camData;
+		zoneCam.updateSimulation(cameraData, playerPosition, cursor3D.allowVerticalCameraMovement(), cursor3D.getCameraYInterpRate(), deltaTime);
+	}
+
+	private void requestPlayInEditorCameraCut()
+	{
+		if (isPlayInEditorMode)
+			zoneCam.requestCameraCut(cursor3D.getSimulationPosition());
 	}
 
 	public boolean isPlayInEditorMode()
@@ -3353,11 +3395,13 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	{
 		runInContext(() -> {
 			glReadBuffer(GL_FRONT);
-			int width = perspectiveView.maxX - perspectiveView.minX;
-			int height = perspectiveView.maxY - perspectiveView.minY;
+			int minX = RenderState.toFramebufferX(perspectiveView.minX);
+			int minY = RenderState.toFramebufferY(perspectiveView.minY);
+			int width = RenderState.toFramebufferX(perspectiveView.maxX) - minX;
+			int height = RenderState.toFramebufferY(perspectiveView.maxY) - minY;
 			int bpp = 4;
 			ByteBuffer buffer = BufferUtils.createByteBuffer(width * height * bpp);
-			glReadPixels(perspectiveView.minX, perspectiveView.minY, width, height,
+			glReadPixels(minX, minY, width, height,
 				GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, buffer);
 
 			BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);

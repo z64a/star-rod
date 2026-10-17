@@ -183,7 +183,7 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 		modifyMenu.add(separateVerticesButton);
 
 		JMenuItem fuseVerticesButton = new JMenuItem("Fuse Vertices");
-		fuseVerticesButton.setToolTipText("Fuse shared vertices that have identical UVs.");
+		fuseVerticesButton.setToolTipText("Fuse coincident vertices with matching UVs and colors within each triangle batch.");
 		gui.addButtonCommand(fuseVerticesButton, GuiCommand.FUSE_VERTS);
 		modifyMenu.add(fuseVerticesButton);
 
@@ -284,7 +284,7 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 		modifyMenu.add(separateVerticesButton);
 
 		JMenuItem fuseVerticesButton = new JMenuItem("Fuse Vertices");
-		fuseVerticesButton.setToolTipText("Fuse shared vertices that have identical UVs.");
+		fuseVerticesButton.setToolTipText("Fuse coincident vertices with matching UVs and colors within each triangle batch.");
 		gui.addButtonCommand(fuseVerticesButton, GuiCommand.FUSE_VERTS);
 		modifyMenu.add(fuseVerticesButton);
 
@@ -387,7 +387,7 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 		modifyMenu.add(separateVerticesButton);
 
 		JMenuItem fuseVerticesButton = new JMenuItem("Fuse Vertices");
-		fuseVerticesButton.setToolTipText("Fuse shared vertices that have identical UVs.");
+		fuseVerticesButton.setToolTipText("Fuse coincident vertices with matching UVs and colors within each triangle batch.");
 		gui.addButtonCommand(fuseVerticesButton, GuiCommand.FUSE_VERTS);
 		modifyMenu.add(fuseVerticesButton);
 

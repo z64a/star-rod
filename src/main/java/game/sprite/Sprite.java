@@ -14,11 +14,12 @@ import javax.swing.SwingUtilities;
 import org.apache.commons.io.FilenameUtils;
 import org.w3c.dom.Element;
 
+import common.Vector3f;
+
 import app.input.InputFileException;
 import assets.AssetHandle;
 import assets.AssetManager;
 import assets.AssetSubdir;
-import common.Vector3f;
 import game.map.BoundingBox;
 import game.map.shading.RenderShadingProfile;
 import game.sprite.SpriteLoader.SpriteMetadata;
@@ -794,6 +795,13 @@ public class Sprite implements XmlSerializable, Editable
 	public void render(RenderShadingProfile spriteShading, int animationID, int paletteOverride, boolean useBack, boolean useSelectShading,
 		boolean useFiltering)
 	{
+		render(spriteShading, animationID, paletteOverride, useBack, useSelectShading, useFiltering, 1.0f, 1.0f, 1.0f, 1.0f);
+	}
+
+	public void render(RenderShadingProfile spriteShading, int animationID, int paletteOverride, boolean useBack, boolean useSelectShading,
+		boolean useFiltering,
+		float colorR, float colorG, float colorB, float colorA)
+	{
 		if (animationID >= animations.size())
 			throw new IllegalArgumentException(String.format(
 				"Animation ID is out of range: %X of %X", animationID, animations.size()));
@@ -802,12 +810,20 @@ public class Sprite implements XmlSerializable, Editable
 			throw new IllegalArgumentException(String.format(
 				"Palette ID is out of range: %X of %X", paletteOverride, palettes.size()));
 
-		render(spriteShading, animations.get(animationID), palettes.get(paletteOverride), useBack, true, useFiltering, useSelectShading);
+		render(spriteShading, animations.get(animationID), palettes.get(paletteOverride), useBack, true, useSelectShading, useFiltering, colorR, colorG, colorB,
+			colorA);
 	}
 
 	// render based on reference
 	public void render(RenderShadingProfile spriteShading, SpriteAnimation anim, SpritePalette paletteOverride,
 		boolean useBack, boolean enableSelectedHighlight, boolean useSelectShading, boolean useFiltering)
+	{
+		render(spriteShading, anim, paletteOverride, useBack, enableSelectedHighlight, useSelectShading, useFiltering, 1.0f, 1.0f, 1.0f, 1.0f);
+	}
+
+	public void render(RenderShadingProfile spriteShading, SpriteAnimation anim, SpritePalette paletteOverride,
+		boolean useBack, boolean enableSelectedHighlight, boolean useSelectShading, boolean useFiltering,
+		float colorR, float colorG, float colorB, float colorA)
 	{
 		if (!animations.contains(anim)) {
 			Logger.logError(anim + " does not belong to " + toString());
@@ -818,7 +834,8 @@ public class Sprite implements XmlSerializable, Editable
 
 		for (int i = 0; i < anim.components.size(); i++) {
 			SpriteComponent comp = anim.components.get(i);
-			comp.render(spriteShading, paletteOverride, useBack, enableStencilBuffer, enableSelectedHighlight, useSelectShading, false, useFiltering);
+			comp.render(spriteShading, paletteOverride, useBack, enableStencilBuffer, enableSelectedHighlight, useSelectShading, false, useFiltering, colorR,
+				colorG, colorB, colorA);
 			comp.addCorners(aabb);
 		}
 	}

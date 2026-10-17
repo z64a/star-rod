@@ -1,350 +1,516 @@
 package game.map.editor;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 
 import common.Vector3f;
+import common.commands.AbstractCommand;
+import common.commands.CommandBatch;
+
 import game.map.MapObject;
 import game.map.editor.commands.CreateObject;
-import common.commands.CommandBatch;
-import common.commands.AbstractCommand;
-import game.map.editor.geometry.GeometryUtils;
-import game.map.hit.Collider;
-import game.map.hit.Zone;
+import game.map.editor.selection.SelectionManager.SelectionMode;
 import game.map.mesh.AbstractMesh;
+import game.map.mesh.TexturedMesh;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
 import game.map.shape.Model;
 import game.map.shape.TriangleBatch;
 import game.map.shape.UV;
-import util.MathUtil;
+import game.map.tree.MapObjectNode;
+import util.Logger;
 import util.identity.IdentityArrayList;
 
 public class TriangleCutter
 {
+	private static final float PLANE_EPSILON = 1.0e-4f;
+
 	private final Vector3f planeNormal;
 	private final Vector3f planePoint;
+	private boolean successful;
+
+	TriangleCutter(Vector3f planePoint, Vector3f planeNormal)
+	{
+		this.planePoint = new Vector3f(planePoint);
+		this.planeNormal = new Vector3f(planeNormal);
+		if (this.planeNormal.length() >= PLANE_EPSILON)
+			this.planeNormal.normalize();
+	}
 
 	public TriangleCutter(Vector3f planePoint, Vector3f planeNormal, List<MapObject> selectedObjects)
 	{
-		this.planeNormal = planeNormal;
-		this.planePoint = planePoint;
+		this(planePoint, planeNormal);
 
-		CommandBatch commands = new CommandBatch("Cut Triangles");
+		if (this.planeNormal.length() < PLANE_EPSILON) {
+			Logger.logWarning("Cannot cut with a degenerate plane.");
+			return;
+		}
+		this.planeNormal.normalize();
+
+		MapEditor editor = MapEditor.instance();
+		if (editor.selectionManager.getSelectionMode() != SelectionMode.OBJECT) {
+			Logger.logWarning("The cut tool requires object selection mode.");
+			return;
+		}
+
+		if (selectedObjects == null || selectedObjects.isEmpty()) {
+			Logger.logWarning("Select at least one object before cutting.");
+			return;
+		}
 
 		for (MapObject obj : selectedObjects) {
-			if (obj.hasMesh()) {
-				AbstractMesh mesh = obj.getMesh();
-
-				for (TriangleBatch batch : mesh.getBatches())
-					cutBatch(obj, commands, batch);
+			if (obj instanceof Model && obj.hasMesh() && hasWorldSpaceVertices(obj)) {
+				Logger.logWarning("Cannot cut transformed model " + obj.getName() + ". Bake its transforms first.");
+				return;
 			}
+		}
+
+		List<ObjectSplit> objectSplits = new ArrayList<>();
+		try {
+			for (MapObject obj : selectedObjects) {
+				if (obj.hasMesh()) {
+					ObjectSplit split = buildObjectSplit(obj);
+					if (split != null)
+						objectSplits.add(split);
+				}
+			}
+		}
+		catch (CutException e) {
+			Logger.logWarning("Cut aborted: " + e.getMessage());
+			return;
+		}
+
+		if (objectSplits.isEmpty()) {
+			Logger.logWarning("The cut plane did not split any selected objects.");
+			return;
+		}
+
+		CommandBatch commands = new CommandBatch("Cut Triangles");
+		for (ObjectSplit split : objectSplits) {
+			if (!split.selectedTrianglesToRemove.isEmpty())
+				commands.addCommand(editor.selectionManager.getModifyTriangles(
+					null, split.selectedTrianglesToRemove, false));
+
+			commands.addCommand(new CreateObject(split.cutObject));
+			commands.addCommand(new ReplaceBatches(split.replacements));
+
+			if (!split.selectedTrianglesToAdd.isEmpty())
+				commands.addCommand(editor.selectionManager.getModifyTriangles(
+					split.selectedTrianglesToAdd, null, false));
 		}
 
 		MapEditor.execute(commands);
+		successful = true;
 	}
 
-	private void cutBatch(MapObject obj, CommandBatch commands, TriangleBatch batch)
+	public boolean wasSuccessful()
 	{
-		IdentityArrayList<Triangle> positive = new IdentityArrayList<>();
-		IdentityArrayList<Triangle> negative = new IdentityArrayList<>();
+		return successful;
+	}
 
-		for (Triangle t : batch.triangles) {
-			IntersectionResult result = intersectsPlane(t);
-			List<Triangle> cutTris = new LinkedList<>();
-
-			if (result.positive.size() == 3 || result.negative.size() == 3 || result.zero.size() > 1) {
-				cutTris.add(t); // no need to cut
+	private boolean hasWorldSpaceVertices(MapObject obj)
+	{
+		for (Triangle t : obj.getMesh()) {
+			for (Vertex v : t.vert) {
+				if (!v.useLocal)
+					return true;
 			}
-			else if (result.zero.isEmpty()) {
-				cutTris.addAll(cutInto3(result));
-			}
-			else if (result.zero.size() == 1) {
-				if (result.positive.size() == 2 || result.negative.size() == 2)
-					cutTris.add(t); // no need to cut
-				else
-					cutTris.addAll(cutInto2(result));
-			}
-			else
-				throw new IllegalStateException(String.format(
-					"Cut resulted in triangle with pos: %d, neg: %d, zero: %d",
-					result.positive.size(), result.negative.size(), result.zero.size()));
+		}
+		return false;
+	}
 
-			// fix normals
-			Vector3f triNorm = t.getNormalSafe();
-			for (Triangle cut : cutTris) {
-				Vector3f cutNorm = cut.getNormalSafe();
-				if (Vector3f.dot(triNorm, cutNorm) < 0)
-					cut.flipNormal();
+	ObjectSplit buildObjectSplit(MapObject obj) throws CutException
+	{
+		List<TriangleBatch> sourceBatches = obj.getMesh().getBatches();
+		List<BatchSplit> batchSplits = new ArrayList<>(sourceBatches.size());
+		HashMap<EdgeKey, Vertex> intersectionCache = new HashMap<>();
+		IdentityArrayList<Triangle> selectedTrianglesToRemove = new IdentityArrayList<>();
+		IdentityArrayList<Triangle> selectedTrianglesToAdd = new IdentityArrayList<>();
 
-				float cutSign = Math.signum(distFromPlane(cut.getCenter()));
-				if (cutSign > 0.0f)
-					positive.add(cut);
-				else
-					negative.add(cut);
+		int positiveCount = 0;
+		int negativeCount = 0;
+
+		for (TriangleBatch batch : sourceBatches) {
+			BatchSplit batchSplit = new BatchSplit(batch);
+
+			for (Triangle source : batch.triangles) {
+				TriangleSplit triangleSplit = splitTriangle(source, intersectionCache);
+				batchSplit.positive.addAll(triangleSplit.positive);
+				batchSplit.negative.addAll(triangleSplit.negative);
+
+				positiveCount += triangleSplit.positive.size();
+				negativeCount += triangleSplit.negative.size();
+
+				boolean remainsUnchanged = triangleSplit.negative.size() == 1
+					&& triangleSplit.negative.get(0) == source;
+				if (source.selected && !remainsUnchanged) {
+					selectedTrianglesToRemove.add(source);
+					selectedTrianglesToAdd.addAll(triangleSplit.negative);
+				}
+			}
+
+			batchSplits.add(batchSplit);
+		}
+
+		// Moving an entire object to a duplicate is not a cut. Leave it untouched.
+		if (positiveCount == 0 || negativeCount == 0)
+			return null;
+
+		MapObject cutObject = obj.deepCopy();
+		cutObject.setName(obj.getName() + " Cut");
+		preserveTreeParent(obj, cutObject);
+		copyPropertiesNotHandledByDeepCopy(obj, cutObject);
+
+		List<TriangleBatch> cutBatches = cutObject.getMesh().getBatches();
+		if (cutBatches.size() != batchSplits.size())
+			throw new CutException("could not preserve the batch layout for " + obj.getName());
+
+		IdentityHashMap<Vertex, Vertex> vertexCopies = new IdentityHashMap<>();
+		List<BatchReplacement> replacements = new ArrayList<>(batchSplits.size());
+		for (int i = 0; i < batchSplits.size(); i++) {
+			BatchSplit split = batchSplits.get(i);
+			TriangleBatch cutBatch = cutBatches.get(i);
+
+			cutBatch.triangles = copyTriangles(split.positive, vertexCopies);
+			replacements.add(new BatchReplacement(split.sourceBatch, split.negative));
+		}
+
+		cutObject.updateMeshHierarchy();
+		cutObject.dirtyAABB = true;
+
+		return new ObjectSplit(
+			cutObject,
+			replacements,
+			selectedTrianglesToRemove,
+			selectedTrianglesToAdd);
+	}
+
+	private TriangleSplit splitTriangle(Triangle source, HashMap<EdgeKey, Vertex> intersectionCache) throws CutException
+	{
+		boolean hasPositive = false;
+		boolean hasNegative = false;
+		for (Vertex v : source.vert) {
+			float distance = distFromPlane(v.getCurrentPos());
+			hasPositive |= distance > PLANE_EPSILON;
+			hasNegative |= distance < -PLANE_EPSILON;
+		}
+
+		TriangleSplit result = new TriangleSplit();
+		if (!hasPositive) {
+			result.negative.add(source);
+			return result;
+		}
+		if (!hasNegative) {
+			result.positive.add(source);
+			return result;
+		}
+
+		List<Vertex> positivePolygon = clipTriangle(source, true, intersectionCache);
+		List<Vertex> negativePolygon = clipTriangle(source, false, intersectionCache);
+		if (positivePolygon == null || negativePolygon == null)
+			throw new CutException("could not intersect a triangle in " + getOwnerName(source));
+
+		triangulate(positivePolygon, source.doubleSided, result.positive);
+		triangulate(negativePolygon, source.doubleSided, result.negative);
+
+		if (result.positive.isEmpty() || result.negative.isEmpty())
+			throw new CutException("the cut would create zero-area geometry in "
+				+ getOwnerName(source));
+
+		return result;
+	}
+
+	private static String getOwnerName(Triangle triangle)
+	{
+		if (triangle.parentBatch != null
+			&& triangle.parentBatch.parentMesh != null
+			&& triangle.parentBatch.parentMesh.parentObject != null) {
+			String name = triangle.parentBatch.parentMesh.parentObject.getName();
+			if (name != null && !name.isBlank())
+				return name;
+		}
+		return "selected geometry";
+	}
+
+	private List<Vertex> clipTriangle(Triangle source, boolean keepPositive, HashMap<EdgeKey, Vertex> intersectionCache)
+	{
+		List<Vertex> result = new ArrayList<>(4);
+
+		for (int i = 0; i < 3; i++) {
+			Vertex current = source.vert[i];
+			Vertex next = source.vert[(i + 1) % 3];
+			float currentDistance = distFromPlane(current.getCurrentPos());
+			float nextDistance = distFromPlane(next.getCurrentPos());
+
+			if (isInside(currentDistance, keepPositive))
+				addUniqueVertex(result, current);
+
+			if (crossesPlane(currentDistance, nextDistance)) {
+				Vertex intersection = getIntersection(
+					current, next, currentDistance, nextDistance, intersectionCache);
+				if (intersection == null)
+					return null;
+				addUniqueVertex(result, intersection);
 			}
 		}
 
-		for (Triangle t : negative)
-			t.parentBatch = batch;
+		if (result.size() > 1 && samePosition(result.get(0), result.get(result.size() - 1)))
+			result.remove(result.size() - 1);
 
-		TriangleBatch cutBatch = new TriangleBatch(null);
+		return result;
+	}
 
-		for (Triangle t : positive) {
-			cutBatch.triangles.add(t.deepCopy());
-			t.parentBatch = cutBatch;
-		}
+	private static boolean isInside(float distance, boolean keepPositive)
+	{
+		return keepPositive ? distance >= -PLANE_EPSILON : distance <= PLANE_EPSILON;
+	}
 
-		// nothing was cut
-		if (negative.size() < 1)
+	private static boolean crossesPlane(float a, float b)
+	{
+		return (a > PLANE_EPSILON && b < -PLANE_EPSILON)
+			|| (a < -PLANE_EPSILON && b > PLANE_EPSILON);
+	}
+
+	private Vertex getIntersection(
+		Vertex a,
+		Vertex b,
+		float distanceA,
+		float distanceB,
+		HashMap<EdgeKey, Vertex> intersectionCache)
+	{
+		EdgeKey edge = new EdgeKey(a, b);
+		Vertex cached = intersectionCache.get(edge);
+		if (cached != null)
+			return cached;
+
+		float denominator = distanceA - distanceB;
+		if (Math.abs(denominator) < PLANE_EPSILON || a.useLocal != b.useLocal)
+			return null;
+
+		float alpha = distanceA / denominator;
+		if (alpha < -PLANE_EPSILON || alpha > 1.0f + PLANE_EPSILON)
+			return null;
+		alpha = Math.max(0.0f, Math.min(1.0f, alpha));
+
+		Vector3f posA = a.getCurrentPos();
+		Vector3f posB = b.getCurrentPos();
+		Vertex intersection = new Vertex(
+			posA.x + alpha * (posB.x - posA.x),
+			posA.y + alpha * (posB.y - posA.y),
+			posA.z + alpha * (posB.z - posA.z));
+		intersection.useLocal = a.useLocal;
+
+		intersection.uv = new UV(
+			Math.round((1.0f - alpha) * a.uv.getU() + alpha * b.uv.getU()),
+			Math.round((1.0f - alpha) * a.uv.getV() + alpha * b.uv.getV()));
+		intersection.r = interpolate(a.r, b.r, alpha);
+		intersection.g = interpolate(a.g, b.g, alpha);
+		intersection.b = interpolate(a.b, b.b, alpha);
+		intersection.a = interpolate(a.a, b.a, alpha);
+
+		intersectionCache.put(edge, intersection);
+		return intersection;
+	}
+
+	private static int interpolate(int a, int b, float alpha)
+	{
+		return Math.round((1.0f - alpha) * a + alpha * b);
+	}
+
+	private static void addUniqueVertex(List<Vertex> vertices, Vertex vertex)
+	{
+		if (vertices.isEmpty() || !samePosition(vertices.get(vertices.size() - 1), vertex))
+			vertices.add(vertex);
+	}
+
+	private static boolean samePosition(Vertex a, Vertex b)
+	{
+		return a.getCurrentX() == b.getCurrentX()
+			&& a.getCurrentY() == b.getCurrentY()
+			&& a.getCurrentZ() == b.getCurrentZ();
+	}
+
+	private static void triangulate(List<Vertex> polygon, boolean doubleSided, List<Triangle> output)
+	{
+		if (polygon.size() < 3)
 			return;
 
-		MapObject cutObject = getCutObject(obj, cutBatch);
-
-		commands.addCommand(new CreateObject(cutObject));
-		commands.addCommand(new ReplaceTriangles(batch, negative));
-	}
-
-	private List<Triangle> cutInto2(IntersectionResult intResult)
-	{
-		List<Triangle> cutTris = new ArrayList<>(2);
-
-		assert (intResult.positive.size() == 1);
-		assert (intResult.negative.size() == 1);
-		assert (intResult.zero.size() == 1);
-
-		Vertex A = intResult.zero.get(0);
-		Vertex B = intResult.positive.get(0);
-		Vertex C = intResult.negative.get(0);
-
-		Vector3f intBC = intersection(C.getCurrentPos(), B.getCurrentPos());
-
-		if (intBC == null) {
-			System.out.println("cut2 NULL");
-			return cutTris;
+		Vertex first = polygon.get(0);
+		for (int i = 1; i < polygon.size() - 1; i++) {
+			Triangle triangle = new Triangle(first, polygon.get(i), polygon.get(i + 1));
+			triangle.doubleSided = doubleSided;
+			if (triangle.getArea() > PLANE_EPSILON)
+				output.add(triangle);
 		}
-
-		Vertex X = new Vertex(intBC);
-
-		interpVertexColor(X, C, B);
-		interpTexCoords(X, C, B);
-
-		cutTris.add(new Triangle(A, B, X));
-		cutTris.add(new Triangle(A, C, X));
-
-		return cutTris;
 	}
 
-	private List<Triangle> cutInto3(IntersectionResult intResult)
+	private static IdentityArrayList<Triangle> copyTriangles(
+		Iterable<Triangle> triangles,
+		IdentityHashMap<Vertex, Vertex> vertexCopies)
 	{
-		List<Vertex> isolatedList;
-		List<Vertex> pairedList;
-		List<Triangle> cutTris = new ArrayList<>(3);
+		IdentityArrayList<Triangle> copies = new IdentityArrayList<>();
+		for (Triangle triangle : triangles) {
+			Vertex a = vertexCopies.computeIfAbsent(triangle.vert[0], Vertex::deepCopy);
+			Vertex b = vertexCopies.computeIfAbsent(triangle.vert[1], Vertex::deepCopy);
+			Vertex c = vertexCopies.computeIfAbsent(triangle.vert[2], Vertex::deepCopy);
 
-		if (intResult.positive.size() > intResult.negative.size()) {
-			isolatedList = intResult.negative;
-			pairedList = intResult.positive;
+			Triangle copy = new Triangle(a, b, c);
+			copy.doubleSided = triangle.doubleSided;
+			copies.add(copy);
 		}
-		else {
-			isolatedList = intResult.positive;
-			pairedList = intResult.negative;
-		}
-
-		assert (isolatedList.size() == 1);
-		assert (pairedList.size() == 2);
-
-		Vertex A = isolatedList.get(0);
-		Vertex B = pairedList.get(0);
-		Vertex C = pairedList.get(1);
-
-		if (Math.signum(distFromPlane(A.getCurrentPos())) > 0.0f) {
-			Vector3f intAB = intersection(B.getCurrentPos(), A.getCurrentPos());
-			Vector3f intAC = intersection(C.getCurrentPos(), A.getCurrentPos());
-
-			if (intAB == null || intAC == null) {
-				System.out.println("cut3 NULL > 0");
-				return cutTris;
-			}
-
-			Vertex X = new Vertex(intAB);
-			Vertex Y = new Vertex(intAC);
-			interpVertexColor(X, B, A);
-			interpVertexColor(Y, C, A);
-			interpTexCoords(X, B, A);
-			interpTexCoords(Y, C, A);
-
-			cutTris.add(new Triangle(A, X, Y));
-			cutTris.add(new Triangle(Y, X, B));
-			cutTris.add(new Triangle(B, C, Y));
-		}
-		else {
-			Vector3f intAB = intersection(A.getCurrentPos(), B.getCurrentPos());
-			Vector3f intAC = intersection(A.getCurrentPos(), C.getCurrentPos());
-
-			if (intAB == null || intAC == null) {
-				System.out.println("cut3 NULL <= 0");
-				return cutTris;
-			}
-
-			Vertex X = new Vertex(intAB);
-			Vertex Y = new Vertex(intAC);
-			interpVertexColor(X, B, A);
-			interpVertexColor(Y, C, A);
-			interpTexCoords(X, B, A);
-			interpTexCoords(Y, C, A);
-
-			cutTris.add(new Triangle(A, X, Y));
-			cutTris.add(new Triangle(Y, X, B));
-			cutTris.add(new Triangle(B, C, Y));
-		}
-
-		return cutTris;
+		return copies;
 	}
 
-	// assumes x,A,B colinear with A <= x <= B. clamped to [0,1]
-	private float getInterpAlpha(Vertex x, Vertex A, Vertex B)
+	private float distFromPlane(Vector3f point)
 	{
-		float dAB = GeometryUtils.dist3D(A.getCurrentPos(), B.getCurrentPos());
-		float dAx = GeometryUtils.dist3D(A.getCurrentPos(), x.getCurrentPos());
-		if (dAB < 1e-4)
-			return 0.0f;
-		float alpha = dAx / dAB;
-		assert (alpha >= 0.0f);
-		return Math.min(Math.max(alpha, 0.0f), 1.0f);
+		return Vector3f.dot(Vector3f.sub(point, planePoint), planeNormal);
 	}
 
-	private void interpTexCoords(Vertex x, Vertex A, Vertex B)
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private static void preserveTreeParent(MapObject source, MapObject copy)
 	{
-		float alpha = getInterpAlpha(x, A, B);
-		int u = Math.round((1.0f - alpha) * A.uv.getU() + alpha * B.uv.getU());
-		int v = Math.round((1.0f - alpha) * A.uv.getV() + alpha * B.uv.getV());
-		x.uv = new UV(u, v);
+		MapObjectNode copyNode = copy.getNode();
+		copyNode.parentNode = source.getNode().parentNode;
 	}
 
-	private void interpVertexColor(Vertex x, Vertex A, Vertex B)
+	private static void copyPropertiesNotHandledByDeepCopy(MapObject source, MapObject copy)
 	{
-		float alpha = getInterpAlpha(x, A, B);
-		x.r = Math.round((1.0f - alpha) * A.r + alpha * B.r);
-		x.g = Math.round((1.0f - alpha) * A.g + alpha * B.g);
-		x.b = Math.round((1.0f - alpha) * A.b + alpha * B.b);
-		x.a = Math.round((1.0f - alpha) * A.a + alpha * B.a);
+		if (source instanceof Model sourceModel && copy instanceof Model copyModel)
+			copyModel.pannerID.copy(sourceModel.pannerID);
 	}
 
-	public static class ReplaceTriangles extends AbstractCommand
+	private static void applyTriangles(TriangleBatch batch, IdentityArrayList<Triangle> triangles)
 	{
-		TriangleBatch batch;
-		IdentityArrayList<Triangle> oldTriangles;
-		IdentityArrayList<Triangle> newTriangles;
+		batch.triangles = triangles;
+		batch.setParent(batch.parentMesh);
 
-		public ReplaceTriangles(TriangleBatch batch, List<Triangle> triangles)
+		AbstractMesh mesh = batch.parentMesh;
+		if (mesh instanceof TexturedMesh texturedMesh)
+			texturedMesh.setDirty();
+		if (mesh != null && mesh.parentObject != null)
+			mesh.parentObject.dirtyAABB = true;
+	}
+
+	static final class ReplaceBatches extends AbstractCommand
+	{
+		final List<BatchReplacement> replacements;
+
+		ReplaceBatches(List<BatchReplacement> replacements)
 		{
-			super("Replace Triangles");
+			super("Replace Cut Geometry");
+			this.replacements = replacements;
+		}
 
-			this.batch = batch;
-			oldTriangles = new IdentityArrayList<>(batch.triangles);
-			newTriangles = new IdentityArrayList<>(triangles);
+		@Override
+		public boolean shouldExec()
+		{
+			return !replacements.isEmpty();
 		}
 
 		@Override
 		public void exec()
 		{
 			super.exec();
-			batch.triangles = newTriangles;
+			for (BatchReplacement replacement : replacements)
+				applyTriangles(replacement.batch, replacement.newTriangles);
 		}
 
 		@Override
 		public void undo()
 		{
 			super.undo();
-			batch.triangles = oldTriangles;
+			for (BatchReplacement replacement : replacements)
+				applyTriangles(replacement.batch, replacement.oldTriangles);
 		}
 	}
 
-	/**
-	 * @return The lone {@code Vertex} separated from the other two by the plane,
-	 * if one exists. Otherwise, {@code null}.
-	 */
-	private IntersectionResult intersectsPlane(Triangle t)
+	static final class ObjectSplit
 	{
-		float[] signs = new float[3];
-		signs[0] = Math.signum(distFromPlane(t.vert[0].getCurrentPos()));
-		signs[1] = Math.signum(distFromPlane(t.vert[1].getCurrentPos()));
-		signs[2] = Math.signum(distFromPlane(t.vert[2].getCurrentPos()));
+		final MapObject cutObject;
+		final List<BatchReplacement> replacements;
+		private final IdentityArrayList<Triangle> selectedTrianglesToRemove;
+		private final IdentityArrayList<Triangle> selectedTrianglesToAdd;
 
-		IntersectionResult result = new IntersectionResult();
-		for (int i = 0; i < 3; i++) {
-			float sgn = signs[i];
-			if (sgn > 0)
-				result.positive.add(t.vert[i]);
-			else if (sgn < 0)
-				result.negative.add(t.vert[i]);
-			else
-				result.zero.add(t.vert[i]);
+		private ObjectSplit(
+			MapObject cutObject,
+			List<BatchReplacement> replacements,
+			IdentityArrayList<Triangle> selectedTrianglesToRemove,
+			IdentityArrayList<Triangle> selectedTrianglesToAdd)
+		{
+			this.cutObject = cutObject;
+			this.replacements = replacements;
+			this.selectedTrianglesToRemove = selectedTrianglesToRemove;
+			this.selectedTrianglesToAdd = selectedTrianglesToAdd;
+		}
+	}
+
+	private static final class BatchSplit
+	{
+		private final TriangleBatch sourceBatch;
+		private final IdentityArrayList<Triangle> positive = new IdentityArrayList<>();
+		private final IdentityArrayList<Triangle> negative = new IdentityArrayList<>();
+
+		private BatchSplit(TriangleBatch sourceBatch)
+		{
+			this.sourceBatch = sourceBatch;
+		}
+	}
+
+	static final class BatchReplacement
+	{
+		final TriangleBatch batch;
+		final IdentityArrayList<Triangle> oldTriangles;
+		final IdentityArrayList<Triangle> newTriangles;
+
+		private BatchReplacement(TriangleBatch batch, Iterable<Triangle> newTriangles)
+		{
+			this.batch = batch;
+			this.oldTriangles = batch.triangles;
+			this.newTriangles = new IdentityArrayList<>(newTriangles);
+		}
+	}
+
+	private static final class TriangleSplit
+	{
+		private final IdentityArrayList<Triangle> positive = new IdentityArrayList<>();
+		private final IdentityArrayList<Triangle> negative = new IdentityArrayList<>();
+	}
+
+	private static final class EdgeKey
+	{
+		private final Vertex a;
+		private final Vertex b;
+
+		private EdgeKey(Vertex a, Vertex b)
+		{
+			this.a = a;
+			this.b = b;
 		}
 
-		return result;
+		@Override
+		public int hashCode()
+		{
+			return System.identityHashCode(a) ^ System.identityHashCode(b);
+		}
+
+		@Override
+		public boolean equals(Object obj)
+		{
+			if (!(obj instanceof EdgeKey other))
+				return false;
+			return (a == other.a && b == other.b) || (a == other.b && b == other.a);
+		}
 	}
 
-	private static class IntersectionResult
+	private static final class CutException extends Exception
 	{
-		List<Vertex> positive = new ArrayList<>(3);
-		List<Vertex> negative = new ArrayList<>(3);
-		List<Vertex> zero = new ArrayList<>(3);
-	}
+		private static final long serialVersionUID = 1L;
 
-	private Vector3f intersection(Vector3f a, Vector3f b)
-	{
-		Vector3f AB = Vector3f.sub(b, a);
-
-		if (AB.length() < MathUtil.SMALL_NUMBER)
-			return null;
-
-		Vector3f uAB = Vector3f.getNormalized(AB);
-
-		float cos = Vector3f.dot(uAB, planeNormal);
-
-		// parallel to plane
-		if (Math.abs(cos) < MathUtil.SMALL_NUMBER)
-			return null;
-
-		Vector3f AP = Vector3f.sub(planePoint, a);
-
-		float proj = Vector3f.dot(AP, planeNormal);
-
-		// lies within the plane
-		if (proj < 1e-4)
-			return null;
-
-		float d = (proj / cos);
-
-		Vector3f result = new Vector3f();
-		result.x = a.x + uAB.x * d;
-		result.y = a.y + uAB.y * d;
-		result.z = a.z + uAB.z * d;
-
-		return result;
-	}
-
-	private float distFromPlane(Vector3f a)
-	{
-		Vector3f delta = Vector3f.sub(a, planePoint);
-		return Vector3f.dot(delta, planeNormal);
-	}
-
-	private MapObject getCutObject(MapObject original, TriangleBatch batch)
-	{
-		switch (original.getObjectType()) {
-			default:
-			case MODEL:
-				Model mdl = Model.create(batch, "DrawnModel");
-				if (original.hasMesh()) // should never be false
-					mdl.getMesh().setTexture(((Model) original).getMesh().texture);
-				return mdl;
-			case COLLIDER:
-				return Collider.create(batch, "DrawnCollider");
-			case ZONE:
-				return Zone.create(batch, "DrawnZone");
+		private CutException(String message)
+		{
+			super(message);
 		}
 	}
 }

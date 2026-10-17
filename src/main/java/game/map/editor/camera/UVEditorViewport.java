@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import common.Vector3f;
+
 import game.map.BoundingBox;
 import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.EditorMode;
@@ -16,8 +17,8 @@ import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
 import game.map.shape.Model;
 import renderer.buffers.BufferVertex;
+import renderer.buffers.LineRenderQueue;
 import renderer.buffers.PointRenderQueue;
-import renderer.buffers.TriangleRenderQueue;
 import renderer.shaders.RenderState;
 import renderer.shaders.RenderState.PolygonMode;
 import renderer.shaders.ShaderManager;
@@ -158,15 +159,13 @@ public class UVEditorViewport extends MapEditViewport
 		RenderState.setPointSize(10.0f);
 		RenderState.setLineWidth(2.0f);
 
-		RenderState.setPolygonMode(PolygonMode.LINE);
 		for (Triangle t : triangles) {
-			int i = TriangleRenderQueue.addVertex().setPosition(t.vert[0].uv.getU(), t.vert[0].uv.getV(), 1.0f).getIndex();
-			int j = TriangleRenderQueue.addVertex().setPosition(t.vert[1].uv.getU(), t.vert[1].uv.getV(), 1.0f).getIndex();
-			int k = TriangleRenderQueue.addVertex().setPosition(t.vert[2].uv.getU(), t.vert[2].uv.getV(), 1.0f).getIndex();
-			TriangleRenderQueue.addTriangle(i, j, k);
+			int i = LineRenderQueue.addVertex().setPosition(t.vert[0].uv.getU(), t.vert[0].uv.getV(), 1.0f).getIndex();
+			int j = LineRenderQueue.addVertex().setPosition(t.vert[1].uv.getU(), t.vert[1].uv.getV(), 1.0f).getIndex();
+			int k = LineRenderQueue.addVertex().setPosition(t.vert[2].uv.getU(), t.vert[2].uv.getV(), 1.0f).getIndex();
+			LineRenderQueue.addLineLoop(i, j, k);
 		}
-		TriangleRenderQueue.renderWithTransform(null, true);
-		RenderState.setPolygonMode(PolygonMode.FILL);
+		LineRenderQueue.renderWithTransform(null, true);
 
 		for (Triangle t : triangles)
 			for (Vertex vtx : t.vert) {

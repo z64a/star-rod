@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.List;
 
 import common.Vector3f;
+
 import game.map.Axis;
 import game.map.MapObject;
 import game.map.MapObject.MapObjectType;
@@ -138,7 +139,7 @@ public class DrawTrianglesManager
 
 			if (pointList.size() > 2) {
 				done = true;
-				success = true;
+				success = false;
 
 				Vector3f AB = Vector3f.sub(pointList.get(1), pointList.get(0));
 				Vector3f AC = Vector3f.sub(pointList.get(2), pointList.get(0));
@@ -149,8 +150,11 @@ public class DrawTrianglesManager
 				Vector3f delta = Vector3f.sub(AC, proj);
 
 				if (delta.length() > MathUtil.SMALL_NUMBER) {
-					new TriangleCutter(pointList.get(0), delta.normalize(), editor.selectionManager.getSelectedObjects());
+					TriangleCutter cutter = new TriangleCutter(pointList.get(0), delta.normalize(), editor.selectionManager.getSelectedObjects());
+					success = cutter.wasSuccessful();
 				}
+				else
+					Logger.logWarning("Cannot cut with collinear points.");
 			}
 		}
 	}

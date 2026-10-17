@@ -45,7 +45,7 @@ public class BufferedPoints
 		BufferVertex vtx = new BufferVertex(points.size());
 		points.add(vtx);
 
-		vtx.setPointSize(size);
+		vtx.setPointSize(RenderState.getPointSizePixels(size));
 
 		return vtx;
 	}

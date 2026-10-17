@@ -141,7 +141,12 @@ public abstract class AudioTasks
 
 	public static void dump(File sbnFile, File outDir) throws IOException
 	{
-		Sbn sbn = Sbn.read(sbnFile, readFile(sbnFile));
+		dump(sbnFile, readFile(sbnFile), outDir);
+	}
+
+	static void dump(File sbnFile, byte[] data, File outDir) throws IOException
+	{
+		Sbn sbn = Sbn.read(sbnFile, data);
 
 		File audioDir = new File(outDir, "audio");
 		String[] existing = audioDir.list();

@@ -95,8 +95,9 @@ public class MapShortcutsPanel extends JPanel
 		addHeader(shortcuts, "Controls");
 		addShortcut(shortcuts, "Begin/End", "P");
 
-		addShortcut(shortcuts, "Move", "WASD");
-		addShortcut(shortcuts, "Jump", "J");
+		addShortcut(shortcuts, "Walk", "WASD");
+		addShortcut(shortcuts, "Jump", "J", "Hold for a higher jump; release for a short hop.");
+		addShortcut(shortcuts, "Spin", "R");
 		addShortcut(shortcuts, "Run", "Hold Shift");
 		addShortcut(shortcuts, "Hover", "Hold K");
 
@@ -106,7 +107,7 @@ public class MapShortcutsPanel extends JPanel
 		// screws up the layout for reasons completely unknown!
 		info.add(new JLabel("<html><p>Press P when using the 3D viewport to spawn "
 			+ "at the location of the 3D cursor. Gravity, jump, and collision "
-			+ "physics match in-game.</p><br><p>Current camera zones will switch "
+			+ "physics approximate in-game movement.</p><br><p>Current camera zones will switch "
 			+ "automatically as you move about. You can set hidden colliders and "
 			+ "zones to be ignored (they will still exist in-game).</p><br>"
 			+ "<p>All normal editor actions are available in this mode.</p></html>"),

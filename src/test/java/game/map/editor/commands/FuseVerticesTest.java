@@ -9,8 +9,10 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import game.map.editor.GeometryTestSupport;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
+import game.map.shape.Model;
 import game.map.shape.TriangleBatch;
 import game.map.shape.UV;
 
@@ -25,7 +27,7 @@ class FuseVerticesTest
 		Triangle firstTriangle = triangle(batch, first, new Vertex(10, 0, 0), new Vertex(11, 0, 0));
 		Triangle secondTriangle = triangle(batch, duplicate, new Vertex(12, 0, 0), new Vertex(13, 0, 0));
 
-		FuseVertices command = new FuseVertices(List.of(firstTriangle, secondTriangle));
+		FuseVertices command = new FuseVertices(GeometryTestSupport.selectTriangles(List.of(firstTriangle, secondTriangle)));
 
 		assertTrue(command.shouldExec());
 		command.exec();
@@ -72,7 +74,7 @@ class FuseVerticesTest
 				new Vertex(100 + 2 * i, 0, 0), new Vertex(101 + 2 * i, 0, 0)));
 		}
 
-		FuseVertices command = new FuseVertices(triangles);
+		FuseVertices command = new FuseVertices(GeometryTestSupport.selectTriangles(triangles));
 
 		assertFalse(command.shouldExec());
 	}
@@ -87,15 +89,21 @@ class FuseVerticesTest
 		Triangle secondTriangle = triangle(secondBatch, new Vertex(1, 2, 3),
 			new Vertex(12, 0, 0), new Vertex(13, 0, 0));
 
-		FuseVertices command = new FuseVertices(List.of(firstTriangle, secondTriangle));
+		FuseVertices command = new FuseVertices(GeometryTestSupport.selectTriangles(List.of(firstTriangle, secondTriangle)));
 
 		assertFalse(command.shouldExec());
 	}
 
-	private static Triangle triangle(TriangleBatch batch, Vertex... vertices)
+	private static Triangle triangle(TriangleBatch batch, Vertex ... vertices)
 	{
+		if (batch.parentMesh == null) {
+			Model model = new Model();
+			model.getMesh().displayListModel.addElement(batch);
+			batch.setParent(model.getMesh());
+		}
 		Triangle triangle = new Triangle(vertices[0], vertices[1], vertices[2]);
-		triangle.setParent(batch);
+		batch.triangles.add(triangle);
+		batch.setParent(batch.parentMesh);
 		return triangle;
 	}
 }

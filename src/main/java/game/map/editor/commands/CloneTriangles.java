@@ -1,10 +1,13 @@
 package game.map.editor.commands;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 
 import common.commands.AbstractCommand;
+
 import game.map.editor.selection.Selection;
 import game.map.mesh.Triangle;
+import game.map.mesh.Vertex;
 
 public class CloneTriangles extends AbstractCommand
 {
@@ -18,11 +21,12 @@ public class CloneTriangles extends AbstractCommand
 		this.selection = selection;
 		copies = new ArrayList<>();
 		originals = new ArrayList<>();
+		IdentityHashMap<Vertex, Vertex> vertexMap = new IdentityHashMap<>();
 
 		for (Triangle t : selection.selectableList) {
 			originals.add(t);
 
-			Triangle copy = t.deepCopy();
+			Triangle copy = t.deepCopy(vertexMap);
 			copy.parentBatch = t.parentBatch;
 
 			copy.vert[0].parentMesh = t.vert[0].parentMesh;

@@ -4,6 +4,7 @@ import static game.map.MapKey.*;
 import static renderer.buffers.BufferedMesh.*;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -230,10 +231,14 @@ public class TexturedMesh extends AbstractMesh implements XmlSerializable
 	public TexturedMesh deepCopy()
 	{
 		TexturedMesh m = new TexturedMesh();
+		IdentityHashMap<Vertex, Vertex> vertexMap = new IdentityHashMap<>();
 
 		for (int i = 0; i < displayListModel.size(); i++) {
 			DisplayCommand cmd = displayListModel.getElementAt(i);
-			m.displayListModel.addElement(cmd.deepCopy());
+			if (cmd instanceof TriangleBatch)
+				m.displayListModel.addElement(((TriangleBatch) cmd).deepCopy(vertexMap));
+			else
+				m.displayListModel.addElement(cmd.deepCopy());
 		}
 		m.updateHierarchy();
 		m.setTexture(texture);

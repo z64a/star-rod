@@ -10,7 +10,6 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -35,13 +34,14 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import com.alexandriasoftware.swing.JSplitButton;
+import common.commands.AbstractCommand;
 
 import app.SwingUtils;
-import common.commands.AbstractCommand;
 import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.IShutdownListener;
+import game.map.editor.commands.MoveTriangles;
+import game.map.editor.commands.TriangleTransfer;
 import game.map.editor.ui.SwingGUI;
-import game.map.mesh.AbstractMesh;
 import game.map.mesh.TexturedMesh.DisplayListModel;
 import game.map.mesh.Triangle;
 import game.map.shape.Model;
@@ -57,7 +57,6 @@ import game.map.shape.commands.FlushPipeline;
 import game.map.shape.commands.SetGeometryFlags;
 import net.miginfocom.swing.MigLayout;
 import util.Logger;
-import util.identity.IdentityHashSet;
 
 public class DisplayListPanel extends JPanel implements IShutdownListener, ListSelectionListener
 {
@@ -71,6 +70,12 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 			MapEditor.instance().registerOnShutdown(instance);
 		}
 		return instance;
+	}
+
+	public static void repaintCommandList()
+	{
+		if (instance != null)
+			instance.commandList.repaint();
 	}
 
 	@Override
@@ -170,7 +175,7 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 
 		JMenuItem mergeMenuItem = new JMenuItem("Add Selected Triangles");
 		mergeMenuItem.addActionListener((e) -> {
-			MapEditor.execute(new MergeTriangles(mdl, (TriangleBatch) popupCommand));
+			MapEditor.execute(new MoveTriangles((TriangleBatch) popupCommand, MapEditor.instance().selectionManager));
 		});
 
 		JMenuItem primitiveMenuItem = new JMenuItem("Add Primitive Triangles");
@@ -789,9 +794,8 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 						mergeBatch = batch;
 						mergeTriangles = new ArrayList<>();
 					}
-					else {
+					else
 						mergeTriangles.addAll(batch.triangles);
-					}
 				}
 				else {
 					// add merged batch
@@ -800,7 +804,7 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 							newOrder.add(mergeBatch);
 
 							if (mergeSelected)
-								newSelection.add(newOrder.size());
+								newSelection.add(newOrder.size() - 1);
 
 							if (!mergeTriangles.isEmpty())
 								addCommands.add(new AddTriangles(mergeBatch, mergeTriangles));
@@ -823,7 +827,7 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 					newOrder.add(mergeBatch);
 
 					if (mergeSelected)
-						newSelection.add(newOrder.size());
+						newSelection.add(newOrder.size() - 1);
 
 					if (!mergeTriangles.isEmpty())
 						addCommands.add(new AddTriangles(mergeBatch, mergeTriangles));
@@ -831,6 +835,15 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 			}
 
 			super.setNewOrder(newOrder, newSelection);
+		}
+
+		@Override
+		public boolean shouldExec()
+		{
+			for (AddTriangles cmd : addCommands)
+				if (!cmd.shouldExec())
+					return false;
+			return super.shouldExec();
 		}
 
 		@Override
@@ -852,99 +865,24 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 		}
 	}
 
-	private final class MergeTriangles extends AbstractCommand
-	{
-		private final TriangleBatch newParent;
-
-		private final List<Triangle> triangles;
-		private final List<TriangleBatch> oldParent;
-		private final IdentityHashSet<AbstractMesh> meshes;
-
-		public MergeTriangles(Model mdl, TriangleBatch newParent)
-		{
-			super("Moving Triangles");
-			this.newParent = newParent;
-
-			triangles = MapEditor.instance().selectionManager.getTrianglesFromSelection(Model.class);
-			meshes = new IdentityHashSet<>();
-			meshes.add(mdl.getMesh());
-
-			Iterator<Triangle> iter = triangles.iterator();
-			while (iter.hasNext()) {
-				TriangleBatch parent = iter.next().parentBatch;
-				if (parent == newParent)
-					iter.remove();
-			}
-
-			oldParent = new ArrayList<>(triangles.size());
-			for (int i = 0; i < triangles.size(); i++) {
-				TriangleBatch parentBatch = triangles.get(i).parentBatch;
-				oldParent.add(parentBatch);
-				meshes.add(parentBatch.parentMesh);
-			}
-		}
-
-		@Override
-		public boolean shouldExec()
-		{
-			return triangles.size() > 0;
-		}
-
-		@Override
-		public void exec()
-		{
-			super.exec();
-
-			for (int i = 0; i < triangles.size(); i++) {
-				Triangle t = triangles.get(i);
-				oldParent.get(i).triangles.remove(t);
-				newParent.triangles.add(t);
-				t.setParent(newParent);
-			}
-
-			for (AbstractMesh mesh : meshes)
-				mesh.parentObject.dirtyAABB = true;
-
-			// update the display command descriptions
-			commandList.repaint();
-		}
-
-		@Override
-		public void undo()
-		{
-			super.undo();
-
-			for (int i = 0; i < triangles.size(); i++) {
-				Triangle t = triangles.get(i);
-				newParent.triangles.remove(t);
-				oldParent.get(i).triangles.add(t);
-				t.setParent(oldParent.get(i));
-			}
-
-			for (AbstractMesh mesh : meshes)
-				mesh.parentObject.dirtyAABB = true;
-
-			// update the display command descriptions
-			commandList.repaint();
-		}
-	}
-
 	public static final class AddTriangles extends AbstractCommand
 	{
 		private final TriangleBatch batch;
 		private final List<Triangle> triangles;
+		private final TriangleTransfer transfer;
 
 		public AddTriangles(TriangleBatch parent, List<Triangle> triangles)
 		{
 			super("Add " + triangles.size() + " Triangles");
 			this.batch = parent;
-			this.triangles = triangles;
+			this.triangles = new ArrayList<>(triangles);
+			transfer = new TriangleTransfer(batch, this.triangles);
 		}
 
 		@Override
 		public boolean shouldExec()
 		{
-			return triangles.size() > 0;
+			return triangles.size() > 0 && transfer.isValid();
 		}
 
 		@Override
@@ -952,15 +890,13 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 		{
 			super.exec();
 
-			for (Triangle t : triangles) {
-				batch.triangles.add(t);
-				t.setParent(batch);
-			}
+			batch.triangles.addAll(triangles);
+			transfer.exec();
 
 			batch.parentMesh.parentObject.dirtyAABB = true;
 
 			// update the display command descriptions
-			DisplayListPanel.instance().commandList.repaint();
+			DisplayListPanel.repaintCommandList();
 		}
 
 		@Override
@@ -968,14 +904,17 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 		{
 			super.undo();
 
-			for (Triangle t : triangles) {
+			for (int i = 0; i < triangles.size(); i++) {
+				Triangle t = triangles.get(i);
 				batch.triangles.remove(t);
 			}
+			transfer.undo();
 
 			batch.parentMesh.parentObject.dirtyAABB = true;
 
 			// update the display command descriptions
-			DisplayListPanel.instance().commandList.repaint();
+			DisplayListPanel.repaintCommandList();
 		}
 	}
+
 }

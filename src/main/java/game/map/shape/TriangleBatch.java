@@ -2,6 +2,7 @@ package game.map.shape;
 
 import static game.map.MapKey.*;
 
+import java.util.IdentityHashMap;
 import java.util.List;
 
 import org.w3c.dom.Element;
@@ -102,13 +103,19 @@ public class TriangleBatch extends DisplayCommand implements XmlSerializable
 	@Override
 	public TriangleBatch deepCopy()
 	{
+		return deepCopy(new IdentityHashMap<>());
+	}
+
+	public TriangleBatch deepCopy(IdentityHashMap<Vertex, Vertex> vertexMap)
+	{
 		TriangleBatch copyBatch = new TriangleBatch(parentMesh);
 
 		for (Triangle t : triangles) {
-			Triangle copyTriangle = t.deepCopy();
+			Triangle copyTriangle = t.deepCopy(vertexMap);
 			copyTriangle.setParent(copyBatch);
 			copyBatch.triangles.add(copyTriangle);
 		}
+		copyBatch.setParent(parentMesh);
 
 		return copyBatch;
 	}

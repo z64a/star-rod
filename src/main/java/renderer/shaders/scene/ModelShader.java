@@ -9,7 +9,6 @@ import renderer.shaders.components.TexUnit1D;
 import renderer.shaders.components.TexUnit2D;
 import renderer.shaders.components.UniformBool;
 import renderer.shaders.components.UniformColorRGBA;
-import renderer.shaders.components.UniformFloat;
 import renderer.shaders.components.UniformFloatVector;
 import renderer.shaders.components.UniformInt;
 
@@ -49,7 +48,7 @@ public final class ModelShader extends BaseShader
 	public final UniformBool useFiltering;
 
 	public final UniformBool enableLOD;
-	public final UniformFloat lodBias;
+	public final UniformInt maxLOD;
 
 	public ModelShader()
 	{
@@ -83,8 +82,7 @@ public final class ModelShader extends BaseShader
 		auxScroll = new UniformFloatVector(program, "auxScroll", 0.0f, 0.0f);
 
 		enableLOD = new UniformBool(program, "useLOD", false);
-
-		lodBias = new UniformFloat(program, "lodBias", 0);
+		maxLOD = new UniformInt(program, "maxLOD", 0);
 
 		initializeCache();
 	}

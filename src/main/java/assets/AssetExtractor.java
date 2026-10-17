@@ -12,6 +12,7 @@ import app.LoadingBar;
 import app.Resource;
 import app.Resource.ResourceType;
 import app.input.IOUtils;
+import game.audio.AudioExtractor;
 import game.map.Map;
 import game.map.compiler.CollisionDecompiler;
 import game.map.compiler.GeometryDecompiler;
@@ -79,6 +80,11 @@ public class AssetExtractor
 			Logger.log("Extracting assets in " + assetDir.getName());
 			extractMaps(assetDir);
 			FileUtils.touch(sentinel);
+		}
+
+		if (!AudioExtractor.isExtracted(assetDir)) {
+			LoadingBar.show("Extracting Audio");
+			AudioExtractor.extract(Environment.getProjectFile("ver/us/baserom.z64"), assetDir);
 		}
 	}
 
