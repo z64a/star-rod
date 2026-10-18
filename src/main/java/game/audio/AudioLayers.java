@@ -34,11 +34,14 @@ public class AudioLayers
 		+ "named after its file, and Mamar sets the banks it loads. Delete this file.";
 	private static final String AMBIENT_RETIRED = "ambient sounds aren't listed in a table: each file in mseq/ is an "
 		+ "ambient sound named after its file, and radio_0 to radio_3 are the radio's stations. Delete this file.";
+	private static final String BANKS_RETIRED = "banks aren't listed in a table: every bank in bank/ is always loaded "
+		+ "unless a song or the radio loads it, and the build picks its slot. Delete this file.";
 
 	/** Tables that papermario-dx replaced with the files they listed, with what to do instead. */
 	private static final Map<String, String> RETIRED = Map.of(
 		"songs.xml", SONGS_RETIRED, "Songs.xml", SONGS_RETIRED,
-		"ambient_sounds.xml", AMBIENT_RETIRED, "AmbientSounds.xml", AMBIENT_RETIRED);
+		"ambient_sounds.xml", AMBIENT_RETIRED, "AmbientSounds.xml", AMBIENT_RETIRED,
+		"banks.xml", BANKS_RETIRED, "Banks.xml", BANKS_RETIRED);
 
 	/** Asset stack roots, highest priority first. */
 	private final List<File> layers;

@@ -17,7 +17,7 @@ import util.xml.XmlWrapper.XmlWriter;
 
 /**
  * The PRG file (instrument presets) and the PER file (drums). Both refer to instruments by bank and
- * patch bytes; in XML they name the sample, and the banks listed in banks.xml say where it is.
+ * patch bytes; in XML they name the sample, and the always-loaded banks say where it is.
  */
 public abstract class Presets
 {
@@ -30,16 +30,16 @@ public abstract class Presets
 	private static final int DEFAULT_BANK = 0x20;
 	private static final int DEFAULT_PATCH = 0x10;
 
-	/** The instruments of the banks listed in banks.xml, by sample name and by address. */
+	/** The instruments of the always-loaded banks, by sample name and by address. */
 	public static class Addresses
 	{
 		private final Map<String, Integer> byName = new HashMap<>();
 		private final Map<Integer, String> byAddress = new HashMap<>();
 
 		/** Banks maps bank file names to the banks that are built from sources. */
-		public Addresses(List<AudioTables.Bank> table, Map<String, SoundBank> banks)
+		public Addresses(List<Banks.Bank> table, Map<String, SoundBank> banks)
 		{
-			for (AudioTables.Bank entry : table) {
+			for (Banks.Bank entry : table) {
 				SoundBank bank = banks.get(entry.file());
 				if (bank == null)
 					continue;
@@ -74,7 +74,7 @@ public abstract class Presets
 		{
 			Integer address = byName.get(wav);
 			if (address == null)
-				throw new InputFileException(source, "%s: no bank in banks.xml has an instrument named %s", user,
+				throw new InputFileException(source, "%s: no always-loaded bank has an instrument named %s", user,
 					wav);
 			return new int[] { address >> 4 & 0xF0 | envelope, address & 0xFF };
 		}
@@ -84,7 +84,7 @@ public abstract class Presets
 			int set = bank >> 4 & 7;
 			String wav = byAddress.get((set == 7 ? 0 : set) << 8 | patch);
 			if (wav == null)
-				throw new InputFileException(source, "%s uses bank %02X patch %02X, which no bank in banks.xml provides", user,
+				throw new InputFileException(source, "%s uses bank %02X patch %02X, which no always-loaded bank provides", user,
 					bank, patch);
 			return wav;
 		}

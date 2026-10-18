@@ -20,8 +20,8 @@ import org.apache.commons.io.FileUtils;
 
 import app.Environment;
 import app.input.InputFileException;
-import game.audio.AudioTables.Bank;
 import game.audio.AudioTables.Key;
+import game.audio.Banks.Bank;
 import game.audio.Songs.Song;
 import game.audio.engine.AudioRender;
 import util.xml.XmlWrapper.XmlTag;
@@ -196,9 +196,9 @@ public abstract class AudioTasks
 		if (sbn.extra.length > 0)
 			FileUtils.writeByteArrayToFile(new File(audioDir, EXTRA_FILE), sbn.extra);
 
-		List<AudioTables.Bank> table = new ArrayList<>();
+		List<Bank> table = new ArrayList<>();
 		for (int[] bank : sbn.banks)
-			table.add(new AudioTables.Bank(names[bank[0]], bank[2], bank[1], sbnFile));
+			table.add(new Bank(names[bank[0]], bank[2], bank[1], sbnFile));
 		Presets.Addresses addresses = new Presets.Addresses(table, banks);
 		Presets.dumpPresets(sbnFile, sbn.files.get(sbn.resources.get(PRG_RESOURCE)).data, addresses,
 			new File(audioDir, "presets.xml"));
@@ -234,9 +234,9 @@ public abstract class AudioTasks
 
 		if (!Environment.isDX()) {
 			dumpSongs(sbnFile, sbn, names, new File(audioDir, "songs.xml"));
+			dumpBanks(sbnFile, sbn, names, new File(audioDir, "banks.xml"));
 			dumpAmbient(sbnFile, sbn, names, new File(audioDir, "ambient_sounds.xml"));
 		}
-		dumpBanks(sbnFile, sbn, names, new File(audioDir, "banks.xml"));
 	}
 
 	private static void checkFixedFiles(File sbnFile, Sbn sbn, String[] names)
@@ -408,11 +408,10 @@ public abstract class AudioTasks
 		layers.checkTables();
 
 		List<Song> songs = Songs.read(layers);
-		List<Bank> banks = AudioTables.readBanks(layers);
 		AmbientSounds ambient = AmbientSounds.read(layers);
 
 		Sbn sbn = new Sbn();
-		ArchiveFiles files = readFiles(layers, sbn, banks, ambient);
+		ArchiveFiles files = readFiles(layers, sbn, songs, ambient);
 		Map<String, Integer> index = files.index();
 
 		File extra = layers.getFile(EXTRA_FILE);
@@ -432,7 +431,7 @@ public abstract class AudioTasks
 			sbn.songs.add(entry);
 		}
 
-		for (Bank bank : banks) {
+		for (Bank bank : files.banks()) {
 			int file = find(sbn, index, bank.source(), "Bank '" + bank.file() + "'", bank.file(), "BK");
 			sbn.banks.add(new int[] { file, bank.index(), bank.group() });
 		}
@@ -483,14 +482,14 @@ public abstract class AudioTasks
 	}
 
 	/**
-	 * The files read into the archive, by file name; the sound effect archive built from the tables, or null; and the
-	 * bank file the radio loads, or null if there is no radio.
+	 * The files read into the archive, by file name; the always-loaded banks; the sound effect archive built from the
+	 * tables, or null; and the bank file the radio loads, or null if there is no radio.
 	 */
-	private record ArchiveFiles(Map<String, Integer> index, SfxArchive sfx, String radioBank)
+	private record ArchiveFiles(Map<String, Integer> index, List<Bank> banks, SfxArchive sfx, String radioBank)
 	{}
 
 	/** Reads every audio file in the layers into the archive. Banks and the preset files are built from their sources. */
-	private static ArchiveFiles readFiles(AudioLayers layers, Sbn sbn, List<Bank> bankTable, AmbientSounds ambient)
+	private static ArchiveFiles readFiles(AudioLayers layers, Sbn sbn, List<Song> songs, AmbientSounds ambient)
 	{
 		Map<String, Integer> vanillaOrder = new HashMap<>();
 		for (String name : AudioNames.getFileOrder()) {
@@ -554,6 +553,10 @@ public abstract class AudioTasks
 			sources.add(new Source(bkType, name + ".bk", xml, bank.build(System.out::println)));
 		}
 
+		String radioBank = ambient.radioBank(layers, sampleOwners::get);
+		List<Bank> bankTable = Banks.read(layers, bankNames.stream().map(name -> name + ".bk").toList(),
+			() -> Banks.songBanks(songs, radioBank));
+
 		// the presets, drums, and sounds name banks by instrument, so the table must be complete first
 		for (Bank bank : bankTable) {
 			if (sources.stream().noneMatch(source -> source.type() == bkType && source.name().equals(bank.file())))
@@ -561,7 +564,6 @@ public abstract class AudioTasks
 		}
 
 		Presets.Addresses addresses = new Presets.Addresses(bankTable, banks);
-		String radioBank = ambient.radioBank(layers, sampleOwners::get);
 		Presets.Addresses mseqAddresses = radioBank != null && banks.containsKey(radioBank)
 			? addresses.withAuxiliary(RADIO_BANK_SLOT, banks.get(radioBank))
 			: addresses;
@@ -597,7 +599,7 @@ public abstract class AudioTasks
 			index.put(source.name(), sbn.files.size());
 			sbn.files.add(file);
 		}
-		return new ArchiveFiles(index, sfx, radioBank);
+		return new ArchiveFiles(index, bankTable, sfx, radioBank);
 	}
 
 	/** Ambient sequences come from mseq/NAME.xml sources or mseq/NAME.mseq binaries; the higher layer wins. */

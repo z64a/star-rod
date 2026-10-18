@@ -19,10 +19,11 @@ import app.input.InputFileException;
 import game.audio.AmbientSounds;
 import game.audio.AudioLayers;
 import game.audio.AudioTables;
-import game.audio.AudioTables.Bank;
 import game.audio.AudioTables.Drum;
 import game.audio.AudioTables.Preset;
 import game.audio.AudioTasks;
+import game.audio.Banks;
+import game.audio.Banks.Bank;
 import game.audio.Mseq;
 import game.audio.Presets;
 import game.audio.SfxArchive;
@@ -59,7 +60,6 @@ public class SoundLibrary
 		layers = AudioLayers.fromEnvironment();
 		layers.checkTables();
 
-		List<Bank> bankTable = AudioTables.readBanks(layers);
 		ambient = AmbientSounds.read(layers);
 
 		Set<String> names = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -83,8 +83,9 @@ public class SoundLibrary
 			bankInstruments.put(name, instruments);
 		}
 
-		addresses = new Presets.Addresses(bankTable, files);
 		String radioBank = ambient.radioBank(layers, wav -> samples.containsKey(wav) ? samples.get(wav).bank : null);
+		List<Bank> bankTable = Banks.read(layers, files.keySet(), () -> Banks.songBanks(listSongs(), radioBank));
+		addresses = new Presets.Addresses(bankTable, files);
 		ambientAddresses = radioBank != null && files.containsKey(radioBank)
 			? addresses.withAuxiliary(AudioTasks.RADIO_BANK_SLOT, files.get(radioBank))
 			: addresses;
@@ -143,7 +144,7 @@ public class SoundLibrary
 	}
 
 	/**
-	 * The instrument at a bank and patch address of the engine, or null if no bank in banks.xml provides
+	 * The instrument at a bank and patch address of the engine, or null if no always-loaded bank provides
 	 * it. Bank set 2 is the engine's silent default instrument.
 	 */
 	public Instrument getInstrument(int bank, int patch)

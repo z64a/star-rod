@@ -36,9 +36,6 @@ public abstract class AudioTables
 		// @formatter:on
 	}
 
-	public static final int MAX_BANKS = 79;
-	public static final int MIN_BANK_GROUP = 2;
-	public static final int MAX_BANK_GROUP = 6;
 	public static final int MAX_PRESET_ID = 0x3F;
 	public static final int MAX_DRUM_ID = 71;
 	public static final int DEFAULT_VOLUME = 0x7F;
@@ -46,9 +43,6 @@ public abstract class AudioTables
 	public static final int DEFAULT_KEY_BASE = 4800;
 
 	private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z][A-Za-z0-9_]*");
-
-	public record Bank(String file, int group, int index, File source)
-	{}
 
 	/** An instrument that songs select by ID: a bank instrument with its own volume, pan, reverb, and tuning. */
 	public record Preset(String name, int id, String wav, int envelope, int volume, int pan, int reverb, int coarseTune,
@@ -121,7 +115,7 @@ public abstract class AudioTables
 	}
 
 	/** Always-loaded banks in table order. */
-	public static List<Bank> readBanks(AudioLayers layers)
+	public static List<Banks.Bank> readBanks(AudioLayers layers)
 	{
 		Map<String, Entry> entries = merge(layers, "banks.xml", Key.BankList, Key.Bank);
 
@@ -132,32 +126,32 @@ public abstract class AudioTables
 			if (hasGroup != (e.optional(Key.index) != null))
 				e.complain("group and index must be given together");
 			if (hasGroup) {
-				int slot = readHex(e, Key.group, MIN_BANK_GROUP, MAX_BANK_GROUP) << 4 | readHex(e, Key.index, 0, 0xF);
+				int slot = readHex(e, Key.group, Banks.MIN_GROUP, Banks.MAX_GROUP) << 4 | readHex(e, Key.index, 0, 0xF);
 				if (!used.add(slot))
 					e.complain(String.format("group %X index %X is used by another bank", slot >> 4, slot & 0xF));
 				slots.put(e.name, slot);
 			}
 		}
 
-		if (entries.size() > MAX_BANKS)
+		if (entries.size() > Banks.MAX_BANKS)
 			throw new InputFileException(new File("banks.xml"), "there are " + entries.size()
-				+ " banks, but the engine loads at most " + MAX_BANKS);
+				+ " banks, but the engine loads at most " + Banks.MAX_BANKS);
 
-		int next = MIN_BANK_GROUP << 4;
+		int next = Banks.MIN_GROUP << 4;
 		for (Entry e : sorted(entries)) {
 			if (slots.containsKey(e.name))
 				continue;
 			while (used.contains(next))
 				next++;
-			if (next >> 4 > MAX_BANK_GROUP)
+			if (next >> 4 > Banks.MAX_GROUP)
 				e.complain("there are no free bank slots");
 			used.add(next);
 			slots.put(e.name, next);
 		}
 
-		List<Bank> banks = new ArrayList<>();
+		List<Banks.Bank> banks = new ArrayList<>();
 		for (Entry e : entries.values())
-			banks.add(new Bank(e.name, slots.get(e.name) >> 4, slots.get(e.name) & 0xF, e.xmr.getSourceFile()));
+			banks.add(new Banks.Bank(e.name, slots.get(e.name) >> 4, slots.get(e.name) & 0xF, e.xmr.getSourceFile()));
 		return banks;
 	}
 
