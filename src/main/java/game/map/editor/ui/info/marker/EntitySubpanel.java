@@ -17,7 +17,6 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.SwingConstants;
 
-import com.alexandriasoftware.swing.JSplitButton;
 import common.commands.EditableField;
 
 import app.SwingUtils;
@@ -38,6 +37,7 @@ import net.miginfocom.swing.MigLayout;
 import util.ui.IntTextField;
 import util.ui.StringField;
 import util.ui.StringSelectorDialog;
+import util.ui.ThemedSplitButton;
 
 public class EntitySubpanel extends JPanel
 {
@@ -73,7 +73,7 @@ public class EntitySubpanel extends JPanel
 
 	private final MarkerInfoPanel parent;
 
-	private JSplitButton entityTypeButton;
+	private ThemedSplitButton entityTypeButton;
 
 	private FieldPanel itemPanel;
 	private JCheckBox cbHasItem;
@@ -169,7 +169,7 @@ public class EntitySubpanel extends JPanel
 		setLayout(new MigLayout("fillx, hidemode 3, ins 0, wrap"));
 		add(SwingUtils.getLabel("Entity Settings", 14), "growx, gapbottom 4");
 
-		entityTypeButton = new JSplitButton("EntityType");
+		entityTypeButton = new ThemedSplitButton("EntityType");
 		entityTypeButton.setPopupMenu(entityTypePopupMenu);
 		entityTypeButton.setAlwaysPopup(true);
 		SwingUtils.addBorderPadding(entityTypeButton);

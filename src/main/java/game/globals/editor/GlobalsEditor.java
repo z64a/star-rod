@@ -28,9 +28,8 @@ import app.Environment;
 import app.LoadingBar;
 import app.StarRodFrame;
 import app.SwingUtils;
+import app.ThemesEditor;
 import app.config.Options;
-import assets.AssetHandle;
-import assets.AssetManager;
 import assets.ExpectedAsset;
 import game.ProjectDatabase;
 import game.globals.MoveRecord;
@@ -39,6 +38,7 @@ import game.globals.editor.tabs.ItemTab;
 import game.globals.editor.tabs.MoveTab;
 import game.message.Message;
 import game.message.editor.MessageAsset;
+import game.message.editor.MessageLibrary;
 import net.miginfocom.swing.MigLayout;
 import util.DualHashMap;
 import util.IterableListModel;
@@ -254,6 +254,7 @@ public class GlobalsEditor
 		frame.setJMenuBar(menuBar);
 
 		addActionsMenu(menuBar);
+		ThemesEditor.addThemeMenuItem(menuBar, frame);
 	}
 
 	private void addActionsMenu(JMenuBar menuBar)
@@ -322,7 +323,7 @@ public class GlobalsEditor
 	{
 		tabList.add(tab);
 
-		tab.tabLabel = new JLabel(tab.getTabName());
+		tab.tabLabel = SwingUtils.getTabLabel(tabbedPane, tab.getTabName(), 12);
 		tab.tabLabel.setHorizontalTextPosition(SwingConstants.TRAILING);
 		tab.tabLabel.setIcon(getTabIcon(tab.getIcon()));
 		tab.tabLabel.setIconTextGap(8);
@@ -367,12 +368,11 @@ public class GlobalsEditor
 
 	private void loadMessages()
 	{
-		messageNameMap.clear();
-
 		try {
-			for (AssetHandle ah : AssetManager.getMessages()) {
-				Logger.log("Reading messages from: " + ah.getName());
-				MessageAsset group = new MessageAsset(ah);
+			MessageLibrary library = MessageLibrary.load();
+			messageNameMap.clear();
+			messageListModel.clear();
+			for (MessageAsset group : library.getAssets()) {
 				for (Message msg : group.messages) {
 					messageNameMap.put("MSG_" + msg.name, msg);
 					messageListModel.addElement(msg);

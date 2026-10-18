@@ -196,13 +196,13 @@ public class StarRodMain extends StarRodFrame
 		});
 		buttons.add(audioBoothButton);
 
-		JButton themesMenuButton = new JButton("Choose Theme");
-		trySetIcon(themesMenuButton, ExpectedAsset.ICON_THEMES);
-		SwingUtils.setFontSize(themesMenuButton, 12);
-		themesMenuButton.addActionListener((e) -> {
-			action_openThemesMenu();
+		JButton creditsButton = new JButton("Licenses & Credits");
+		trySetIcon(creditsButton, ExpectedAsset.ICON_CREDITS);
+		SwingUtils.setFontSize(creditsButton, 12);
+		creditsButton.addActionListener((e) -> {
+			CreditsDialog.showDialog(this);
 		});
-		buttons.add(themesMenuButton);
+		buttons.add(creditsButton);
 
 		JButton openConfigDirButton = new JButton("Open Config Dir");
 		trySetIcon(openConfigDirButton, ExpectedAsset.ICON_SILVER);
@@ -291,8 +291,8 @@ public class StarRodMain extends StarRodFrame
 		add(worldEditorButton, "grow");
 		add(imageEditorButton, "grow");
 
-		add(themesMenuButton, "grow");
 		add(audioBoothButton, "grow");
+		add(creditsButton, "grow");
 
 		add(openConfigDirButton, "grow");
 		add(openProjectDirButton, "grow");
@@ -406,15 +406,6 @@ public class StarRodMain extends StarRodFrame
 			finally {
 				LoadingBar.dismiss();
 			}
-			editorClosedSignal.await();
-		});
-	}
-
-	private void action_openThemesMenu()
-	{
-		new EditorWorker(() -> {
-			CountDownLatch editorClosedSignal = new CountDownLatch(1);
-			new ThemesEditor(editorClosedSignal);
 			editorClosedSignal.await();
 		});
 	}

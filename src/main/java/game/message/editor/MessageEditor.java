@@ -7,7 +7,6 @@ import static game.texture.TileFormat.CI_4;
 import static org.lwjgl.opengl.GL11.*;
 
 import java.awt.Canvas;
-import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics2D;
@@ -25,6 +24,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.Map;
 
 import javax.imageio.ImageIO;
 import javax.swing.AbstractAction;
@@ -43,7 +44,6 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
-import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
@@ -63,7 +63,8 @@ import javax.swing.text.StyledDocument;
 
 import org.apache.commons.io.FilenameUtils;
 
-import com.alexandriasoftware.swing.JSplitButton;
+import common.BaseEditor;
+import common.BaseEditorSettings;
 
 import app.Directories;
 import app.Environment;
@@ -76,8 +77,6 @@ import app.config.Options.Scope;
 import assets.AssetHandle;
 import assets.AssetManager;
 import assets.AssetSubdir;
-import common.BaseEditor;
-import common.BaseEditorSettings;
 import game.map.editor.ui.dialogs.ChooseDialogResult;
 import game.map.editor.ui.dialogs.OpenFileChooser;
 import game.message.Message;
@@ -97,6 +96,7 @@ import net.miginfocom.swing.MigLayout;
 import renderer.shaders.RenderState;
 import util.Logger;
 import util.ui.ImagePanel;
+import util.ui.ThemedSplitButton;
 
 public class MessageEditor extends BaseEditor
 {
@@ -112,7 +112,7 @@ public class MessageEditor extends BaseEditor
 		.setResizeable(true)
 		.setGrabsMouse(false)
 		.hasMenuBar(true)
-		.setSize(960, 700)
+		.setSize(1280, 800)
 		.setFramerate(30);
 
 	// window settings
@@ -135,10 +135,10 @@ public class MessageEditor extends BaseEditor
 	private MessageRenderer renderer;
 	private JPanel editorPanel;
 
-	private AssetListTab assetListTab;
-	private MessageListTab messageListTab;
+	private volatile MessageLibrary library;
+	private MessageListPanel messageListPanel;
+	private MessageInspectorPanel messageInspector;
 	private JTextPane inputTextPane;
-	private JTabbedPane tabs;
 
 	// settings panel
 
@@ -161,7 +161,6 @@ public class MessageEditor extends BaseEditor
 
 	private volatile Message workingString;
 
-	public static final int MAX_TEXTFIELD_CHARACTERS = 4096;
 	private StyledDocument inputDocument;
 
 	private AttributeSet attrDefault;
@@ -175,27 +174,11 @@ public class MessageEditor extends BaseEditor
 
 	// undo/redo
 	private TextHistory history;
+	private final Map<Message, TextHistory> histories = new IdentityHashMap<>();
 	private volatile boolean settingString = false;
 	private volatile boolean syncingString = false;
 	private volatile boolean ignoreDocumentContentChanges = false;
 	private volatile boolean ignoreDocumentFormatChanges = false;
-
-	private volatile boolean modified = false;
-
-	// IO
-	private static final class PendingSave
-	{
-		private final MessageAsset asset;
-		private long revision;
-
-		private PendingSave(MessageAsset asset, long revision)
-		{
-			this.asset = asset;
-			this.revision = revision;
-		}
-	}
-
-	private final ArrayList<PendingSave> resourcesToSave = new ArrayList<>();
 
 	public static enum PollResult
 	{
@@ -234,8 +217,7 @@ public class MessageEditor extends BaseEditor
 
 		readVarImage(MessageBoxes.Graphic.Letter_Peach.getFile());
 
-		assetListTab.fullReload();
-		setString(null);
+		runInEDT(this::reloadMessages);
 
 		Logger.log("Loaded string editor.");
 	}
@@ -252,8 +234,6 @@ public class MessageEditor extends BaseEditor
 	@Override
 	protected void update(double deltaTime)
 	{
-		handleSaving();
-
 		if (varsChanged) {
 			for (int i = 0; i < varBuffers.length; i++) {
 				String s = varFields[i].getText();
@@ -268,7 +248,6 @@ public class MessageEditor extends BaseEditor
 			int caretPos = inputTextPane.getCaretPosition();
 			if (textChanged || varsChanged) {
 				printer.setSequences(StringEncoder.encodeText(getInputText(), varBuffers));
-				buildStringErrorMessages();
 			}
 			printer.setCurrentPage(caretPos);
 
@@ -298,25 +277,6 @@ public class MessageEditor extends BaseEditor
 		RenderState.setViewport(0, 0, glCanvasWidth(), glCanvasHeight());
 
 		renderer.render(mouse, printer, cameraX, cameraY, cameraZoom, cameraYaw);
-	}
-
-	private void buildStringErrorMessages()
-	{
-		if (workingString != null) {
-			StringBuilder sb = new StringBuilder();
-			for (Sequence seq : printer.sequences) {
-				if (seq.hasError()) {
-					if (sb.length() > 0)
-						sb.append(System.lineSeparator());
-					sb.append(seq.getErrorMessage());
-				}
-			}
-
-			if (sb.length() > 0)
-				workingString.setErrorMessage(sb.toString());
-			else
-				workingString.setErrorMessage("");
-		}
 	}
 
 	// helper method for properly getting text from the input pane
@@ -437,53 +397,133 @@ public class MessageEditor extends BaseEditor
 		}
 	}
 
-	public void queueSave(MessageAsset resource)
-	{
-		long revision = resource.getModificationRevision();
-		synchronized (resourcesToSave) {
-			for (PendingSave pending : resourcesToSave) {
-				if (pending.asset == resource) {
-					pending.revision = revision;
-					return;
-				}
-			}
-			resourcesToSave.add(new PendingSave(resource, revision));
-		}
-	}
-
 	void saveAllMessages()
 	{
-		if (workingString != null && workingString.isModified())
-			workingString.setMarkup(getInputText());
-		assetListTab.queueModifiedAssets();
+		runInEDT(this::saveMessages);
 	}
 
-	private synchronized boolean handleSaving()
+	private boolean saveMessages()
 	{
-		ArrayList<PendingSave> pending;
-		synchronized (resourcesToSave) {
-			if (resourcesToSave.isEmpty())
+		assert SwingUtilities.isEventDispatchThread();
+		try {
+			if (library == null || !library.hasModified())
 				return true;
-			pending = new ArrayList<>(resourcesToSave);
-			resourcesToSave.clear();
+			boolean saved = library.saveAll();
+			refreshMessages(messageListPanel.getSelected(), false);
+			if (saved)
+				Logger.log("Saved message changes.");
+			return saved;
 		}
-
-		ArrayList<MessageAsset> saved = new ArrayList<>();
-		boolean allSucceeded = true;
-		for (PendingSave save : pending) {
-			if (save.asset.saveChanges(save.revision))
-				saved.add(save.asset);
-			else
-				allSucceeded = false;
+		catch (IOException | app.input.InputFileException error) {
+			showMessageError("Could Not Save Messages", error);
+			return false;
 		}
+	}
 
-		if (saved.size() > 1)
-			Logger.logf("Saved %d resources.", saved.size());
-		else if (saved.size() == 1)
-			Logger.log("Saved resource: " + saved.get(0).asset.getName());
+	MessageLibrary getLibrary()
+	{
+		return library;
+	}
 
-		modified = assetListTab.hasModifiedAssets();
-		return allSucceeded;
+	void reloadMessages()
+	{
+		assert SwingUtilities.isEventDispatchThread();
+		if (library != null && library.hasModified()) {
+			incrementDialogsOpen();
+			int choice;
+			try {
+				choice = JOptionPane.showOptionDialog(getFrame(), "There are unsaved message changes.", "Reload Messages",
+					JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE, null, new String[] { "Save and reload", "Discard and reload", "Cancel" },
+					"Cancel");
+			}
+			finally {
+				decrementDialogsOpen();
+			}
+			if (choice < 0 || choice == 2 || (choice == 0 && !saveMessages()))
+				return;
+		}
+		try {
+			Message selected = messageListPanel.getSelected();
+			MessageLibrary loaded = MessageLibrary.load();
+			library = loaded;
+			histories.clear();
+			refreshMessages(selected, false);
+		}
+		catch (IOException error) {
+			showMessageError("Could Not Load Messages", error);
+		}
+	}
+
+	private void showMessageError(String title, Exception error)
+	{
+		Logger.logError(error.getMessage());
+		SwingUtils.getWarningDialog().setParent(getFrame()).setTitle(title).setMessage(error.getMessage()).show();
+	}
+
+	void selectMessage(Message selected)
+	{
+		messageInspector.refresh(selected, true);
+	}
+
+	void refreshMessages(Message preferred, boolean reveal)
+	{
+		messageListPanel.refresh(preferred, reveal);
+	}
+
+	Message getDisplayedMessage()
+	{
+		return workingString;
+	}
+
+	void forgetHistory(Message message)
+	{
+		histories.remove(message);
+	}
+
+	boolean confirm(String title, String prompt)
+	{
+		incrementDialogsOpen();
+		try {
+			return JOptionPane.showConfirmDialog(getFrame(), prompt, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.OK_OPTION;
+		}
+		finally {
+			decrementDialogsOpen();
+		}
+	}
+
+	String promptMessageName(String initial, Message except)
+	{
+		while (true) {
+			String name = SwingUtils.getInputDialog().setParent(getFrame()).setTitle("Message Name")
+				.setMessage("Choose a unique message name").setDefault(initial).prompt();
+			if (name == null)
+				return null;
+			name = name.trim();
+			try {
+				library.validateName(name, except);
+				return name;
+			}
+			catch (IllegalArgumentException error) {
+				showMessageError("Invalid Message Name", error);
+				initial = name;
+			}
+		}
+	}
+
+	void removeMessage(Message message)
+	{
+		if (!library.isModMessage(message))
+			return;
+		boolean inherited = library.hasInheritedDefinition(message);
+		String action = inherited ? "Remove Override" : "Delete Message";
+		String name = message.name.isEmpty() ? message.getIDName() : message.name;
+		String question = inherited ? "Remove the override for " + name + "?" : "Delete " + name + "?";
+		String explanation = inherited ? "The next definition in the asset stack will become effective." : "This message has no inherited definition.";
+		if (confirm(action, question + "\n" + explanation + "\nChanges are written when you save.")) {
+			library.remove(message);
+			forgetHistory(message);
+			refreshMessages(message, false);
+		}
 	}
 
 	private ImageIcon getButtonIcon(File imgFile, boolean useInterp) throws IOException
@@ -594,19 +634,19 @@ public class MessageEditor extends BaseEditor
 			showColorSelectionDialog();
 		});
 
-		JSplitButton stylesButton = new JSplitButton("Style");
+		ThemedSplitButton stylesButton = new ThemedSplitButton("Style");
 		stylesButton.setPopupMenu(getStylePopup());
 		stylesButton.setAlwaysPopup(true);
 
-		JSplitButton effectsButton = new JSplitButton("Effect");
+		ThemedSplitButton effectsButton = new ThemedSplitButton("Effect");
 		effectsButton.setPopupMenu(getEffectsPopup());
 		effectsButton.setAlwaysPopup(true);
 
-		JSplitButton functionsButton = new JSplitButton("Function");
+		ThemedSplitButton functionsButton = new ThemedSplitButton("Function");
 		functionsButton.setPopupMenu(getFunctionsPopup());
 		functionsButton.setAlwaysPopup(true);
 
-		JSplitButton presetsButton = new JSplitButton("Preset");
+		ThemedSplitButton presetsButton = new ThemedSplitButton("Preset");
 		presetsButton.setPopupMenu(getPresetPopup());
 		presetsButton.setAlwaysPopup(true);
 
@@ -922,6 +962,8 @@ public class MessageEditor extends BaseEditor
 		button.setHorizontalTextPosition(SwingConstants.CENTER);
 		button.setVerticalTextPosition(SwingConstants.CENTER);
 		button.addActionListener((evt) -> {
+			if (!inputTextPane.isEditable())
+				return;
 			String text = OPEN_TAG + s + CLOSE_TAG;
 			try {
 				inputTextPane.getDocument().insertString(inputTextPane.getCaretPosition(), text, attrDefault);
@@ -943,6 +985,13 @@ public class MessageEditor extends BaseEditor
 		attrError = context.addAttribute(context.getEmptySet(), StyleConstants.Foreground, SwingUtils.getRedTextColor());
 
 		inputTextPane = new JTextPane() {
+			@Override
+			public void replaceSelection(String content)
+			{
+				if (isEditable())
+					super.replaceSelection(content);
+			}
+
 			@Override
 			public String getToolTipText(MouseEvent event)
 			{
@@ -969,16 +1018,7 @@ public class MessageEditor extends BaseEditor
 
 		history = new TextHistory(64);
 
-		inputTextPane.setStyledDocument(new DefaultStyledDocument() {
-			@Override
-			public void insertString(int offs, String str, AttributeSet a) throws BadLocationException
-			{
-				if ((getLength() + str.length()) <= MAX_TEXTFIELD_CHARACTERS)
-					super.insertString(offs, str, a);
-				else
-					Toolkit.getDefaultToolkit().beep();
-			}
-		});
+		inputTextPane.setStyledDocument(new DefaultStyledDocument());
 
 		inputDocument = inputTextPane.getStyledDocument();
 		inputDocument.addDocumentListener(new DocumentListener() {
@@ -1004,17 +1044,19 @@ public class MessageEditor extends BaseEditor
 			// it's also fired on formatting changes! we must watch out for those.
 			public void textChanged(DocumentEvent e)
 			{
-				if (!ignoreDocumentContentChanges && !ignoreDocumentFormatChanges) {
+				if (!settingString && !ignoreDocumentContentChanges && !ignoreDocumentFormatChanges) {
 					if (!syncingString)
 						history.set(getInputText(), false);
 
-					if (!settingString && workingString != null) {
+					if (workingString != null && inputTextPane.isEditable()) {
 						if (!syncingString) {
-							modified = true;
 							workingString.setMarkupAndModified(getInputText());
+							SwingUtilities.invokeLater(() -> {
+								messageListPanel.updateActions();
+								messageInspector.refresh(messageListPanel.getSelected(), false);
+							});
 						}
-						assetListTab.repaint();
-						messageListTab.repaint();
+						messageListPanel.repaint();
 					}
 				}
 
@@ -1053,13 +1095,11 @@ public class MessageEditor extends BaseEditor
 		addEditorMenu(menuBar);
 		addOptionsMenu(menuBar);
 
-		messageListTab = new MessageListTab(this);
-		assetListTab = new AssetListTab(this, messageListTab);
-
-		tabs = new JTabbedPane();
-		createTab(tabs, "Assets", assetListTab);
-		createTab(tabs, "Messages", messageListTab);
-		createTab(tabs, "Variables", makeVariablesTab());
+		messageListPanel = new MessageListPanel(this);
+		messageInspector = new MessageInspectorPanel(this);
+		JPanel inspectorPanel = new JPanel(new MigLayout("fill, ins 12, wrap 1", "[grow,fill]"));
+		inspectorPanel.add(makeVariablesPanel(), "growx");
+		inspectorPanel.add(messageInspector, "grow, push");
 
 		// wrap input pane in a scroll pane to let us scroll
 		JScrollPane stringScrollPane = new JScrollPane(inputTextPane);
@@ -1067,7 +1107,7 @@ public class MessageEditor extends BaseEditor
 
 		// put the scroll pane in a jpanel with its own layout to provide a suggested size and position
 		JPanel inputPane = new JPanel(new MigLayout("fill, ins 0, wrap"));
-		inputPane.add(stringScrollPane, "center, w 640, growy");
+		inputPane.add(stringScrollPane, "grow, push, w 100:640:");
 
 		editorPanel = new JPanel();
 		editorPanel.setLayout(new MigLayout("fill, ins 0, wrap"));
@@ -1077,15 +1117,22 @@ public class MessageEditor extends BaseEditor
 		editorPanel.add(splitPane, "grow, push");
 		editorPanel.add(createButtonPanel(), "growx");
 
-		toolPanel.add(editorPanel, "grow, push");
-		toolPanel.add(tabs, "gapleft 8, growy, w 360!, wrap");
-
-		//	toolPanel.add(infoLabel, "growx, gapleft 4, gapbottom 4, span");
+		JSplitPane centerAndRight = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, editorPanel, inspectorPanel);
+		centerAndRight.setResizeWeight(1.0);
+		centerAndRight.setDividerLocation(610);
+		inspectorPanel.setMinimumSize(new Dimension(285, 0));
+		editorPanel.setMinimumSize(new Dimension(280, 0));
+		JSplitPane columns = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, messageListPanel, centerAndRight);
+		columns.setDividerLocation(300);
+		messageListPanel.setMinimumSize(new Dimension(200, 0));
+		toolPanel.add(columns, "grow, push, wrap");
 	}
 
 	@Override
 	public void undoEDT()
 	{
+		if (!inputTextPane.isEditable())
+			return;
 		if (history.canUndo()) {
 			applyHistoryText(history.undo());
 		}
@@ -1098,6 +1145,8 @@ public class MessageEditor extends BaseEditor
 	@Override
 	public void redoEDT()
 	{
+		if (!inputTextPane.isEditable())
+			return;
 		if (history.canRedo()) {
 			applyHistoryText(history.redo());
 		}
@@ -1119,44 +1168,23 @@ public class MessageEditor extends BaseEditor
 
 		if (workingString != null) {
 			workingString.setMarkupAndModified(text);
-			modified = true;
-			assetListTab.repaint();
-			messageListTab.repaint();
+			messageListPanel.updateActions();
+			messageInspector.refresh(messageListPanel.getSelected(), false);
 		}
 	}
 
-	public boolean hasMessage(String name)
+	private JPanel makeVariablesPanel()
 	{
-		return assetListTab.hasMessage(name);
-	}
+		JPanel settingsPanel = new JPanel(new MigLayout("fillx, ins 0, wrap 2", "[20!][grow,fill]"));
 
-	private static void createTab(JTabbedPane tabs, String name, Container contents)
-	{
-		JLabel lbl = SwingUtils.getLabel(name, 12);
-		lbl.setPreferredSize(new Dimension(60, 20));
-		lbl.setHorizontalAlignment(SwingConstants.CENTER);
-
-		tabs.addTab(null, contents);
-		tabs.setTabComponentAt(tabs.getTabCount() - 1, lbl);
-	}
-
-	public void openMessagesTab()
-	{
-		tabs.setSelectedIndex(1);
-	}
-
-	private JPanel makeVariablesTab()
-	{
-		JPanel settingsPanel = new JPanel(new MigLayout("fill, ins 0, wrap", "[10%!][][10%!]"));
-
-		settingsPanel.add(SwingUtils.getLabel("String Variables", 14), "span, growx, gaptop 12, gapbottom 4, wrap");
+		settingsPanel.add(SwingUtils.getLabel("Text Variables", 14), "span, growx, gapbottom 4, wrap");
 		varFields = new JTextField[StringConstants.getMaxStringVars()];
 		for (int i = 0; i < varFields.length; i++) {
 			varFields[i] = new JTextField();
 			varFields[i].setMargin(SwingUtils.TEXTBOX_INSETS);
 			SwingUtils.addBorderPadding(varFields[i]);
 			settingsPanel.add(SwingUtils.getLabel("" + i, SwingConstants.CENTER, 14), "growx");
-			settingsPanel.add(varFields[i], "growx, gap, wrap");
+			settingsPanel.add(varFields[i], "growx, wrap");
 			SwingUtils.addChangeListener(varFields[i], (e) -> {
 				varsChanged = true;
 			});
@@ -1167,12 +1195,14 @@ public class MessageEditor extends BaseEditor
 
 		imgVarNameField = new JTextField();
 		imgVarNameField.setEditable(false);
+		imgVarNameField.setMargin(SwingUtils.TEXTBOX_INSETS);
 		SwingUtils.addBorderPadding(imgVarNameField);
 
 		File imgDir = new File(Environment.getProjectDirectory(), "assets");
 		OpenFileChooser openImageChooser = new OpenFileChooser(imgDir, "Choose Image", "Images", "png");
 
 		JButton chooseImgVarButton = new JButton("Choose");
+		SwingUtils.addBorderPadding(chooseImgVarButton);
 		chooseImgVarButton.addActionListener((a) -> {
 			super.incrementDialogsOpen();
 			if (openImageChooser.prompt() == ChooseDialogResult.APPROVE && openImageChooser.getSelectedFile() != null)
@@ -1238,10 +1268,10 @@ public class MessageEditor extends BaseEditor
 			}
 		});
 
-		settingsPanel.add(imgVarNameField, "sgy row, skip 1, w 60%!, split 2");
-		settingsPanel.add(chooseImgVarButton, "grow, wrap");
+		settingsPanel.add(imgVarNameField, "sgy row, span, growx, split 2");
+		settingsPanel.add(chooseImgVarButton, "growy, w 80!, wrap");
 
-		settingsPanel.add(varImagePanel, "skip 1, grow, wrap, gaptop 8, pushy");
+		settingsPanel.add(varImagePanel, "span, growx, h 70!, wrap, gaptop 8");
 
 		return settingsPanel;
 	}
@@ -1261,37 +1291,45 @@ public class MessageEditor extends BaseEditor
 
 	private void setVarImage(File f, BufferedImage bimg)
 	{
-		varImagePanel.setImage(varImage);
+		if (bimg == null)
+			return;
+		varImage = bimg;
+		double scale = Math.min(1.0, Math.min(280.0 / bimg.getWidth(), 70.0 / bimg.getHeight()));
+		BufferedImage thumbnail = new BufferedImage(Math.max(1, (int) (scale * bimg.getWidth())),
+			Math.max(1, (int) (scale * bimg.getHeight())), BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = thumbnail.createGraphics();
+		graphics.drawImage(bimg, 0, 0, thumbnail.getWidth(), thumbnail.getHeight(), null);
+		graphics.dispose();
+		varImagePanel.setImage(thumbnail);
 		varImageFile = f;
 		imgVarNameField.setText(f.getName());
 		imageChanged = true;
 	}
 
-	public void setString(Message selectedValue)
+	void displayMessage(Message target, boolean editable)
 	{
-		assert (!SwingUtilities.isEventDispatchThread());
-
-		Message target = selectedValue;
-		SwingUtilities.invokeLater(() -> {
-			settingString = true;
-			try {
-				workingString = target;
-				if (target != null)
-					target.editorShouldSync = false;
-				inputTextPane.setText(target != null ? target.getMarkup() : "");
-				inputTextPane.setCaretPosition(0);
+		assert SwingUtilities.isEventDispatchThread();
+		inputTextPane.setEditable(target != null && editable);
+		if (workingString == target && (target == null || !target.editorShouldSync))
+			return;
+		settingString = true;
+		try {
+			workingString = target;
+			if (target != null)
+				target.editorShouldSync = false;
+			inputTextPane.setText(target == null ? "" : target.getMarkup());
+			inputTextPane.setCaretPosition(0);
+			history = target == null || !editable ? new TextHistory(64) : histories.get(target);
+			if (history == null) {
+				history = new TextHistory(64);
+				history.set(getInputText(), false);
+				histories.put(target, history);
 			}
-			finally {
-				settingString = false;
-			}
-
-			history.clear();
-			history.set(getInputText(), false);
-			stringChanged = true;
-		});
-
-		if (target != null)
-			Logger.log("Editing " + target.name);
+		}
+		finally {
+			settingString = false;
+		}
+		stringChanged = true;
 	}
 
 	public void syncString()
@@ -1329,23 +1367,16 @@ public class MessageEditor extends BaseEditor
 		menu.getPopupMenu().setLightWeightPopupEnabled(false);
 		menuBar.add(menu);
 
-		item = new JMenuItem("Save");
+		item = new JMenuItem("Save Changes");
 		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK);
 		item.setAccelerator(awtKeyStroke);
 		item.addActionListener((e) -> {
-			if (workingString != null && workingString.isModified()) {
-				workingString.setMarkup(getInputText());
-				queueSave(workingString.source);
-			}
+			saveAllMessages();
 		});
 		menu.add(item);
 
-		item = new JMenuItem("Save All");
-		awtKeyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK);
-		item.setAccelerator(awtKeyStroke);
-		item.addActionListener((e) -> {
-			assetListTab.saveChanges();
-		});
+		item = new JMenuItem("Reload Messages…");
+		item.addActionListener((e) -> reloadMessages());
 		menu.add(item);
 
 		menu.addSeparator();
@@ -1440,14 +1471,25 @@ public class MessageEditor extends BaseEditor
 	@Override
 	protected boolean isModified()
 	{
-		return modified || (assetListTab != null && assetListTab.hasModifiedAssets());
+		return library != null && library.hasModified();
 	}
 
 	@Override
 	protected boolean saveChanges()
 	{
-		saveAllMessages();
-		return handleSaving();
+		if (SwingUtilities.isEventDispatchThread())
+			return saveMessages();
+		boolean[] saved = { false };
+		try {
+			SwingUtilities.invokeAndWait(() -> saved[0] = saveMessages());
+		}
+		catch (InterruptedException error) {
+			Thread.currentThread().interrupt();
+		}
+		catch (java.lang.reflect.InvocationTargetException error) {
+			Logger.printStackTrace(error);
+		}
+		return saved[0];
 	}
 
 	@Override

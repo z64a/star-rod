@@ -25,7 +25,7 @@ public class Message implements FilterListable
 
 	public InputFileException parseException;
 	private String errorMessage = "";
-	private boolean hasError;
+	private boolean errorsDirty;
 
 	public volatile boolean modified;
 	public volatile boolean editorShouldSync;
@@ -103,6 +103,7 @@ public class Message implements FilterListable
 	private void setMarkupImpl(String s)
 	{
 		markup = s;
+		errorsDirty = true;
 		previewText = markup.replaceAll("(?i)\\[" + ControlCharacter.ENDL + "\\]", " ")
 			.replaceAll("\\\\", "") // remove escape sequences
 			.replaceAll("\\[[^]]+\\]", "") // remove other tags
@@ -176,10 +177,11 @@ public class Message implements FilterListable
 			bytes = new byte[bb.remaining()];
 			bb.get(bytes);
 			parseException = null;
+			setErrorMessage("");
 		}
 		catch (InputFileException e) {
 			parseException = e;
-			errorMessage = parseException.getMessage();
+			setErrorMessage(e.getMessage());
 			bytes = null;
 		}
 	}
@@ -216,26 +218,35 @@ public class Message implements FilterListable
 		return modified;
 	}
 
-	public void setErrorMessage(String string)
+	private void setErrorMessage(String string)
 	{
-		if (string == null || string.isBlank()) {
-			errorMessage = "";
-			hasError = false;
-		}
-		else {
-			errorMessage = string;
-			hasError = true;
-		}
+		errorMessage = string == null || string.isBlank() ? "" : string;
+		errorsDirty = false;
 	}
 
 	public String getErrorMessage()
 	{
-		return errorMessage;
+		synchronized (source) {
+			// Cache diagnostics on the definition, so unselected messages and source previews
+			// keep their own error state. Revalidate only when their markup changes.
+			if (errorsDirty) {
+				StringBuilder errors = new StringBuilder();
+				for (var sequence : StringEncoder.encodeText(markup, null)) {
+					if (sequence.hasError()) {
+						if (errors.length() > 0)
+							errors.append(System.lineSeparator());
+						errors.append(sequence.getErrorMessage());
+					}
+				}
+				setErrorMessage(errors.toString());
+			}
+			return errorMessage;
+		}
 	}
 
 	public boolean hasError()
 	{
-		return hasError;
+		return !getErrorMessage().isEmpty();
 	}
 
 	@Override

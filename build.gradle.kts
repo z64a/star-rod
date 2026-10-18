@@ -1,6 +1,7 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
 import java.util.Locale
 import java.util.Properties
+import java.util.zip.ZipFile
 
 val appProperties = Properties().apply {
     file("app.properties").inputStream().use { load(it) }
@@ -113,9 +114,6 @@ dependencies {
     implementation("com.formdev:flatlaf-intellij-themes:3.4.1")
     implementation("com.formdev:flatlaf-extras:3.4.1")
     
-    implementation(files("lib/org.eclipse.cdt.core-5.11.0.jar"))
-    implementation(files("lib/org.eclipse.equinox.common-3.6.0.jar"))
-    
     implementation("org.ahocorasick:ahocorasick:0.6.3")
 }
 
@@ -124,6 +122,67 @@ tasks.test {
 }
 
 val licenseBuildDir = layout.buildDirectory.dir("reports/licenses/licenseReport")
+val licenseResourcesDir = layout.buildDirectory.dir("generated/license-resources")
+
+// Preserve notices before shading merges or excludes identically named jar entries.
+// Both the in-app viewer and release licenses/ folder consume this same bundle.
+val prepareLicenses by tasks.registering {
+    dependsOn("licenseReport")
+    inputs.files(configurations.runtimeClasspath)
+    inputs.dir(licenseBuildDir)
+    inputs.file("LICENSE")
+    inputs.dir("licenses/third-party")
+    inputs.files(fileTree("src/main/resources/splash") { include("**/*.txt", "**/*.tsv") })
+    outputs.dir(licenseResourcesDir)
+    doLast {
+        val root = licenseResourcesDir.get().dir("licenses").asFile
+        require(root.canonicalFile.toPath().startsWith(layout.buildDirectory.get().asFile.canonicalFile.toPath()))
+        root.deleteRecursively()
+        root.mkdirs()
+        val index = mutableListOf<String>()
+        fun notice(label: String, path: String, bytes: ByteArray) {
+            val destination = root.resolve(path)
+            require(destination.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()))
+            destination.parentFile.mkdirs()
+            destination.writeBytes(bytes)
+            index.add("$label\t$path")
+        }
+        notice("Dependency license report", "licenses.html", licenseBuildDir.get().file("licenses.html").asFile.readBytes())
+        notice("Bundled libraries", "libraries.txt", ("Runtime libraries\n\n" +
+            configurations.runtimeClasspath.get().files.sortedBy { it.name }.joinToString("\n") { it.name } +
+            "\n\nSee the dependency report and individual notices for license terms.\n").toByteArray(Charsets.UTF_8))
+        notice("Star Rod", "StarRod-LICENSE", file("LICENSE").readBytes())
+        fileTree("licenses/third-party").files.sortedBy { it.name }.forEach {
+            notice(if (it.name == "README.txt") "About these notices" else it.name.substringBeforeLast('.'), "supplemental/${it.name}", it.readBytes())
+        }
+        configurations.runtimeClasspath.get().files.sortedBy { it.name }.filter { it.extension == "jar" }.forEach { artifact ->
+            ZipFile(artifact).use { jar ->
+                jar.entries().asSequence().filter { entry ->
+                    val name = entry.name.substringAfterLast('/').lowercase(Locale.ROOT)
+                    !entry.isDirectory && (name.matches(Regex("(license|licence|notice|copying|copyright)([._-].*)?")) ||
+                        name == "about.html" || entry.name.startsWith("about_files/"))
+                }.sortedBy { it.name }.forEach { entry ->
+                    jar.getInputStream(entry).use { stream ->
+                        notice("${artifact.nameWithoutExtension} / ${entry.name}", "libraries/${artifact.nameWithoutExtension}/${entry.name}", stream.readBytes())
+                    }
+                }
+            }
+        }
+        // Keep asset provenance next to the release's library notices as well as in the jar.
+        fileTree("src/main/resources/splash") { include("**/*.txt", "**/*.tsv") }.files.forEach {
+            val relative = it.relativeTo(file("src/main/resources/splash")).invariantSeparatorsPath
+            val destination = root.resolve("splash/$relative")
+            destination.parentFile.mkdirs()
+            it.copyTo(destination, overwrite = true)
+        }
+        root.resolve("index.tsv").writeText(index.joinToString("\n", postfix = "\n"), Charsets.UTF_8)
+    }
+}
+
+sourceSets.main {
+    resources.srcDir(prepareLicenses)
+}
+
 val releaseBuildDir = layout.buildDirectory.dir("release")
 val runtimeBuildDir = layout.buildDirectory.dir("runtime/$platformName")
 val javaCompiler = javaToolchains.compilerFor(java.toolchain)
@@ -182,7 +241,7 @@ tasks {
     }
 
     register<Zip>("createReleaseZip") {
-        dependsOn(licenseReport, shadowJar, createRuntime)
+        dependsOn(prepareLicenses, shadowJar, createRuntime)
         
         group = "release"
         description = "Create a Star Rod release for $platformName"
@@ -193,7 +252,7 @@ tasks {
             into("runtime")
         }
         
-        from(file(licenseBuildDir)) {
+        from(licenseResourcesDir.map { it.dir("licenses") }) {
             into("licenses")
         }
 

@@ -3,6 +3,7 @@ package app;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Insets;
@@ -22,16 +23,21 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JSpinner;
 import javax.swing.JSpinner.DefaultEditor;
+import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.swing.border.AbstractBorder;
+import javax.swing.border.Border;
+import javax.swing.border.CompoundBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.plaf.UIResource;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
@@ -44,7 +50,19 @@ import javax.swing.undo.UndoManager;
 
 public class SwingUtils
 {
+	private static class PaddedBorder extends CompoundBorder implements UIResource
+	{
+		private PaddedBorder(Border outsideBorder, Insets padding)
+		{
+			super(outsideBorder, BorderFactory.createEmptyBorder(padding.top, padding.left, padding.bottom, padding.right));
+		}
+	}
+
 	public static final Insets TEXTBOX_INSETS = new Insets(2, 4, 2, 4);
+	public static final String UI_KEY_RED_TEXT = "StarRod.redText";
+	public static final String UI_KEY_GREEN_TEXT = "StarRod.greenText";
+	public static final String UI_KEY_BLUE_TEXT = "StarRod.blueText";
+	public static final String UI_KEY_GREY_TEXT = "StarRod.greyText";
 
 	public static final void enableComponents(Container root, boolean enabled)
 	{
@@ -453,6 +471,27 @@ public class SwingUtils
 		return lbl;
 	}
 
+	public static final JLabel getTabLabel(JTabbedPane tabs, String text, float point)
+	{
+		JLabel lbl = new JLabel(text) {
+			@Override
+			public Color getForeground()
+			{
+				int index = tabs.indexOfTabComponent(this);
+				Color foreground = null;
+
+				if (index >= 0 && index == tabs.getSelectedIndex())
+					foreground = UIManager.getColor("TabbedPane.selectedForeground");
+				if (foreground == null)
+					foreground = UIManager.getColor("TabbedPane.foreground");
+
+				return (foreground == null) ? super.getForeground() : foreground;
+			}
+		};
+		setFontSize(lbl, point);
+		return lbl;
+	}
+
 	public static final JLabel getCenteredLabel(String text, float point)
 	{
 		JLabel lbl = new JLabel(text, SwingConstants.CENTER);
@@ -531,16 +570,61 @@ public class SwingUtils
 
 	public static void addBorderPadding(JComponent c)
 	{
-		c.setBorder(BorderFactory.createCompoundBorder(
-			c.getBorder(),
-			BorderFactory.createEmptyBorder(2, 4, 2, 4)));
+		addBorderPadding(c, new Insets(2, 4, 2, 4));
+	}
+
+	public static void setBorderless(JComponent c)
+	{
+		// A null border is replaced when the Look & Feel is refreshed.
+		c.setBorder(BorderFactory.createEmptyBorder());
+	}
+
+	public static Border createThemedLineBorder()
+	{
+		return new AbstractBorder() {
+			@Override
+			public void paintBorder(Component c, Graphics g, int x, int y, int width, int height)
+			{
+				Color borderColor = UIManager.getColor("Component.borderColor");
+				if (borderColor == null)
+					borderColor = UIManager.getColor("Separator.foreground");
+				if (borderColor == null)
+					return;
+
+				Color oldColor = g.getColor();
+				g.setColor(borderColor);
+				g.drawRect(x, y, width - 1, height - 1);
+				g.setColor(oldColor);
+			}
+
+			@Override
+			public Insets getBorderInsets(Component c, Insets insets)
+			{
+				insets.set(1, 1, 1, 1);
+				return insets;
+			}
+		};
 	}
 
 	public static void addVerticalBorderPadding(JComponent c)
 	{
-		c.setBorder(BorderFactory.createCompoundBorder(
-			c.getBorder(),
-			BorderFactory.createEmptyBorder(2, 0, 2, 0)));
+		addBorderPadding(c, new Insets(2, 0, 2, 0));
+	}
+
+	private static void addBorderPadding(JComponent c, Insets padding)
+	{
+		Border border = c.getBorder();
+		if (!(border instanceof UIResource)) {
+			c.setBorder(BorderFactory.createCompoundBorder(border,
+				BorderFactory.createEmptyBorder(padding.top, padding.left, padding.bottom, padding.right)));
+			return;
+		}
+
+		c.setBorder(new PaddedBorder(border, padding));
+		c.addPropertyChangeListener("UI", e -> {
+			if (!(c.getBorder() instanceof PaddedBorder))
+				c.setBorder(new PaddedBorder(c.getBorder(), padding));
+		});
 	}
 
 	public static JLabel getLabelWithTooltip(String text, String toolTip)
@@ -575,6 +659,9 @@ public class SwingUtils
 
 	public static Color getRedTextColor()
 	{
+		Color color = UIManager.getColor(UI_KEY_RED_TEXT);
+		if (color != null)
+			return color;
 		int lum = getBackgroundLuminance();
 		if (lum > 110)
 			return new Color(220, 0, 0);
@@ -593,6 +680,9 @@ public class SwingUtils
 
 	public static Color getGreenTextColor()
 	{
+		Color color = UIManager.getColor(UI_KEY_GREEN_TEXT);
+		if (color != null)
+			return color;
 		int lum = getBackgroundLuminance();
 		if (lum > 110)
 			return new Color(0, 120, 0);
@@ -602,6 +692,9 @@ public class SwingUtils
 
 	public static Color getBlueTextColor()
 	{
+		Color color = UIManager.getColor(UI_KEY_BLUE_TEXT);
+		if (color != null)
+			return color;
 		int lum = getBackgroundLuminance();
 		if (lum > 110)
 			return new Color(0, 40, 255);
@@ -611,6 +704,9 @@ public class SwingUtils
 
 	public static Color getGrayTextColor()
 	{
+		Color color = UIManager.getColor(UI_KEY_GREY_TEXT);
+		if (color != null)
+			return color;
 		int lum = getBackgroundLuminance();
 		if (lum > 110)
 			return new Color(40, 40, 40);

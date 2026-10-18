@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -245,9 +246,29 @@ public class AssetManager
 		return getAssets(AssetSubdir.MAP_TEX, EXT_NEW_TEX);
 	}
 
+	/** Physical message files in every layer, highest layer first. Use MessageLibrary for resolved messages. */
 	public static Collection<AssetHandle> getMessages() throws IOException
 	{
-		return getAssets(AssetSubdir.MSG, EXT_MSG);
+		List<AssetHandle> files = new ArrayList<>();
+		for (File layer : Environment.assetDirectories)
+			files.addAll(getMessageFiles(layer));
+		return files;
+	}
+
+	/** All message containers in a layer; overrides are resolved by message, not filename. */
+	public static List<AssetHandle> getMessageFiles(File layer) throws IOException
+	{
+		Path root = layer.toPath();
+		Path messages = root.resolve("msg");
+		if (!Files.isDirectory(messages))
+			return List.of();
+		try (var paths = Files.walk(messages)) {
+			return paths.filter(Files::isRegularFile)
+				.filter(path -> path.toString().endsWith(EXT_MSG))
+				.sorted()
+				.map(path -> new AssetHandle(layer, root.relativize(path).toString()))
+				.collect(Collectors.toList());
+		}
 	}
 
 	private static Collection<AssetHandle> getAssets(AssetSubdir dir, String ext)

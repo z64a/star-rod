@@ -57,6 +57,7 @@ import app.StarRodFrame;
 import app.StarRodMain;
 import app.SwingUtils;
 import app.SwingUtils.OpenDialogCounter;
+import app.ThemesEditor;
 import assets.AssetHandle;
 import assets.AssetManager;
 import assets.ui.SelectBackgroundDialog;
@@ -673,6 +674,8 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		item = new JMenuItem("Preferences");
 		addButtonCommand(item, GuiCommand.SHOW_EDITOR_PREFERENCES);
 		menu.add(item);
+
+		ThemesEditor.addThemeMenuItem(menu, this);
 	}
 
 	private void addMapMenu(JMenuBar menuBar)
@@ -933,7 +936,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	private static void createTab(JTabbedPane tabs, String name, Container contents)
 	{
-		JLabel lbl = SwingUtils.getLabel(name, 12);
+		JLabel lbl = SwingUtils.getTabLabel(tabs, name, 12);
 		lbl.setPreferredSize(new Dimension(50, 20));
 		lbl.setHorizontalAlignment(SwingConstants.CENTER);
 
@@ -949,7 +952,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 		JScrollPane paintScrollPane = new JScrollPane(paintVertexTab);
 		paintScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		paintScrollPane.setBorder(null);
+		SwingUtils.setBorderless(paintScrollPane);
 
 		// TAB_IDX values are derived from order of creation here
 		createTab(tabbedPane, "Objects", createTransformTab());
@@ -1038,7 +1041,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		modifyTab.add(selectModePanel, "grow");
 
 		JScrollPane infoScrollPane = new JScrollPane(infoPanelContainer);
-		infoScrollPane.setBorder(null);
+		SwingUtils.setBorderless(infoScrollPane);
 		infoScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
 		infoScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 

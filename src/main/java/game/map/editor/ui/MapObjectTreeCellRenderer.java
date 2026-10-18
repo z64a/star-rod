@@ -68,7 +68,7 @@ public class MapObjectTreeCellRenderer extends JPanel implements TreeCellRendere
 		if (!hasInit || (closedIcon instanceof UIResource)) {
 			closedIcon = UIManager.getIcon("Tree.closedIcon");
 		}
-		if (!hasInit || (openIcon instanceof UIManager)) {
+		if (!hasInit || (openIcon instanceof UIResource)) {
 			openIcon = UIManager.getIcon("Tree.openIcon");
 		}
 	}

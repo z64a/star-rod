@@ -1,25 +1,36 @@
 package game.message.editor;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
+import app.input.FileSource;
 import app.input.IOUtils;
 import app.input.InputFileException;
 import app.input.Line;
 import assets.AssetHandle;
-import assets.AssetManager;
 import game.message.Message;
 import game.message.StringEncoder;
 import util.Logger;
 
+/** A group of effective messages with the same relative container path. */
 public class MessageAsset
 {
 	public AssetHandle asset;
-	public List<Message> messages = null;
-	private long lastModified;
+	public List<Message> messages;
 	private long modificationRevision;
 	private final Object saveLock = new Object();
+	private final Map<Message, SavedState> savedStates = new IdentityHashMap<>();
+	private final Set<Message> structuralChanges = Collections.newSetFromMap(new IdentityHashMap<>());
+	private byte[] loadedBytes;
+	private MessageLibrary library;
 
 	public volatile boolean hasModified;
 	public boolean hasError;
@@ -30,30 +41,35 @@ public class MessageAsset
 		reload();
 	}
 
+	MessageAsset(AssetHandle asset, MessageLibrary library)
+	{
+		this.asset = asset;
+		this.library = library;
+		messages = new ArrayList<>();
+	}
+
 	public void reload()
 	{
 		synchronized (saveLock) {
-			reloadImpl();
+			synchronized (this) {
+				try {
+					loadedBytes = Files.readAllBytes(asset.toPath());
+					List<Line> lines = IOUtils.readPlainInputStream(new FileSource(asset), new ByteArrayInputStream(loadedBytes));
+					messages = StringEncoder.parseMessages(this, lines);
+				}
+				catch (IOException e) {
+					throw new InputFileException(asset, e.getMessage());
+				}
+				savedStates.clear();
+				structuralChanges.clear();
+				for (Message message : messages)
+					savedStates.put(message, new SavedState(message));
+				updateIndices();
+				library = null;
+				modificationRevision = 0;
+				hasModified = false;
+			}
 		}
-	}
-
-	private synchronized void reloadImpl()
-	{
-		try {
-			messages = StringEncoder.parseMessages(this);
-		}
-		catch (IOException e) {
-			throw new InputFileException(asset, e.getMessage());
-		}
-
-		int msgIndex = 0;
-		for (Message msg : messages) {
-			msg.index = msgIndex++;
-		}
-
-		lastModified = asset.lastModified();
-		modificationRevision = 0;
-		hasModified = false;
 	}
 
 	public boolean saveChanges()
@@ -69,95 +85,41 @@ public class MessageAsset
 	boolean saveChanges(long expectedRevision, Runnable snapshotReadyCallback)
 	{
 		synchronized (saveLock) {
-			SaveSnapshot snapshot = snapshotIfCurrent(expectedRevision);
-			if (snapshot == null)
+			try {
+				if (library == null) {
+					if (!asset.isFile() || !Arrays.equals(loadedBytes, Files.readAllBytes(asset.toPath())))
+						throw new IOException("Could not save " + asset + ": it was changed outside Star Rod. Reload resources first.");
+					library = MessageLibrary.forAsset(this);
+				}
+				return library.save(this, expectedRevision, snapshotReadyCallback);
+			}
+			catch (IOException | InputFileException e) {
+				Logger.logError(e.getMessage());
 				return false;
-
-			snapshotReadyCallback.run();
-			return saveSnapshot(snapshot);
+			}
 		}
-	}
-
-	private boolean saveSnapshot(SaveSnapshot snapshot)
-	{
-		if (!snapshot.sourceAsset.exists()) {
-			Logger.logError("Could not save changes because " + snapshot.sourceAsset.getName() + " no longer exists.");
-			return false;
-		}
-		if (snapshot.sourceAsset.lastModified() != snapshot.sourceLastModified) {
-			Logger.logError("Could not save changes because " + snapshot.sourceAsset.getName()
-				+ " was modified outside Star Rod.");
-			return false;
-		}
-
-		List<Line> linesIn;
-		try {
-			linesIn = IOUtils.readPlainInputFile(snapshot.sourceAsset);
-		}
-		catch (IOException e) {
-			Logger.logError("Failed to save " + snapshot.sourceAsset.getName());
-			Logger.printStackTrace(e);
-			return false;
-		}
-
-		List<String> linesOut = render(snapshot, linesIn);
-		AssetHandle saveAsset;
-		try {
-			saveAsset = AssetManager.getTopLevelForSave(snapshot.sourceAsset);
-			IOUtils.atomicWriteLines(linesOut, saveAsset);
-		}
-		catch (IOException e) {
-			Logger.logError("Failed to save " + snapshot.sourceAsset.getName());
-			Logger.printStackTrace(e);
-			return false;
-		}
-
-		if (commitSnapshot(snapshot, saveAsset))
-			return true;
-
-		Logger.logWarning("Saved " + saveAsset.getName() + ", but newer edits remain unsaved.");
-		return false;
-	}
-
-	private static List<String> render(SaveSnapshot snapshot, List<Line> linesIn)
-	{
-		List<String> linesOut = new ArrayList<>((int) (linesIn.size() * 1.2));
-		int currentLine = 0;
-
-		for (MessageState msg : snapshot.messages) {
-			if (msg.startLineNum <= 0)
-				continue;
-
-			while (currentLine < msg.startLineNum - 1)
-				linesOut.add(linesIn.get(currentLine++).str);
-
-			msg.savedStartLineNum = linesOut.size() + 1;
-			writeString(msg, linesOut);
-			currentLine = msg.endLineNum;
-			msg.savedEndLineNum = linesOut.size();
-		}
-
-		while (currentLine < linesIn.size())
-			linesOut.add(linesIn.get(currentLine++).str);
-
-		for (MessageState msg : snapshot.messages) {
-			if (msg.startLineNum > 0)
-				continue;
-
-			msg.savedStartLineNum = linesOut.size() + 1;
-			writeString(msg, linesOut);
-			msg.savedEndLineNum = linesOut.size();
-			linesOut.add("");
-		}
-
-		return linesOut;
 	}
 
 	public synchronized void markModified(Message message)
 	{
 		modificationRevision++;
-		message.modified = true;
-		hasModified = true;
+		refreshModified(message);
+	}
+
+	synchronized void setStructuralModified(Message message, boolean changed)
+	{
+		if (changed)
+			structuralChanges.add(message);
+		else
+			structuralChanges.remove(message);
+		markModified(message);
+	}
+
+	private void refreshModified(Message message)
+	{
+		SavedState saved = savedStates.get(message);
+		message.modified = structuralChanges.contains(message) || saved == null || !saved.matches(message);
+		hasModified = message.modified || messages.stream().anyMatch(item -> item.modified);
 	}
 
 	public synchronized long getModificationRevision()
@@ -170,98 +132,136 @@ public class MessageAsset
 		if (message.source != this)
 			throw new IllegalArgumentException("Message belongs to a different asset");
 		messages.add(message);
+		updateIndices();
 		markModified(message);
 	}
 
-	private synchronized SaveSnapshot snapshotIfCurrent(long expectedRevision)
+	void addLoadedMessage(Message message)
+	{
+		messages.add(message);
+		savedStates.put(message, new SavedState(message));
+	}
+
+	synchronized void forgetMessage(Message message)
+	{
+		messages.remove(message);
+		savedStates.remove(message);
+		clearModified(message);
+	}
+
+	synchronized void clearModified(Message message)
+	{
+		structuralChanges.remove(message);
+		if (messages.contains(message))
+			savedStates.put(message, new SavedState(message));
+		message.modified = false;
+		modificationRevision++;
+		hasModified = messages.stream().anyMatch(item -> item.modified);
+	}
+
+	void updateIndices()
+	{
+		for (int i = 0; i < messages.size(); i++) {
+			// Legacy unnamed declarations carry an explicit ID, not a list position.
+			if (!messages.get(i).name.isEmpty())
+				messages.get(i).index = i;
+		}
+	}
+
+	synchronized String savedKey(Message message)
+	{
+		SavedState saved = savedStates.get(message);
+		return saved == null ? null : saved.key;
+	}
+
+	synchronized SaveSnapshot snapshotIfCurrent(long expectedRevision)
 	{
 		if (modificationRevision != expectedRevision)
 			return null;
-
-		List<MessageState> states = new ArrayList<>(messages.size());
-		for (Message message : messages)
-			states.add(new MessageState(message));
-		return new SaveSnapshot(expectedRevision, new AssetHandle(asset), lastModified, states);
+		List<MessageState> states = new ArrayList<>();
+		List<String> order = new ArrayList<>();
+		for (Message message : messages) {
+			String savedKey = savedKey(message);
+			order.add(savedKey == null ? MessageLibrary.key(message) : savedKey);
+			if (message.modified)
+				states.add(new MessageState(message));
+		}
+		return new SaveSnapshot(expectedRevision, states, order);
 	}
 
-	private synchronized boolean commitSnapshot(SaveSnapshot snapshot, AssetHandle saveAsset)
+	synchronized void recordSaved(MessageState state)
 	{
-		asset = saveAsset;
-		lastModified = saveAsset.lastModified();
+		// The baseline must describe the snapshot written, even if a newer edit or undo
+		// arrived during the save. Such edits are compared against the new on-disk state.
+		savedStates.put(state.owner, new SavedState(state.key, state.section, state.markup));
+		structuralChanges.remove(state.owner);
+		refreshModified(state.owner);
+	}
 
-		for (MessageState state : snapshot.messages) {
-			if (messages.contains(state.owner)) {
-				state.owner.startLineNum = state.savedStartLineNum;
-				state.owner.endLineNum = state.savedEndLineNum;
-			}
-		}
-
-		if (modificationRevision != snapshot.revision)
+	synchronized boolean finishSave(SaveSnapshot snapshot)
+	{
+		if (modificationRevision != snapshot.revision) {
+			Logger.logWarning("Saved " + asset.getName() + ", but newer edits remain unsaved.");
 			return false;
-
+		}
 		for (MessageState state : snapshot.messages) {
-			if (messages.contains(state.owner))
-				state.owner.applySavedMarkup(state.markup);
+			state.owner.applySavedMarkup(state.markup);
+			structuralChanges.remove(state.owner);
+			state.owner.modified = false;
 		}
-
-		for (Message msg : messages)
-			msg.modified = false;
-		hasModified = false;
-		return true;
+		hasModified = messages.stream().anyMatch(message -> message.modified);
+		return !hasModified;
 	}
 
-	private static void writeString(MessageState msg, List<String> linesOut)
+	private record SavedState(String key, int section, String markup)
 	{
-		linesOut.add(String.format("#message:%02X:(%s)", msg.section, msg.name));
-		linesOut.add("{");
-
-		String[] lines = msg.markup.split("\r?\n");
-		for (String line : lines) {
-			linesOut.add(msg.leadingTabs + line);
+		SavedState(Message message)
+		{
+			this(MessageLibrary.key(message), message.section, message.getMarkup());
 		}
 
-		linesOut.add("}");
-		linesOut.add("");
+		boolean matches(Message message)
+		{
+			return key.equals(MessageLibrary.key(message)) && section == message.section && markup.equals(message.getMarkup());
+		}
 	}
 
-	private static final class SaveSnapshot
+	static final class SaveSnapshot
 	{
-		private final long revision;
-		private final AssetHandle sourceAsset;
-		private final long sourceLastModified;
-		private final List<MessageState> messages;
+		final long revision;
+		final List<MessageState> messages;
+		final List<String> order;
 
-		private SaveSnapshot(long revision, AssetHandle sourceAsset, long sourceLastModified, List<MessageState> messages)
+		SaveSnapshot(long revision, List<MessageState> messages, List<String> order)
 		{
 			this.revision = revision;
-			this.sourceAsset = sourceAsset;
-			this.sourceLastModified = sourceLastModified;
 			this.messages = messages;
+			this.order = order;
 		}
 	}
 
-	private static final class MessageState
+	static final class MessageState
 	{
-		private final Message owner;
-		private final int startLineNum;
-		private final int endLineNum;
-		private final String leadingTabs;
-		private final int section;
-		private final String name;
-		private final String markup;
+		final Message owner;
+		final String key;
+		final int section;
+		final String markup;
+		final List<String> lines;
 
-		private int savedStartLineNum;
-		private int savedEndLineNum;
-
-		private MessageState(Message message)
+		MessageState(Message message)
 		{
 			owner = message;
-			startLineNum = message.startLineNum;
-			endLineNum = message.endLineNum;
-			leadingTabs = message.leadingTabs;
+			key = MessageLibrary.key(message);
 			section = message.section;
-			name = message.name;
 			markup = Message.getSanitizedMarkup(message.getMarkup());
+			lines = new ArrayList<>();
+			lines.add(message.name.isEmpty()
+				? String.format("#message:%02X:%03X", message.section, message.index)
+				: String.format("#message:%02X:(%s)", message.section, message.name));
+			lines.add("{");
+			for (String line : markup.split("\\r?\\n"))
+				lines.add(message.leadingTabs + line);
+			lines.add("}");
 		}
 	}
 }

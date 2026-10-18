@@ -8,14 +8,13 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.SwingConstants;
 
-import com.alexandriasoftware.swing.JSplitButton;
-
 import game.map.MapObject;
 import game.map.MapObject.MapObjectType;
 import game.map.marker.Marker.MarkerType;
 import game.map.scripts.UISelectionHelper;
 import net.miginfocom.swing.MigLayout;
 import util.ui.StringField;
+import util.ui.ThemedSplitButton;
 
 public class BoundObjectPanel extends JPanel
 {
@@ -71,7 +70,7 @@ public class BoundObjectPanel extends JPanel
 		buildPopupMenu(commandMenu);
 		SwingGUI.instance().registerPopupMenu(commandMenu);
 
-		JSplitButton button = new JSplitButton("Action");
+		ThemedSplitButton button = new ThemedSplitButton("Action");
 		button.setPopupMenu(commandMenu);
 		button.setAlwaysPopup(true);
 

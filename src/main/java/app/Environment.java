@@ -637,6 +637,11 @@ public abstract class Environment
 			Logger.log("Extracting assets from baserom");
 			Directories.createDumpDirectories();
 			EntityExtractor.extractAll();
+		}
+
+		// Other tools may create the dump directory without extracting Star Rod's fonts.
+		if (!Directories.DUMP_MSG_FONT.file("fonts.xml").isFile()) {
+			LoadingBar.show("Extracting Fonts");
 			FontManager.dump();
 		}
 
