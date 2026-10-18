@@ -30,6 +30,12 @@ public class AudioLayers
 		"SoundEffects.xml", "sound_effects.xml", "Presets.xml", "presets.xml", "Drums.xml", "drums.xml",
 		"sfx/Envelopes.xml", "sfx/envelopes.xml");
 
+	private static final String SONGS_RETIRED = "songs aren't listed in a table: each .bgm file in songs/ is a song "
+		+ "named after its file, and Mamar sets the banks it loads. Delete this file.";
+
+	/** Tables that papermario-dx replaced with the files they listed, with what to do instead. */
+	private static final Map<String, String> RETIRED = Map.of("songs.xml", SONGS_RETIRED, "Songs.xml", SONGS_RETIRED);
+
 	/** Asset stack roots, highest priority first. */
 	private final List<File> layers;
 	private final Set<File> inputs = new TreeSet<>();
@@ -54,11 +60,21 @@ public class AudioLayers
 		return all;
 	}
 
-	/** Errors if a sidecar deletes a table file, or a layer has a file under a name from before the names were snake case. */
+	/**
+	 * Errors if a sidecar deletes a table file, a layer has a file under a name from before the names were snake case,
+	 * or a papermario-dx layer has a table that was replaced by the files it listed.
+	 */
 	public void checkTables()
 	{
 		for (File layer : layers) {
 			File audio = AssetSubdir.AUDIO.get(layer);
+			if (Environment.isDX()) {
+				RETIRED.forEach((table, message) -> {
+					File file = new File(audio, table);
+					if (file.isFile())
+						throw new InputFileException(file, message);
+				});
+			}
 			RENAMED.forEach((oldPath, newPath) -> checkRenamed(audio, oldPath, newPath));
 			String[] banks = new File(audio, "bank").list();
 			if (banks != null) {

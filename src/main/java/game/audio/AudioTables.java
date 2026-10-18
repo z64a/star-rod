@@ -36,7 +36,6 @@ public abstract class AudioTables
 		// @formatter:on
 	}
 
-	public static final int MAX_SONG_ID = 0xFF;
 	public static final int MAX_BANKS = 79;
 	public static final int MIN_BANK_GROUP = 2;
 	public static final int MAX_BANK_GROUP = 6;
@@ -51,10 +50,6 @@ public abstract class AudioTables
 	public static final int DEFAULT_KEY_BASE = 4800;
 
 	private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z][A-Za-z0-9_]*");
-
-	/** bk holds three auxiliary bank file names, null where the song uses none. */
-	public record Song(String name, int id, String bgm, String[] bk, File source)
-	{}
 
 	public record Bank(String file, int group, int index, File source)
 	{}
@@ -124,22 +119,22 @@ public abstract class AudioTables
 	}
 
 	/** Songs indexed by ID. Unused IDs below the highest one repeat the lowest song. */
-	public static Song[] readSongs(AudioLayers layers)
+	public static List<Songs.Song> readSongs(AudioLayers layers)
 	{
 		Map<String, Entry> entries = merge(layers, "songs.xml", Key.SongList, Key.Song);
-		assignIds(entries, MAX_SONG_ID);
+		assignIds(entries, Songs.MAX_ID);
 
-		Song[] songs = new Song[entries.values().stream().mapToInt(e -> e.id).max().orElse(-1) + 1];
+		Songs.Song[] songs = new Songs.Song[entries.values().stream().mapToInt(e -> e.id).max().orElse(-1) + 1];
 		for (Entry e : entries.values()) {
 			checkIdentifier(e);
 			String[] bk = { e.optional(Key.bk1), e.optional(Key.bk2), e.optional(Key.bk3) };
-			songs[e.id] = new Song(e.name, e.id, e.required(Key.bgm), bk, e.xmr.getSourceFile());
+			songs[e.id] = new Songs.Song(e.name, e.id, e.required(Key.bgm), bk, e.xmr.getSourceFile());
 		}
 
-		Song filler = Arrays.stream(songs).filter(s -> s != null).findFirst()
+		Songs.Song filler = Arrays.stream(songs).filter(s -> s != null).findFirst()
 			.orElseThrow(() -> new InputFileException(new File("songs.xml"), "there are no songs"));
 		Arrays.setAll(songs, i -> songs[i] == null ? filler : songs[i]);
-		return songs;
+		return List.of(songs);
 	}
 
 	/** Always-loaded banks in table order. */

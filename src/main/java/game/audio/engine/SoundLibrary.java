@@ -29,6 +29,7 @@ import game.audio.SfxArchive;
 import game.audio.SfxBinary;
 import game.audio.SfxFormatException;
 import game.audio.SfxXml;
+import game.audio.Songs;
 import game.audio.SoundBank;
 import game.audio.bgm.Song;
 
@@ -167,26 +168,26 @@ public class SoundLibrary
 		return id >= 0 && id < presets.length ? presets[id] : null;
 	}
 
-	/** Song table entries, without the duplicate entries used to fill unused IDs. */
-	public List<AudioTables.Song> listSongs()
+	/** The songs in order of ID, without the duplicate entries used to fill unused IDs. */
+	public List<Songs.Song> listSongs()
 	{
-		if (layers.getTables("songs.xml").isEmpty())
+		if (!Songs.exist(layers))
 			return List.of();
-		Map<Integer, AudioTables.Song> songs = new TreeMap<>();
-		for (AudioTables.Song song : AudioTables.readSongs(layers))
+		Map<Integer, Songs.Song> songs = new TreeMap<>();
+		for (Songs.Song song : Songs.read(layers))
 			songs.put(song.id(), song);
 		return List.copyOf(songs.values());
 	}
 
 	/** Resolves auxiliary banks independently for each song, leaving SFX and ambience untouched. */
-	public Song readSong(AudioTables.Song entry)
+	public Song readSong(Songs.Song entry)
 	{
 		File file = layers.getFile("songs/" + entry.bgm());
 		if (file == null)
 			throw new InputFileException(entry.source(), "song %s: songs/%s not found", entry.name(), entry.bgm());
 		Presets.Addresses songAddresses = addresses;
-		for (int i = 0; i < entry.bk().length; i++) {
-			String bankName = entry.bk()[i];
+		for (int i = 0; i < entry.auxBanks().length; i++) {
+			String bankName = entry.auxBanks()[i];
 			if (bankName == null)
 				continue;
 			SoundBank bank = banks.get(baseName(bankName));

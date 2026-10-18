@@ -12,7 +12,7 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 
-import game.audio.AudioTables;
+import game.audio.Songs;
 import game.audio.bgm.BgmPlayer;
 import game.audio.bgm.Song;
 import game.audio.engine.AudioEngine;
@@ -25,7 +25,7 @@ final class BgmTab extends AudioBoothTab
 {
 	private final SoundLibrary library;
 	private final BgmPlayer player;
-	private final Map<String, AudioTables.Song> entries = new LinkedHashMap<>();
+	private final Map<String, Songs.Song> entries = new LinkedHashMap<>();
 	private final JList<String> songList;
 	private final JComboBox<Integer> compositionBox = new JComboBox<>();
 	private final JComboBox<Integer> mixBox = new JComboBox<>();
@@ -42,7 +42,7 @@ final class BgmTab extends AudioBoothTab
 		this.library = library;
 		player = (BgmPlayer) getSession();
 		DefaultListModel<String> model = new DefaultListModel<>();
-		for (AudioTables.Song entry : library.listSongs()) {
+		for (Songs.Song entry : library.listSongs()) {
 			entries.put(entry.name(), entry);
 			model.addElement(entry.name());
 		}
@@ -91,7 +91,7 @@ final class BgmTab extends AudioBoothTab
 
 	private String formatName(String name)
 	{
-		AudioTables.Song entry = entries.get(name);
+		Songs.Song entry = entries.get(name);
 		return String.format("%02X  %s  (%s)", entry.id(), name, entry.bgm());
 	}
 

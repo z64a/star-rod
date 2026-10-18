@@ -23,7 +23,7 @@ import app.input.InputFileException;
 import game.audio.AudioTables.Ambient;
 import game.audio.AudioTables.Bank;
 import game.audio.AudioTables.Key;
-import game.audio.AudioTables.Song;
+import game.audio.Songs.Song;
 import game.audio.engine.AudioRender;
 import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
@@ -184,6 +184,10 @@ public abstract class AudioTasks
 			if (file.type.equals("BK")) {
 				banks.get(names[i]).dump(new File(new File(audioDir, dir), file.name));
 			}
+			else if (file.type.equals("BGM") && Environment.isDX()) {
+				byte[] bgm = BgmMetadata.withAuxBanks(file.data, auxBanks(sbnFile, sbn, names, owners, i));
+				FileUtils.writeByteArrayToFile(new File(new File(audioDir, dir), names[i]), bgm);
+			}
 			else if (!file.type.equals("MSEQ") && i != sbn.resources.get(SEF_RESOURCE)
 				&& i != sbn.resources.get(PER_RESOURCE) && i != sbn.resources.get(PRG_RESOURCE)) {
 				FileUtils.writeByteArrayToFile(new File(new File(audioDir, dir), names[i]), file.data);
@@ -229,7 +233,8 @@ public abstract class AudioTasks
 			throw new InputFileException(sbnFile, e.getMessage());
 		}
 
-		dumpSongs(sbnFile, sbn, names, new File(audioDir, "songs.xml"));
+		if (!Environment.isDX())
+			dumpSongs(sbnFile, sbn, names, new File(audioDir, "songs.xml"));
 		dumpBanks(sbnFile, sbn, names, new File(audioDir, "banks.xml"));
 		dumpAmbient(sbnFile, sbn, names, new File(audioDir, "ambient_sounds.xml"));
 	}
@@ -289,6 +294,32 @@ public abstract class AudioTasks
 	private static String baseName(String file)
 	{
 		return file.substring(0, file.lastIndexOf('.'));
+	}
+
+	/** The banks loaded by the song that BGM file bgm is named after, warning about songs that play it with others. */
+	private static String[] auxBanks(File sbnFile, Sbn sbn, String[] names, Map<Integer, String> owners, int bgm)
+	{
+		String[][] banksOf = new String[sbn.songs.size()][];
+		String[] owned = new String[BgmMetadata.AUX_BANKS];
+		for (int id = 0; id < sbn.songs.size(); id++) {
+			int[] song = sbn.songs.get(id);
+			if (song[0] != bgm)
+				continue;
+			banksOf[id] = new String[BgmMetadata.AUX_BANKS];
+			for (int i = 0; i < BgmMetadata.AUX_BANKS; i++) {
+				if (song[i + 1] != 0)
+					banksOf[id][i] = nameOf(sbnFile, sbn, names, song[i + 1], "BK");
+			}
+			if (AudioNames.getSongName(id).equals(owners.get(bgm)))
+				owned = banksOf[id];
+		}
+
+		for (int id = 0; id < banksOf.length; id++) {
+			if (banksOf[id] != null && !Arrays.equals(banksOf[id], owned))
+				System.out.printf("song %02X plays %s with other banks than %s does; only %s's banks are kept%n", id,
+					names[bgm], owners.get(bgm), owners.get(bgm));
+		}
+		return owned;
 	}
 
 	private static void dumpSongs(File sbnFile, Sbn sbn, String[] names, File out) throws IOException
@@ -376,7 +407,7 @@ public abstract class AudioTasks
 		AudioLayers layers = AudioLayers.fromEnvironment();
 		layers.checkTables();
 
-		Song[] songs = AudioTables.readSongs(layers);
+		List<Song> songs = Songs.read(layers);
 		List<Bank> banks = AudioTables.readBanks(layers);
 		Ambient ambient = AudioTables.readAmbient(layers);
 
@@ -393,8 +424,8 @@ public abstract class AudioTasks
 			int[] entry = new int[4];
 			entry[0] = find(sbn, index, song.source(), songUser, song.bgm(), "BGM");
 			for (int i = 0; i < AUX_BANK_KEYS.length; i++) {
-				if (song.bk()[i] != null) {
-					entry[i + 1] = find(sbn, index, song.source(), songUser, song.bk()[i], "BK");
+				if (song.auxBanks()[i] != null) {
+					entry[i + 1] = find(sbn, index, song.source(), songUser, song.auxBanks()[i], "BK");
 					checkAuxBank(song.source(), songUser, sbn.files.get(entry[i + 1]));
 				}
 			}
@@ -668,22 +699,23 @@ public abstract class AudioTasks
 		Map<String, String> owners = new HashMap<>();
 		for (SfxArchive.Sound sound : sfx.sounds.values()) {
 			if (!AudioNames.isPlaceholderSound(sound.name)) {
-				String name = cName("SOUND_", sound.name, sound.file, owners);
+				String name = cName("SOUND_", sound.name, false, sound.file, owners);
 				sb.append(String.format("    %s= 0x%08X,\n", pad(name, 44), sound.id));
 			}
 		}
 		return sb.append("};\n").toString();
 	}
 
-	private static String songHeader(Song[] songs)
+	private static String songHeader(List<Song> songs)
 	{
 		StringBuilder sb = new StringBuilder(HEADER_COMMENT).append("#pragma once\n\nenum SongIDs {\n");
 		Map<String, String> owners = new HashMap<>();
-		for (int id = 0; id < songs.length; id++) {
+		for (int id = 0; id < songs.size(); id++) {
+			Song song = songs.get(id);
 			// entries that stand in for unused IDs repeat another song's ID
-			if (songs[id].id() != id || AudioNames.isUnused(songs[id].name()))
+			if (song.id() != id || AudioNames.isUnused(song.name()))
 				continue;
-			String name = cName("SONG_", songs[id].name(), songs[id].source(), owners);
+			String name = cName("SONG_", song.name(), Environment.isDX(), song.source(), owners);
 			sb.append(String.format("    %s= 0x%08X,\n", pad(name, 32), id));
 		}
 		return sb.append("};\n").toString();
@@ -696,11 +728,11 @@ public abstract class AudioTasks
 		for (var sound : ambient.sounds) {
 			if (AudioNames.isUnused(sound.name()))
 				continue;
-			String name = cName("AMBIENT_", sound.name(), sound.source(), owners);
+			String name = cName("AMBIENT_", sound.name(), false, sound.source(), owners);
 			sb.append(String.format("    %s= %d,\n", pad(name, 24), sound.id()));
 		}
 		if (ambient.radio != null) {
-			String name = cName("AMBIENT_", ambient.radio.name(), ambient.radio.source(), owners);
+			String name = cName("AMBIENT_", ambient.radio.name(), false, ambient.radio.source(), owners);
 			sb.append(String.format("    %s= %d,\n", pad(name, 24), AudioTables.RADIO_ID));
 		}
 		return sb.append("};\n").toString();
@@ -745,9 +777,10 @@ public abstract class AudioTasks
 		return (value + 0xF) & ~0xF;
 	}
 
-	private static String cName(String prefix, String name, File source, Map<String, String> owners)
+	/** Converts a name to a C identifier. Names that come from file names are snake case already. */
+	private static String cName(String prefix, String name, boolean snakeCase, File source, Map<String, String> owners)
 	{
-		String cName = AudioNames.toCName(prefix, name);
+		String cName = snakeCase ? prefix + name.toUpperCase() : AudioNames.toCName(prefix, name);
 		String other = owners.put(cName, name);
 		if (other != null)
 			throw new InputFileException(source, "%s and %s both become %s", other, name, cName);
@@ -790,6 +823,10 @@ public abstract class AudioTasks
 	 */
 	public static void verify(File built, File reference) throws IOException
 	{
+		if (Environment.isDX())
+			throw new IOException("-VerifyAudio only works in vanilla projects; papermario-dx lays out its audio differently, "
+				+ "so its archive can't match vanilla's");
+
 		byte[] actual = withCanonicalForms(built, readFile(built));
 		byte[] expected = withCanonicalForms(reference, readFile(reference));
 		Sbn actualSbn = Sbn.read(built, actual);
