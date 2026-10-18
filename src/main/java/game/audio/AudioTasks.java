@@ -499,8 +499,8 @@ public abstract class AudioTasks
 
 		int bkType = Sbn.TYPES.indexOf("BK");
 		int mseqType = Sbn.TYPES.indexOf("MSEQ");
-		boolean presets = usesTables(layers, "presets.xml", "prg/SET1.prg");
-		boolean drums = usesTables(layers, "drums.xml", "per/SET1.per");
+		boolean presets = usesPresetTable(layers, "presets.xml", "prg/SET1.prg");
+		boolean drums = usesPresetTable(layers, "drums.xml", "per/SET1.per");
 		boolean sounds = usesTables(layers, "sound_effects.xml", "sfx/DAT1.sef");
 
 		List<Source> sources = new ArrayList<>();
@@ -569,12 +569,12 @@ public abstract class AudioTasks
 			: addresses;
 		sources.addAll(readMseqs(layers, mseqAddresses));
 		if (presets) {
-			File table = lastOf(layers.getTables("presets.xml"));
+			File table = layers.getFile("presets.xml");
 			sources.add(new Source(Sbn.TYPES.indexOf("PRG"), "SET1.prg", table,
 				Presets.writePresets(AudioTables.readPresets(layers), addresses)));
 		}
 		if (drums) {
-			File table = lastOf(layers.getTables("drums.xml"));
+			File table = layers.getFile("drums.xml");
 			sources.add(new Source(Sbn.TYPES.indexOf("PER"), "SET1.per", table,
 				Presets.writeDrums(AudioTables.readDrums(layers), addresses)));
 		}
@@ -640,7 +640,7 @@ public abstract class AudioTasks
 	}
 
 	/**
-	 * Whether a preset file is built from its table. A binary in a lower layer than every table
+	 * Whether a binary is built from its merged table. A binary in a lower layer than every table
 	 * is replaced by the tables, but a binary in the same layer or above them is an error, as
 	 * entries can't merge into it.
 	 */
@@ -661,6 +661,26 @@ public abstract class AudioTasks
 				throw new InputFileException(t, "entries can't merge into the binary %s in a lower layer", binary);
 		}
 		return false;
+	}
+
+	/**
+	 * Whether a preset file is built from its table. In papermario-dx, the table replaces the file whole, so whichever is
+	 * in the higher layer wins; other projects merge the table as usesTables describes.
+	 */
+	public static boolean usesPresetTable(AudioLayers layers, String table, String binary)
+	{
+		return Environment.isDX() ? usesWholeTable(layers, table, binary) : usesTables(layers, table, binary);
+	}
+
+	private static boolean usesWholeTable(AudioLayers layers, String table, String binary)
+	{
+		File xml = layers.getFile(table);
+		File file = layers.getFile(binary);
+		if (xml == null || file == null)
+			return xml != null;
+		if (layers.getPriority(xml) == layers.getPriority(file))
+			throw new InputFileException(file, "the layer has both %s and %s; use only one", table, file.getName());
+		return layers.getPriority(xml) < layers.getPriority(file);
 	}
 
 	private static int find(Sbn sbn, Map<String, Integer> index, File source, String user, String file, String type)

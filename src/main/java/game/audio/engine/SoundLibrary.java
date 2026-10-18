@@ -89,13 +89,13 @@ public class SoundLibrary
 		ambientAddresses = radioBank != null && files.containsKey(radioBank)
 			? addresses.withAuxiliary(AudioTasks.RADIO_BANK_SLOT, files.get(radioBank))
 			: addresses;
-		if (AudioTasks.usesTables(layers, "drums.xml", "per/SET1.per"))
+		if (AudioTasks.usesPresetTable(layers, "drums.xml", "per/SET1.per"))
 			drums = AudioTables.readDrums(layers);
 		else if (layers.getFile("per/SET1.per") != null) {
 			File file = layers.getFile("per/SET1.per");
 			drums = Presets.readDrums(file, readFile(file), addresses);
 		}
-		if (AudioTasks.usesTables(layers, "presets.xml", "prg/SET1.prg"))
+		if (AudioTasks.usesPresetTable(layers, "presets.xml", "prg/SET1.prg"))
 			presets = AudioTables.readPresets(layers);
 		else if (layers.getFile("prg/SET1.prg") != null) {
 			File file = layers.getFile("prg/SET1.prg");

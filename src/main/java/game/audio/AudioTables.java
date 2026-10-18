@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
+import app.Environment;
 import app.input.InputFileException;
 import util.xml.XmlKey;
 import util.xml.XmlWrapper.XmlReader;
@@ -22,7 +23,8 @@ import util.xml.XmlWrapper.XmlReader;
 /**
  * The audio tables (songs, banks, ambient sounds, sound effects, presets, drums, and envelopes). Each is an XML file that can exist in several layers of
  * the asset stack. Entries are keyed by name; the highest layer's entry replaces the whole entry of
- * the same name below it, and delete="true" removes it.
+ * the same name below it, and delete="true" removes it. In papermario-dx, the highest layer's presets or drums
+ * replace the whole file below it instead.
  */
 public abstract class AudioTables
 {
@@ -158,7 +160,7 @@ public abstract class AudioTables
 	/** Presets indexed by ID, with null for unused IDs. */
 	public static Preset[] readPresets(AudioLayers layers)
 	{
-		Map<String, Entry> entries = merge(layers, "presets.xml", Key.Instruments, Key.Instrument);
+		Map<String, Entry> entries = readPresetTable(layers, "presets.xml", Key.Instruments, Key.Instrument);
 		assignIds(entries, MAX_PRESET_ID);
 
 		Preset[] presets = new Preset[entries.values().stream().mapToInt(e -> e.id).max().orElse(-1) + 1];
@@ -175,7 +177,7 @@ public abstract class AudioTables
 	/** Drums indexed by ID, with null for unused IDs. */
 	public static Drum[] readDrums(AudioLayers layers)
 	{
-		Map<String, Entry> entries = merge(layers, "drums.xml", Key.Drums, Key.Drum);
+		Map<String, Entry> entries = readPresetTable(layers, "drums.xml", Key.Drums, Key.Drum);
 		assignIds(entries, MAX_DRUM_ID);
 
 		Drum[] drums = new Drum[entries.values().stream().mapToInt(e -> e.id).max().orElse(-1) + 1];
@@ -242,37 +244,69 @@ public abstract class AudioTables
 
 		Map<String, Entry> merged = new LinkedHashMap<>();
 		for (File file : files) {
-			XmlReader xmr = new XmlReader(file);
-			if (!xmr.getRootElement().getTagName().equals(root.toString()))
-				xmr.complain("expected root tag " + root);
-
-			Set<String> seen = new HashSet<>();
-			for (Node child = xmr.getRootElement().getFirstChild(); child != null; child = child.getNextSibling()) {
-				if (!(child instanceof Element elem))
-					continue;
-				if (Arrays.stream(tags).noneMatch(tag -> tag.toString().equals(elem.getTagName())))
-					xmr.complain("unexpected tag " + elem.getTagName());
-
-				xmr.requiresAttribute(elem, Key.name);
-				String name = xmr.getAttribute(elem, Key.name);
-				if (!seen.add(name))
-					xmr.complain(elem.getTagName() + " '" + name + "' is listed more than once");
-
-				if (xmr.hasAttribute(elem, Key.delete) && xmr.readBoolean(elem, Key.delete)) {
-					merged.remove(name);
+			for (Entry entry : parse(file, root, tags)) {
+				if (entry.optional(Key.delete) != null && entry.xmr.readBoolean(entry.elem, Key.delete)) {
+					merged.remove(entry.name);
 					continue;
 				}
 
-				Entry entry = new Entry(name, xmr, elem);
-				Entry replaced = merged.get(name);
+				Entry replaced = merged.get(entry.name);
 				if (entry.optional(Key.id) != null)
 					entry.id = readHex(entry, Key.id, 0, Integer.MAX_VALUE);
 				else if (replaced != null)
 					entry.id = replaced.id;
-				merged.put(name, entry);
+				merged.put(entry.name, entry);
 			}
 		}
 		return merged;
+	}
+
+	/** papermario-dx's presets and drums replace the copies below them whole; other projects merge them by entry. */
+	private static Map<String, Entry> readPresetTable(AudioLayers layers, String table, Key root, Key ... tags)
+	{
+		return Environment.isDX() ? readWhole(layers, table, root, tags) : merge(layers, table, root, tags);
+	}
+
+	/** The entries of the highest layer's copy of a table, which replaces the copies below it whole. */
+	private static Map<String, Entry> readWhole(AudioLayers layers, String table, Key root, Key ... tags)
+	{
+		File file = layers.getFile(table);
+		if (file == null)
+			throw new InputFileException(new File(table), "not found in any asset layer");
+
+		Map<String, Entry> entries = new LinkedHashMap<>();
+		for (Entry entry : parse(file, root, tags)) {
+			if (entry.optional(Key.delete) != null)
+				entry.complain("this file replaces the game's whole file, so leave the entry out instead of deleting it");
+			if (entry.optional(Key.id) != null)
+				entry.id = readHex(entry, Key.id, 0, Integer.MAX_VALUE);
+			entries.put(entry.name, entry);
+		}
+		return entries;
+	}
+
+	/** The entries of one copy of a table, in file order. */
+	private static List<Entry> parse(File file, Key root, Key ... tags)
+	{
+		XmlReader xmr = new XmlReader(file);
+		if (!xmr.getRootElement().getTagName().equals(root.toString()))
+			xmr.complain("expected root tag " + root);
+
+		List<Entry> entries = new ArrayList<>();
+		Set<String> seen = new HashSet<>();
+		for (Node child = xmr.getRootElement().getFirstChild(); child != null; child = child.getNextSibling()) {
+			if (!(child instanceof Element elem))
+				continue;
+			if (Arrays.stream(tags).noneMatch(tag -> tag.toString().equals(elem.getTagName())))
+				xmr.complain("unexpected tag " + elem.getTagName());
+
+			xmr.requiresAttribute(elem, Key.name);
+			String name = xmr.getAttribute(elem, Key.name);
+			if (!seen.add(name))
+				xmr.complain(elem.getTagName() + " '" + name + "' is listed more than once");
+			entries.add(new Entry(name, xmr, elem));
+		}
+		return entries;
 	}
 
 	/** Gives each entry without an ID the lowest free one, going through the entries by name. IDs in reserved are never used. */
