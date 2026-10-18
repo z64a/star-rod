@@ -47,8 +47,7 @@ public abstract class Songs
 			File source = layers.getFile(DIR + "/" + bgm);
 			String name = AudioNames.fileStem(source);
 			if (songs.size() > MAX_ID)
-				throw new InputFileException(source, "there are more than %d songs, but song IDs go up to %X", MAX_ID + 1,
-					MAX_ID);
+				throw new InputFileException(source, "there are more than %d songs, which is all the game has room for", MAX_ID + 1);
 
 			byte[] data;
 			try {

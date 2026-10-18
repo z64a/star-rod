@@ -86,7 +86,7 @@ public class AmbientSounds
 			if (id == RADIO_ID)
 				id++;
 			if (id > MAX_ID)
-				throw new InputFileException(source, "there are too many ambient sounds; IDs go up to %X", MAX_ID);
+				throw new InputFileException(source, "there are more than %d ambient sounds, which is all the game has room for", MAX_ID);
 			ambient.sounds.add(new Sound(AudioNames.fileStem(source), id++, name + Mseq.EXTENSION, source));
 		}
 		return ambient;
