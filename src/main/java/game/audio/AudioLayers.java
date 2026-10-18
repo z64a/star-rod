@@ -36,12 +36,18 @@ public class AudioLayers
 		+ "ambient sound named after its file, and radio_0 to radio_3 are the radio's stations. Delete this file.";
 	private static final String BANKS_RETIRED = "banks aren't listed in a table: every bank in bank/ is always loaded "
 		+ "unless a song or the radio loads it, and the build picks its slot. Delete this file.";
+	private static final String SOUNDS_RETIRED = "sound effects aren't listed in a table: each file in sfx/ is a sound "
+		+ "named after its file, holding its Routing and either a OneShot or Tracks. Delete this file.";
+	private static final String ENVELOPES_RETIRED = "envelopes aren't listed in a table: each file in sfx/envelopes/ is an "
+		+ "envelope named after its file. Delete this file.";
 
 	/** Tables that papermario-dx replaced with the files they listed, with what to do instead. */
 	private static final Map<String, String> RETIRED = Map.of(
 		"songs.xml", SONGS_RETIRED, "Songs.xml", SONGS_RETIRED,
 		"ambient_sounds.xml", AMBIENT_RETIRED, "AmbientSounds.xml", AMBIENT_RETIRED,
-		"banks.xml", BANKS_RETIRED, "Banks.xml", BANKS_RETIRED);
+		"banks.xml", BANKS_RETIRED, "Banks.xml", BANKS_RETIRED,
+		"sound_effects.xml", SOUNDS_RETIRED, "SoundEffects.xml", SOUNDS_RETIRED,
+		"sfx/envelopes.xml", ENVELOPES_RETIRED, "sfx/Envelopes.xml", ENVELOPES_RETIRED);
 
 	/** Asset stack roots, highest priority first. */
 	private final List<File> layers;
@@ -68,8 +74,9 @@ public class AudioLayers
 	}
 
 	/**
-	 * Errors if a sidecar deletes a table file, a layer has a file under a name from before the names were snake case,
-	 * or a papermario-dx layer has a table that was replaced by the files it listed.
+	 * Errors if a layer has a file under a name from before the names were snake case. In papermario-dx, also errors if a
+	 * layer has a table that was replaced by the files it listed; elsewhere, also errors if a sidecar deletes a table
+	 * file.
 	 */
 	public void checkTables()
 	{
@@ -89,8 +96,10 @@ public class AudioLayers
 					checkRenamed(audio, "bank/" + bank + "/SoundBank.xml", "bank/" + bank + "/sound_bank.xml");
 			}
 		}
-		for (String table : TABLES)
-			getTables(table);
+		if (!Environment.isDX()) {
+			for (String table : TABLES)
+				getTables(table);
+		}
 	}
 
 	private static void checkRenamed(File audio, String oldPath, String newPath)

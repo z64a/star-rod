@@ -12,6 +12,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 
 import org.apache.commons.io.FileUtils;
 
+import app.Environment;
 import app.input.InputFileException;
 import util.Logger;
 
@@ -116,7 +117,9 @@ public class AudioExtractor
 				binary = "sfx/DAT1.sef";
 				break;
 			default:
-				if (path.startsWith("mseq/") && path.endsWith(".xml"))
+				if (Environment.isDX() && path.startsWith(SfxXml.DIR + "/") && path.endsWith(".xml"))
+					binary = "sfx/DAT1.sef";
+				else if (path.startsWith("mseq/") && path.endsWith(".xml"))
 					binary = path.substring(0, path.length() - 4) + ".mseq";
 				break;
 		}

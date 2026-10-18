@@ -461,7 +461,8 @@ public abstract class AudioTasks
 			sbn.resources.set(RADIO_BANK_RESOURCE, bank);
 		}
 
-		String soundHeader = soundHeader(files.sfx() != null ? files.sfx() : decodeSef(sbn.files.get(sbn.resources.get(SEF_RESOURCE))));
+		String soundHeader = files.sfx() != null ? soundHeader(files.sfx(), Environment.isDX())
+			: soundHeader(decodeSef(sbn.files.get(sbn.resources.get(SEF_RESOURCE))), false);
 		String songHeader = songHeader(songs);
 		String ambientHeader = ambientHeader(ambient);
 		String configHeader = configHeader(sbn);
@@ -501,7 +502,7 @@ public abstract class AudioTasks
 		int mseqType = Sbn.TYPES.indexOf("MSEQ");
 		boolean presets = usesPresetTable(layers, "presets.xml", "prg/SET1.prg");
 		boolean drums = usesPresetTable(layers, "drums.xml", "per/SET1.per");
-		boolean sounds = usesTables(layers, "sound_effects.xml", "sfx/DAT1.sef");
+		boolean sounds = SfxXml.hasSources(layers);
 
 		List<Source> sources = new ArrayList<>();
 		for (int type = 0; type < DIRS.size(); type++) {
@@ -581,9 +582,8 @@ public abstract class AudioTasks
 
 		SfxArchive sfx = null;
 		if (sounds) {
-			File table = lastOf(layers.getTables("sound_effects.xml"));
 			sfx = SfxXml.read(layers, addresses);
-			sources.add(new Source(Sbn.TYPES.indexOf("SEF"), "DAT1.sef", table, SfxBinary.encode(sfx)));
+			sources.add(new Source(Sbn.TYPES.indexOf("SEF"), "DAT1.sef", new File(SfxXml.DIR), SfxBinary.encode(sfx)));
 		}
 
 		sources.sort(Comparator.comparingInt(Source::type)
@@ -632,11 +632,6 @@ public abstract class AudioTasks
 			sources.add(new Source(Sbn.TYPES.indexOf("MSEQ"), name + Mseq.EXTENSION, file, data));
 		}
 		return sources;
-	}
-
-	private static File lastOf(List<File> files)
-	{
-		return files.get(files.size() - 1);
 	}
 
 	/**
@@ -718,14 +713,15 @@ public abstract class AudioTasks
 		}
 	}
 
-	private static String soundHeader(SfxArchive sfx)
+	/** papermario-dx's sound files are named after their sounds, so namedByFiles is set for archives built from them. */
+	private static String soundHeader(SfxArchive sfx, boolean namedByFiles)
 	{
 		StringBuilder sb = new StringBuilder(HEADER_COMMENT).append("#pragma once\n\nenum SoundIDs {\n");
 		sb.append(String.format("    %s= 0x%08X,\n", pad("SOUND_NONE", 44), 0));
 		Map<String, String> owners = new HashMap<>();
 		for (SfxArchive.Sound sound : sfx.sounds.values()) {
 			if (!AudioNames.isPlaceholderSound(sound.name)) {
-				String name = cName("SOUND_", sound.name, false, sound.file, owners);
+				String name = cName("SOUND_", sound.name, namedByFiles, sound.file, owners);
 				sb.append(String.format("    %s= 0x%08X,\n", pad(name, 44), sound.id));
 			}
 		}

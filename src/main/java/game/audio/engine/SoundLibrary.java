@@ -200,10 +200,10 @@ public class SoundLibrary
 		return new Song(file, readFile(file), songAddresses);
 	}
 
-	/** Reads the merged sound effect table, or the binary archive if a layer supplies one. */
+	/** Reads the sound effect sources, or the binary archive if the sources don't replace it. */
 	public SfxArchive readSfx()
 	{
-		if (AudioTasks.usesTables(layers, "sound_effects.xml", SEF_FILE))
+		if (SfxXml.hasSources(layers))
 			return SfxXml.read(layers, addresses);
 
 		File file = layers.getFile(SEF_FILE);

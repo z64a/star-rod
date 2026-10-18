@@ -21,6 +21,8 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 
+import app.Environment;
+import app.input.InputFileException;
 import game.audio.AudioTables.Entry;
 import game.audio.SfxArchive.Allocation;
 import game.audio.SfxArchive.Command;
@@ -42,14 +44,18 @@ import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
 
 /**
- * The sound effect sources: sound_effects.xml, a table with an entry per sound that holds an inline one-shot
- * or names a sequence file under sfx/, and sfx/envelopes.xml, a table of the press envelopes that
- * sequences select by name.
+ * The sound effect sources. In papermario-dx, they are a file per sound in sfx/, named after the sound, that holds its
+ * routing and either a one-shot or tracks of sequences, and a file per press envelope in sfx/envelopes/, which
+ * sequences select by name. Other projects use sound_effects.xml, a table with an entry per sound that holds an inline
+ * one-shot or names a sequence file under sfx/, and sfx/envelopes.xml, a table of the press envelopes.
  */
 public final class SfxXml
 {
+	public static final String DIR = "sfx";
+	private static final String ENVELOPE_DIR = "sfx/envelopes";
 	private static final String TABLE = "sound_effects.xml";
 	private static final String ENVELOPES = "sfx/envelopes.xml";
+	private static final String SEF_FILE = "sfx/DAT1.sef";
 	private static final int MAX_ID = 0x63FF;
 
 	private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z_][A-Za-z0-9_.-]*");
@@ -58,12 +64,53 @@ public final class SfxXml
 	private SfxXml()
 	{}
 
+	/** Whether the sound effect archive is built from sources rather than read from sfx/DAT1.sef. */
+	public static boolean hasSources(AudioLayers layers)
+	{
+		if (Environment.isDX())
+			return !layers.listFiles(DIR, ".xml").isEmpty();
+		return AudioTasks.usesTables(layers, TABLE, SEF_FILE);
+	}
+
 	/**
-	 * Reads the merged sound effect table and every sequence file it uses. A sound without an ID gets the
-	 * first free slot of the kind it needs, in ascending ID order: vanilla slots, the extra section, and then
-	 * the extended sections.
+	 * Reads every sound and envelope. A sound without an ID gets the first free slot of the kind it needs, in
+	 * ascending ID order: vanilla slots, the extra section, and then the extended sections.
 	 */
 	public static SfxArchive read(AudioLayers layers, Presets.Addresses addresses)
+	{
+		SfxArchive archive = Environment.isDX() ? readFiles(layers, addresses) : readTable(layers, addresses);
+		readEnvelopes(layers, archive);
+
+		SfxValidator.validate(archive);
+		return archive;
+	}
+
+	/** papermario-dx's sounds, which have no IDs of their own, so they take the free slots in order of name. */
+	private static SfxArchive readFiles(AudioLayers layers, Presets.Addresses addresses)
+	{
+		List<Sound> sounds = new ArrayList<>();
+		for (String name : layers.listFiles(DIR, ".xml"))
+			sounds.add(readSound(layers.getFile(DIR + "/" + name), addresses));
+
+		SfxArchive archive = new SfxArchive();
+		int[] next = new int[Slot.values().length];
+		Arrays.fill(next, 1);
+		for (Sound sound : sounds) {
+			Slot slot = slotNeeded(sound);
+			int id = next[slot.ordinal()];
+			while (id <= MAX_ID && SfxArchive.slotOf(id) != slot)
+				id++;
+			if (id > MAX_ID)
+				throw new InputFileException(sound.file, "there are no free %s sound slots", slot.name().toLowerCase());
+			next[slot.ordinal()] = id + 1;
+			sound.id = id;
+			archive.sounds.put(id, sound);
+		}
+		return archive;
+	}
+
+	/** The sounds of the merged sound effect table and every sequence file it uses. */
+	private static SfxArchive readTable(AudioLayers layers, Presets.Addresses addresses)
 	{
 		Map<String, Entry> entries = AudioTables.merge(layers, TABLE, AudioTables.Key.Sounds, AudioTables.Key.Sound);
 
@@ -110,10 +157,6 @@ public final class SfxXml
 			sound.id = id;
 			archive.sounds.put(id, sound);
 		}
-
-		readEnvelopes(layers, archive);
-
-		SfxValidator.validate(archive);
 		return archive;
 	}
 
@@ -214,13 +257,87 @@ public final class SfxXml
 			throw error(effectXml, root, "SoundEffect is missing required Tracks element");
 		sound.tracks.addAll(readTracks(reader, effectXml, tracksElement, addresses));
 
-		if (spawnedElement != null) {
-			checkAttributes(effectXml, spawnedElement);
-			for (Element child : childElements(effectXml, spawnedElement)) {
-				if (!child.getTagName().equals(TAG_SPAWNED_EFFECT.toString()))
-					throw unknownElement(effectXml, spawnedElement, child);
-				sound.spawnedEffects.add(readSpawnedEffect(reader, effectXml, child, addresses));
+		if (spawnedElement != null)
+			readSpawnedEffects(sound, reader, effectXml, spawnedElement, addresses);
+	}
+
+	/** A papermario-dx sound file, which holds the sound's routing and either a one-shot or tracks, or nothing. */
+	private static Sound readSound(File file, Presets.Addresses addresses)
+	{
+		Path source = file.toPath();
+		XmlReader reader = parseDocument(source);
+		Element root = requireRoot(reader, source, TAG_EFFECT);
+		checkAttributes(source, root);
+
+		Sound sound = new Sound(0, AudioNames.fileStem(file));
+		sound.file = file;
+
+		Element routingElement = null;
+		Element oneShotElement = null;
+		Element tracksElement = null;
+		Element spawnedElement = null;
+		for (Element child : childElements(source, root)) {
+			switch (tagKey(source, root, child)) {
+				case TAG_ROUTING:
+					if (routingElement != null)
+						throw error(source, child, "SoundEffect cannot contain more than one Routing element");
+					routingElement = child;
+					break;
+				case TAG_ONE_SHOT:
+					if (oneShotElement != null)
+						throw error(source, child, "SoundEffect cannot contain more than one OneShot element");
+					oneShotElement = child;
+					break;
+				case TAG_TRACKS:
+					if (tracksElement != null)
+						throw error(source, child, "SoundEffect cannot contain more than one Tracks element");
+					tracksElement = child;
+					break;
+				case TAG_SPAWNED_EFFECTS:
+					if (spawnedElement != null)
+						throw error(source, child, "SoundEffect cannot contain more than one SpawnedEffects element");
+					spawnedElement = child;
+					break;
+				default:
+					throw unknownElement(source, root, child);
 			}
+		}
+
+		if (oneShotElement == null && tracksElement == null && routingElement == null && spawnedElement == null)
+			return sound;
+		if ((oneShotElement != null) == (tracksElement != null))
+			throw error(source, root, "SoundEffect must have exactly one of OneShot or Tracks, or nothing for a silent sound");
+		if (oneShotElement != null) {
+			if (spawnedElement != null)
+				throw error(source, root, "a OneShot sound cannot have SpawnedEffects");
+			sound.tracks.add(new Track(0, readOneShot(reader, source, oneShotElement, addresses)));
+			if (routingElement == null && !SfxBinary.isCompactRepresentable((OneShot) sound.tracks.get(0).definition))
+				throw error(source, root, "a OneShot without Routing is stored in a compact slot, which needs the "
+					+ "default pan, reverb, and pitch, a volume of 03, 07, 0B and so on up to 7F, and a randomPitch that "
+					+ "is a multiple of 8 up to 56");
+		}
+		else {
+			if (routingElement == null)
+				throw error(source, root, "a sequence needs a Routing element");
+			sound.tracks.addAll(readTracks(reader, source, tracksElement, addresses));
+		}
+
+		if (spawnedElement != null)
+			readSpawnedEffects(sound, reader, source, spawnedElement, addresses);
+
+		if (routingElement != null)
+			sound.routing = readRouting(reader, source, routingElement, sound.tracks.size());
+		return sound;
+	}
+
+	private static void readSpawnedEffects(Sound sound, XmlReader reader, Path source, Element element,
+		Presets.Addresses addresses)
+	{
+		checkAttributes(source, element);
+		for (Element child : childElements(source, element)) {
+			if (!child.getTagName().equals(TAG_SPAWNED_EFFECT.toString()))
+				throw unknownElement(source, element, child);
+			sound.spawnedEffects.add(readSpawnedEffect(reader, source, child, addresses));
 		}
 	}
 
@@ -556,6 +673,10 @@ public final class SfxXml
 
 	private static void readEnvelopes(AudioLayers layers, SfxArchive archive)
 	{
+		if (Environment.isDX()) {
+			readEnvelopeFiles(layers, archive);
+			return;
+		}
 		if (layers.getTables(ENVELOPES).isEmpty())
 			return;
 
@@ -566,6 +687,23 @@ public final class SfxXml
 			envelope.file = source.toFile();
 
 			envelope.commands.addAll(EnvelopeProgram.readCommands(e.xmr, e.elem));
+			archive.envelopes.add(envelope);
+		}
+	}
+
+	/** In papermario-dx, every file in sfx/envelopes/ is a press envelope named after its file, in order of name. */
+	private static void readEnvelopeFiles(AudioLayers layers, SfxArchive archive)
+	{
+		for (String name : layers.listFiles(ENVELOPE_DIR, ".xml")) {
+			File file = layers.getFile(ENVELOPE_DIR + "/" + name);
+			Path source = file.toPath();
+			XmlReader reader = parseDocument(source);
+			Element root = requireRoot(reader, source, TAG_ENVELOPE);
+			checkAttributes(source, root);
+			Envelope envelope = new Envelope(AudioNames.fileStem(file));
+			envelope.file = file;
+
+			envelope.commands.addAll(EnvelopeProgram.readCommands(reader, root));
 			archive.envelopes.add(envelope);
 		}
 	}
@@ -747,9 +885,18 @@ public final class SfxXml
 		return new SfxFormatException(source.normalize() + ": " + label + message);
 	}
 
-	/** Writes the sources of a vanilla archive: sound_effects.xml, sfx/envelopes.xml, and a file per sequence. */
+	/**
+	 * Writes the sources of a vanilla archive. In papermario-dx, they are a file per sound in sfx/ and a file per
+	 * envelope in sfx/envelopes/, leaving out placeholder sounds, which have no name to play them by. Other projects get
+	 * sound_effects.xml, sfx/envelopes.xml, and a file per sequence.
+	 */
 	public static void write(SfxArchive archive, File audioDir, Presets.Addresses addresses) throws IOException
 	{
+		if (Environment.isDX()) {
+			writeFiles(archive, audioDir, addresses);
+			return;
+		}
+
 		File table = new File(audioDir, TABLE);
 		Dump dump = new Dump(addresses, table);
 		Set<String> sources = new HashSet<>(List.of(ENVELOPES));
@@ -759,7 +906,7 @@ public final class SfxXml
 				if (!sources.add(sound.source))
 					throw new SfxFormatException(table + ": sound " + sound.name + " has the same file name as another sound: " + sound.source);
 				FileUtils.forceMkdirParent(new File(audioDir, sound.source));
-				dump.writeEffectXml(new File(audioDir, sound.source), sound);
+				dump.writeEffectXml(new File(audioDir, sound.source), sound, false);
 			}
 		}
 		if (!archive.envelopes.isEmpty()) {
@@ -767,6 +914,25 @@ public final class SfxXml
 			dump.writeEnvelopesXml(new File(audioDir, ENVELOPES), archive);
 		}
 		dump.writeTable(archive);
+	}
+
+	private static void writeFiles(SfxArchive archive, File audioDir, Presets.Addresses addresses) throws IOException
+	{
+		Set<String> files = new HashSet<>();
+		for (Sound sound : archive.sounds.values()) {
+			if (AudioNames.isPlaceholderSound(sound.name))
+				continue;
+			File file = new File(new File(audioDir, DIR), AudioNames.toFileName(sound.name) + ".xml");
+			if (!files.add(file.getName()))
+				throw new SfxFormatException("sound " + sound.name + " has the same file name as another sound: " + file);
+			FileUtils.forceMkdirParent(file);
+			new Dump(addresses, file).writeEffectXml(file, sound, true);
+		}
+		for (Envelope envelope : archive.envelopes) {
+			File file = new File(new File(audioDir, ENVELOPE_DIR), envelope.name + ".xml");
+			FileUtils.forceMkdirParent(file);
+			new Dump(addresses, file).writeEnvelopeXml(file, envelope);
+		}
 	}
 
 	private static final class Dump
@@ -809,12 +975,18 @@ public final class SfxXml
 			}
 		}
 
-		private void writeEffectXml(File output, Sound sound) throws IOException
+		/** Writes a sound's tracks and spawned effects, and its routing and one-shot if withRouting is set. */
+		private void writeEffectXml(File output, Sound sound, boolean withRouting) throws IOException
 		{
 			this.sound = sound;
 			try (XmlWriter writer = new XmlWriter(output)) {
 				XmlTag rootTag = openTag(writer, TAG_EFFECT, Map.of());
-				writeTracks(writer, sound.tracks);
+				if (withRouting && sound.routing != null)
+					writeRouting(writer, sound.routing, sound.tracks.size());
+				if (sound.canInlineOneShot())
+					writeOneShot(writer, (OneShot) sound.tracks.get(0).definition);
+				else if (!sound.isEmpty())
+					writeTracks(writer, sound.tracks);
 
 				if (!sound.spawnedEffects.isEmpty()) {
 					XmlTag spawnedEffectsTag = openTag(writer, TAG_SPAWNED_EFFECTS, Map.of());
@@ -845,6 +1017,16 @@ public final class SfxXml
 				}
 
 				writer.closeTag(rootTag);
+				writer.save();
+			}
+		}
+
+		private void writeEnvelopeXml(File output, Envelope envelope) throws IOException
+		{
+			try (XmlWriter writer = new XmlWriter(output)) {
+				XmlTag envelopeTag = openTag(writer, TAG_ENVELOPE, Map.of());
+				EnvelopeProgram.writeCommands(writer, envelope.commands);
+				writer.closeTag(envelopeTag);
 				writer.save();
 			}
 		}
