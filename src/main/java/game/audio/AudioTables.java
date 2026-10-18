@@ -39,10 +39,6 @@ public abstract class AudioTables
 	public static final int MAX_BANKS = 79;
 	public static final int MIN_BANK_GROUP = 2;
 	public static final int MAX_BANK_GROUP = 6;
-	/** Ambient IDs 0 to 15 are the vanilla sounds and 16 is the radio; IDs above it are added to the INIT resource list. */
-	public static final int RADIO_ID = 0x10;
-	public static final int MAX_AMBIENT_ID = 0xFF;
-	public static final int RADIO_STATIONS = 4;
 	public static final int MAX_PRESET_ID = 0x3F;
 	public static final int MAX_DRUM_ID = 71;
 	public static final int DEFAULT_VOLUME = 0x7F;
@@ -54,12 +50,6 @@ public abstract class AudioTables
 	public record Bank(String file, int group, int index, File source)
 	{}
 
-	public record AmbientSound(String name, int id, String mseq, File source)
-	{}
-
-	public record Radio(String name, String bank, String[] mseq, File source)
-	{}
-
 	/** An instrument that songs select by ID: a bank instrument with its own volume, pan, reverb, and tuning. */
 	public record Preset(String name, int id, String wav, int envelope, int volume, int pan, int reverb, int coarseTune,
 		int fineTune, File source)
@@ -69,13 +59,6 @@ public abstract class AudioTables
 	public record Drum(String name, int id, String wav, int envelope, int keyBase, int volume, int pan, int reverb,
 		int randTune, int randVolume, int randPan, int randReverb, File source)
 	{}
-
-	public static class Ambient
-	{
-		/** In order of ID. */
-		public final List<AmbientSound> sounds = new ArrayList<>();
-		public Radio radio;
-	}
 
 	static class Entry
 	{
@@ -213,11 +196,11 @@ public abstract class AudioTables
 		return drums;
 	}
 
-	public static Ambient readAmbient(AudioLayers layers)
+	public static AmbientSounds readAmbient(AudioLayers layers)
 	{
 		Map<String, Entry> entries = merge(layers, "ambient_sounds.xml", Key.AmbientSounds, Key.AmbientSound, Key.Radio);
 
-		Ambient ambient = new Ambient();
+		AmbientSounds ambient = new AmbientSounds();
 		Map<String, Entry> sounds = new LinkedHashMap<>();
 		for (Entry e : entries.values()) {
 			checkIdentifier(e);
@@ -228,26 +211,26 @@ public abstract class AudioTables
 
 			if (ambient.radio != null)
 				e.complain("there can be only one Radio");
-			if (e.id != null && e.id != RADIO_ID)
-				e.complain(String.format("the radio must use ID %X", RADIO_ID));
+			if (e.id != null && e.id != AmbientSounds.RADIO_ID)
+				e.complain(String.format("the radio must use ID %X", AmbientSounds.RADIO_ID));
 
-			String[] mseq = new String[RADIO_STATIONS];
+			String[] mseq = new String[AmbientSounds.RADIO_STATIONS];
 			for (Element station : e.xmr.getTags(e.elem, Key.Station)) {
 				int player = e.xmr.readInt(station, Key.player);
-				if (player < 0 || player >= RADIO_STATIONS || mseq[player] != null)
-					e.complain("Station player must be a unique number from 0 to " + (RADIO_STATIONS - 1));
+				if (player < 0 || player >= AmbientSounds.RADIO_STATIONS || mseq[player] != null)
+					e.complain("Station player must be a unique number from 0 to " + (AmbientSounds.RADIO_STATIONS - 1));
 				e.xmr.requiresAttribute(station, Key.mseq);
 				mseq[player] = mseqFile(e.xmr.getAttribute(station, Key.mseq));
 			}
 			if (Arrays.asList(mseq).contains(null))
-				e.complain("there must be " + RADIO_STATIONS + " stations");
-			ambient.radio = new Radio(e.name, e.required(Key.bank), mseq, e.xmr.getSourceFile());
+				e.complain("there must be " + AmbientSounds.RADIO_STATIONS + " stations");
+			ambient.radio = new AmbientSounds.Radio(e.name, e.required(Key.bank), mseq, e.xmr.getSourceFile());
 		}
 
-		assignIds(sounds, MAX_AMBIENT_ID, RADIO_ID);
+		assignIds(sounds, AmbientSounds.MAX_ID, AmbientSounds.RADIO_ID);
 		for (Entry e : sounds.values())
-			ambient.sounds.add(new AmbientSound(e.name, e.id, mseqFile(e.required(Key.mseq)), e.xmr.getSourceFile()));
-		ambient.sounds.sort(Comparator.comparingInt(AmbientSound::id));
+			ambient.sounds.add(new AmbientSounds.Sound(e.name, e.id, mseqFile(e.required(Key.mseq)), e.xmr.getSourceFile()));
+		ambient.sounds.sort(Comparator.comparingInt(AmbientSounds.Sound::id));
 		return ambient;
 	}
 

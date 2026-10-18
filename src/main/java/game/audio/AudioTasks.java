@@ -20,7 +20,6 @@ import org.apache.commons.io.FileUtils;
 
 import app.Environment;
 import app.input.InputFileException;
-import game.audio.AudioTables.Ambient;
 import game.audio.AudioTables.Bank;
 import game.audio.AudioTables.Key;
 import game.audio.Songs.Song;
@@ -233,10 +232,11 @@ public abstract class AudioTasks
 			throw new InputFileException(sbnFile, e.getMessage());
 		}
 
-		if (!Environment.isDX())
+		if (!Environment.isDX()) {
 			dumpSongs(sbnFile, sbn, names, new File(audioDir, "songs.xml"));
+			dumpAmbient(sbnFile, sbn, names, new File(audioDir, "ambient_sounds.xml"));
+		}
 		dumpBanks(sbnFile, sbn, names, new File(audioDir, "banks.xml"));
-		dumpAmbient(sbnFile, sbn, names, new File(audioDir, "ambient_sounds.xml"));
 	}
 
 	private static void checkFixedFiles(File sbnFile, Sbn sbn, String[] names)
@@ -260,13 +260,13 @@ public abstract class AudioTasks
 		Map<Integer, String> owners = new HashMap<>();
 		for (int id = 0; id < sbn.songs.size(); id++)
 			claim(owners, sbn, sbn.songs.get(id)[0], AudioNames.getSongName(id));
-		for (int id = 0; id <= AudioTables.MAX_AMBIENT_ID && ambientResource(id) < sbn.resources.size(); id++) {
-			if (id != AudioTables.RADIO_ID)
+		for (int id = 0; id <= AmbientSounds.MAX_ID && ambientResource(id) < sbn.resources.size(); id++) {
+			if (id != AmbientSounds.RADIO_ID)
 				claim(owners, sbn, sbn.resources.get(ambientResource(id)), AudioNames.getAmbientName(id));
 		}
-		for (int player = 0; player < AudioTables.RADIO_STATIONS && FIRST_RADIO_RESOURCE + player < sbn.resources.size(); player++) {
+		for (int player = 0; player < AmbientSounds.RADIO_STATIONS && FIRST_RADIO_RESOURCE + player < sbn.resources.size(); player++) {
 			claim(owners, sbn, sbn.resources.get(FIRST_RADIO_RESOURCE + player),
-				AudioNames.getAmbientName(AudioTables.RADIO_ID) + "_" + player);
+				AudioNames.getAmbientName(AmbientSounds.RADIO_ID) + "_" + player);
 		}
 		return owners;
 	}
@@ -280,8 +280,8 @@ public abstract class AudioTasks
 
 	private static int ambientResource(int id)
 	{
-		return id < AudioTables.RADIO_ID ? FIRST_AMBIENT_RESOURCE + id
-			: FIRST_EXTRA_AMBIENT_RESOURCE + id - AudioTables.RADIO_ID - 1;
+		return id < AmbientSounds.RADIO_ID ? FIRST_AMBIENT_RESOURCE + id
+			: FIRST_EXTRA_AMBIENT_RESOURCE + id - AmbientSounds.RADIO_ID - 1;
 	}
 
 	private static String nameOf(File sbnFile, Sbn sbn, String[] names, int file, String type)
@@ -367,8 +367,8 @@ public abstract class AudioTasks
 			XmlTag root = xmw.createTag(Key.AmbientSounds, false);
 			xmw.openTag(root);
 
-			for (int id = 0; id <= AudioTables.MAX_AMBIENT_ID && ambientResource(id) < sbn.resources.size(); id++) {
-				if (id == AudioTables.RADIO_ID)
+			for (int id = 0; id <= AmbientSounds.MAX_ID && ambientResource(id) < sbn.resources.size(); id++) {
+				if (id == AmbientSounds.RADIO_ID)
 					continue;
 				int file = sbn.resources.get(ambientResource(id));
 				if (file == Sbn.NO_FILE)
@@ -383,11 +383,11 @@ public abstract class AudioTasks
 			int bank = sbn.resources.get(RADIO_BANK_RESOURCE);
 			if (bank != Sbn.NO_FILE) {
 				XmlTag tag = xmw.createTag(Key.Radio, false);
-				xmw.addHex(tag, Key.id, "%02X", AudioTables.RADIO_ID);
-				xmw.addAttribute(tag, Key.name, AudioNames.getAmbientName(AudioTables.RADIO_ID));
+				xmw.addHex(tag, Key.id, "%02X", AmbientSounds.RADIO_ID);
+				xmw.addAttribute(tag, Key.name, AudioNames.getAmbientName(AmbientSounds.RADIO_ID));
 				xmw.addAttribute(tag, Key.bank, nameOf(sbnFile, sbn, names, bank, "BK"));
 				xmw.openTag(tag);
-				for (int player = 0; player < AudioTables.RADIO_STATIONS; player++) {
+				for (int player = 0; player < AmbientSounds.RADIO_STATIONS; player++) {
 					XmlTag station = xmw.createTag(Key.Station, true);
 					xmw.addInt(station, Key.player, player);
 					xmw.addAttribute(station, Key.mseq,
@@ -409,11 +409,11 @@ public abstract class AudioTasks
 
 		List<Song> songs = Songs.read(layers);
 		List<Bank> banks = AudioTables.readBanks(layers);
-		Ambient ambient = AudioTables.readAmbient(layers);
+		AmbientSounds ambient = AmbientSounds.read(layers);
 
 		Sbn sbn = new Sbn();
-		SfxArchive[] sfx = new SfxArchive[1];
-		Map<String, Integer> index = readFiles(layers, sbn, banks, ambient, sfx);
+		ArchiveFiles files = readFiles(layers, sbn, banks, ambient);
+		Map<String, Integer> index = files.index();
 
 		File extra = layers.getFile(EXTRA_FILE);
 		if (extra != null)
@@ -454,15 +454,15 @@ public abstract class AudioTasks
 		}
 		if (ambient.radio != null) {
 			var radio = ambient.radio;
-			for (int i = 0; i < AudioTables.RADIO_STATIONS; i++)
+			for (int i = 0; i < AmbientSounds.RADIO_STATIONS; i++)
 				sbn.resources.set(FIRST_RADIO_RESOURCE + i,
 					find(sbn, index, radio.source(), "Radio '" + radio.name() + "'", radio.mseq()[i], "MSEQ"));
-			int bank = find(sbn, index, radio.source(), "Radio '" + radio.name() + "'", radio.bank(), "BK");
+			int bank = find(sbn, index, radio.source(), "Radio '" + radio.name() + "'", files.radioBank(), "BK");
 			checkAuxBank(radio.source(), "Radio '" + radio.name() + "'", sbn.files.get(bank));
 			sbn.resources.set(RADIO_BANK_RESOURCE, bank);
 		}
 
-		String soundHeader = soundHeader(sfx[0] != null ? sfx[0] : decodeSef(sbn.files.get(sbn.resources.get(SEF_RESOURCE))));
+		String soundHeader = soundHeader(files.sfx() != null ? files.sfx() : decodeSef(sbn.files.get(sbn.resources.get(SEF_RESOURCE))));
 		String songHeader = songHeader(songs);
 		String ambientHeader = ambientHeader(ambient);
 		String configHeader = configHeader(sbn);
@@ -483,12 +483,14 @@ public abstract class AudioTasks
 	}
 
 	/**
-	 * Reads every audio file in the layers into the archive, returning file indices by file name. Banks
-	 * and the preset files are built from their sources. The sound effect archive built from the
-	 * tables, if any, is stored in sfx[0].
+	 * The files read into the archive, by file name; the sound effect archive built from the tables, or null; and the
+	 * bank file the radio loads, or null if there is no radio.
 	 */
-	private static Map<String, Integer> readFiles(AudioLayers layers, Sbn sbn, List<Bank> bankTable, Ambient ambient,
-		SfxArchive[] sfx)
+	private record ArchiveFiles(Map<String, Integer> index, SfxArchive sfx, String radioBank)
+	{}
+
+	/** Reads every audio file in the layers into the archive. Banks and the preset files are built from their sources. */
+	private static ArchiveFiles readFiles(AudioLayers layers, Sbn sbn, List<Bank> bankTable, AmbientSounds ambient)
 	{
 		Map<String, Integer> vanillaOrder = new HashMap<>();
 		for (String name : AudioNames.getFileOrder()) {
@@ -559,8 +561,9 @@ public abstract class AudioTasks
 		}
 
 		Presets.Addresses addresses = new Presets.Addresses(bankTable, banks);
-		Presets.Addresses mseqAddresses = ambient.radio != null && banks.containsKey(ambient.radio.bank())
-			? addresses.withAuxiliary(RADIO_BANK_SLOT, banks.get(ambient.radio.bank()))
+		String radioBank = ambient.radioBank(layers, sampleOwners::get);
+		Presets.Addresses mseqAddresses = radioBank != null && banks.containsKey(radioBank)
+			? addresses.withAuxiliary(RADIO_BANK_SLOT, banks.get(radioBank))
 			: addresses;
 		sources.addAll(readMseqs(layers, mseqAddresses));
 		if (presets) {
@@ -574,10 +577,11 @@ public abstract class AudioTasks
 				Presets.writeDrums(AudioTables.readDrums(layers), addresses)));
 		}
 
+		SfxArchive sfx = null;
 		if (sounds) {
 			File table = lastOf(layers.getTables("sound_effects.xml"));
-			sfx[0] = SfxXml.read(layers, addresses);
-			sources.add(new Source(Sbn.TYPES.indexOf("SEF"), "DAT1.sef", table, SfxBinary.encode(sfx[0])));
+			sfx = SfxXml.read(layers, addresses);
+			sources.add(new Source(Sbn.TYPES.indexOf("SEF"), "DAT1.sef", table, SfxBinary.encode(sfx)));
 		}
 
 		sources.sort(Comparator.comparingInt(Source::type)
@@ -593,7 +597,7 @@ public abstract class AudioTasks
 			index.put(source.name(), sbn.files.size());
 			sbn.files.add(file);
 		}
-		return index;
+		return new ArchiveFiles(index, sfx, radioBank);
 	}
 
 	/** Ambient sequences come from mseq/NAME.xml sources or mseq/NAME.mseq binaries; the higher layer wins. */
@@ -721,19 +725,19 @@ public abstract class AudioTasks
 		return sb.append("};\n").toString();
 	}
 
-	private static String ambientHeader(Ambient ambient)
+	private static String ambientHeader(AmbientSounds ambient)
 	{
 		StringBuilder sb = new StringBuilder(HEADER_COMMENT).append("#pragma once\n\nenum AmbientSounds {\n");
 		Map<String, String> owners = new HashMap<>();
 		for (var sound : ambient.sounds) {
 			if (AudioNames.isUnused(sound.name()))
 				continue;
-			String name = cName("AMBIENT_", sound.name(), false, sound.source(), owners);
+			String name = cName("AMBIENT_", sound.name(), Environment.isDX(), sound.source(), owners);
 			sb.append(String.format("    %s= %d,\n", pad(name, 24), sound.id()));
 		}
 		if (ambient.radio != null) {
-			String name = cName("AMBIENT_", ambient.radio.name(), false, ambient.radio.source(), owners);
-			sb.append(String.format("    %s= %d,\n", pad(name, 24), AudioTables.RADIO_ID));
+			String name = cName("AMBIENT_", ambient.radio.name(), Environment.isDX(), ambient.radio.source(), owners);
+			sb.append(String.format("    %s= %d,\n", pad(name, 24), AmbientSounds.RADIO_ID));
 		}
 		return sb.append("};\n").toString();
 	}

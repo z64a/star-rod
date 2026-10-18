@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 import app.Environment;
 import app.input.InputFileException;
@@ -20,7 +19,6 @@ public abstract class Songs
 	public static final String EXTENSION = ".bgm";
 
 	static final int MAX_ID = 0xFF;
-	private static final Pattern NAME = Pattern.compile("[a-z][a-z0-9_]*");
 
 	/**
 	 * auxBanks holds the BK file each aux bank loads, or null for a bank the song leaves empty. The source is the
@@ -47,10 +45,7 @@ public abstract class Songs
 		List<Song> songs = new ArrayList<>();
 		for (String bgm : layers.listFiles(DIR, EXTENSION)) {
 			File source = layers.getFile(DIR + "/" + bgm);
-			String name = bgm.substring(0, bgm.length() - EXTENSION.length());
-			if (!NAME.matcher(name).matches())
-				throw new InputFileException(source,
-					"a song's file name must start with a lowercase letter and contain only lowercase letters, digits, and underscores");
+			String name = AudioNames.fileStem(source);
 			if (songs.size() > MAX_ID)
 				throw new InputFileException(source, "there are more than %d songs, but song IDs go up to %X", MAX_ID + 1,
 					MAX_ID);

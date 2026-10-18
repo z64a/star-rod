@@ -1,5 +1,6 @@
 package game.audio;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,12 +9,14 @@ import java.util.regex.Pattern;
 
 import app.Resource;
 import app.Resource.ResourceType;
+import app.input.InputFileException;
 
 /** Names of the vanilla songs and ambient sounds, and the C identifiers generated from names. */
 public abstract class AudioNames
 {
 	private static final Pattern ENUM_ENTRY = Pattern.compile("([0-9A-Fa-f]+)\\s*=\\s*(\\w+)");
 	private static final Pattern UNUSED = Pattern.compile("Unused_[0-9A-F]{2}");
+	private static final Pattern FILE_STEM = Pattern.compile("[a-z][a-z0-9_]*");
 
 	private static final Map<Integer, String> songs = readEnum("songs.enum");
 	private static final Map<Integer, String> ambients = readEnum("ambient_sounds.enum");
@@ -69,6 +72,17 @@ public abstract class AudioNames
 	public static boolean isUnused(String name)
 	{
 		return UNUSED.matcher(name).matches();
+	}
+
+	/** The name of a file that names an asset after itself, such as toad_town for toad_town.bgm. */
+	public static String fileStem(File source)
+	{
+		String name = source.getName();
+		String stem = name.substring(0, name.lastIndexOf('.'));
+		if (!FILE_STEM.matcher(stem).matches())
+			throw new InputFileException(source,
+				"the file name must start with a lowercase letter and contain only lowercase letters, digits, and underscores");
+		return stem;
 	}
 
 	/** Prefixes a PascalCase name and converts it to upper snake case, so HuffNPuff1 becomes HUFF_N_PUFF_1. */

@@ -16,9 +16,9 @@ import java.util.TreeSet;
 import org.apache.commons.io.FilenameUtils;
 
 import app.input.InputFileException;
+import game.audio.AmbientSounds;
 import game.audio.AudioLayers;
 import game.audio.AudioTables;
-import game.audio.AudioTables.Ambient;
 import game.audio.AudioTables.Bank;
 import game.audio.AudioTables.Drum;
 import game.audio.AudioTables.Preset;
@@ -49,7 +49,7 @@ public class SoundLibrary
 
 	private Presets.Addresses addresses;
 	private Presets.Addresses ambientAddresses;
-	private Ambient ambient;
+	private AmbientSounds ambient;
 	private Drum[] drums = new Drum[0];
 	private Preset[] presets = new Preset[0];
 
@@ -60,7 +60,7 @@ public class SoundLibrary
 		layers.checkTables();
 
 		List<Bank> bankTable = AudioTables.readBanks(layers);
-		ambient = AudioTables.readAmbient(layers);
+		ambient = AmbientSounds.read(layers);
 
 		Set<String> names = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 		names.addAll(layers.listDirectories("bank"));
@@ -84,8 +84,9 @@ public class SoundLibrary
 		}
 
 		addresses = new Presets.Addresses(bankTable, files);
-		ambientAddresses = ambient.radio != null && files.containsKey(ambient.radio.bank())
-			? addresses.withAuxiliary(AudioTasks.RADIO_BANK_SLOT, files.get(ambient.radio.bank()))
+		String radioBank = ambient.radioBank(layers, wav -> samples.containsKey(wav) ? samples.get(wav).bank : null);
+		ambientAddresses = radioBank != null && files.containsKey(radioBank)
+			? addresses.withAuxiliary(AudioTasks.RADIO_BANK_SLOT, files.get(radioBank))
 			: addresses;
 		if (AudioTasks.usesTables(layers, "drums.xml", "per/SET1.per"))
 			drums = AudioTables.readDrums(layers);
@@ -219,7 +220,7 @@ public class SoundLibrary
 	public Map<String, String> listMseqs()
 	{
 		Map<String, String> uses = new HashMap<>();
-		for (AudioTables.AmbientSound sound : ambient.sounds)
+		for (AmbientSounds.Sound sound : ambient.sounds)
 			uses.put(baseName(sound.mseq()), sound.name());
 		if (ambient.radio != null) {
 			for (int i = 0; i < ambient.radio.mseq().length; i++)
