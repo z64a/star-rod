@@ -71,8 +71,8 @@ public class Sbn
 
 	public final List<Member> files = new ArrayList<>();
 
-	/** The bytes between the file table and the first file. */
-	public byte[] extra = new byte[0];
+	/** The bytes between the file table and the first file, or null for an archive whose header doesn't locate any. */
+	public byte[] extra;
 
 	/** Song list entries: BGM file, then three auxiliary bank files (0 for none). */
 	public final List<int[]> songs = new ArrayList<>();
@@ -157,7 +157,7 @@ public class Sbn
 	public byte[] write()
 	{
 		int extraOffset = align(HEADER_SIZE + 8 * files.size());
-		int position = align(extraOffset + extra.length);
+		int position = align(extraOffset + (extra == null ? 0 : extra.length));
 		int filesOffset = position;
 
 		int[] offsets = new int[files.size()];
@@ -178,10 +178,12 @@ public class Sbn
 		bb.putInt(0x04, total);
 		bb.putInt(0x10, HEADER_SIZE);
 		bb.putInt(0x14, files.size());
-		bb.putInt(0x18, filesOffset);
-		bb.putInt(0x1C, extraOffset);
 		bb.putInt(0x24, initOffset);
-		bb.put(extraOffset, extra);
+		if (extra != null) {
+			bb.putInt(0x18, filesOffset);
+			bb.putInt(0x1C, extraOffset);
+			bb.put(extraOffset, extra);
+		}
 
 		for (int i = 0; i < offsets.length; i++) {
 			Member file = files.get(i);

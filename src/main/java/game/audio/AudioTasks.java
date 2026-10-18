@@ -193,7 +193,7 @@ public abstract class AudioTasks
 			}
 		}
 
-		if (sbn.extra.length > 0)
+		if (!Environment.isDX() && sbn.extra.length > 0)
 			FileUtils.writeByteArrayToFile(new File(audioDir, EXTRA_FILE), sbn.extra);
 
 		List<Bank> table = new ArrayList<>();
@@ -414,9 +414,11 @@ public abstract class AudioTasks
 		ArchiveFiles files = readFiles(layers, sbn, songs, ambient);
 		Map<String, Integer> index = files.index();
 
-		File extra = layers.getFile(EXTRA_FILE);
-		if (extra != null)
-			sbn.extra = readFile(extra);
+		// the engine never reads the build date there, so papermario-dx leaves it out
+		if (!Environment.isDX()) {
+			File extra = layers.getFile(EXTRA_FILE);
+			sbn.extra = extra != null ? readFile(extra) : new byte[0];
+		}
 
 		for (Song song : songs) {
 			String songUser = "Song '" + song.name() + "'";
