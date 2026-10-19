@@ -2,6 +2,7 @@ package game.map.editor;
 
 import common.Vector3f;
 import common.commands.AbstractCommand;
+
 import game.map.BoundingBox;
 import game.map.MutablePoint;
 import game.map.MutablePoint.PointBackup;

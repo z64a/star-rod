@@ -9,8 +9,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-
-
 import game.audio.SfxArchive.Allocation;
 import game.audio.SfxArchive.Command;
 import game.audio.SfxArchive.Definition;

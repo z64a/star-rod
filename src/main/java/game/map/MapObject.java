@@ -11,9 +11,10 @@ import java.util.Stack;
 
 import org.w3c.dom.Element;
 
+import common.commands.AbstractCommand;
+
 import game.map.editor.UpdateProvider;
 import game.map.editor.camera.MapEditViewport;
-import common.commands.AbstractCommand;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;
 import game.map.editor.selection.PickRay;

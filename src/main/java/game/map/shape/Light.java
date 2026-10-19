@@ -19,6 +19,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import common.commands.AbstractCommand;
+
 import game.map.editor.MapEditor;
 import game.map.editor.ui.SwingGUI;
 import game.map.scripts.LightingPanel;

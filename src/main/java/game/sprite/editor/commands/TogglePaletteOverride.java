@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 import javax.swing.JCheckBox;
 
 import common.commands.AbstractCommand;
+
 import game.sprite.Sprite;
 
 public class TogglePaletteOverride extends AbstractCommand

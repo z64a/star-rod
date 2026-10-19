@@ -18,11 +18,12 @@ import java.util.Objects;
 
 import org.apache.commons.io.FileUtils;
 
+import common.BaseCamera;
+import common.Vector3f;
+
 import app.StarRodException;
 import app.StarRodMain;
 import app.input.IOUtils;
-import common.BaseCamera;
-import common.Vector3f;
 import game.entity.EntityInfo.EntityType;
 import game.map.Axis;
 import game.map.BoundingBox;

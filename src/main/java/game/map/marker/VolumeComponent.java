@@ -9,6 +9,7 @@ import org.w3c.dom.Element;
 
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
+
 import game.map.JsonFeatures.JsonMarker;
 import game.map.JsonFeatures.JsonVolumeComp;
 import game.map.MutablePoint;

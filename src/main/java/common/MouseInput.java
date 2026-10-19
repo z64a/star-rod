@@ -65,10 +65,10 @@ public class MouseInput implements MouseListener, MouseWheelListener
 
 	private enum MouseButton
 	{
-		OTHER(0),
-		LEFT(1),
-		RIGHT(2),
-		MIDDLE(3);
+		OTHER (0),
+		LEFT (1),
+		RIGHT (2),
+		MIDDLE (3);
 
 		public final int id;
 
@@ -199,7 +199,8 @@ public class MouseInput implements MouseListener, MouseWheelListener
 		try {
 			if (Environment.isMacOS()) {
 				// Moving mouse with Robot on macOS is not supported without enabling accessibility permissions
-			} else {
+			}
+			else {
 				robot = new Robot();
 			}
 		}

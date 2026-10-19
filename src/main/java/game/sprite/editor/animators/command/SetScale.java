@@ -16,8 +16,9 @@ import javax.swing.SpinnerNumberModel;
 
 import org.w3c.dom.Element;
 
-import app.SwingUtils;
 import common.commands.AbstractCommand;
+
+import app.SwingUtils;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.animators.ScaleMode;
 import net.miginfocom.swing.MigLayout;

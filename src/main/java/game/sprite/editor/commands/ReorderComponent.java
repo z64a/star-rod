@@ -3,6 +3,7 @@ package game.sprite.editor.commands;
 import javax.swing.DefaultListModel;
 
 import common.commands.AbstractCommand;
+
 import game.sprite.SpriteComponent;
 import game.sprite.editor.ComponentsList;
 

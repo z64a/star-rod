@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.Stack;
 
 import common.commands.AbstractCommand;
+
 import game.map.MapObject;
 import game.map.editor.MapEditor;
 import game.map.tree.MapObjectNode;

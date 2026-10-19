@@ -4,16 +4,16 @@ import java.util.HashMap;
 
 public enum TileFormat
 {
-	I_4("I4", 4, 0, 1), // (4-bit intensity)	16 shades
-	I_8("I8", 4, 1, 1), // (8-bit intensity)	256 shades
-	IA_4("IA4", 3, 0, 2), // (3-bit intensity / alpha mask)	8 shades, alpha mask
-	IA_8("IA8", 3, 1, 2), // (4-bit intensity / 4-bit alpha)	16 shades, 16 opacity levels
-	IA_16("IA16", 3, 2, 2), // (8-bit intensity / 8-bit alpha)	256 shades, 256 opacity levels
-	CI_4("CI4", 2, 0, 1), // (4-bit color-indexed)	16 colors
-	CI_8("CI8", 2, 1, 1), // (8-bit color-indexed)	256 colors
-	YUV_16("YUV16", 1, 2, 4), // (unsupported)
-	RGBA_16("RGBA16", 0, 2, 4), // (5 bits per channel / alpha mask)
-	RGBA_32("RGBA32", 0, 3, 4); // (8 bits per channel)
+	I_4 ("I4", 4, 0, 1), // (4-bit intensity)	16 shades
+	I_8 ("I8", 4, 1, 1), // (8-bit intensity)	256 shades
+	IA_4 ("IA4", 3, 0, 2), // (3-bit intensity / alpha mask)	8 shades, alpha mask
+	IA_8 ("IA8", 3, 1, 2), // (4-bit intensity / 4-bit alpha)	16 shades, 16 opacity levels
+	IA_16 ("IA16", 3, 2, 2), // (8-bit intensity / 8-bit alpha)	256 shades, 256 opacity levels
+	CI_4 ("CI4", 2, 0, 1), // (4-bit color-indexed)	16 colors
+	CI_8 ("CI8", 2, 1, 1), // (8-bit color-indexed)	256 colors
+	YUV_16 ("YUV16", 1, 2, 4), // (unsupported)
+	RGBA_16 ("RGBA16", 0, 2, 4), // (5 bits per channel / alpha mask)
+	RGBA_32 ("RGBA32", 0, 3, 4); // (8 bits per channel)
 
 	public static String validFormats = "I-4, I-8, IA-4, IA-8, IA-16 \n"
 		+ "CI-4, CI-8, RGBA-16, RGBA-32";

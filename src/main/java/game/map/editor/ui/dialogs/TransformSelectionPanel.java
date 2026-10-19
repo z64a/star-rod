@@ -13,6 +13,7 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
 import common.Vector3f;
+
 import game.map.Axis;
 import game.map.editor.selection.Selection;
 import game.map.shape.TransformMatrix;

@@ -1,6 +1,7 @@
 package game.map.editor.render;
 
 import common.Vector3f;
+
 import game.map.shape.TriangleBatch;
 import game.map.tree.MapObjectNode;
 

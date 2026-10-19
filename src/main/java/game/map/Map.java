@@ -21,13 +21,14 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.FilenameUtils;
 import org.w3c.dom.Element;
 
+import common.commands.AbstractCommand;
+import common.commands.CommandBatch;
+
 import app.Directories;
 import app.Environment;
 import app.SwingUtils;
 import app.input.IOUtils;
 import assets.AssetManager;
-import common.commands.AbstractCommand;
-import common.commands.CommandBatch;
 import game.ProjectDatabase;
 import game.map.JsonFeatures.JsonMap;
 import game.map.JsonFeatures.JsonMarker;

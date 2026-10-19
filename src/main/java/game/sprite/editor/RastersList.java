@@ -17,8 +17,9 @@ import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 
-import app.SwingUtils;
 import common.commands.CommandBatch;
+
+import app.SwingUtils;
 import game.sprite.SpriteRaster;
 import game.sprite.editor.commands.CreateRaster;
 import game.sprite.editor.commands.DeleteRaster;

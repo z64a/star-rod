@@ -9,9 +9,9 @@ import java.nio.file.Files;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonReader;
+import common.commands.EditableField;
 
 import app.input.IOUtils;
-import common.commands.EditableField;
 import game.entity.EntityInfo.EntityType;
 import game.map.marker.Marker.MarkerType;
 import game.map.marker.NpcComponent.MoveType;

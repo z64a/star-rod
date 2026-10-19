@@ -5,6 +5,7 @@ import static renderer.shaders.scene.ModelShader.*;
 
 import common.BaseCamera;
 import common.Vector3f;
+
 import game.map.editor.render.RenderMode;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;

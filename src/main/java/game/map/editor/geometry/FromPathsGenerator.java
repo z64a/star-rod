@@ -1,6 +1,7 @@
 package game.map.editor.geometry;
 
 import common.Vector3f;
+
 import game.map.editor.MapEditor;
 import game.map.marker.PathPoint;
 import game.map.mesh.Triangle;

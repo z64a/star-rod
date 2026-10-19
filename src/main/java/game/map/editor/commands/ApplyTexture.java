@@ -1,6 +1,7 @@
 package game.map.editor.commands;
 
 import common.commands.AbstractCommand;
+
 import game.map.shape.Model;
 import game.texture.ModelTexture;
 

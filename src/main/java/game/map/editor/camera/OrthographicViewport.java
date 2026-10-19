@@ -5,6 +5,7 @@ import static org.lwjgl.opengl.GL11.*;
 import java.util.List;
 
 import common.Vector3f;
+
 import game.map.BoundingBox;
 import game.map.Map;
 import game.map.MapObject;

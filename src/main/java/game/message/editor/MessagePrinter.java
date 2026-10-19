@@ -14,8 +14,8 @@ import game.message.StringConstants.StringEffect;
 import game.message.StringConstants.StringFunction;
 import game.message.StringConstants.StringStyle;
 import game.message.StringEncoder;
-import game.message.editor.MessageUtil.StringProperties;
 import game.message.editor.MessageTokenizer.Sequence;
+import game.message.editor.MessageUtil.StringProperties;
 import util.MathUtil;
 
 public class MessagePrinter

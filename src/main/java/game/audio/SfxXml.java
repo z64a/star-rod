@@ -251,7 +251,7 @@ public final class SfxXml
 			throw error(source, element, "SpawnedEffect requires exactly one Routing and one Tracks element");
 		spawned.tracks.addAll(readTracks(reader, source, tracksElement, addresses));
 		spawned.routing = readRouting(reader, source, routingElement, spawned.tracks.size());
-				return spawned;
+		return spawned;
 	}
 
 	private static List<Track> readTracks(XmlReader reader, Path source, Element element,
@@ -741,8 +741,9 @@ public final class SfxXml
 
 	private static SfxFormatException locationError(Path source, Element element, String message)
 	{
-		String label = element == null ? "" : element.getTagName()
-			+ (element.hasAttribute("name") ? " '" + element.getAttribute("name") + "'" : "") + ": ";
+		String label = element == null ? ""
+			: element.getTagName()
+				+ (element.hasAttribute("name") ? " '" + element.getAttribute("name") + "'" : "") + ": ";
 		return new SfxFormatException(source.normalize() + ": " + label + message);
 	}
 

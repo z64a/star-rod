@@ -9,6 +9,7 @@ import org.w3c.dom.Element;
 
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
+
 import game.entity.EntityInfo.EntityParam;
 import game.entity.EntityInfo.EntityType;
 import game.entity.EntityInfo.ShadowType;

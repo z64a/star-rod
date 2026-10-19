@@ -19,8 +19,9 @@ import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 
-import app.SwingUtils;
 import common.commands.CommandBatch;
+
+import app.SwingUtils;
 import game.sprite.Sprite;
 import game.sprite.editor.SpriteEditor;
 import game.sprite.editor.commands.CreateCommand;

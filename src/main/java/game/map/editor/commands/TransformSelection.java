@@ -3,6 +3,7 @@ package game.map.editor.commands;
 import java.util.LinkedList;
 
 import common.commands.AbstractCommand;
+
 import game.map.MapObject;
 import game.map.ReversibleTransform;
 import game.map.editor.MapEditor;

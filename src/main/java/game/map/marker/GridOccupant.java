@@ -2,14 +2,15 @@ package game.map.marker;
 
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
+
 import util.identity.IdentityArrayList;
 
 public class GridOccupant
 {
 	public static enum OccupantType
 	{
-		Block(1),
-		Obstruction(2);
+		Block (1),
+		Obstruction (2);
 
 		public final int id;
 

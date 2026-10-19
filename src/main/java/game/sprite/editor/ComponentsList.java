@@ -24,8 +24,9 @@ import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
 
-import app.SwingUtils;
 import common.commands.CommandBatch;
+
+import app.SwingUtils;
 import game.sprite.Sprite;
 import game.sprite.SpriteAnimation;
 import game.sprite.SpriteComponent;

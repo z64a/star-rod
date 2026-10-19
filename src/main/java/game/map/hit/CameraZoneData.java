@@ -12,6 +12,7 @@ import common.Vector3f;
 import common.commands.AbstractCommand;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
+
 import game.map.JsonFeatures.JsonCameraZone;
 import game.map.MapObject;
 import game.map.MutablePoint;

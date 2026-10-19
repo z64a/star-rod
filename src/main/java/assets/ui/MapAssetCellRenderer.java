@@ -8,7 +8,6 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.ListCellRenderer;
 
-
 import app.SwingUtils;
 import game.map.Map;
 import net.miginfocom.swing.MigLayout;

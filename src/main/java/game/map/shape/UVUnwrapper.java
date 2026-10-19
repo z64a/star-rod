@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import common.Vector3f;
+
 import game.map.editor.MapEditor;
 import game.map.editor.selection.Selection;
 import game.map.mesh.Triangle;

@@ -529,7 +529,8 @@ public abstract class AudioTasks
 
 		Presets.Addresses addresses = new Presets.Addresses(bankTable, banks);
 		Presets.Addresses mseqAddresses = ambient.radio != null && banks.containsKey(ambient.radio.bank())
-			? addresses.withAuxiliary(RADIO_BANK_SLOT, banks.get(ambient.radio.bank())) : addresses;
+			? addresses.withAuxiliary(RADIO_BANK_SLOT, banks.get(ambient.radio.bank()))
+			: addresses;
 		sources.addAll(readMseqs(layers, mseqAddresses));
 		if (presets) {
 			File table = lastOf(layers.getTables("presets.xml"));

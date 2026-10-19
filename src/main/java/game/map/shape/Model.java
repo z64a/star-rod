@@ -9,11 +9,12 @@ import java.util.function.Consumer;
 
 import org.w3c.dom.Element;
 
-import app.SwingUtils;
 import common.commands.AbstractCommand;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
+
+import app.SwingUtils;
 import game.map.BoundingBox;
 import game.map.MapObject;
 import game.map.MutablePoint;

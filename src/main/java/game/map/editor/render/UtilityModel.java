@@ -8,9 +8,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 
+import common.Vector3f;
+
 import app.Resource;
 import app.Resource.ResourceType;
-import common.Vector3f;
 import renderer.buffers.TriangleRenderQueue;
 import util.Logger;
 import util.Priority;

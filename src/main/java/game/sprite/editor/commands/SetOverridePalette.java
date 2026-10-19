@@ -3,6 +3,7 @@ package game.sprite.editor.commands;
 import javax.swing.JComboBox;
 
 import common.commands.AbstractCommand;
+
 import game.sprite.Sprite;
 import game.sprite.SpritePalette;
 import game.sprite.editor.SpriteEditor;

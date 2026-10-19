@@ -708,7 +708,8 @@ public class BgmPlayer implements AudioClient, PlaybackSession
 		}
 	}
 
-	private record InstrumentQueryResult(Instrument instrument, Script envelope) {}
+	private record InstrumentQueryResult(Instrument instrument, Script envelope)
+	{}
 
 	private InstrumentQueryResult resolveInstrument(String wav, int envelope)
 	{

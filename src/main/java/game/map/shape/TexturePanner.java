@@ -8,6 +8,7 @@ import javax.swing.JLabel;
 import org.w3c.dom.Element;
 
 import common.commands.AbstractCommand;
+
 import game.map.JsonFeatures.JsonTexturePanner;
 import game.map.editor.ui.SwingGUI;
 import renderer.shaders.ShaderManager;
