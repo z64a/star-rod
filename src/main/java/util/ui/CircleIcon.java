@@ -1,6 +1,7 @@
 package util.ui;
 
 import java.awt.BasicStroke;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -26,7 +27,7 @@ public class CircleIcon extends FlatAbstractIcon
 
 	private CircleIcon()
 	{
-		super(12, 16, UIManager.getColor("Tree.icon.openColor"));
+		super(12, 16, null);
 
 		double centerX = 6;
 		double centerY = 8;
@@ -37,6 +38,12 @@ public class CircleIcon extends FlatAbstractIcon
 	@Override
 	protected void paintIcon(Component c, Graphics2D g)
 	{
+		Color iconColor = UIManager.getColor("Tree.icon.openColor");
+		if (iconColor == null)
+			iconColor = UIManager.getColor("Tree.foreground");
+		if (iconColor != null)
+			g.setColor(iconColor);
+
 		g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 		g.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER));
 

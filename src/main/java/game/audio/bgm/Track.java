@@ -310,7 +310,7 @@ public class Track
 						break;
 					case Branch.OPCODE:
 						if (commands.type != StreamType.TRACK)
-						throw new StarRodException("Nested BGM branches and detours are not supported");
+							throw new StarRodException("Nested BGM branches and detours are not supported");
 						commands.all.add(new Branch(reader));
 						break;
 					case EventTrigger.OPCODE:
@@ -318,7 +318,7 @@ public class Track
 						break;
 					case Detour.OPCODE:
 						if (commands.type != StreamType.TRACK)
-						throw new StarRodException("Nested BGM branches and detours are not supported");
+							throw new StarRodException("Nested BGM branches and detours are not supported");
 						commands.all.add(new Detour(reader));
 						break;
 					case SPECIAL_OPCODE:

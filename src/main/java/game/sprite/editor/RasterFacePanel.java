@@ -11,8 +11,9 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.SwingUtilities;
 
-import app.SwingUtils;
 import common.commands.AbstractCommand;
+
+import app.SwingUtils;
 import game.map.editor.render.TextureManager;
 import game.sprite.SpritePalette;
 import game.sprite.SpriteRaster;

@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 
 import common.Vector3f;
+import common.commands.AbstractCommand;
+import common.commands.CommandBatch;
+
 import game.map.Axis;
 import game.map.BoundingBox;
 import game.map.MutableAngle;
@@ -13,8 +16,6 @@ import game.map.editor.MapEditor;
 import game.map.editor.camera.MapEditViewport;
 import game.map.editor.camera.OrthographicViewport;
 import game.map.editor.camera.ViewType;
-import common.commands.CommandBatch;
-import common.commands.AbstractCommand;
 import game.map.editor.commands.TransformSelection;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.Renderer;

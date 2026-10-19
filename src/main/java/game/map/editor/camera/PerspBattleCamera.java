@@ -3,6 +3,7 @@ package game.map.editor.camera;
 import common.KeyboardInput;
 import common.MouseInput;
 import common.Vector3f;
+
 import game.map.BoundingBox;
 
 public class PerspBattleCamera extends PerspBaseCamera

@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import common.Vector3f;
+
 import game.map.MapObject;
 import game.map.MapObject.HitType;
 import game.map.hit.Collider;

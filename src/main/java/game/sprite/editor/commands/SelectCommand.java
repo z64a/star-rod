@@ -1,6 +1,7 @@
 package game.sprite.editor.commands;
 
 import common.commands.AbstractCommand;
+
 import game.sprite.editor.animators.AnimElement;
 import game.sprite.editor.animators.AnimElementsList;
 import game.sprite.editor.animators.ComponentAnimationEditor;

@@ -10,9 +10,10 @@ import java.util.List;
 
 import org.w3c.dom.Element;
 
+import common.commands.AbstractCommand;
+
 import app.Directories;
 import app.input.InputFileException;
-import common.commands.AbstractCommand;
 import util.xml.XmlWrapper.XmlReader;
 import util.xml.XmlWrapper.XmlTag;
 import util.xml.XmlWrapper.XmlWriter;
@@ -79,6 +80,25 @@ public class WorldMapModder
 			super(x, y);
 			this.owner = owner;
 		}
+	}
+
+	// Compare persisted data only; selection and in-progress drag offsets are transient.
+	static record PointState(int x, int y)
+	{}
+
+	static record LocationState(String name, String parent, String descUpdate, int x, int y, List<PointState> path)
+	{}
+
+	static List<LocationState> captureState(List<WorldLocation> locations)
+	{
+		List<LocationState> state = new ArrayList<>(locations.size());
+		for (WorldLocation loc : locations) {
+			List<PointState> path = new ArrayList<>(loc.path.size());
+			for (WorldPathElement point : loc.path)
+				path.add(new PointState(point.x, point.y));
+			state.add(new LocationState(loc.name, loc.parent == null ? "" : loc.parent.name, loc.descUpdate, loc.x, loc.y, path));
+		}
+		return state;
 	}
 
 	private static List<WorldLocation> readXML(File xmlFile) throws IOException
@@ -162,14 +182,14 @@ public class WorldMapModder
 				xmw.addAttribute(locTag, ATTR_PARENT, addPrefix(loc.parentName, PREFIX_LOC));
 				xmw.addAttribute(locTag, ATTR_REQUIRES, addPrefix(loc.descUpdate, PREFIX_STORY));
 				xmw.addInt(locTag, ATTR_START_X, loc.x);
-				xmw.addInt(locTag, ATTR_START_Y, loc.y);
+				xmw.addInt(locTag, ATTR_START_Y, MAP_SIZE - loc.y);
 
 				int lastX = loc.x;
 				int lastY = loc.y;
 				StringBuilder sb = new StringBuilder();
 				for (int j = 0; j < loc.path.size(); j++) {
 					WorldPathElement marker = loc.path.get(j);
-					sb.append(String.format("%d,%d", marker.x - lastX, marker.y - lastY));
+					sb.append(String.format("%d,%d", marker.x - lastX, lastY - marker.y));
 					lastX = marker.x;
 					lastY = marker.y;
 

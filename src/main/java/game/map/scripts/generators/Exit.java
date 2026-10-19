@@ -7,6 +7,7 @@ import org.w3c.dom.Element;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
+
 import game.ProjectDatabase;
 import game.map.scripts.GeneratorsPanel;
 import util.xml.XmlWrapper.XmlReader;

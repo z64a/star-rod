@@ -13,8 +13,9 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
 
-import game.map.editor.DeepCopyable;
 import common.commands.AbstractCommand;
+
+import game.map.editor.DeepCopyable;
 
 public class CategoryTreeModel<K extends Enum<?>, T extends DeepCopyable> extends DefaultTreeModel
 {

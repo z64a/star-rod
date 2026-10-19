@@ -7,6 +7,7 @@ import java.util.List;
 
 import common.Vector3f;
 import common.commands.AbstractCommand;
+
 import game.map.BoundingBox;
 import game.map.MapObject;
 import game.map.MapObject.HitType;

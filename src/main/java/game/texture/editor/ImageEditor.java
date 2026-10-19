@@ -25,9 +25,6 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
-import app.Environment;
-import app.SwingUtils;
-import app.input.IOUtils;
 import common.BaseEditor;
 import common.BaseEditorSettings;
 import common.BasicCamera;
@@ -36,6 +33,10 @@ import common.MouseInput.MouseManagerListener;
 import common.MousePixelRead;
 import common.commands.AbstractCommand;
 import common.commands.ThreadSafeCommandManager;
+
+import app.Environment;
+import app.SwingUtils;
+import app.input.IOUtils;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
 import game.map.editor.ui.SwatchPanel;
@@ -98,6 +99,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 	private SaveFileChooser exportFileChooser;
 
 	private volatile boolean modified = false;
+	private EditorImage.SavedState savedState;
 
 	private boolean bDrawGrid = true;
 	private boolean bDrawBackground = false;
@@ -461,6 +463,8 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 
 		item = new JMenuItem("Close");
 		item.addActionListener((e) -> {
+			if (isModified() && !promptForSave())
+				return;
 			invokeLater(() -> {
 				setImage(null);
 			});
@@ -651,8 +655,10 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 
 	public void push(AbstractCommand cmd)
 	{
-		commandManager.pushCommand(cmd);
-		modified = true;
+		runThreadsafe(() -> {
+			commandManager.pushCommand(cmd);
+			onModified();
+		});
 	}
 
 	@Override
@@ -823,7 +829,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 
 	public void onModified()
 	{
-		runThreadsafe(() -> modified = true);
+		runThreadsafe(() -> modified = image != null && (savedState == null || !savedState.matches(image)));
 	}
 
 	@Override
@@ -872,6 +878,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 		try {
 			IOUtils.atomicWrite(file, ".png", temporaryFile -> out.savePNG(temporaryFile.getAbsolutePath()));
 			imageToSave.source = file;
+			savedState = new EditorImage.SavedState(imageToSave);
 			modified = false;
 			imageLabel.setText(imageToSave.source.getName());
 			Logger.log("Exported " + file.getName());
@@ -892,10 +899,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 		if (choice == 0)
 			return file;
 
-		if (choice == 2)
-			return null;
-
-		return promptChooseExportFile(file);
+		return choice == 1 ? promptChooseExportFile(file) : null;
 	}
 
 	private File promptChooseExportFile(File file)
@@ -914,10 +918,17 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 
 	private void setImage(EditorImage newImage)
 	{
+		setImage(newImage, true);
+	}
+
+	private void setImage(EditorImage newImage, boolean resetSavedState)
+	{
 		assert (!SwingUtilities.isEventDispatchThread());
 
 		image = newImage;
-		modified = false;
+		if (resetSavedState)
+			savedState = image == null ? null : new EditorImage.SavedState(image);
+		onModified();
 
 		resetEditor();
 		resetCam();
@@ -930,6 +941,9 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 	private void newImageEDT()
 	{
 		assert (SwingUtilities.isEventDispatchThread());
+
+		if (isModified() && !promptForSave())
+			return;
 
 		CreateOptionsPanel createOptions = new CreateOptionsPanel();
 		int choice = getConfirmDialog("New Image Options", createOptions).choose();
@@ -994,6 +1008,9 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 	{
 		assert (SwingUtilities.isEventDispatchThread());
 
+		if (isModified() && !promptForSave())
+			return;
+
 		ImportOptionsPanel importOptions = new ImportOptionsPanel();
 		int choice = getConfirmDialog("Import Options", importOptions).choose();
 		if (choice != JOptionPane.OK_OPTION)
@@ -1049,7 +1066,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 
 		Palette pal = null;
 
-		File f = importFileChooser.getSelectedFile();
+		File f = file;
 		if (f != null && f.exists()) {
 			try {
 				try {
@@ -1086,24 +1103,25 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 		File file = null;
 
 		super.incrementDialogsOpen();
-		if (image != null && image.source != null)
-			importFileChooser.setDirectoryContaining(image.source.getParentFile());
-		if (importFileChooser.prompt() == ChooseDialogResult.APPROVE) {
-			ImportOptionsPanel importOptions = new ImportOptionsPanel();
-			int choice = getConfirmDialog("Import Options", importOptions).choose();
-			if (choice != JOptionPane.OK_OPTION)
+		try {
+			if (image.source != null)
+				importFileChooser.setDirectoryContaining(image.source.getParentFile());
+			if (importFileChooser.prompt() != ChooseDialogResult.APPROVE)
 				return;
-
 			file = importFileChooser.getSelectedFile();
 			if (file != null && file.exists())
 				pal = getPaletteEDT(file);
 		}
-		super.decrementDialogsOpen();
+		finally {
+			super.decrementDialogsOpen();
+		}
+		if (pal == null)
+			return;
 
 		EditorImage newImage = EditorImage.forcePalette(image, pal);
 		final String filename = file.getName();
 		invokeLater(() -> {
-			setImage(newImage);
+			setImage(newImage, false);
 			Logger.log("Using palette from " + filename);
 		});
 	}
@@ -1122,7 +1140,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 
 		final ResizeOptions resizeOptions = resizeOptionsPanel.getOptions();
 		invokeLater(() -> {
-			setImage(EditorImage.resize(image, resizeOptions));
+			setImage(EditorImage.resize(image, resizeOptions), false);
 			Logger.logf("Resized image to %d x %d", resizeOptions.width, resizeOptions.height);
 		});
 	}
@@ -1144,7 +1162,7 @@ public class ImageEditor extends BaseEditor implements MouseManagerListener, Col
 			return;
 
 		invokeLater(() -> {
-			setImage(EditorImage.convert(image, settings));
+			setImage(EditorImage.convert(image, settings), false);
 			Logger.log("Converted image to " + settings.fmt);
 		});
 	}

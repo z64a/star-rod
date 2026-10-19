@@ -8,10 +8,11 @@ import java.util.function.Consumer;
 
 import org.w3c.dom.Element;
 
-import app.Environment;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
+
+import app.Environment;
 import game.ProjectDatabase;
 import game.map.JsonFeatures.JsonMap;
 import game.map.JsonFeatures.JsonTexturePanner;

@@ -10,6 +10,7 @@ import org.w3c.dom.Element;
 
 import common.Vector3f;
 import common.commands.AbstractCommand;
+
 import game.map.Axis;
 import game.map.BoundingBox;
 import game.map.JsonFeatures.JsonMarker;

@@ -3,6 +3,7 @@ package game.sprite.editor.commands;
 import javax.swing.DefaultListModel;
 
 import common.commands.AbstractCommand;
+
 import game.sprite.editor.animators.AnimElement;
 import game.sprite.editor.animators.AnimElementsList;
 

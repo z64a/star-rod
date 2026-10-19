@@ -3,6 +3,7 @@ package game.sprite.editor.commands;
 import javax.swing.JTabbedPane;
 
 import common.commands.AbstractCommand;
+
 import game.sprite.editor.SpriteEditor;
 
 public class SelectSpritesTab extends AbstractCommand

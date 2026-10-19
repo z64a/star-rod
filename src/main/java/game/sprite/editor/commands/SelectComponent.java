@@ -1,6 +1,7 @@
 package game.sprite.editor.commands;
 
 import common.commands.AbstractCommand;
+
 import game.sprite.SpriteComponent;
 import game.sprite.editor.ComponentsList;
 import game.sprite.editor.SpriteEditor;

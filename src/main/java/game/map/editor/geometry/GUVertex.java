@@ -3,6 +3,7 @@ package game.map.editor.geometry;
 import java.util.Objects;
 
 import common.Vector3f;
+
 import game.map.mesh.Vertex;
 
 public class GUVertex

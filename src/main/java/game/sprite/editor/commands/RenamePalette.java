@@ -3,6 +3,7 @@ package game.sprite.editor.commands;
 import java.awt.Component;
 
 import common.commands.AbstractCommand;
+
 import game.sprite.SpritePalette;
 
 public class RenamePalette extends AbstractCommand

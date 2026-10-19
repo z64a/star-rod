@@ -6,10 +6,11 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 
+import common.Vector3f;
+
 import app.input.IOUtils;
 import assets.AssetManager;
 import assets.AssetSubdir;
-import common.Vector3f;
 import game.map.hit.Collider;
 import game.map.hit.Zone;
 import game.map.mesh.BasicMesh;

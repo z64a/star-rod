@@ -7,11 +7,12 @@ import java.util.function.Consumer;
 
 import org.w3c.dom.Element;
 
-import app.input.InputFileException;
 import common.commands.AbstractCommand;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
+
+import app.input.InputFileException;
 import game.entity.EntityInfo.EntityType;
 import game.map.BoundingBox;
 import game.map.JsonFeatures.JsonGridComp;

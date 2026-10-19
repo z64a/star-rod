@@ -12,6 +12,7 @@ import common.Vector3f;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
+
 import game.map.JsonFeatures.JsonMarker;
 import game.map.JsonFeatures.JsonPathComp;
 import game.map.MutablePoint;

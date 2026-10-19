@@ -1,6 +1,7 @@
 package game.map.editor.commands;
 
 import common.commands.AbstractCommand;
+
 import game.map.editor.MapEditor;
 
 public class ChangeTextureArchive extends AbstractCommand

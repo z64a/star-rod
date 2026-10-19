@@ -3,6 +3,7 @@ package game.map.editor.commands;
 import java.util.HashMap;
 
 import common.commands.AbstractCommand;
+
 import game.map.shape.Model;
 
 public class ApplyPannerToList extends AbstractCommand

@@ -18,6 +18,7 @@ replay_pid*
 /cfg/
 
 # Eclipse: keep shared encoding, compiler, formatter, and cleanup settings
+/.classpath
 /.settings/*
 !/.settings/org.eclipse.core.resources.prefs
 !/.settings/org.eclipse.jdt.core.prefs

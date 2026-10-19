@@ -28,9 +28,8 @@ import app.Environment;
 import app.LoadingBar;
 import app.StarRodFrame;
 import app.SwingUtils;
+import app.ThemesEditor;
 import app.config.Options;
-import assets.AssetHandle;
-import assets.AssetManager;
 import assets.ExpectedAsset;
 import game.ProjectDatabase;
 import game.globals.MoveRecord;
@@ -39,6 +38,7 @@ import game.globals.editor.tabs.ItemTab;
 import game.globals.editor.tabs.MoveTab;
 import game.message.Message;
 import game.message.editor.MessageAsset;
+import game.message.editor.MessageLibrary;
 import net.miginfocom.swing.MigLayout;
 import util.DualHashMap;
 import util.IterableListModel;
@@ -167,12 +167,15 @@ public class GlobalsEditor
 	{
 		GlobalEditorTab current = (GlobalEditorTab) tabbedPane.getSelectedComponent();
 		GlobalsCategory category = current.getDataType();
-		data.loadAllData();
-
-		for (GlobalEditorTab tab : tabList)
-			tab.notifyDataChange(category);
-
-		current.clearModified();
+		try {
+			data.loadData(category);
+			for (GlobalEditorTab tab : tabList)
+				tab.notifyDataChange(category);
+			current.clearModified();
+		}
+		catch (RuntimeException e) {
+			showDataError("Could not reload " + current.getTabName(), e);
+		}
 	}
 
 	private boolean tabsHaveChanges()
@@ -183,13 +186,31 @@ public class GlobalsEditor
 		return modified;
 	}
 
-	private void saveAllChanges()
+	private boolean saveAllChanges()
 	{
 		for (GlobalEditorTab tab : tabList) {
-			if (tab.modified)
+			if (!tab.modified)
+				continue;
+			try {
+				data.saveData(tab.getDataType());
 				tab.clearModified();
+			}
+			catch (RuntimeException e) {
+				showDataError("Could not save " + tab.getTabName(), e);
+				return false;
+			}
 		}
-		data.saveAllData();
+		return true;
+	}
+
+	protected void showDataError(String title, RuntimeException error)
+	{
+		Logger.printStackTrace(error);
+		SwingUtils.getErrorDialog()
+			.setParent(frame)
+			.setTitle(title)
+			.setMessage(error.getMessage())
+			.show();
 	}
 
 	private void createGUI(CountDownLatch guiClosedSignal)
@@ -211,16 +232,20 @@ public class GlobalsEditor
 					choice = SwingUtils.getConfirmDialog()
 						.setTitle("Warning")
 						.setMessage("Unsaved changes will be lost!", "Would you like to save now?")
+						.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
 						.choose();
 				}
 
 				switch (choice) {
 					case JOptionPane.YES_OPTION:
-						saveAllChanges();
+						if (!saveAllChanges())
+							return;
 						break;
 					case JOptionPane.NO_OPTION:
 						break;
 					case JOptionPane.CANCEL_OPTION:
+					case JOptionPane.CLOSED_OPTION:
+					default:
 						return;
 				}
 
@@ -254,6 +279,7 @@ public class GlobalsEditor
 		frame.setJMenuBar(menuBar);
 
 		addActionsMenu(menuBar);
+		ThemesEditor.addThemeMenuItem(menuBar, frame);
 	}
 
 	private void addActionsMenu(JMenuBar menuBar)
@@ -322,7 +348,7 @@ public class GlobalsEditor
 	{
 		tabList.add(tab);
 
-		tab.tabLabel = new JLabel(tab.getTabName());
+		tab.tabLabel = SwingUtils.getTabLabel(tabbedPane, tab.getTabName(), 12);
 		tab.tabLabel.setHorizontalTextPosition(SwingConstants.TRAILING);
 		tab.tabLabel.setIcon(getTabIcon(tab.getIcon()));
 		tab.tabLabel.setIconTextGap(8);
@@ -367,12 +393,11 @@ public class GlobalsEditor
 
 	private void loadMessages()
 	{
-		messageNameMap.clear();
-
 		try {
-			for (AssetHandle ah : AssetManager.getMessages()) {
-				Logger.log("Reading messages from: " + ah.getName());
-				MessageAsset group = new MessageAsset(ah);
+			MessageLibrary library = MessageLibrary.load();
+			messageNameMap.clear();
+			messageListModel.clear();
+			for (MessageAsset group : library.getAssets()) {
 				for (Message msg : group.messages) {
 					messageNameMap.put("MSG_" + msg.name, msg);
 					messageListModel.addElement(msg);

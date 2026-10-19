@@ -4,9 +4,10 @@ import static game.map.MapKey.*;
 
 import org.w3c.dom.Element;
 
+import common.commands.AbstractCommand;
+
 import game.map.Map;
 import game.map.MapObject.MapObjectType;
-import common.commands.AbstractCommand;
 import game.map.scripts.generators.Generator.GeneratorType;
 import game.map.scripts.generators.Generator.ValidationState;
 import util.xml.XmlWrapper.XmlReader;

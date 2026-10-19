@@ -7,6 +7,7 @@ import org.w3c.dom.Element;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
+
 import game.map.MutablePoint;
 import game.map.editor.MapEditor;
 import game.map.editor.camera.MapEditViewport;

@@ -17,8 +17,9 @@ import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 
-import app.SwingUtils;
 import common.commands.CommandBatch;
+
+import app.SwingUtils;
 import game.sprite.SpritePalette;
 import game.sprite.editor.commands.CreatePalette;
 import game.sprite.editor.commands.DeletePalette;

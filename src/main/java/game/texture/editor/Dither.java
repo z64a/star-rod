@@ -100,10 +100,10 @@ public class Dither
 
 	public static enum DitherMethod
 	{
-		None("None"),
-		FloydSteinberg("Floyd-Steinberg"),
-		JarvisJudiceNinke("Jarvis, Judice, & Ninke"),
-		Sierra("Sierra");
+		None ("None"),
+		FloydSteinberg ("Floyd-Steinberg"),
+		JarvisJudiceNinke ("Jarvis, Judice, & Ninke"),
+		Sierra ("Sierra");
 
 		private final String name;
 

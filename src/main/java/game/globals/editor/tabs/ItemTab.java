@@ -25,8 +25,6 @@ import javax.swing.ListCellRenderer;
 import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 
-import com.alexandriasoftware.swing.JSplitButton;
-
 import app.IconResource;
 import app.SwingUtils;
 import assets.ExpectedAsset;
@@ -52,6 +50,7 @@ import util.ui.HexTextField;
 import util.ui.IntTextField;
 import util.ui.ListSelectorDialog;
 import util.ui.StringField;
+import util.ui.ThemedSplitButton;
 
 public class ItemTab extends SingleListTab<ItemRecord>
 {
@@ -140,6 +139,7 @@ public class ItemTab extends SingleListTab<ItemRecord>
 		if (type != GlobalsCategory.ITEM_TABLE)
 			return;
 
+		reacquireSelection();
 		repaintList();
 	}
 
@@ -201,7 +201,7 @@ public class ItemTab extends SingleListTab<ItemRecord>
 		});
 		SwingUtils.addBorderPadding(addButton);
 
-		JSplitButton actionsButton = new JSplitButton("Actions  ");
+		ThemedSplitButton actionsButton = new ThemedSplitButton("Actions  ");
 		JPopupMenu actionsPopup = new JPopupMenu();
 		actionsButton.setPopupMenu(actionsPopup);
 		actionsButton.setAlwaysPopup(true);

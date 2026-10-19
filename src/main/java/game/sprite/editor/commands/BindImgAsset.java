@@ -4,6 +4,7 @@ import java.awt.Component;
 import java.util.function.Consumer;
 
 import common.commands.AbstractCommand;
+
 import game.sprite.ImgAsset;
 import game.sprite.SpriteRasterFace;
 

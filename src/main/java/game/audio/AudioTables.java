@@ -262,7 +262,7 @@ public abstract class AudioTables
 		return name.endsWith(Mseq.EXTENSION) ? name : name + Mseq.EXTENSION;
 	}
 
-	static Map<String, Entry> merge(AudioLayers layers, String table, Key root, Key... tags)
+	static Map<String, Entry> merge(AudioLayers layers, String table, Key root, Key ... tags)
 	{
 		List<File> files = layers.getTables(table);
 		if (files.isEmpty())
@@ -304,7 +304,7 @@ public abstract class AudioTables
 	}
 
 	/** Gives each entry without an ID the lowest free one, going through the entries by name. IDs in reserved are never used. */
-	private static void assignIds(Map<String, Entry> entries, int maxId, int... reserved)
+	private static void assignIds(Map<String, Entry> entries, int maxId, int ... reserved)
 	{
 		Map<Integer, Entry> used = new HashMap<>();
 		for (Entry e : entries.values()) {

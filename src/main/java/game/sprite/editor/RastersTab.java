@@ -19,6 +19,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
 import common.commands.CommandBatch;
+
 import game.sprite.ImgAsset;
 import game.sprite.Sprite;
 import game.sprite.SpriteRaster;

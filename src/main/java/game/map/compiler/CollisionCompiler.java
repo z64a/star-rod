@@ -10,9 +10,10 @@ import java.util.Objects;
 
 import org.apache.commons.io.FileUtils;
 
+import common.Vector3f;
+
 import app.input.IOUtils;
 import assets.AssetManager;
-import common.Vector3f;
 import game.map.BoundingBox;
 import game.map.Map;
 import game.map.hit.Collider;

@@ -12,6 +12,7 @@ import common.commands.AbstractCommand;
 import common.commands.EditableField;
 import common.commands.EditableField.EditableFieldFactory;
 import common.commands.EditableField.StandardBoolName;
+
 import game.map.Axis;
 import game.map.JsonFeatures.JsonLightComp;
 import game.map.JsonFeatures.JsonMarker;

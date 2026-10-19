@@ -1,6 +1,7 @@
 package renderer.shaders.postprocess;
 
 import common.BaseCamera;
+
 import game.map.editor.MapEditor;
 import game.map.scripts.Features;
 import renderer.shaders.components.UniformFloat;

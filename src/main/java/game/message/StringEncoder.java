@@ -39,12 +39,12 @@ public class StringEncoder
 		"\\[" + ControlCharacter.END.name + "\\]", Pattern.CASE_INSENSITIVE);
 
 	// pattern for TAG_NAME:ARG:ARG:ARG
-	private static final Matcher ClassicTagMatcher = Pattern.compile("(?i)[~\\w]+(?::[\\w`]+)*").matcher("");
+	private static final Pattern ClassicTagPattern = Pattern.compile("(?i)[~\\w]+(?::[\\w`]+)*");
 
 	private static final String REGEX_1_INT = "-?(?:0x[0-9A-Fa-f]+|[0-9]+)";
 	private static final String REGEX_2_INT = REGEX_1_INT + "," + REGEX_1_INT;
 
-	private static final Matcher KVMatcher = Pattern.compile("(?i)(\\w+)=([\\w,.+-]+)").matcher("");
+	private static final Pattern KVPattern = Pattern.compile("(?i)(\\w+)=([\\w,.+-]+)");
 
 	// temp buffer for encoding tags, prefer using helper methods to add to this
 	private final ArrayList<Byte> tagBytes;
@@ -110,9 +110,12 @@ public class StringEncoder
 
 	public static List<Message> parseMessages(MessageAsset group) throws IOException
 	{
-		List<Message> messages = new ArrayList<>();
+		return parseMessages(group, IOUtils.readPlainInputFile(group.asset));
+	}
 
-		List<Line> lines = IOUtils.readPlainInputFile(group.asset);
+	public static List<Message> parseMessages(MessageAsset group, List<Line> lines)
+	{
+		List<Message> messages = new ArrayList<>();
 		List<PatchUnit> units = PatchFileParser.parse(lines);
 
 		for (PatchUnit unit : units) {
@@ -197,6 +200,7 @@ public class StringEncoder
 		builder.vars = vars;
 		ArrayList<Sequence> sequences = MessageTokenizer.tokenize(text);
 		encode(builder, sequences, false);
+		requireEnd(builder, sequences, false);
 		return sequences;
 	}
 
@@ -216,7 +220,7 @@ public class StringEncoder
 		StringEncoder builder = new StringEncoder();
 		ArrayList<Sequence> sequences = MessageTokenizer.tokenize(text);
 		encode(builder, sequences, true);
-		requireEnd(builder, sequences);
+		requireEnd(builder, sequences, true);
 		return getBuffer(sequences, false);
 	}
 
@@ -226,7 +230,7 @@ public class StringEncoder
 		StringEncoder builder = new StringEncoder();
 		ArrayList<Sequence> sequences = MessageTokenizer.tokenize(lines);
 		encode(builder, sequences, true);
-		requireEnd(builder, sequences);
+		requireEnd(builder, sequences, true);
 		return getBuffer(sequences, true);
 	}
 
@@ -279,13 +283,20 @@ public class StringEncoder
 		}
 	}
 
-	private static void requireEnd(StringEncoder builder, ArrayList<Sequence> sequences)
+	private static void requireEnd(StringEncoder builder, ArrayList<Sequence> sequences, boolean throwExceptions)
 	{
 		if (builder.encounteredEnd)
 			return;
 
-		Line sourceLine = sequences.isEmpty() ? null : sequences.get(sequences.size() - 1).srcLine;
-		throw new InputFileException(sourceLine, "Message is missing [End].");
+		String error = "Message is missing [End].";
+		if (throwExceptions) {
+			Line sourceLine = sequences.isEmpty() ? null : sequences.get(sequences.size() - 1).srcLine;
+			throw new InputFileException(sourceLine, error);
+		}
+		// An empty message still needs a diagnostic, even though there is no text to highlight.
+		if (sequences.isEmpty())
+			sequences.add(new Sequence("", false, new ArrayList<>(), null, 0, 0));
+		sequences.get(sequences.size() - 1).addError(error);
 	}
 
 	private static void encodeChars(StringEncoder builder, Sequence seq)
@@ -307,14 +318,13 @@ public class StringEncoder
 		if (tag.startsWith("[") && tag.endsWith("]"))
 			tag = tag.substring(1, tag.length() - 1);
 
-		ClassicTagMatcher.reset(tag);
 		builder.tagBytes.clear();
 		builder.tagPageBreak = false;
 
 		String[] fields;
 		boolean classic;
 
-		if (ClassicTagMatcher.matches()) {
+		if (ClassicTagPattern.matcher(tag).matches()) {
 			classic = true;
 			fields = tag.split(Character.toString(DELIMITER));
 		}
@@ -1118,11 +1128,11 @@ public class StringEncoder
 	private static Integer[] findIntArg(String[] fields, String string, int expectedSize, boolean required) throws InvalidInputException
 	{
 		for (String field : fields) {
-			KVMatcher.reset(field);
-			if (KVMatcher.matches()) {
-				if (!KVMatcher.group(1).equalsIgnoreCase(string))
+			Matcher matcher = KVPattern.matcher(field);
+			if (matcher.matches()) {
+				if (!matcher.group(1).equalsIgnoreCase(string))
 					continue;
-				String[] svals = KVMatcher.group(2).split(",");
+				String[] svals = matcher.group(2).split(",");
 				if (expectedSize > 0 && svals.length != expectedSize)
 					throw new InvalidInputException("Number of elements is incorrect for %s: %d (expected %d)", string, svals.length, expectedSize);
 				Integer[] values = new Integer[svals.length];
@@ -1141,11 +1151,11 @@ public class StringEncoder
 	private static Float[] findFloatArg(String[] fields, String string, int expectedSize, boolean required) throws InvalidInputException
 	{
 		for (String field : fields) {
-			KVMatcher.reset(field);
-			if (KVMatcher.matches()) {
-				if (!KVMatcher.group(1).equalsIgnoreCase(string))
+			Matcher matcher = KVPattern.matcher(field);
+			if (matcher.matches()) {
+				if (!matcher.group(1).equalsIgnoreCase(string))
 					continue;
-				String[] svals = KVMatcher.group(2).split(",");
+				String[] svals = matcher.group(2).split(",");
 				if (expectedSize > 0 && svals.length != expectedSize)
 					throw new InvalidInputException("Number of elements is incorrect for %s: %d (expected %d)", string, svals.length, expectedSize);
 				Float[] values = new Float[svals.length];
@@ -1170,11 +1180,11 @@ public class StringEncoder
 	private static String[] findStringArg(String[] fields, String string, int expectedSize, boolean required) throws InvalidInputException
 	{
 		for (String field : fields) {
-			KVMatcher.reset(field);
-			if (KVMatcher.matches()) {
-				if (!KVMatcher.group(1).equalsIgnoreCase(string))
+			Matcher matcher = KVPattern.matcher(field);
+			if (matcher.matches()) {
+				if (!matcher.group(1).equalsIgnoreCase(string))
 					continue;
-				String[] svals = KVMatcher.group(2).split(",");
+				String[] svals = matcher.group(2).split(",");
 				if (expectedSize > 0 && svals.length != expectedSize)
 					throw new InvalidInputException("Number of elements is incorrect for %s: %d (expected %d)", string, svals.length, expectedSize);
 				return svals;

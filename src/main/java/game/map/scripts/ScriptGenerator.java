@@ -7,8 +7,9 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 
-import app.input.InvalidInputException;
 import common.Vector3f;
+
+import app.input.InvalidInputException;
 import game.DataUtils;
 import game.ScriptVariable;
 import game.entity.EntityInfo.EntityType;
@@ -130,11 +131,11 @@ public class ScriptGenerator
 			// header
 			pw.println("% Auto-generated script for " + map.name);
 			pw.println();
-
+		
 			for(String line : out)
 				pw.println(line);
 		}
-
+		
 		File[] matches = IOUtils.getFileWithin(MOD_MAP_PATCH, patchName, true);
 		File modPatch = (matches.length > 0) ? matches[0] : new File(MOD_MAP_PATCH + patchName);
 		if(!modPatch.exists())

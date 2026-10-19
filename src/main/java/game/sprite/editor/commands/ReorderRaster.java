@@ -1,6 +1,7 @@
 package game.sprite.editor.commands;
 
 import common.commands.AbstractCommand;
+
 import game.sprite.Sprite;
 import game.sprite.SpriteRaster;
 import game.sprite.editor.RastersList;

@@ -84,7 +84,8 @@ public class SoundLibrary
 
 		addresses = new Presets.Addresses(bankTable, files);
 		ambientAddresses = ambient.radio != null && files.containsKey(ambient.radio.bank())
-			? addresses.withAuxiliary(AudioTasks.RADIO_BANK_SLOT, files.get(ambient.radio.bank())) : addresses;
+			? addresses.withAuxiliary(AudioTasks.RADIO_BANK_SLOT, files.get(ambient.radio.bank()))
+			: addresses;
 		if (AudioTasks.usesTables(layers, "drums.xml", "per/SET1.per"))
 			drums = AudioTables.readDrums(layers);
 		else if (layers.getFile("per/SET1.per") != null) {

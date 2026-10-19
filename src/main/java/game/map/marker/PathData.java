@@ -5,6 +5,7 @@ import java.util.List;
 
 import common.Vector3f;
 import common.commands.AbstractCommand;
+
 import game.map.editor.MapEditor;
 import game.map.editor.geometry.GeometryUtils;
 import game.map.editor.selection.SelectablePoint;

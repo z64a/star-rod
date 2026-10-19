@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 
 import common.commands.AbstractCommand;
+
 import game.map.MapObject;
 import game.map.editor.MapEditor;
 import game.map.editor.selection.Selection;

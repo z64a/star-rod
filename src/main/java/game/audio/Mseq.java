@@ -74,7 +74,7 @@ public class Mseq
 
 		private final Attr[] attrs;
 
-		Op(Attr... attrs)
+		Op(Attr ... attrs)
 		{
 			this.attrs = attrs;
 		}
@@ -83,7 +83,7 @@ public class Mseq
 	/** The values are in the order of the attributes of the op; a SetInstrument also has a wav. */
 	public record Command(Op op, int[] values, String wav)
 	{
-		Command(Op op, int... values)
+		Command(Op op, int ... values)
 		{
 			this(op, values, null);
 		}

@@ -47,13 +47,13 @@ public class LabeledTabbedPane extends JTabbedPane
 	{
 		LabeledTab tab = new LabeledTab();
 
-		JLabel lbl = SwingUtils.getLabel(name, 12);
+		JLabel lbl = SwingUtils.getTabLabel(tabs, name, 12);
 		lbl.setPreferredSize(new Dimension(60, 20));
 
 		if (useScrollPane) {
 			JScrollPane scrollPane = new JScrollPane(contents);
 			scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-			scrollPane.setBorder(null);
+			SwingUtils.setBorderless(scrollPane);
 			tab.tabContent = scrollPane;
 		}
 		else

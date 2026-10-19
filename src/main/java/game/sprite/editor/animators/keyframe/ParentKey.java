@@ -10,8 +10,9 @@ import javax.swing.JPanel;
 
 import org.w3c.dom.Element;
 
-import app.SwingUtils;
 import common.commands.AbstractCommand;
+
+import app.SwingUtils;
 import game.sprite.SpriteAnimation;
 import game.sprite.SpriteComponent;
 import game.sprite.editor.Editable;

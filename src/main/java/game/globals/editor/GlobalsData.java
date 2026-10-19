@@ -50,7 +50,19 @@ public class GlobalsData
 			saveData(type);
 	}
 
-	private void saveData(GlobalsCategory type)
+	public void loadData(GlobalsCategory type)
+	{
+		switch (type) {
+			case ITEM_TABLE:
+				loadItems();
+				break;
+			case MOVE_TABLE:
+				loadMoves();
+				break;
+		}
+	}
+
+	public void saveData(GlobalsCategory type)
 	{
 		switch (type) {
 			case ITEM_TABLE:
@@ -83,14 +95,16 @@ public class GlobalsData
 	{
 		File yamlFile = Directories.PROJ_SRC.file("item_table.yaml");
 		List<ItemRecord> itemList = ItemRecord.fromYAML(yamlFile);
+		if (itemList == null)
+			throw new StarRodException("Could not load item table: %s", yamlFile);
 
-		items.clear();
 		int index = 0;
 		for (ItemRecord item : itemList) {
-			items.addElement(item);
 			item.setIndex(index++);
 			item.saveBackup();
 		}
+		items.clear();
+		items.addAll(itemList);
 
 		Logger.log("Loaded " + items.size() + " items");
 	}
@@ -100,11 +114,12 @@ public class GlobalsData
 		List<ItemRecord> itemList = new ArrayList<>(items.getSize());
 		for (ItemRecord item : items) {
 			itemList.add(item);
-			item.saveBackup();
 		}
 
 		File yamlFile = Directories.PROJ_SRC.file("item_table.yaml");
 		ItemRecord.toYAML(yamlFile, itemList);
+		for (ItemRecord item : itemList)
+			item.saveBackup();
 
 		Logger.log("Saved item table");
 	}
@@ -113,28 +128,31 @@ public class GlobalsData
 	{
 		File yamlFile = Directories.PROJ_SRC.file("move_table.yaml");
 		List<MoveRecord> moveList = MoveRecord.fromYAML(yamlFile);
+		if (moveList == null)
+			throw new StarRodException("Could not load move table: %s", yamlFile);
 
-		moves.clear();
 		int index = 0;
 		for (MoveRecord move : moveList) {
-			moves.addElement(move);
 			move.setIndex(index++);
 			move.saveBackup();
 		}
+		moves.clear();
+		moves.addAll(moveList);
 
 		Logger.log("Loaded " + moves.size() + " moves");
 	}
 
 	private void saveMoves()
 	{
-		List<MoveRecord> moveList = new ArrayList<>(items.getSize());
+		List<MoveRecord> moveList = new ArrayList<>(moves.getSize());
 		for (MoveRecord move : moves) {
 			moveList.add(move);
-			move.saveBackup();
 		}
 
 		File yamlFile = Directories.PROJ_SRC.file("move_table.yaml");
 		MoveRecord.toYAML(yamlFile, moveList);
+		for (MoveRecord move : moveList)
+			move.saveBackup();
 
 		Logger.log("Saved moves table");
 	}

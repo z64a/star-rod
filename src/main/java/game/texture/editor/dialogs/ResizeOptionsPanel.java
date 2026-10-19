@@ -86,9 +86,9 @@ public class ResizeOptionsPanel extends JPanel
 
 		public static enum ResizeMethodH
 		{
-			FixCenter("Fixed Center"),
-			FixLeft("Fixed Left Side"),
-			FixRight("Fixed Right Side");
+			FixCenter ("Fixed Center"),
+			FixLeft ("Fixed Left Side"),
+			FixRight ("Fixed Right Side");
 
 			private final String name;
 

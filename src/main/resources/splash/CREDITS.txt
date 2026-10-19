@@ -1,0 +1,8 @@
+Original Star Rod splash
+
+The handwritten "Star Rod Loading / pls be patient :)" artwork in classic.png
+was created by clover.
+
+Photography credits and original source links are in photos/catalog.tsv.
+Photo license information is in photos/LICENSE.txt.
+Font credits, sources, and license texts are in fonts/.

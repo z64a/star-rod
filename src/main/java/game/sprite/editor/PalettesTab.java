@@ -27,9 +27,10 @@ import javax.swing.border.EtchedBorder;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
-import app.SwingUtils;
 import common.commands.AbstractCommand;
 import common.commands.CommandBatch;
+
+import app.SwingUtils;
 import game.map.editor.ui.SwatchPanel;
 import game.sprite.PalAsset;
 import game.sprite.Sprite;

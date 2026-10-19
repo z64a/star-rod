@@ -22,8 +22,10 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
-import app.Environment;
 import common.FrameLimiter;
+
+import app.Environment;
+import app.ThemesEditor;
 import game.audio.engine.AudioEngine;
 import game.audio.engine.PlaybackSession;
 import game.audio.engine.SoundLibrary;
@@ -154,6 +156,7 @@ public class AudioBooth
 		fileMenu.add(reloadItem);
 		fileMenu.add(exitItem);
 		menuBar.add(fileMenu);
+		ThemesEditor.addThemeMenuItem(menuBar, frame);
 		frame.setJMenuBar(menuBar);
 
 		assetTabs = new JTabbedPane();

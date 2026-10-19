@@ -1,6 +1,7 @@
 package game.map.editor.selection;
 
 import common.Vector3f;
+
 import game.map.BoundingBox;
 import game.map.editor.camera.MapEditViewport;
 import game.map.mesh.Triangle;

@@ -5,6 +5,7 @@ import static game.map.MapKey.*;
 import org.w3c.dom.Element;
 
 import common.Vector3f;
+
 import game.map.editor.geometry.GUVertex;
 import game.map.editor.selection.SelectablePoint;
 import game.map.mesh.AbstractMesh;

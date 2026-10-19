@@ -33,7 +33,6 @@ import javax.swing.TransferHandler;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
-import com.alexandriasoftware.swing.JSplitButton;
 import common.commands.AbstractCommand;
 
 import app.SwingUtils;
@@ -57,6 +56,7 @@ import game.map.shape.commands.FlushPipeline;
 import game.map.shape.commands.SetGeometryFlags;
 import net.miginfocom.swing.MigLayout;
 import util.Logger;
+import util.ui.ThemedSplitButton;
 
 public class DisplayListPanel extends JPanel implements IShutdownListener, ListSelectionListener
 {
@@ -297,7 +297,7 @@ public class DisplayListPanel extends JPanel implements IShutdownListener, ListS
 		JMenuItem item;
 		JPopupMenu commandMenu = new JPopupMenu();
 		SwingGUI.instance().registerPopupMenu(commandMenu);
-		JSplitButton addCommandButton = new JSplitButton("Add");
+		ThemedSplitButton addCommandButton = new ThemedSplitButton("Add");
 		addCommandButton.setPopupMenu(commandMenu);
 		addCommandButton.setAlwaysPopup(true);
 		SwingUtils.addBorderPadding(addCommandButton);

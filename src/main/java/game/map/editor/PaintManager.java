@@ -14,7 +14,6 @@ import java.util.Deque;
 import java.util.LinkedList;
 import java.util.function.Consumer;
 
-import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -516,7 +515,7 @@ public class PaintManager
 			SwingUtils.addBorderPadding(pickerButton);
 			configureColorPicker.accept(pickerButton);
 
-			Border border = BorderFactory.createEtchedBorder();
+			Border border = SwingUtils.createThemedLineBorder();
 
 			JPanel rgbaPanel = new JPanel(new MigLayout("fill, wrap, hidemode 3, ins 16 16 16 16"));
 			rgbaPanel.setBorder(border);

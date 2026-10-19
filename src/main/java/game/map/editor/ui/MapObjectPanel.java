@@ -14,8 +14,6 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 
-import com.alexandriasoftware.swing.JSplitButton;
-
 import app.SwingUtils;
 import game.map.Map;
 import game.map.MapObject;
@@ -42,6 +40,7 @@ import game.map.tree.ModelJTree;
 import game.map.tree.ZoneJTree;
 import net.miginfocom.swing.MigLayout;
 import util.Logger;
+import util.ui.ThemedSplitButton;
 
 public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener, GUISelectionInterface
 {
@@ -136,7 +135,7 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 
 		JPopupMenu createMenu = new JPopupMenu();
 		gui.registerPopupMenu(createMenu);
-		JSplitButton createButton = new JSplitButton("Create");
+		ThemedSplitButton createButton = new ThemedSplitButton("Create");
 		createButton.setPopupMenu(createMenu);
 		createButton.setAlwaysPopup(true);
 
@@ -162,7 +161,7 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 
 		JPopupMenu modifyMenu = new JPopupMenu();
 		gui.registerPopupMenu(modifyMenu);
-		JSplitButton modifyButton = new JSplitButton("Modify Selected");
+		ThemedSplitButton modifyButton = new ThemedSplitButton("Modify Selected");
 		modifyButton.setPopupMenu(modifyMenu);
 		modifyButton.setAlwaysPopup(true);
 
@@ -242,7 +241,7 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 
 		JPopupMenu createMenu = new JPopupMenu();
 		gui.registerPopupMenu(createMenu);
-		JSplitButton createButton = new JSplitButton("Create");
+		ThemedSplitButton createButton = new ThemedSplitButton("Create");
 		createButton.setPopupMenu(createMenu);
 		createButton.setAlwaysPopup(true);
 
@@ -263,7 +262,7 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 
 		JPopupMenu modifyMenu = new JPopupMenu();
 		gui.registerPopupMenu(modifyMenu);
-		JSplitButton modifyButton = new JSplitButton("Modify Selected");
+		ThemedSplitButton modifyButton = new ThemedSplitButton("Modify Selected");
 		modifyButton.setPopupMenu(modifyMenu);
 		modifyButton.setAlwaysPopup(true);
 
@@ -345,7 +344,7 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 
 		JPopupMenu createMenu = new JPopupMenu();
 		gui.registerPopupMenu(createMenu);
-		JSplitButton createButton = new JSplitButton("Create");
+		ThemedSplitButton createButton = new ThemedSplitButton("Create");
 		createButton.setPopupMenu(createMenu);
 		createButton.setAlwaysPopup(true);
 
@@ -366,7 +365,7 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 
 		JPopupMenu modifyMenu = new JPopupMenu();
 		gui.registerPopupMenu(modifyMenu);
-		JSplitButton modifyButton = new JSplitButton("Modify Selected");
+		ThemedSplitButton modifyButton = new ThemedSplitButton("Modify Selected");
 		modifyButton.setPopupMenu(modifyMenu);
 		modifyButton.setAlwaysPopup(true);
 
@@ -440,12 +439,12 @@ public class MapObjectPanel extends JTabbedPane implements TreeSelectionListener
 		treeViewPanel.add(new JScrollPane(markerJTree), "grow");
 
 		// dummy button to occupy unused space
-		JSplitButton modifyButton = new JSplitButton("Modify Selected");
+		ThemedSplitButton modifyButton = new ThemedSplitButton("Modify Selected");
 		modifyButton.setEnabled(false);
 
 		JPopupMenu createMenu = new JPopupMenu();
 		gui.registerPopupMenu(createMenu);
-		JSplitButton createButton = new JSplitButton("Create");
+		ThemedSplitButton createButton = new ThemedSplitButton("Create");
 		createButton.setPopupMenu(createMenu);
 		createButton.setAlwaysPopup(true);
 

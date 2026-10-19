@@ -37,6 +37,9 @@ import javax.swing.WindowConstants;
 
 import org.apache.commons.io.FileUtils;
 
+import common.KeyboardInput.KeyboardInputListener;
+import common.MouseInput.MouseManagerListener;
+
 import app.Directories;
 import app.Environment;
 import app.LoadingBar;
@@ -46,11 +49,10 @@ import app.StarRodMain;
 import app.SwingUtils;
 import app.SwingUtils.DialogBuilder;
 import app.SwingUtils.OpenDialogCounter;
+import app.ThemesEditor;
 import app.config.Config;
 import app.config.Options;
 import app.config.Options.Scope;
-import common.KeyboardInput.KeyboardInputListener;
-import common.MouseInput.MouseManagerListener;
 import game.map.editor.Tickable;
 import net.miginfocom.swing.MigLayout;
 import util.LogFile;
@@ -395,6 +397,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		}
 
 		createGui(toolPanel, glCanvas, menuBar, infoLabel, openLogAction);
+		ThemesEditor.addThemeMenuItem(menuBar, frame);
 
 		JPanel contentPanel = new JPanel(new MigLayout("fill, insets 0"));
 		contentPanel.add(toolPanel, "grow");
@@ -535,7 +538,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		return config;
 	}
 
-	private final boolean promptForSave()
+	protected final boolean promptForSave()
 	{
 		openDialogs.increment();
 		int choice = SwingUtils.getConfirmDialog()

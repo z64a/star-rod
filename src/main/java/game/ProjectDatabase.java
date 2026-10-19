@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,14 +48,10 @@ public class ProjectDatabase
 		savedFlags = loadSavedVarNames(Directories.PROJ_INCLUDE.file("saved_flag_names.h"));
 		savedBytes = loadSavedVarNames(Directories.PROJ_INCLUDE.file("saved_byte_names.h"));
 
-		// TODO the following block takes a half-second at startup and could be optimized better
-		{
-			decompEnums = new CaseInsensitiveMap<>();
-			DecompEnum.addEnums(decompEnums, Directories.PROJ_INCLUDE.file("enums.h").getAbsolutePath());
-			DecompEnum.addEnums(decompEnums, Directories.PROJ_INCLUDE.file("effects.h").getAbsolutePath());
-			DecompEnum.addEnums(decompEnums, Directories.PROJ_SRC.file("battle/battle_names.h").getAbsolutePath());
-			DecompEnum.addEnums(decompEnums, Directories.PROJ_SRC.file("battle/stage_names.h").getAbsolutePath());
-		}
+		decompEnums = new CaseInsensitiveMap<>();
+		DecompEnum.addEnums(decompEnums, Directories.PROJ_INCLUDE.file("enums.h").getAbsolutePath(), Set.of(
+			"SurfaceType", "Locations", "StoryProgress", "MoveType", "BattleMessages", "ItemTypeFlags", "TargetFlags",
+			"DoorSounds", "DoorSwing", "ItemSpawnModes"));
 
 		ESurfaceTypes = decompEnums.get("SurfaceType");
 		ELocations = decompEnums.get("Locations");

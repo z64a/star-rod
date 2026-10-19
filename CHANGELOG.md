@@ -2,6 +2,59 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.0] - WIP
+
+### Added
+
+- Custom audio support, including sound banks, samples, instruments, sound effects, and ambient sequences
+- Audio Booth for previewing music, sound effects, ambient sequences, and samples
+- `-DumpAudio`, `-BuildAudio`, `-VerifyAudio`, and `-RenderAudio` commands for extracting, building, checking, and rendering audio to WAV
+- (Map Editor) Feature extraction from decomp sources, including NPCs, entities, paths, camera settings, and texture panners
+- (Map Editor) `-DumpMaps` and `-BuildMaps` commands. Build changed maps in one process without opening the editor
+- (Map Editor) Customizable key bindings, light markers, and editable sprite shading profiles
+- (Message Editor) Create, duplicate, rename, move, delete, and revert messages
+- Theme designer with live previews and saved custom themes, available from each tool
+- New startup/loading screens and credits, including third-party licenses
+
+### Changed
+
+- Read asset layers from `layout.yaml`, with `splat.yaml` as a fallback
+- (Map Editor) Support DX maps stored beside their code as `map.xml`, with features in `features.json`. New maps can be assigned to an area, and `.meta` deletions are respected
+- (Map Editor) Ported geometry, selection, painting, camera, and play-in-editor improvements from StarRodClassic. Added hex color entry, texture visibility while painting, and undoable brush settings
+- (Message Editor) Browse messages directly, with filename filters, optional text previews, and an inspector showing their sources in the asset stack
+- (Message Editor) Messages override individually. Mod files can contain only the messages they change, and duplicate definitions within a layer are rejected
+- (Message Editor) Save edits to the existing mod definition's file, or use the source filename for a new override. Preserve file contents and message order
+- (Message Editor) Replaced the right-side tabs with Text Variables, Image Variable, and Current Message sections
+- Releases now include Java and launchers for Windows, Linux, and macOS. No separate Java installation is needed
+- Updated Gradle and release packaging, added dependency verification, and removed the generated `.classpath` from version control
+- `-Version` prints the version and build commit without starting the application
+
+### Fixed
+
+- (Map Editor) Fixed geometry cutting, vertex fusion/separation, triangle moves, copying, and undo/redo
+- (Map Editor) Fixed threading issues between editing, rendering, and UI updates
+- (Map Editor) Improved play-in-editor collision, stepping, jumping, and camera zones
+- (Map Editor) Recovery files now keep unsaved markers and features
+- (Message Editor) Report missing `[End]` and highlight errors in the message list and source inspector. Errors update when the message or selected source changes
+- (Message/Image/World Map Editors) Fully undoing edits now clears the changed status
+- (Message Editor) Detect external file changes before saving and roll back failed saves across multiple files
+- (Message Editor) Faster filtering for large lists and support for messages without explicit names
+- (World Map Editor) Fixed locations and paths flipping vertically after save/reload. Reload prompts for unsaved changes and keeps the current map if loading fails
+- (Globals Editor) Reload only affects the selected table. Failed saves no longer mark edits as saved or replace their backups
+- (Globals Editor) Fixed item target flags being copied from type flags and stale item details after reload
+- (Image Editor) Prompt before New, Import, drag-and-drop, or Close discards edits. Cancelled or failed exports stop the operation
+- (Image Editor) Fixed palette-import cancellation. Resizing, conversion, and palette changes now count as edits; changing the selection does not
+- (Sprite Editor) Failed saves no longer clear undo/redo history
+- Failed or cancelled saves no longer let editors close or reload and discard changes. Safer file writes preserve existing files when writing fails
+- Fixed high-DPI rendering and picking, decomp enum parsing, and reading headers from WSL projects
+- Extract message fonts even when another tool has already created the dump directory
+- Fixed YAML files being left open and locked on Windows
+- Fixed Nix builds and installation, including Linux ARM64 and macOS support
+
+### Compatibility notes
+
+- Texture panner maxima now use pixels, with a default of 128. The unit toggle only changes steps and offsets. For existing UV-mode `features.json` files, divide each panner's `max` by 1024. Legacy map XML keeps its original units
+
 ## [0.10.2] - 2025-07-21
 
 ### Fixed

@@ -44,7 +44,7 @@ public class PathSubpanel extends JPanel
 
 		JScrollPane pathScrollPane = new JScrollPane(pathList);
 		pathScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		pathScrollPane.setBorder(null);
+		SwingUtils.setBorderless(pathScrollPane);
 
 		setLayout(new MigLayout("fill, ins 0"));
 		add(pathScrollPane, "growy, pushy, growx, span, wrap");

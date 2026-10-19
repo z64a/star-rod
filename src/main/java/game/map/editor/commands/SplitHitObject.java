@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import common.commands.AbstractCommand;
+
 import game.map.editor.MapEditor;
 import game.map.hit.Collider;
 import game.map.hit.HitObject;

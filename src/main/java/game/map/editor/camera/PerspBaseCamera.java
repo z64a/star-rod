@@ -1,6 +1,7 @@
 package game.map.editor.camera;
 
 import common.Vector3f;
+
 import game.map.Axis;
 import game.map.editor.render.TextureManager;
 import game.map.scripts.Features;

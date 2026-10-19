@@ -15,8 +15,9 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.border.Border;
 import javax.swing.border.EtchedBorder;
 
-import app.SwingUtils;
 import common.commands.AbstractCommand;
+
+import app.SwingUtils;
 import game.map.Map;
 import game.map.editor.MapEditor;
 import game.map.editor.MapEditor.IShutdownListener;
@@ -114,7 +115,7 @@ public class LightingPanel extends JPanel implements IShutdownListener
 
 		JScrollPane lightListScrollPane = new JScrollPane(lightListPanel);
 		lightListScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		lightListScrollPane.setBorder(null);
+		SwingUtils.setBorderless(lightListScrollPane);
 
 		JPanel lightSetPanel = new JPanel(new MigLayout("fill", "[grow][push][grow]"));
 

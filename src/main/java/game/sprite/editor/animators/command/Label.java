@@ -20,8 +20,9 @@ import javax.swing.text.DocumentFilter;
 
 import org.w3c.dom.Element;
 
-import app.SwingUtils;
 import common.commands.AbstractCommand;
+
+import app.SwingUtils;
 import game.sprite.editor.SpriteEditor;
 import net.miginfocom.swing.MigLayout;
 import util.xml.XmlWrapper.XmlReader;

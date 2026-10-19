@@ -11,6 +11,7 @@ import java.util.List;
 import org.w3c.dom.Element;
 
 import common.commands.AbstractCommand;
+
 import game.map.scripts.LightingPanel;
 import util.identity.IdentityArrayList;
 import util.xml.XmlWrapper.XmlReader;

@@ -1,6 +1,7 @@
 package game.sprite.editor.commands.keyframe;
 
 import common.commands.AbstractCommand;
+
 import game.sprite.SpriteRaster;
 import game.sprite.editor.animators.keyframe.Keyframe;
 
