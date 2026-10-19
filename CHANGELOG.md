@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Changed
+- (Map Editor) Texture panner maxima always use pixels in the editor and feature JSON, with a default of 128. The unit toggle only affects steps and offsets. Existing UV-mode feature JSON needs its `max` divided by 1024; legacy map XML retains its original units.
+
 ## [0.10.2] - 2025-07-21
 
 ### Fixed

@@ -167,12 +167,15 @@ public class GlobalsEditor
 	{
 		GlobalEditorTab current = (GlobalEditorTab) tabbedPane.getSelectedComponent();
 		GlobalsCategory category = current.getDataType();
-		data.loadAllData();
-
-		for (GlobalEditorTab tab : tabList)
-			tab.notifyDataChange(category);
-
-		current.clearModified();
+		try {
+			data.loadData(category);
+			for (GlobalEditorTab tab : tabList)
+				tab.notifyDataChange(category);
+			current.clearModified();
+		}
+		catch (RuntimeException e) {
+			showDataError("Could not reload " + current.getTabName(), e);
+		}
 	}
 
 	private boolean tabsHaveChanges()
@@ -183,13 +186,31 @@ public class GlobalsEditor
 		return modified;
 	}
 
-	private void saveAllChanges()
+	private boolean saveAllChanges()
 	{
 		for (GlobalEditorTab tab : tabList) {
-			if (tab.modified)
+			if (!tab.modified)
+				continue;
+			try {
+				data.saveData(tab.getDataType());
 				tab.clearModified();
+			}
+			catch (RuntimeException e) {
+				showDataError("Could not save " + tab.getTabName(), e);
+				return false;
+			}
 		}
-		data.saveAllData();
+		return true;
+	}
+
+	protected void showDataError(String title, RuntimeException error)
+	{
+		Logger.printStackTrace(error);
+		SwingUtils.getErrorDialog()
+			.setParent(frame)
+			.setTitle(title)
+			.setMessage(error.getMessage())
+			.show();
 	}
 
 	private void createGUI(CountDownLatch guiClosedSignal)
@@ -211,16 +232,20 @@ public class GlobalsEditor
 					choice = SwingUtils.getConfirmDialog()
 						.setTitle("Warning")
 						.setMessage("Unsaved changes will be lost!", "Would you like to save now?")
+						.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
 						.choose();
 				}
 
 				switch (choice) {
 					case JOptionPane.YES_OPTION:
-						saveAllChanges();
+						if (!saveAllChanges())
+							return;
 						break;
 					case JOptionPane.NO_OPTION:
 						break;
 					case JOptionPane.CANCEL_OPTION:
+					case JOptionPane.CLOSED_OPTION:
+					default:
 						return;
 				}
 

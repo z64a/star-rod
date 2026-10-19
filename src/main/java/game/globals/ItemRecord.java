@@ -1,7 +1,7 @@
 package game.globals;
 
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
@@ -88,7 +88,7 @@ public class ItemRecord extends GlobalsRecord
 		this.noIconArg = other.noIconArg;
 
 		this.typeFlags.setBits(other.typeFlags.getBits());
-		this.targetFlags.setBits(other.typeFlags.getBits());
+		this.targetFlags.setBits(other.targetFlags.getBits());
 
 		this.moveName = other.moveName;
 		this.category = other.category;
@@ -152,6 +152,16 @@ public class ItemRecord extends GlobalsRecord
 
 	public static void toYAML(File yamlFile, List<ItemRecord> itemList)
 	{
+		try {
+			IOUtils.atomicWrite(yamlFile, ".yaml", temporaryFile -> writeYAML(temporaryFile, itemList));
+		}
+		catch (IOException e) {
+			throw new StarRodException(e);
+		}
+	}
+
+	private static void writeYAML(File yamlFile, List<ItemRecord> itemList) throws IOException
+	{
 		try (PrintWriter pw = IOUtils.getBufferedPrintWriter(yamlFile)) {
 			for (ItemRecord rec : itemList) {
 				pw.printf("- %s:%n", rec.name);
@@ -175,9 +185,8 @@ public class ItemRecord extends GlobalsRecord
 				pw.printf("    potencyA: %d%n", rec.potencyA);
 				pw.printf("    potencyB: %d%n", rec.potencyB);
 			}
-		}
-		catch (FileNotFoundException e) {
-			throw new StarRodException(e);
+			if (pw.checkError())
+				throw new IOException("Could not write item table: " + yamlFile);
 		}
 	}
 

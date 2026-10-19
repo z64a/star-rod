@@ -139,6 +139,7 @@ public class ItemTab extends SingleListTab<ItemRecord>
 		if (type != GlobalsCategory.ITEM_TABLE)
 			return;
 
+		reacquireSelection();
 		repaintList();
 	}
 

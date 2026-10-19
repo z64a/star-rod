@@ -538,7 +538,7 @@ public abstract class BaseEditor extends GLEditor implements Logger.Listener, Mo
 		return config;
 	}
 
-	private final boolean promptForSave()
+	protected final boolean promptForSave()
 	{
 		openDialogs.increment();
 		int choice = SwingUtils.getConfirmDialog()

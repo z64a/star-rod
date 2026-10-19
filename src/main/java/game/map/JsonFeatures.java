@@ -83,6 +83,7 @@ public abstract class JsonFeatures
 		public boolean generate;
 		public boolean useTexels;
 
+		// always pixels, independent of useTexels and init/step units
 		public int max;
 
 		// [mainU, mainV, auxU, auxV] OR [mainS, mainT, auxS, auxT]

@@ -1,7 +1,7 @@
 package game.globals;
 
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
@@ -127,6 +127,16 @@ public class MoveRecord extends GlobalsRecord
 
 	public static void toYAML(File yamlFile, List<MoveRecord> moveList)
 	{
+		try {
+			IOUtils.atomicWrite(yamlFile, ".yaml", temporaryFile -> writeYAML(temporaryFile, moveList));
+		}
+		catch (IOException e) {
+			throw new StarRodException(e);
+		}
+	}
+
+	private static void writeYAML(File yamlFile, List<MoveRecord> moveList) throws IOException
+	{
 		try (PrintWriter pw = IOUtils.getBufferedPrintWriter(yamlFile)) {
 			for (MoveRecord rec : moveList) {
 				pw.printf("- %s:%n", rec.name);
@@ -139,9 +149,8 @@ public class MoveRecord extends GlobalsRecord
 				pw.printf("    costFP: %d%n", rec.fpCost);
 				pw.printf("    costBP: %d%n", rec.bpCost);
 			}
-		}
-		catch (FileNotFoundException e) {
-			throw new StarRodException(e);
+			if (pw.checkError())
+				throw new IOException("Could not write move table: " + yamlFile);
 		}
 	}
 

@@ -9,8 +9,10 @@ import java.awt.image.DataBuffer;
 import java.awt.image.IndexColorModel;
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import common.commands.AbstractCommand;
+
 import game.texture.ImageConverter;
 import game.texture.Palette;
 import game.texture.Tile;
@@ -52,6 +54,44 @@ public class EditorImage
 	private int selectedCount = 0;
 
 	public File source;
+
+	/** Saved pixel and palette data, excluding the current selection. */
+	static final class SavedState
+	{
+		private final TileFormat format;
+		private final int width, height;
+		private final int[] pixels;
+		private final Color[] palette;
+
+		SavedState(EditorImage image)
+		{
+			format = image.format;
+			width = image.width;
+			height = image.height;
+			palette = image.palette == null ? null : image.palette.clone();
+			pixels = new int[width * height];
+			for (int y = 0; y < height; y++)
+				for (int x = 0; x < width; x++)
+					pixels[y * width + x] = value(image.pixels[x][y]);
+		}
+
+		private int value(Pixel pixel)
+		{
+			return palette == null ? pixel.getARGB() : pixel.index;
+		}
+
+		boolean matches(EditorImage image)
+		{
+			if (image.format != format || image.width != width || image.height != height
+				|| !Arrays.equals(palette, image.palette))
+				return false;
+			for (int y = 0; y < height; y++)
+				for (int x = 0; x < width; x++)
+					if (pixels[y * width + x] != value(image.pixels[x][y]))
+						return false;
+			return true;
+		}
+	}
 
 	private EditorImage(ImageEditor editor, TileFormat format, int width, int height)
 	{

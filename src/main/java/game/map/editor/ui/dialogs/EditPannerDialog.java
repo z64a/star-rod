@@ -139,7 +139,7 @@ public class EditPannerDialog extends JDialog
 
 			ignoreChanges = true;
 			PannerParams params = selectedPanner.params;
-			maxField.setValue(params.useTexels ? params.maxST : params.maxUV);
+			maxField.setValue(params.getMax());
 			ignoreChanges = false;
 
 			SwingGUI.instance().updatePannersTab();
@@ -177,7 +177,7 @@ public class EditPannerDialog extends JDialog
 		add(sliderInit[AUX_S], "growx");
 		add(sliderInit[AUX_T], "growx");
 
-		add(SwingUtils.getLabel("Max Value", 14), "split 2, gaptop 16, w 18%");
+		add(SwingUtils.getLabel("Max (pixels)", 14), "split 2, gaptop 16, w 18%");
 		add(maxField, "w 24%, gapbottom 16");
 
 		add(new JPanel(), "split 3, growx, sg but");
@@ -238,7 +238,7 @@ public class EditPannerDialog extends JDialog
 
 		ignoreChanges = true;
 
-		maxField.setValue(t.params.useTexels ? t.params.maxST : t.params.maxUV);
+		maxField.setValue(t.params.getMax());
 
 		for (int i = 0; i < NUM_COORDS; i++) {
 			sliderRate[i].setValue(t.params.rate[i]);
@@ -413,7 +413,7 @@ public class EditPannerDialog extends JDialog
 						int value = Integer.decode(text);
 						selectedPanner.params.setMax(value);
 					}
-					catch (NumberFormatException e) {
+					catch (IllegalArgumentException e) {
 						setValue(selectedPanner.params.getMax());
 					}
 				}
@@ -441,7 +441,7 @@ public class EditPannerDialog extends JDialog
 		{
 			String text = getText();
 			if (text.isEmpty()) {
-				setText("0");
+				setValue(selectedPanner.params.getMax());
 				return;
 			}
 
@@ -449,19 +449,14 @@ public class EditPannerDialog extends JDialog
 				int value = Integer.decode(text);
 				selectedPanner.params.setMax(value);
 			}
-			catch (NumberFormatException n) {
+			catch (IllegalArgumentException n) {
 				setValue(selectedPanner.params.getMax());
 			}
 		}
 
 		public void setValue(int value)
 		{
-			boolean forceHex = (selectedPanner.params == null) || !selectedPanner.params.useTexels;
-
-			if (forceHex)
-				setText("0x" + Integer.toString(value, 16));
-			else
-				setText(Integer.toString(value));
+			setText(Integer.toString(value));
 		}
 	}
 }

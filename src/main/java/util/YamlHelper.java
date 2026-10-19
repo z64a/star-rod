@@ -2,7 +2,7 @@ package util;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -23,10 +23,10 @@ public abstract class YamlHelper
 	{
 		Map<String, Object> list;
 
-		try {
-			list = new Yaml().load(new FileInputStream(yamlFile));
+		try (FileInputStream input = new FileInputStream(yamlFile)) {
+			list = new Yaml().load(input);
 		}
-		catch (FileNotFoundException e) {
+		catch (IOException e) {
 			Logger.logError(e.getMessage());
 			return null;
 		}
@@ -38,10 +38,10 @@ public abstract class YamlHelper
 	{
 		ArrayList<Object> list;
 
-		try {
-			list = new Yaml().load(new FileInputStream(yamlFile));
+		try (FileInputStream input = new FileInputStream(yamlFile)) {
+			list = new Yaml().load(input);
 		}
-		catch (FileNotFoundException e) {
+		catch (IOException e) {
 			Logger.logError(e.getMessage());
 			return null;
 		}

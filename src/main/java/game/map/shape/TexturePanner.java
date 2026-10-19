@@ -83,18 +83,15 @@ public class TexturePanner
 
 		public void setMax(int value)
 		{
-			if (useTexels)
-				maxST = value;
-			else
-				maxUV = value;
+			if (value <= 0 || value > Integer.MAX_VALUE / TEXEL_RATIO)
+				throw new IllegalArgumentException("Panner maximum must be positive pixels within the UV range");
+			maxST = value;
+			maxUV = value * TEXEL_RATIO;
 		}
 
 		public int getMax()
 		{
-			if (useTexels)
-				return maxST;
-			else
-				return maxUV;
+			return maxST;
 		}
 
 		public PannerParams getOutput()
@@ -253,7 +250,7 @@ public class TexturePanner
 		out.id = panID;
 		out.generate = params.generate;
 		out.useTexels = params.useTexels;
-		out.max = params.useTexels ? params.maxST : params.maxUV;
+		out.max = params.getMax();
 
 		if (params.useTexels) {
 			out.init = new int[] {
@@ -288,11 +285,9 @@ public class TexturePanner
 		TexturePanner panner = new TexturePanner(in.id);
 		panner.params.generate = in.generate;
 		panner.params.useTexels = in.useTexels;
+		panner.params.setMax(in.max);
 
 		if (panner.params.useTexels) {
-			panner.params.maxST = in.max;
-			panner.params.maxUV = in.max * TEXEL_RATIO;
-
 			panner.params.init[MAIN_S] = in.init[0];
 			panner.params.init[MAIN_T] = in.init[1];
 			panner.params.init[AUX_S] = in.init[2];
@@ -314,9 +309,6 @@ public class TexturePanner
 			panner.params.rate[AUX_V] = in.step[3] * TEXEL_RATIO;
 		}
 		else {
-			panner.params.maxST = in.max / TEXEL_RATIO;
-			panner.params.maxUV = in.max;
-
 			panner.params.init[MAIN_S] = in.init[0] / TEXEL_RATIO;
 			panner.params.init[MAIN_T] = in.init[1] / TEXEL_RATIO;
 			panner.params.init[AUX_S] = in.init[2] / TEXEL_RATIO;

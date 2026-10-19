@@ -45,6 +45,13 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 
+import common.BaseEditor;
+import common.BaseEditorSettings;
+import common.KeyboardInput.KeyInputEvent;
+import common.commands.AbstractCommand;
+import common.commands.CommandBatch;
+import common.commands.ThreadSafeCommandManager;
+
 import app.Environment;
 import app.StarRodException;
 import app.SwingUtils;
@@ -53,12 +60,6 @@ import app.config.Options;
 import app.config.Options.Scope;
 import assets.AssetHandle;
 import assets.AssetManager;
-import common.BaseEditor;
-import common.BaseEditorSettings;
-import common.KeyboardInput.KeyInputEvent;
-import common.commands.AbstractCommand;
-import common.commands.CommandBatch;
-import common.commands.ThreadSafeCommandManager;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
 import game.map.editor.ui.dialogs.ChooseDialogResult;
@@ -2001,8 +2002,8 @@ public class SpriteEditor extends BaseEditor
 			if (dirtyModifiedSprites.contains(currentSprite)) {
 				int choice = getConfirmDialog("Reload Sprite",
 					"Reloading will discard the current sprite's unsaved changes. Save first?")
-					.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
-					.choose();
+						.setOptionsType(JOptionPane.YES_NO_CANCEL_OPTION)
+						.choose();
 
 				switch (choice) {
 					case JOptionPane.YES_OPTION:
@@ -2028,11 +2029,6 @@ public class SpriteEditor extends BaseEditor
 
 	private boolean saveSprite(Sprite spr)
 	{
-		// Editable modification counters are relative to the pre-save state. Keeping
-		// commands after a save can make an undo dirty the wrong sprite or drive a
-		// palette counter below zero, so a save attempt establishes a new baseline.
-		flushUndoRedo();
-
 		AssetHandle ah = spr.getAsset();
 
 		try {
@@ -2048,6 +2044,9 @@ public class SpriteEditor extends BaseEditor
 				xmw.save();
 			}
 
+			// Counters become relative to the saved state only after all writes succeed.
+			// Failed saves must leave the existing undo/redo history intact.
+			flushUndoRedo();
 			spr.clearModified();
 
 			Logger.log("Saved sprite " + spr.name);

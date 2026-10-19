@@ -26,9 +26,6 @@ import javax.swing.JSlider;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 
-import app.Environment;
-import app.SwingUtils;
-import assets.ExpectedAsset;
 import common.BaseEditor;
 import common.BaseEditorSettings;
 import common.BasicCamera;
@@ -38,6 +35,10 @@ import common.MousePixelRead;
 import common.commands.AbstractCommand;
 import common.commands.CommandBatch;
 import common.commands.ThreadSafeCommandManager;
+
+import app.Environment;
+import app.SwingUtils;
+import assets.ExpectedAsset;
 import game.ProjectDatabase;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.TextureManager;
@@ -123,6 +124,7 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 	private JPanel selectedPanel;
 
 	private volatile boolean modified = false;
+	private List<WorldMapModder.LocationState> savedState;
 
 	public volatile boolean suppressCommands = false;
 
@@ -247,8 +249,9 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 
 		item = new JMenuItem("Reload");
 		item.addActionListener((e) -> {
+			if (isModified() && !promptForSave())
+				return;
 			loadData();
-			flushUndoRedo();
 			glTexDirty = true;
 		});
 		menu.add(item);
@@ -731,7 +734,12 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 			List<WorldLocation> loadedLocations = WorldMapModder.loadLocations();
 			runThreadsafe(() -> {
 				locations = loadedLocations;
+				mouseMarker = null;
+				dragMarker = null;
+				parentingLoc = null;
+				setSelectedLocation(null);
 				loadedSuccessfully = true;
+				savedState = WorldMapModder.captureState(locations);
 				modified = false;
 				commandManager.flush();
 			});
@@ -739,7 +747,6 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 		}
 		catch (IOException e) {
 			runThreadsafe(() -> {
-				loadedSuccessfully = false;
 				if (locations == null)
 					locations = new ArrayList<>();
 			});
@@ -754,7 +761,7 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 
 	public void onModified()
 	{
-		runThreadsafe(() -> modified = true);
+		runThreadsafe(() -> modified = !WorldMapModder.captureState(locations).equals(savedState));
 	}
 
 	@Override
@@ -778,6 +785,7 @@ public class WorldMapEditor extends BaseEditor implements MouseManagerListener
 
 		try {
 			WorldMapModder.saveLocations(locations);
+			savedState = WorldMapModder.captureState(locations);
 			modified = false;
 			commandManager.flush();
 			Logger.log("Saved world map.");
