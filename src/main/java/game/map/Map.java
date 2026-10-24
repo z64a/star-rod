@@ -429,8 +429,26 @@ public class Map implements XmlSerializable
 		return projDir;
 	}
 
+	/** The name obj gets when given name: a valid one that no other object of its kind has. */
+	public String uniqueName(MapObject obj, String name)
+	{
+		switch (obj.getObjectType()) {
+			case MODEL:
+				return modelTree.uniqueName(name, (Model) obj);
+			case COLLIDER:
+				return colliderTree.uniqueName(name, (Collider) obj);
+			case ZONE:
+				return zoneTree.uniqueName(name, (Zone) obj);
+			case MARKER:
+				return markerTree.uniqueName(name, (Marker) obj);
+			default:
+				return name;
+		}
+	}
+
 	public void add(MapObject obj)
 	{
+		obj.setName(uniqueName(obj, obj.getName()));
 		switch (obj.getObjectType()) {
 			case MODEL:
 				modelTree.add((Model) obj);
@@ -473,6 +491,7 @@ public class Map implements XmlSerializable
 
 	public void create(MapObject obj)
 	{
+		obj.setName(uniqueName(obj, obj.getName()));
 		switch (obj.getObjectType()) {
 			case MODEL:
 				modelTree.create((Model) obj);
@@ -806,6 +825,12 @@ public class Map implements XmlSerializable
 			map.tryLoadFeatures();
 
 		map.fromXML(xmr, xmr.getRootElement());
+		if (Environment.isDX()) {
+			map.modelTree.makeNamesUnique();
+			map.colliderTree.makeNamesUnique();
+			map.zoneTree.makeNamesUnique();
+			map.markerTree.makeNamesUnique();
+		}
 
 		map.lastModified = f.lastModified();
 		map.modified = map.readBackup;
@@ -894,7 +919,7 @@ public class Map implements XmlSerializable
 
 		int i = 1;
 		for (EditableShadingLight light : profile.lights) {
-			Marker m = new Marker("Light " + i, MarkerType.Light, light.pos[0], light.pos[1], light.pos[2], 0);
+			Marker m = new Marker("Light_" + i, MarkerType.Light, light.pos[0], light.pos[1], light.pos[2], 0);
 			m.lightComponent.color.set(ColorUtils.pack(light.rgb));
 			m.lightComponent.falloffType = light.falloffType;
 			m.lightComponent.setByCoeff(light.falloffCoeff);
@@ -912,7 +937,7 @@ public class Map implements XmlSerializable
 
 		int i = 1;
 		for (EditableShadingLight light : profile.lights) {
-			Marker m = new Marker("Light " + i, MarkerType.Light, light.pos[0], light.pos[1], light.pos[2], 0);
+			Marker m = new Marker("Light_" + i, MarkerType.Light, light.pos[0], light.pos[1], light.pos[2], 0);
 			m.lightComponent.color.set(ColorUtils.pack(light.rgb));
 			m.lightComponent.falloffType = light.falloffType;
 			m.lightComponent.setByCoeff(light.falloffCoeff);
@@ -1764,7 +1789,7 @@ public class Map implements XmlSerializable
 
 		for (int i = 0; i < 8; i++) {
 			int[] vec = BATTLE_ENEMY_POSITIONS[i];
-			String name = String.format("Enemy %X", i);
+			String name = String.format("Enemy_%X", i);
 
 			actor = new Marker(name, MarkerType.NPC, vec[0], vec[1], vec[2], 0);
 

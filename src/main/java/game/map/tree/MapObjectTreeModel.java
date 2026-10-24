@@ -4,10 +4,13 @@ import static game.map.MapKey.*;
 
 import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Queue;
+import java.util.Set;
 import java.util.Stack;
 
 import javax.swing.SwingUtilities;
@@ -324,6 +327,55 @@ public abstract class MapObjectTreeModel<T extends MapObject> extends DefaultTre
 		}
 
 		return null;
+	}
+
+	/**
+	 * Gives every object a name that is {@link MapObject#isValidName valid} and unique in this tree.
+	 * Of objects sharing a name, the last in {@link #getList()} keeps it: a map's headers define names
+	 * in that order, so C code using the name already gets the last one.
+	 */
+	public void makeNamesUnique()
+	{
+		List<T> objs = getList();
+		Set<String> reserved = new HashSet<>();
+		for (T obj : objs)
+			reserved.add(MapObject.toValidName(obj.getName()));
+
+		Set<String> taken = new HashSet<>();
+		ListIterator<T> iter = objs.listIterator(objs.size());
+		while (iter.hasPrevious()) {
+			T obj = iter.previous();
+			String name = MapObject.toValidName(obj.getName());
+			if (taken.contains(name)) {
+				name = withFreeSuffix(name, reserved);
+				reserved.add(name);
+			}
+			taken.add(name);
+
+			if (!name.equals(obj.getName()))
+				obj.setName(name);
+		}
+	}
+
+	/** A {@link MapObject#isValidName valid} name based on name that no object in this tree other than except has. */
+	public String uniqueName(String name, T except)
+	{
+		Set<String> names = new HashSet<>();
+		for (T obj : getList()) {
+			if (obj != except)
+				names.add(obj.getName());
+		}
+
+		String id = MapObject.toValidName(name);
+		return names.contains(id) ? withFreeSuffix(id, names) : id;
+	}
+
+	private static String withFreeSuffix(String name, Set<String> names)
+	{
+		int n = 1;
+		while (names.contains(name + "_" + n))
+			n++;
+		return name + "_" + n;
 	}
 
 	public int getObjectID(String name)

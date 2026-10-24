@@ -1767,14 +1767,24 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
 			.choose();
 
-		if (choice == JOptionPane.OK_OPTION) {
-			editor.runEditorAction(() -> {
-				editor.action_CreateMarker(
-					MarkerOptionsPanel.getMarkerName(),
-					MarkerOptionsPanel.getMarkerType(),
-					parent);
-			});
+		if (choice != JOptionPane.OK_OPTION)
+			return;
+
+		String name = MarkerOptionsPanel.getMarkerName();
+		if (!MapObject.isValidName(name)) {
+			SwingUtils.getErrorDialog()
+				.setParent(this)
+				.setCounter(openDialogCount)
+				.setTitle("Invalid Marker Name")
+				.setMessage(MapObject.INVALID_NAME_MESSAGE)
+				.setOptions("OK")
+				.show();
+			return;
 		}
+
+		editor.runEditorAction(() -> {
+			editor.action_CreateMarker(name, MarkerOptionsPanel.getMarkerType(), parent);
+		});
 	}
 
 	private void prompt_GenerateUV()

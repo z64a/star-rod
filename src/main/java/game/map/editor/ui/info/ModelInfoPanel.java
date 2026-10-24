@@ -18,6 +18,7 @@ import javax.swing.border.Border;
 import javax.swing.border.EtchedBorder;
 
 import app.SwingUtils;
+import game.map.MapObject;
 import game.map.MapObject.SetObjectName;
 import game.map.MapObject.ShapeType;
 import game.map.editor.MapEditor;
@@ -286,7 +287,7 @@ public class ModelInfoPanel extends MapInfoPanel<Model>
 
 		nameField = new NameTextField((newValue) -> {
 			MapEditor.execute(() -> new SetObjectName(getData(), newValue));
-		});
+		}, MapObject::isValidName, MapObject.INVALID_NAME_MESSAGE);
 		SwingUtils.addBorderPadding(nameField);
 
 		shapeTypeBox = new JComboBox<>(ShapeType.values());
