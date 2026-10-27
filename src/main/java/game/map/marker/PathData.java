@@ -1,7 +1,11 @@
 package game.map.marker;
 
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import common.Vector3f;
 import common.commands.AbstractCommand;
@@ -29,6 +33,233 @@ public class PathData
 		this.parent = m;
 		this.updateTag = updateTag;
 		this.maxLength = maxLength;
+	}
+
+	/** The points `point` leads to: those it's been connected to, or else the point after it, if any. */
+	public List<PathPoint> successors(PathPoint point)
+	{
+		if (point.next != null)
+			return point.next;
+		int index = point.getListIndex();
+		return (index + 1 < points.size()) ? List.of(points.get(index + 1)) : List.of();
+	}
+
+	/** Whether each point leads only to the point after it. */
+	public boolean isLinear()
+	{
+		for (PathPoint point : points) {
+			if (point.next != null)
+				return false;
+		}
+		return true;
+	}
+
+	/** Whether every point has a name. */
+	public boolean isNamed()
+	{
+		for (PathPoint point : points) {
+			if (point.name == null)
+				return false;
+		}
+		return true;
+	}
+
+	/** Makes `point` lead to `successors`, which it then remembers only if they differ from the point after it. */
+	void setSuccessors(PathPoint point, List<PathPoint> successors)
+	{
+		point.next = null;
+		if (!same(successors, successors(point)))
+			point.next = new ArrayList<>(successors);
+	}
+
+	/** Whether two lists hold the same points, which are compared by identity, since points in one place are equal. */
+	private static boolean same(List<PathPoint> a, List<PathPoint> b)
+	{
+		if (a.size() != b.size())
+			return false;
+		for (int i = 0; i < a.size(); i++) {
+			if (a.get(i) != b.get(i))
+				return false;
+		}
+		return true;
+	}
+
+	/** Each point's name, or null for one without, or null if none has one. */
+	public String[] getNames()
+	{
+		String[] names = new String[points.size()];
+		boolean any = false;
+		for (int i = 0; i < names.length; i++) {
+			names[i] = points.get(i).name;
+			any |= names[i] != null;
+		}
+		return any ? names : null;
+	}
+
+	/** The indices of the points each point leads to, or null if each leads only to the point after it. */
+	public int[][] getEdges()
+	{
+		if (isLinear())
+			return null;
+		int[][] edges = new int[points.size()][];
+		for (int i = 0; i < points.size(); i++)
+			edges[i] = successors(points.get(i)).stream().mapToInt(PathPoint::getListIndex).toArray();
+		return edges;
+	}
+
+	/** Sets the points' names and what they lead to, as getNames and getEdges give them, either of which can be null. */
+	public void setGraph(String[] names, int[][] edges)
+	{
+		for (int i = 0; i < points.size(); i++) {
+			PathPoint point = points.get(i);
+			point.name = (names != null && i < names.length && canName(point, names[i])) ? names[i] : null;
+		}
+		for (int i = 0; i < points.size(); i++) {
+			PathPoint point = points.get(i);
+			point.next = null;
+			if (edges == null || i >= edges.length || edges[i] == null)
+				continue;
+			List<PathPoint> successors = new ArrayList<>();
+			for (int index : edges[i]) {
+				if (index >= 0 && index < points.size())
+					successors.add(points.get(index));
+			}
+			setSuccessors(point, successors);
+		}
+	}
+
+	/**
+	 * Removes `point`, and makes the points that led to it lead on to where it led instead. Returns what each point led
+	 * to before, for restore.
+	 */
+	Map<PathPoint, List<PathPoint>> remove(PathPoint point)
+	{
+		List<PathPoint> onward = new ArrayList<>(successors(point));
+		onward.removeIf(successor -> successor == point);
+
+		Map<PathPoint, List<PathPoint>> nextBefore = new IdentityHashMap<>();
+		Map<PathPoint, List<PathPoint>> rerouted = new IdentityHashMap<>();
+		for (PathPoint other : points) {
+			nextBefore.put(other, other.next);
+			List<PathPoint> successors = successors(other);
+			if (other == point || successors.stream().noneMatch(successor -> successor == point))
+				continue;
+			List<PathPoint> through = new ArrayList<>();
+			for (PathPoint successor : successors) {
+				for (PathPoint target : (successor == point) ? onward : List.of(successor)) {
+					if (target != other && through.stream().noneMatch(added -> added == target))
+						through.add(target);
+				}
+			}
+			rerouted.put(other, through);
+		}
+
+		points.remove(point.getListIndex());
+		rerouted.forEach(this::setSuccessors);
+		parent.updateListeners(updateTag);
+		return nextBefore;
+	}
+
+	/** Puts back a point that remove took out, at `index`, and what each point led to before. */
+	void restore(PathPoint point, int index, Map<PathPoint, List<PathPoint>> nextBefore)
+	{
+		points.add(index, point);
+		nextBefore.forEach((other, next) -> other.next = next);
+		parent.updateListeners(updateTag);
+	}
+
+	/** Whether `point` can be named `name`: a C identifier no other point of the path has, or null for no name. */
+	public boolean canName(PathPoint point, String name)
+	{
+		if (name == null)
+			return true;
+		if (!name.matches("[A-Za-z_][A-Za-z0-9_]*"))
+			return false;
+		for (PathPoint other : points) {
+			if (other != point && name.equals(other.name))
+				return false;
+		}
+		return true;
+	}
+
+	/** Connects `from` to `to`, or removes the connection, which changes what `from` leads to. */
+	public static final class SetConnected extends AbstractCommand
+	{
+		private final PathPoint from;
+		private final List<PathPoint> before;
+		private final List<PathPoint> after;
+
+		public SetConnected(PathPoint from, PathPoint to, boolean connected)
+		{
+			super(connected ? "Connect Path Points" : "Disconnect Path Points");
+			this.from = from;
+			before = from.next;
+			List<PathPoint> successors = new ArrayList<>(from.path.successors(from));
+			if (!connected)
+				successors.removeIf(point -> point == to);
+			else if (successors.stream().noneMatch(point -> point == to))
+				successors.add(to);
+			after = successors;
+		}
+
+		@Override
+		public boolean shouldExec()
+		{
+			return !same(after, from.path.successors(from));
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+			from.path.setSuccessors(from, after);
+			from.path.parent.updateListeners(from.path.updateTag);
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+			from.next = before;
+			from.path.parent.updateListeners(from.path.updateTag);
+		}
+	}
+
+	public static final class SetPathPointName extends AbstractCommand
+	{
+		private final PathPoint point;
+		private final String before;
+		private final String after;
+
+		public SetPathPointName(PathPoint point, String name)
+		{
+			super("Rename Path Point");
+			this.point = point;
+			before = point.name;
+			after = (name == null || name.isEmpty()) ? null : name;
+		}
+
+		@Override
+		public boolean shouldExec()
+		{
+			return !Objects.equals(before, after) && point.path.canName(point, after);
+		}
+
+		@Override
+		public void exec()
+		{
+			super.exec();
+			point.name = after;
+			point.path.parent.updateListeners(point.path.updateTag);
+		}
+
+		@Override
+		public void undo()
+		{
+			super.undo();
+			point.name = before;
+			point.path.parent.updateListeners(point.path.updateTag);
+		}
 	}
 
 	public static final class AddPathPoint extends AbstractCommand
@@ -131,6 +362,7 @@ public class PathData
 		private final int initialPos;
 
 		private AbstractCommand selectionModCommand;
+		private Map<PathPoint, List<PathPoint>> nextBefore;
 
 		public DeletePathPoint(PathPoint wp)
 		{
@@ -151,16 +383,14 @@ public class PathData
 			selectionModCommand.exec();
 
 			super.exec();
-			wp.path.points.remove(initialPos);
-			wp.path.parent.updateListeners(wp.path.updateTag);
+			nextBefore = wp.path.remove(wp);
 		}
 
 		@Override
 		public void undo()
 		{
 			super.undo();
-			wp.path.points.add(initialPos, wp);
-			wp.path.parent.updateListeners(wp.path.updateTag);
+			wp.path.restore(wp, initialPos, nextBefore);
 
 			selectionModCommand.undo();
 		}

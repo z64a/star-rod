@@ -182,6 +182,12 @@ public abstract class JsonFeatures
 	{
 		public int[][] waypoints;
 		public boolean showInterp;
+		public Boolean alwaysShow;
+
+		/** Each waypoint's name, or null for one without, if any has one. */
+		public String[] names;
+		/** The waypoints each one leads to, if any leads to another than the one after it. */
+		public int[][] edges;
 	}
 
 	public static class JsonVolumeComp

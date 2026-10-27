@@ -41,6 +41,12 @@ public class PathComponent extends BaseMarkerComponent
 		.setCallback((v) -> parentMarker.updateListeners(MarkerInfoPanel.TAG_PATH))
 		.setName(new StandardBoolName("Show Interp")).build();
 
+	public EditableField<Boolean> alwaysShow = EditableFieldFactory.create(false)
+		.setCallback((v) -> parentMarker.updateListeners(MarkerInfoPanel.TAG_PATH))
+		.setName(new StandardBoolName("Always Show")).build();
+
+	private static final float ARROWHEAD_SIZE = 12.0f;
+
 	private float[] interpLens;
 	private Vector3f[] interpVecs;
 
@@ -56,8 +62,10 @@ public class PathComponent extends BaseMarkerComponent
 		PathComponent copy = new PathComponent(copyParent);
 		for (PathPoint wp : path.points)
 			copy.path.points.addElement(new PathPoint(copy.path, wp.getX(), wp.getY(), wp.getZ()));
+		copy.path.setGraph(path.getNames(), path.getEdges());
 
 		copy.showInterp.set(showInterp.get());
+		copy.alwaysShow.set(alwaysShow.get());
 		return copy;
 	}
 
@@ -68,6 +76,7 @@ public class PathComponent extends BaseMarkerComponent
 			return;
 
 		showInterp.set(in.pathComp.showInterp);
+		alwaysShow.set(Boolean.TRUE.equals(in.pathComp.alwaysShow));
 
 		if (in.pathComp.waypoints != null) {
 			for (int i = 0; i < in.pathComp.waypoints.length; i++) {
@@ -79,6 +88,7 @@ public class PathComponent extends BaseMarkerComponent
 				path.points.addElement(new PathPoint(path, wp[0], wp[1], wp[2]));
 			}
 		}
+		path.setGraph(in.pathComp.names, in.pathComp.edges);
 	}
 
 	@Override
@@ -86,6 +96,10 @@ public class PathComponent extends BaseMarkerComponent
 	{
 		out.pathComp = new JsonPathComp();
 		out.pathComp.showInterp = showInterp.get();
+		if (alwaysShow.get())
+			out.pathComp.alwaysShow = true;
+		out.pathComp.names = path.getNames();
+		out.pathComp.edges = path.getEdges();
 
 		out.pathComp.waypoints = new int[path.points.size()][];
 		for (int i = 0; i < path.points.size(); i++) {
@@ -170,10 +184,11 @@ public class PathComponent extends BaseMarkerComponent
 	{
 		super.render(opts, view, renderer);
 
-		if (path.points.size() == 0 || !parentMarker.selected)
+		if (path.points.size() == 0 || !(parentMarker.selected || alwaysShow.get()))
 			return;
 
-		if (showInterp.get() && path.points.size() > 2)
+		boolean drawInterp = showInterp.get() && path.points.size() > 2 && path.isLinear();
+		if (drawInterp)
 			computeInterpolation();
 
 		boolean editPointsMode = true;
@@ -201,18 +216,15 @@ public class PathComponent extends BaseMarkerComponent
 			RenderState.setDepthFunc(GL_LEQUAL);
 
 		RenderState.setColor(PresetColor.YELLOW);
-		SelectablePoint last = null;
-		for (SelectablePoint point : path.points) {
-			if (last != null) {
-				LineRenderQueue.addLine(
-					LineRenderQueue.addVertex().setPosition(last.getX(), last.getY(), last.getZ()).getIndex(),
-					LineRenderQueue.addVertex().setPosition(point.getX(), point.getY(), point.getZ()).getIndex());
+		for (PathPoint from : path.points) {
+			for (PathPoint to : path.successors(from)) {
+				addLine(from.getX(), from.getY(), from.getZ(), to.getX(), to.getY(), to.getZ());
+				addArrowhead(from, to);
 			}
-			last = point;
 		}
 
 		try {
-			if (showInterp.get() && path.points.size() > 2) {
+			if (drawInterp) {
 				RenderState.setColor(PresetColor.GREEN);
 				int max = 1 + path.points.size() * 8;
 
@@ -239,15 +251,13 @@ public class PathComponent extends BaseMarkerComponent
 
 		if (drawHiddenPaths) {
 			RenderState.setColor(PresetColor.YELLOW);
-			last = null;
-			for (SelectablePoint point : path.points) {
-				if (last != null) {
+			for (PathPoint from : path.points) {
+				for (PathPoint to : path.successors(from)) {
 					Renderer.queueStipple(
-						last.getX(), last.getY(), last.getZ(),
-						point.getX(), point.getY(), point.getZ(),
+						from.getX(), from.getY(), from.getZ(),
+						to.getX(), to.getY(), to.getZ(),
 						10.0f);
 				}
-				last = point;
 			}
 
 			// flush the line render queue with depth writing disabled
@@ -258,6 +268,34 @@ public class PathComponent extends BaseMarkerComponent
 
 			RenderState.initDepthFunc();
 		}
+	}
+
+	private static void addLine(float ax, float ay, float az, float bx, float by, float bz)
+	{
+		LineRenderQueue.addLine(
+			LineRenderQueue.addVertex().setPosition(ax, ay, az).getIndex(),
+			LineRenderQueue.addVertex().setPosition(bx, by, bz).getIndex());
+	}
+
+	/** Points the way from `from` to `to` halfway along the line between them. */
+	private static void addArrowhead(PathPoint from, PathPoint to)
+	{
+		float dx = to.getX() - from.getX();
+		float dz = to.getZ() - from.getZ();
+		float length = (float) Math.sqrt(dx * dx + dz * dz);
+		if (length < 1.0f)
+			return;
+		dx /= length;
+		dz /= length;
+
+		float size = Math.min(ARROWHEAD_SIZE, length / 4);
+		float tipX = (from.getX() + to.getX()) / 2.0f;
+		float tipY = (from.getY() + to.getY()) / 2.0f;
+		float tipZ = (from.getZ() + to.getZ()) / 2.0f;
+		float backX = tipX - dx * size;
+		float backZ = tipZ - dz * size;
+		addLine(tipX, tipY, tipZ, backX - dz * size / 2, tipY, backZ + dx * size / 2);
+		addLine(tipX, tipY, tipZ, backX + dz * size / 2, tipY, backZ - dx * size / 2);
 	}
 
 	private void computeInterpolation()
