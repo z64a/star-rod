@@ -349,6 +349,14 @@ public class Renderer implements IShutdownListener
 		}
 	}
 
+	public void drawPathPoints(RenderingOptions opts, Iterable<Marker> markers, MapEditViewport view)
+	{
+		for (Marker m : markers) {
+			if (m.shouldDraw() && m.getType() == MarkerType.Path)
+				m.pathComponent.renderPoints(opts, view);
+		}
+	}
+
 	public void drawVertices(Iterable<Vertex> vertices, boolean ignoreDepth)
 	{
 		RenderState.setPointSize(8.0f);

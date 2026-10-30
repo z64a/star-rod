@@ -236,6 +236,7 @@ public class PerspectiveViewport extends MapEditViewport
 		if (!onlyDrawModels) {
 			renderer.drawColliders(opts, hitMap.colliderTree);
 			renderer.drawZones(opts, hitMap.zoneTree);
+			renderer.drawPathPoints(opts, editor.map.markerTree, this);
 		}
 
 		if (doPerspProfiling)
@@ -267,6 +268,9 @@ public class PerspectiveViewport extends MapEditViewport
 		// draw various editor helpers and hints
 		switch (opts.editorMode) {
 			case Modify:
+				editor.selectionManager.currentSelection.render(renderer, this);
+				editor.pathTool.render();
+				break;
 			case Options:
 				editor.selectionManager.currentSelection.render(renderer, this);
 				break;

@@ -128,6 +128,7 @@ public class OrthographicViewport extends MapEditViewport
 			renderer.drawZones(opts, hitMap.zoneTree);
 			// markers drawn last in ortho views so they render in front of translucent faces
 			renderer.drawMarkers(opts, editor.map.markerTree, this);
+			renderer.drawPathPoints(opts, editor.map.markerTree, this);
 		}
 
 		// done drawing map objects, time to draw helpers and UI elements
@@ -154,6 +155,9 @@ public class OrthographicViewport extends MapEditViewport
 		// draw various editor helpers and hints
 		switch (opts.editorMode) {
 			case Modify:
+				editor.selectionManager.currentSelection.render(renderer, this);
+				editor.pathTool.render();
+				break;
 			case Options:
 				editor.selectionManager.currentSelection.render(renderer, this);
 				break;

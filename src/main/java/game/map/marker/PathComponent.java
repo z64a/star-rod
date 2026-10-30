@@ -1,9 +1,11 @@
 package game.map.marker;
 
 import static game.map.MapKey.*;
+import static org.lwjgl.opengl.GL11.GL_ALWAYS;
 import static org.lwjgl.opengl.GL11.GL_GREATER;
 import static org.lwjgl.opengl.GL11.GL_LEQUAL;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.w3c.dom.Element;
@@ -17,16 +19,22 @@ import game.map.JsonFeatures.JsonMarker;
 import game.map.JsonFeatures.JsonPathComp;
 import game.map.MutablePoint;
 import game.map.MutablePoint.PointBackup;
+import game.map.editor.MapEditor.EditorMode;
 import game.map.editor.camera.MapEditViewport;
 import game.map.editor.camera.ViewType;
 import game.map.editor.render.PresetColor;
 import game.map.editor.render.Renderer;
 import game.map.editor.render.RenderingOptions;
+import game.map.editor.selection.PickRay;
 import game.map.editor.selection.SelectablePoint;
 import game.map.editor.ui.info.MarkerInfoPanel;
 import renderer.buffers.LineRenderQueue;
 import renderer.buffers.PointRenderQueue;
+import renderer.buffers.TriangleRenderQueue;
 import renderer.shaders.RenderState;
+import renderer.shaders.RenderState.PolygonMode;
+import renderer.shaders.ShaderManager;
+import renderer.shaders.scene.BasicSolidShader;
 import util.Logger;
 import util.identity.IdentityHashSet;
 import util.xml.XmlWrapper.XmlReader;
@@ -41,11 +49,16 @@ public class PathComponent extends BaseMarkerComponent
 		.setCallback((v) -> parentMarker.updateListeners(MarkerInfoPanel.TAG_PATH))
 		.setName(new StandardBoolName("Show Interp")).build();
 
-	public EditableField<Boolean> alwaysShow = EditableFieldFactory.create(false)
-		.setCallback((v) -> parentMarker.updateListeners(MarkerInfoPanel.TAG_PATH))
-		.setName(new StandardBoolName("Always Show")).build();
-
-	private static final float ARROWHEAD_SIZE = 12.0f;
+	/** The length of the arrows along connections, scaled by the view so they're the same size on screen. */
+	private static final float ARROW_SIZE = 4.0f;
+	/** About how far apart the arrows along a connection are. */
+	private static final float ARROW_SPACING = 80.0f;
+	/** How fast the arrows move along connections, in units per second. */
+	private static final float ARROW_SPEED = 40.0f;
+	/** The size of a point's color, inside its outline and shadow. */
+	public static final float POINT_SIZE = 16.0f;
+	/** How opaque the path of a marker that isn't selected is. */
+	private static final float UNSELECTED_ALPHA = 0.4f;
 
 	private float[] interpLens;
 	private Vector3f[] interpVecs;
@@ -65,7 +78,6 @@ public class PathComponent extends BaseMarkerComponent
 		copy.path.setGraph(path.getNames(), path.getEdges());
 
 		copy.showInterp.set(showInterp.get());
-		copy.alwaysShow.set(alwaysShow.get());
 		return copy;
 	}
 
@@ -76,7 +88,6 @@ public class PathComponent extends BaseMarkerComponent
 			return;
 
 		showInterp.set(in.pathComp.showInterp);
-		alwaysShow.set(Boolean.TRUE.equals(in.pathComp.alwaysShow));
 
 		if (in.pathComp.waypoints != null) {
 			for (int i = 0; i < in.pathComp.waypoints.length; i++) {
@@ -96,8 +107,6 @@ public class PathComponent extends BaseMarkerComponent
 	{
 		out.pathComp = new JsonPathComp();
 		out.pathComp.showInterp = showInterp.get();
-		if (alwaysShow.get())
-			out.pathComp.alwaysShow = true;
 		out.pathComp.names = path.getNames();
 		out.pathComp.edges = path.getEdges();
 
@@ -184,7 +193,7 @@ public class PathComponent extends BaseMarkerComponent
 	{
 		super.render(opts, view, renderer);
 
-		if (path.points.size() == 0 || !(parentMarker.selected || alwaysShow.get()))
+		if (!shown(opts))
 			return;
 
 		boolean drawInterp = showInterp.get() && path.points.size() > 2 && path.isLinear();
@@ -197,10 +206,6 @@ public class PathComponent extends BaseMarkerComponent
 		RenderState.setPointSize(editPointsMode ? 12.0f : 8.0f);
 		RenderState.setLineWidth(3.0f);
 
-		RenderState.setColor(PresetColor.YELLOW);
-		for (SelectablePoint point : path.points)
-			PointRenderQueue.addPoint().setPosition(point.getX(), point.getY(), point.getZ());
-
 		/*
 		RenderState.setColor(Colors.GREEN);
 		int max = 1 + path.points.size() * 8;
@@ -210,22 +215,19 @@ public class PathComponent extends BaseMarkerComponent
 		}
 		*/
 
-		PointRenderQueue.render(true);
-
 		if (drawHiddenPaths)
 			RenderState.setDepthFunc(GL_LEQUAL);
 
-		RenderState.setColor(PresetColor.YELLOW);
+		setColor(PresetColor.YELLOW);
 		for (PathPoint from : path.points) {
 			for (PathPoint to : path.successors(from)) {
 				addLine(from.getX(), from.getY(), from.getZ(), to.getX(), to.getY(), to.getZ());
-				addArrowhead(from, to);
 			}
 		}
 
 		try {
 			if (drawInterp) {
-				RenderState.setColor(PresetColor.GREEN);
+				setColor(PresetColor.GREEN);
 				int max = 1 + path.points.size() * 8;
 
 				Vector3f lastInterp = null;
@@ -250,7 +252,7 @@ public class PathComponent extends BaseMarkerComponent
 		LineRenderQueue.render(true);
 
 		if (drawHiddenPaths) {
-			RenderState.setColor(PresetColor.YELLOW);
+			setColor(PresetColor.YELLOW);
 			for (PathPoint from : path.points) {
 				for (PathPoint to : path.successors(from)) {
 					Renderer.queueStipple(
@@ -270,6 +272,58 @@ public class PathComponent extends BaseMarkerComponent
 		}
 	}
 
+	private boolean shown(RenderingOptions opts)
+	{
+		return !path.points.isEmpty() && (parentMarker.selected || opts.editorMode == EditorMode.Modify);
+	}
+
+	private float alpha()
+	{
+		return parentMarker.selected ? 1.0f : UNSELECTED_ALPHA;
+	}
+
+	/** Draws the points and arrows, which go after the rest of the map so they can be drawn over it. */
+	public void renderPoints(RenderingOptions opts, MapEditViewport view)
+	{
+		if (!shown(opts))
+			return;
+
+		// they're drawn over everything, so they can be seen and clicked where they're hidden
+		RenderState.setModelMatrix(null);
+		RenderState.setDepthFunc(GL_ALWAYS);
+		renderArrows(view);
+		for (boolean selected : new boolean[] { false, true }) {
+			List<Vector3f> positions = new ArrayList<>();
+			for (SelectablePoint point : path.points) {
+				if (point.isSelected() == selected)
+					positions.add(new Vector3f(point.getX(), point.getY(), point.getZ()));
+			}
+			renderOutlinedPoints(positions, selected ? PresetColor.PINK : PresetColor.YELLOW, POINT_SIZE, alpha());
+		}
+		RenderState.initDepthFunc();
+	}
+
+	/** Draws points as a path's are drawn, with a black shadow and a white outline around `color`, `size` across. */
+	public static void renderOutlinedPoints(List<Vector3f> positions, PresetColor color, float size, float alpha)
+	{
+		for (int layer = 0; layer < 3; layer++) {
+			switch (layer) {
+				case 0 -> RenderState.setColor(0.0f, 0.0f, 0.0f, alpha);
+				case 1 -> RenderState.setColor(1.0f, 1.0f, 1.0f, alpha);
+				default -> RenderState.setColor(color.r, color.g, color.b, alpha);
+			}
+			RenderState.setPointSize(size + 4 * (2 - layer));
+			for (Vector3f position : positions)
+				PointRenderQueue.addPoint().setPosition(position.x, position.y, position.z);
+			PointRenderQueue.render(true);
+		}
+	}
+
+	private void setColor(PresetColor color)
+	{
+		RenderState.setColor(color.r, color.g, color.b, alpha());
+	}
+
 	private static void addLine(float ax, float ay, float az, float bx, float by, float bz)
 	{
 		LineRenderQueue.addLine(
@@ -277,25 +331,58 @@ public class PathComponent extends BaseMarkerComponent
 			LineRenderQueue.addVertex().setPosition(bx, by, bz).getIndex());
 	}
 
-	/** Points the way from `from` to `to` halfway along the line between them. */
-	private static void addArrowhead(PathPoint from, PathPoint to)
+	/** Draws arrows that move along each connection in the direction it leads. */
+	private void renderArrows(MapEditViewport view)
 	{
-		float dx = to.getX() - from.getX();
-		float dz = to.getZ() - from.getZ();
-		float length = (float) Math.sqrt(dx * dx + dz * dz);
-		if (length < 1.0f)
-			return;
-		dx /= length;
-		dz /= length;
+		Vector3f forward = view.camera.getForward(1.0f);
+		double travelled = (System.nanoTime() / 1e9) * ARROW_SPEED;
 
-		float size = Math.min(ARROWHEAD_SIZE, length / 4);
-		float tipX = (from.getX() + to.getX()) / 2.0f;
-		float tipY = (from.getY() + to.getY()) / 2.0f;
-		float tipZ = (from.getZ() + to.getZ()) / 2.0f;
-		float backX = tipX - dx * size;
-		float backZ = tipZ - dz * size;
-		addLine(tipX, tipY, tipZ, backX - dz * size / 2, tipY, backZ + dx * size / 2);
-		addLine(tipX, tipY, tipZ, backX + dz * size / 2, tipY, backZ - dx * size / 2);
+		for (PathPoint from : path.points) {
+			for (PathPoint to : path.successors(from)) {
+				Vector3f start = new Vector3f(from.getX(), from.getY(), from.getZ());
+				Vector3f along = Vector3f.sub(new Vector3f(to.getX(), to.getY(), to.getZ()), start);
+				float length = along.length();
+				along.normalize();
+				// arrows lie level across their connection, so they run along the floor with it, except on one that
+				// goes straight up or down, where they face the view
+				Vector3f side = Vector3f.cross(along, PickRay.UP);
+				if (side.length() < 0.01f)
+					side = Vector3f.cross(along, forward);
+				if (length < 1.0f || side.length() < 0.01f)
+					continue;
+				side.normalize();
+
+				int count = Math.max(1, Math.round(length / ARROW_SPACING));
+				float gap = length / count;
+				float offset = (float) (travelled % gap);
+				for (int i = 0; i < count; i++) {
+					float distance = offset + i * gap;
+					Vector3f tip = Vector3f.add(start, Vector3f.getScaled(along, distance));
+					float size = ARROW_SIZE * view.getScaleFactor(tip.x, tip.y, tip.z);
+					Vector3f back = Vector3f.sub(tip, Vector3f.getScaled(along, size));
+					Vector3f notch = Vector3f.sub(tip, Vector3f.getScaled(along, size * 0.6f));
+					Vector3f left = Vector3f.add(back, Vector3f.getScaled(side, size * 0.6f));
+					Vector3f right = Vector3f.sub(back, Vector3f.getScaled(side, size * 0.6f));
+					int tipIndex = addVertex(tip);
+					int notchIndex = addVertex(notch);
+					TriangleRenderQueue.addTriangle(tipIndex, addVertex(left), notchIndex);
+					TriangleRenderQueue.addTriangle(tipIndex, notchIndex, addVertex(right));
+				}
+			}
+		}
+
+		RenderState.setPolygonMode(PolygonMode.FILL);
+		BasicSolidShader shader = ShaderManager.use(BasicSolidShader.class);
+		shader.multiplyVertexColor.set(false);
+		shader.baseColor.set(PresetColor.YELLOW.r, PresetColor.YELLOW.g, PresetColor.YELLOW.b, alpha());
+		TriangleRenderQueue.render(shader, true);
+		shader.multiplyVertexColor.set(true);
+		shader.baseColor.set(1.0f, 1.0f, 1.0f, 1.0f);
+	}
+
+	private static int addVertex(Vector3f position)
+	{
+		return TriangleRenderQueue.addVertex().setPosition(position.x, position.y, position.z).getIndex();
 	}
 
 	private void computeInterpolation()

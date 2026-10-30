@@ -17,7 +17,7 @@ public class PathPoint extends SelectablePoint
 
 	public PathPoint(PathData path, int x, int y, int z)
 	{
-		super(2.0f);
+		super(3.0f);
 		this.path = path;
 		setX(x);
 		setY(y);
@@ -26,7 +26,7 @@ public class PathPoint extends SelectablePoint
 
 	public PathPoint(PathPoint other)
 	{
-		super(2.0f);
+		super(3.0f);
 		this.path = other.path;
 		setX(other.getX());
 		setY(other.getY());

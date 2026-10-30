@@ -315,6 +315,34 @@ public class PickRay
 		}
 	}
 
+	/**
+	 * Where the ray passes within `width` of the segment from `a` to `b`, with the width scaled as getPointIntersection
+	 * scales a point's size, as a hit where the ray passes closest to it, or a miss.
+	 */
+	public static PickHit getSegmentIntersection(PickRay ray, Vector3f a, Vector3f b, float width)
+	{
+		Vector3f u = Vector3f.sub(b, a);
+		Vector3f w = Vector3f.sub(a, ray.origin);
+		Vector3f v = ray.direction;
+		float uu = Vector3f.dot(u, u);
+		float uv = Vector3f.dot(u, v);
+		float vv = Vector3f.dot(v, v);
+		float denominator = uu * vv - uv * uv;
+		float s = (denominator > 1e-6f) ? (uv * Vector3f.dot(v, w) - vv * Vector3f.dot(u, w)) / denominator : 0.0f;
+		s = Math.max(0.0f, Math.min(1.0f, s));
+
+		Vector3f closest = new Vector3f(a.x + s * u.x, a.y + s * u.y, a.z + s * u.z);
+		Vector3f toClosest = Vector3f.sub(closest, ray.origin);
+		float t = Vector3f.dot(v, toClosest) / vv;
+		if (t < 0)
+			return new PickHit(ray);
+
+		Vector3f apart = new Vector3f(toClosest.x - t * v.x, toClosest.y - t * v.y, toClosest.z - t * v.z);
+		float radius = (ray.pickView == null) ? width * 0.5f
+			: width * (0.22f + (2.0f * ray.pickView.getScaleFactor(closest.x, closest.y, closest.z)));
+		return (apart.length() < radius) ? new PickHit(ray, t) : new PickHit(ray);
+	}
+
 	public static PickHit getIntersection(PickRay ray, UV uv)
 	{
 		if (ray.pickView == null)

@@ -182,7 +182,6 @@ public abstract class JsonFeatures
 	{
 		public int[][] waypoints;
 		public boolean showInterp;
-		public Boolean alwaysShow;
 
 		/** Each waypoint's name, or null for one without, if any has one. */
 		public String[] names;

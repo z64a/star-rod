@@ -143,6 +143,8 @@ import game.map.hit.ControlType;
 import game.map.hit.Zone;
 import game.map.marker.Marker;
 import game.map.marker.Marker.MarkerType;
+import game.map.marker.PathPoint;
+import game.map.marker.PathData;
 import game.map.mesh.Triangle;
 import game.map.mesh.Vertex;
 import game.map.shading.RenderShadingProfile;
@@ -432,6 +434,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	private int commandDepth;
 	private int guiUpdateDepth;
 	private DrawTrianglesManager drawTriManager;
+	public final PathTool pathTool = new PathTool(this);
 	public SwingGUI gui;
 
 	public boolean showLightingPanel;
@@ -1387,6 +1390,9 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			paintPickHit = selectionManager.pickWorld(map, currentRay, activeView, true);
 		}
 
+		if (editorMode == EditorMode.Modify)
+			pathTool.update(currentRay, activeView);
+
 		if (editorMode == EditorMode.EditUVs && !selectionManager.uvSelection.transforming())
 			updateUVViewport();
 
@@ -2059,8 +2065,11 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 						drawTriManager.tryAddVertex(clickRayLMB.origin, activeView);
 					}
 					else {
-						clickHitLMB = selectionManager.pickCurrentSelection(map, clickRayLMB, activeView, false, true);
-						dragBoxStartPoint = new Vector3f(clickRayLMB.origin);
+						boolean onGizmo = !selectionManager.currentSelection.pickTransformGizmo(clickRayLMB, activeView).missed();
+						if (onGizmo || !pathTool.press(clickRayLMB)) {
+							clickHitLMB = selectionManager.pickCurrentSelection(map, clickRayLMB, activeView, false, true);
+							dragBoxStartPoint = new Vector3f(clickRayLMB.origin);
+						}
 					}
 				}
 				break;
@@ -2113,6 +2122,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 
 		switch (editorMode) {
 			case Modify:
+				pathTool.release();
 				break;
 			case Texture:
 				break;
@@ -2130,6 +2140,9 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	public void startHoldingLMB()
 	{
 		if (resizingViews || drawTriManager.isActive())
+			return;
+
+		if (editorMode == EditorMode.Modify && pathTool.startDrag())
 			return;
 
 		if (clickHitLMB == null)
@@ -2192,6 +2205,7 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 			case Modify:
 				selectionManager.currentSelection.endTransform();
 				rescaling = false;
+				pathTool.release();
 
 				if (draggingBox) {
 					BoundingBox selectionVolume = activeView.getDragSelectionVolume(dragBoxStartPoint, dragBoxEndPoint);
@@ -2262,6 +2276,10 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 	@Override
 	public void releaseRMB()
 	{
+		// a right click, not a hold, so holding it to rotate the selection or slow the camera doesn't delete anything
+		if (editorMode == EditorMode.Modify && clickRayRMB != null)
+			pathTool.rightClick(clickRayRMB);
+
 		clickRayRMB = null;
 		clickHitRMB = null;
 	}
@@ -4270,6 +4288,11 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		Vector3f pos = cursor3D.getPosition();
 
 		Marker m = new Marker(name, type, pos.x, pos.y, pos.z, 0);
+		// a path starts with a point, which the others are dragged out of
+		if (type == MarkerType.Path) {
+			PathData path = m.pathComponent.path;
+			path.points.addElement(new PathPoint(path, Math.round(pos.x), Math.round(pos.y), Math.round(pos.z)));
+		}
 		m.getNode().parentNode = parent;
 		m.getNode().childIndex = parent.getChildCount();
 		createObject(m);

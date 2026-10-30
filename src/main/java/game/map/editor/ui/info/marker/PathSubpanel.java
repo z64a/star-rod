@@ -21,7 +21,6 @@ public class PathSubpanel extends JPanel
 
 	private PathList pathList;
 	private JCheckBox cbShowInterp;
-	private JCheckBox cbAlwaysShow;
 
 	public PathSubpanel(MarkerInfoPanel parent)
 	{
@@ -41,12 +40,6 @@ public class PathSubpanel extends JPanel
 			MapEditor.execute(() -> comp.showInterp.mutator(newValue));
 		});
 
-		cbAlwaysShow = new JCheckBox(" Always show");
-		cbAlwaysShow.addActionListener((e) -> {
-			PathComponent comp = parent.getData().pathComponent;
-			MapEditor.execute(comp.alwaysShow.mutator(cbAlwaysShow.isSelected()));
-		});
-
 		pathList = new PathList();
 
 		JScrollPane pathScrollPane = new JScrollPane(pathList);
@@ -57,7 +50,6 @@ public class PathSubpanel extends JPanel
 		add(pathScrollPane, "growy, pushy, growx, span, wrap");
 		add(cbShowInterp, "growx, pushx");
 		add(addPointButton, "growx, pushx, wrap");
-		add(cbAlwaysShow, "growx, pushx");
 	}
 
 	public void updateFields()
@@ -69,7 +61,6 @@ public class PathSubpanel extends JPanel
 
 		cbShowInterp.setSelected(comp.showInterp.get());
 		cbShowInterp.setEnabled(comp.path.isLinear());
-		cbAlwaysShow.setSelected(comp.alwaysShow.get());
 	}
 
 	public void updateDynamicFields(boolean force)
