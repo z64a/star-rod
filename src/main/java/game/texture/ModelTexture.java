@@ -19,15 +19,18 @@ import util.Logger;
 public class ModelTexture
 {
 	private final Texture tx;
+	/** The texture archive this texture is from, such as kmr_tex. */
+	public final String archiveName;
 
 	public BufferedImage mainPreview = null;
 	public BufferedImage auxPreview = null;
 
 	public int modelCount = 0;
 
-	public ModelTexture(Texture tx)
+	public ModelTexture(Texture tx, String archiveName)
 	{
 		this.tx = tx;
+		this.archiveName = archiveName;
 
 		BufferedImage mainImage = ImageConverter.convertToBufferedImage(tx.main);
 		mainPreview = createPreview(mainImage);

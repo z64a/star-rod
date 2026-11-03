@@ -3914,7 +3914,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		}
 
 		// Release both the GL context and modifyLock before waiting for a modal Swing dialog.
-		while (!loadedTextures[0]) {
+		// With the texture pool, every other archive loads too, so a map can do without its own.
+		while (!loadedTextures[0] && !Environment.usingTexturePool()) {
 			File texFile = promptForTextureArchive();
 			if (texFile == null)
 				break;

@@ -1353,13 +1353,22 @@ public class Map implements XmlSerializable
 		}
 	}
 
+	private void warnIfTexturesDiffer(Prefab prefab)
+	{
+		// with the texture pool, every map can use every archive's textures
+		if (Environment.usingTexturePool())
+			return;
+
+		if (!prefab.texName.equals(texName) && prefab.modelTree.getRoot().getChildCount() > 0)
+			Logger.logWarning("Prefab textures differ from current map: " + prefab.texName);
+	}
+
 	public PrefabImportData importPrefab(File f)
 	{
 		XmlReader xmr = new XmlReader(f);
 		Prefab prefab = Prefab.read(xmr);
 
-		if (!prefab.texName.equals(texName) && prefab.modelTree.getRoot().getChildCount() > 0)
-			Logger.logWarning("Prefab textures differ from current map: " + prefab.texName);
+		warnIfTexturesDiffer(prefab);
 
 		PrefabImportData importData = new PrefabImportData();
 
@@ -1409,8 +1418,7 @@ public class Map implements XmlSerializable
 		PrefabImportData importData = new PrefabImportData();
 
 		if (filterType == MapObjectType.MODEL) {
-			if (!prefab.texName.equals(texName) && prefab.modelTree.getRoot().getChildCount() > 0)
-				Logger.logWarning("Prefab textures differ from current map: " + prefab.texName);
+			warnIfTexturesDiffer(prefab);
 
 			HashMap<LightSet, LightSet> currentLightSets = new HashMap<>();
 			for (LightSet set : lightSets)
