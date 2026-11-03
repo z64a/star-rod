@@ -294,9 +294,12 @@ public class AssetManager
 		return getAssets(AssetSubdir.MAP_TEX, EXT_OLD_TEX);
 	}
 
+	/** Every texture archive in any layer that no sidecar deletes. */
 	public static Collection<AssetHandle> getTextureArchives() throws IOException
 	{
-		return getAssets(AssetSubdir.MAP_TEX, EXT_NEW_TEX);
+		Sidecars sidecars = new Sidecars(Environment.assetDirectories);
+		return getAssets(AssetSubdir.MAP_TEX, EXT_NEW_TEX,
+			file -> !sidecars.isDeleted(AssetSubdir.MAP_TEX + file.getFileName().toString()));
 	}
 
 	/** Physical message files in every layer, highest layer first. Use MessageLibrary for resolved messages. */
