@@ -1105,8 +1105,16 @@ public class Map implements XmlSerializable
 
 	public String getExpectedTexFilename()
 	{
-		// mac_tex, gv__tex, etc
-		return name.substring(0, 3) + "_tex";
+		return getExpectedTexFilename(name);
+	}
+
+	/** The texture archive a map uses unless it overrides it, such as kmr_tex for kmr_20. */
+	public static String getExpectedTexFilename(String mapName)
+	{
+		// papermario-dx names the game over map's archive gv_tex, after its area, where the original game has gv__tex
+		if (Environment.isDX())
+			return getAreaAffix(mapName) + "_tex";
+		return mapName.substring(0, 3) + "_tex";
 	}
 
 	public List<MapObject> getCompleteSelection()

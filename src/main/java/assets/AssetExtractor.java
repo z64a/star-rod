@@ -48,7 +48,7 @@ public class AssetExtractor
 		public MapTemplate(String[] mapDef)
 		{
 			this.name = mapDef[0];
-			String areaName = name.substring(0, 3);
+			String expectedTexName = Map.getExpectedTexFilename(name);
 
 			shapeName = mapDef[1];
 			hasShapeOverride = !shapeName.equals(name + "_shape");
@@ -59,7 +59,10 @@ public class AssetExtractor
 			texName = mapDef[3];
 			if (texName.equalsIgnoreCase("none"))
 				texName = "";
-			hasTexOverride = !texName.equals(areaName + "_tex");
+			// the table names archives as the original game does, which can differ from the project's name for them
+			else if (texName.equals(name.substring(0, 3) + "_tex"))
+				texName = expectedTexName;
+			hasTexOverride = !texName.equals(expectedTexName);
 
 			bgName = mapDef[4];
 			if (bgName.equalsIgnoreCase("none"))
