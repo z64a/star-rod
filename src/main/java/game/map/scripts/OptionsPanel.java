@@ -305,9 +305,11 @@ public class OptionsPanel extends JPanel implements UpdateListener
 		SwingUtils.setFontSize(cbHasShading, 14);
 		add(cbHasShading, "span, gaptop 8");
 
-		add(SwingUtils.getLabel("Profile", 12), "skip 1");
-		add(profileNameField, "span 2, growx");
-		add(chooseProfileButton, "growx");
+		if (!Environment.isDX()) {
+			add(SwingUtils.getLabel("Profile", 12), "skip 1");
+			add(profileNameField, "span 2, growx");
+			add(chooseProfileButton, "growx");
+		}
 
 		add(SwingUtils.getLabel("Base Color", 12), "skip 1");
 		add(shadingColorPanel, "span, growx");

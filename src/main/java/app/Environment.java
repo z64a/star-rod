@@ -103,6 +103,9 @@ public abstract class Environment
 
 	private static boolean isDeluxe = false;
 
+	// set when the project is papermario-dx, which lists its asset layers in layout.yaml
+	private static boolean isDX = false;
+
 	private static String versionString;
 	private static String gitBuildBranch;
 	private static String gitBuildCommit;
@@ -115,7 +118,7 @@ public abstract class Environment
 
 	public static boolean isDX()
 	{
-		return false; //TODO
+		return isDX;
 	}
 
 	public static boolean usingTexturePool()
@@ -316,6 +319,8 @@ public abstract class Environment
 		File decompCfg = new File("./ver/us/", FN_SPLAT);
 		if (!decompCfg.isFile())
 			exitWithError("The current directory is not a decomp project: could not find " + decompCfg.getPath());
+
+		isDX = new File(decompCfg.getParentFile(), FN_LAYOUT).isFile();
 
 		if (readAssetStack) {
 			try {
@@ -590,6 +595,8 @@ public abstract class Environment
 				"Could not find splat file for directory: %n%s", decompCfg.getAbsolutePath());
 			return false;
 		}
+
+		isDX = new File(versionDir, FN_LAYOUT).isFile();
 
 		// resolve asset dirs
 		try {
