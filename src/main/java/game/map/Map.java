@@ -351,16 +351,10 @@ public class Map implements XmlSerializable
 		return affix;
 	}
 
-	/** Whether the project keeps each area's code in src/world/area/, which is the layout of papermario-dx. */
-	public static boolean hasAreaDirs()
-	{
-		return Directories.PROJ_SRC_WORLD.file("area").isDirectory();
-	}
-
 	/** The directory of an area's code, relative to src. */
 	private static String getAreaPath(String areaAffix)
 	{
-		return hasAreaDirs() ? "world/area/" + areaAffix + "/" : "world/area_" + areaAffix + "/";
+		return Environment.isDX() ? "world/area/" + areaAffix + "/" : "world/area_" + areaAffix + "/";
 	}
 
 	/**
@@ -374,7 +368,7 @@ public class Map implements XmlSerializable
 			return "battle/common/stage/area_" + areaAffix + "/" + name + "/";
 
 		// the map's code can sit in any area, not only the one its name begins with, which is checked first
-		if (hasAreaDirs()) {
+		if (Environment.isDX()) {
 			if (Directories.PROJ_SRC.file(getAreaPath(areaAffix) + name).isDirectory())
 				return getAreaPath(areaAffix) + name + "/";
 

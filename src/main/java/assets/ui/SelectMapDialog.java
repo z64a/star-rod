@@ -171,7 +171,7 @@ public class SelectMapDialog extends JDialog
 	/** Asks for a new map's name, and in papermario-dx the area it belongs to, and returns where to save it. */
 	public static File requestNewMapFile()
 	{
-		File file = Map.hasAreaDirs() ? promptAreaAndName() : promptName();
+		File file = Environment.isDX() ? promptAreaAndName() : promptName();
 		if (file == null || !file.exists())
 			return file;
 

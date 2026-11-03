@@ -686,7 +686,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		JMenuItem item;
 
 		// papermario-dx compiles each saved map source as part of its own build
-		if (!Map.hasAreaDirs()) {
+		if (!Environment.isDX()) {
 			item = new JMenuItem("Build Geometry");
 			addButtonCommand(item, GuiCommand.COMPILE_SHAPE);
 			menu.add(item);

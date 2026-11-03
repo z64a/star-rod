@@ -104,7 +104,7 @@ public class AssetManager
 	 */
 	public static String getMapSourcePath(String mapName)
 	{
-		if (game.map.Map.hasAreaDirs())
+		if (Environment.isDX())
 			return game.map.Map.getSourcePath(mapName) + MAP_SOURCE_NAME + EXT_MAP;
 		return AssetSubdir.MAP_GEOM + mapName + EXT_MAP;
 	}
@@ -141,7 +141,7 @@ public class AssetManager
 	/** Where compiled maps go. In papermario-dx, that is the build directory, where the build puts them. */
 	public static File getMapBuildDir()
 	{
-		if (game.map.Map.hasAreaDirs())
+		if (Environment.isDX())
 			return new File(Environment.getBuildDirectory(), "include/mapfs");
 		return AssetSubdir.MAP_GEOM.getModDir();
 	}
@@ -149,7 +149,7 @@ public class AssetManager
 	/** Where the headers of compiled maps go. */
 	public static File getMapHeaderDir()
 	{
-		if (game.map.Map.hasAreaDirs())
+		if (Environment.isDX())
 			return getMapBuildDir();
 		return PROJ_INCLUDE_MAPFS.toFile();
 	}
@@ -197,7 +197,7 @@ public class AssetManager
 	/** Every map source in the asset stack that no sidecar deletes, sorted by map name. */
 	public static Collection<AssetHandle> getMapSources() throws IOException
 	{
-		if (!game.map.Map.hasAreaDirs()) {
+		if (!Environment.isDX()) {
 			return getAssets(AssetSubdir.MAP_GEOM, EXT_MAP, (p) -> {
 				// skip crash and backup files
 				String filename = p.getFileName().toString();
