@@ -144,9 +144,14 @@ public class SelectMapDialog extends JDialog
 
 		newMap.desc = (newMapDesc != null) ? newMapDesc : "";
 
-		// prompt for textures
-		File texFile = SelectTexDialog.showPrompt(parent, newMap.getExpectedTexFilename());
-		newMap.texName = FilenameUtils.getBaseName(texFile.getName());
+		// prompt for textures, unless the texture pool has every archive
+		if (Environment.usingTexturePool()) {
+			newMap.texName = newMap.getExpectedTexFilename();
+		}
+		else {
+			File texFile = SelectTexDialog.showPrompt(parent, newMap.getExpectedTexFilename());
+			newMap.texName = FilenameUtils.getBaseName(texFile.getName());
+		}
 
 		// prompt for background
 		File bgFile = SelectBackgroundDialog.showPrompt(parent, "");

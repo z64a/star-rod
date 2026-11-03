@@ -725,11 +725,13 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 		menu.addSeparator();
 
-		item = new JMenuItem("Change Texture Archive");
-		item.addActionListener((e) -> {
-			prompt_LoadTextureArchive();
-		});
-		menu.add(item);
+		if (!Environment.usingTexturePool()) {
+			item = new JMenuItem("Change Texture Archive");
+			item.addActionListener((e) -> {
+				prompt_LoadTextureArchive();
+			});
+			menu.add(item);
+		}
 
 		item = new JMenuItem("Change Background");
 		item.addActionListener((e) -> {

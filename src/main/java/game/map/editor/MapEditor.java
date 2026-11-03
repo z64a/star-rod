@@ -3898,7 +3898,10 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		boolean[] loadedTextures = { false };
 		synchronized (modifyLock) {
 			String prevTexName = (thumbnailMode || map == null) ? null : map.texName;
-			boolean reloadTextures = !newMap.texName.equals(prevTexName);
+			// every map shares the texture pool
+			boolean sameTextures = prevTexName != null
+				&& (Environment.usingTexturePool() || newMap.texName.equals(prevTexName));
+			boolean reloadTextures = !sameTextures;
 			loadedTextures[0] = !reloadTextures;
 
 			runInContext(() -> {
