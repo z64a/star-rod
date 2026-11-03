@@ -132,9 +132,9 @@ public class Prefab
 	{
 		Element prefabElem = xmr.getRootElement();
 
-		xmr.requiresAttribute(prefabElem, ATTR_MAP_TEX);
-
-		texName = xmr.getAttribute(prefabElem, ATTR_MAP_TEX);
+		// papermario-dx saved its prefabs without one
+		if (xmr.hasAttribute(prefabElem, ATTR_MAP_TEX))
+			texName = xmr.getAttribute(prefabElem, ATTR_MAP_TEX);
 
 		if (xmr.getUniqueTag(prefabElem, TAG_MODELS) != null) {
 			lightSets = new ArrayList<>();

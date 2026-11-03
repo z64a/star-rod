@@ -136,8 +136,11 @@ public class Map implements XmlSerializable
 		if (xmr.hasAttribute(mapElem, ATTR_MAP_STAGE))
 			isStage = xmr.readBoolean(mapElem, ATTR_MAP_STAGE);
 
-		xmr.requiresAttribute(mapElem, ATTR_MAP_TEX);
-		texName = xmr.getAttribute(mapElem, ATTR_MAP_TEX);
+		// papermario-dx saved its maps without one
+		if (xmr.hasAttribute(mapElem, ATTR_MAP_TEX))
+			texName = xmr.getAttribute(mapElem, ATTR_MAP_TEX);
+		else
+			texName = getExpectedTexFilename();
 
 		hasBackground = xmr.hasAttribute(mapElem, ATTR_MAP_BG);
 		if (hasBackground)
