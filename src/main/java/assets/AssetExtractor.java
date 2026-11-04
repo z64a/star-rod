@@ -30,7 +30,7 @@ public class AssetExtractor
 
 	private static class MapTemplate
 	{
-		private final String name;
+		private String name;
 		private String desc;
 
 		private String shapeName;
@@ -48,7 +48,7 @@ public class AssetExtractor
 		public MapTemplate(String[] mapDef)
 		{
 			this.name = mapDef[0];
-			String areaName = name.substring(0, 3);
+			String expectedTexName = Map.getExpectedTexFilename(name);
 
 			shapeName = mapDef[1];
 			hasShapeOverride = !shapeName.equals(name + "_shape");
@@ -59,7 +59,10 @@ public class AssetExtractor
 			texName = mapDef[3];
 			if (texName.equalsIgnoreCase("none"))
 				texName = "";
-			hasTexOverride = !texName.equals(areaName + "_tex");
+			// the table names archives as the original game does, which can differ from the project's name for them
+			else if (texName.equals(name.substring(0, 3) + "_tex"))
+				texName = expectedTexName;
+			hasTexOverride = !texName.equals(expectedTexName);
 
 			bgName = mapDef[4];
 			if (bgName.equalsIgnoreCase("none"))
@@ -105,6 +108,13 @@ public class AssetExtractor
 			String[] tokens = mapInfo.trim().split("\\s*,\\s*");
 			MapTemplate template = new MapTemplate(tokens);
 
+			if (Environment.isDX()) {
+				// the map's code loads another map's geometry, whose source is that map's
+				if (template.hasShapeOverride)
+					continue;
+				template.name = Map.WORLD_PREFIX + template.name;
+			}
+
 			template.shapeFile = assetFiles.get(template.shapeName);
 			template.hitFile = assetFiles.get(template.hitName);
 
@@ -116,6 +126,10 @@ public class AssetExtractor
 		for (String stageInfo : Resource.getText(ResourceType.Extract, "stages.csv")) {
 			String[] tokens = stageInfo.trim().split("\\s*,\\s*");
 			MapTemplate template = new MapTemplate(tokens);
+
+			// named for the stage's code, which is kmr_04 for the game's kmr_bt04
+			if (Environment.isDX())
+				template.name = Map.STAGE_PREFIX + template.name.replaceFirst("_bt", "_");
 
 			template.shapeFile = assetFiles.get(template.shapeName);
 			template.hitFile = assetFiles.get(template.hitName);

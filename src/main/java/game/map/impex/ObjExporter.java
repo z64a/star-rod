@@ -4,10 +4,15 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 import common.Vector3f;
 
+import app.Environment;
 import app.input.IOUtils;
 import assets.AssetManager;
 import assets.AssetSubdir;
@@ -35,17 +40,36 @@ public class ObjExporter
 
 	public void writeModels(Iterable<Model> models, String texName)
 	{
-		File textureFile = AssetManager.get(AssetSubdir.MAP_TEX, texName + "/" + texName + ".mtl");
-		if (textureFile.exists()) {
-			pw.println("mtllib " + texName);
-			pw.println("");
+		boolean wroteLibrary = false;
+		for (String archiveName : getTextureArchives(models, texName)) {
+			File textureFile = AssetManager.get(AssetSubdir.MAP_TEX, archiveName + "/" + archiveName + ".mtl");
+			if (textureFile.exists()) {
+				pw.println("mtllib " + archiveName);
+				wroteLibrary = true;
+			}
 		}
+		if (wroteLibrary)
+			pw.println("");
 
 		for (Model mdl : models) {
 			if (!mdl.hasMesh())
 				continue;
 			exportTexturedMesh(mdl.getName(), mdl.getMesh());
 		}
+	}
+
+	/** The archives the models' textures are from: every one they use with the texture pool, or else the map's. */
+	private static Collection<String> getTextureArchives(Iterable<Model> models, String mapArchiveName)
+	{
+		if (!Environment.usingTexturePool())
+			return List.of(mapArchiveName);
+
+		Set<String> archiveNames = new LinkedHashSet<>();
+		for (Model mdl : models) {
+			if (mdl.hasMesh() && mdl.getMesh().texture != null)
+				archiveNames.add(mdl.getMesh().texture.archiveName);
+		}
+		return archiveNames;
 	}
 
 	public void exportTexturedMesh(String name, TexturedMesh mesh)

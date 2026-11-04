@@ -13,6 +13,7 @@ import org.w3c.dom.Element;
 
 import common.commands.AbstractCommand;
 
+import game.map.editor.MapEditor;
 import game.map.editor.UpdateProvider;
 import game.map.editor.camera.MapEditViewport;
 import game.map.editor.render.Renderer;
@@ -86,6 +87,20 @@ public abstract class MapObject extends UpdateProvider implements Selectable, Xm
 	public String getName()
 	{
 		return name;
+	}
+
+	public static final String INVALID_NAME_MESSAGE = "Names can only use letters, digits, and underscores.";
+
+	/** Whether name can follow a prefix like COLLIDER_ to make a C identifier. */
+	public static boolean isValidName(String name)
+	{
+		return name.matches("[A-Za-z0-9_]+");
+	}
+
+	/** Name with every character {@link #isValidName} rejects replaced by an underscore. */
+	public static String toValidName(String name)
+	{
+		return name.isEmpty() ? "_" : name.replaceAll("[^A-Za-z0-9_]", "_");
 	}
 
 	public void setName(String name)
@@ -492,13 +507,13 @@ public abstract class MapObject extends UpdateProvider implements Selectable, Xm
 			super("Set " + obj.getObjectType() + " Name");
 			this.obj = obj;
 			oldName = obj.name;
-			newName = s;
+			newName = isValidName(s) ? MapEditor.instance().map.uniqueName(obj, s) : null;
 		}
 
 		@Override
 		public boolean shouldExec()
 		{
-			return !newName.isEmpty() && !newName.equals(oldName);
+			return newName != null && !newName.equals(oldName);
 		}
 
 		@Override

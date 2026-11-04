@@ -3898,7 +3898,10 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		boolean[] loadedTextures = { false };
 		synchronized (modifyLock) {
 			String prevTexName = (thumbnailMode || map == null) ? null : map.texName;
-			boolean reloadTextures = !newMap.texName.equals(prevTexName);
+			// every map shares the texture pool
+			boolean sameTextures = prevTexName != null
+				&& (Environment.usingTexturePool() || newMap.texName.equals(prevTexName));
+			boolean reloadTextures = !sameTextures;
 			loadedTextures[0] = !reloadTextures;
 
 			runInContext(() -> {
@@ -3914,7 +3917,8 @@ public class MapEditor extends GLEditor implements MouseManagerListener, Keyboar
 		}
 
 		// Release both the GL context and modifyLock before waiting for a modal Swing dialog.
-		while (!loadedTextures[0]) {
+		// With the texture pool, every other archive loads too, so a map can do without its own.
+		while (!loadedTextures[0] && !Environment.usingTexturePool()) {
 			File texFile = promptForTextureArchive();
 			if (texFile == null)
 				break;

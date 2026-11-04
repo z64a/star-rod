@@ -45,11 +45,11 @@ public class ProjectDatabase
 		if (initialized)
 			return;
 
-		savedFlags = loadSavedVarNames(Directories.PROJ_INCLUDE.file("saved_flag_names.h"));
-		savedBytes = loadSavedVarNames(Directories.PROJ_INCLUDE.file("saved_byte_names.h"));
+		savedFlags = loadSavedVarNames(Directories.projectHeader("saved_flag_names.h"));
+		savedBytes = loadSavedVarNames(Directories.projectHeader("saved_byte_names.h"));
 
 		decompEnums = new CaseInsensitiveMap<>();
-		DecompEnum.addEnums(decompEnums, Directories.PROJ_INCLUDE.file("enums.h").getAbsolutePath(), Set.of(
+		DecompEnum.addEnums(decompEnums, Directories.projectHeader("enums.h").getAbsolutePath(), Set.of(
 			"SurfaceType", "Locations", "StoryProgress", "MoveType", "BattleMessages", "ItemTypeFlags", "TargetFlags",
 			"DoorSounds", "DoorSwing", "ItemSpawnModes"));
 

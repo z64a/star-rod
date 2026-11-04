@@ -9,6 +9,7 @@ import java.util.List;
 
 import common.Vector3f;
 
+import app.Environment;
 import app.input.InvalidInputException;
 import game.DataUtils;
 import game.ScriptVariable;
@@ -164,7 +165,9 @@ public class ScriptGenerator
 
 	private void addInitScript(List<String> lines) throws InvalidInputException
 	{
-		boolean replaceTex = map.features.overrideTex.get() && !map.texName.equals(map.getExpectedTexFilename());
+		// the texture pool has every archive, so the map's own needs no override
+		boolean replaceTex = !Environment.usingTexturePool() && map.features.overrideTex.get()
+			&& !map.texName.equals(map.getExpectedTexFilename());
 
 		if (!map.features.overrideShape.get() && !map.features.overrideHit.get() && !replaceTex)
 			return;

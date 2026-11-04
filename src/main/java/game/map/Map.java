@@ -136,8 +136,11 @@ public class Map implements XmlSerializable
 		if (xmr.hasAttribute(mapElem, ATTR_MAP_STAGE))
 			isStage = xmr.readBoolean(mapElem, ATTR_MAP_STAGE);
 
-		xmr.requiresAttribute(mapElem, ATTR_MAP_TEX);
-		texName = xmr.getAttribute(mapElem, ATTR_MAP_TEX);
+		// papermario-dx saved its maps without one
+		if (xmr.hasAttribute(mapElem, ATTR_MAP_TEX))
+			texName = xmr.getAttribute(mapElem, ATTR_MAP_TEX);
+		else
+			texName = getExpectedTexFilename();
 
 		hasBackground = xmr.hasAttribute(mapElem, ATTR_MAP_BG);
 		if (hasBackground)
@@ -338,7 +341,7 @@ public class Map implements XmlSerializable
 	private void setName(String name)
 	{
 		this.name = name;
-		areaAffix = getAreaAffix(name);
+		areaAffix = getAreaAffix(getBaseName(name));
 		projDir = deriveProjectDirectory(name);
 	}
 
@@ -351,16 +354,10 @@ public class Map implements XmlSerializable
 		return affix;
 	}
 
-	/** Whether the project keeps each area's code in src/world/area/, which is the layout of papermario-dx. */
-	public static boolean hasAreaDirs()
-	{
-		return Directories.PROJ_SRC_WORLD.file("area").isDirectory();
-	}
-
 	/** The directory of an area's code, relative to src. */
 	private static String getAreaPath(String areaAffix)
 	{
-		return hasAreaDirs() ? "world/area/" + areaAffix + "/" : "world/area_" + areaAffix + "/";
+		return Environment.isDX() ? "world/area/" + areaAffix + "/" : "world/area_" + areaAffix + "/";
 	}
 
 	/**
@@ -369,22 +366,55 @@ public class Map implements XmlSerializable
 	 */
 	public static String getSourcePath(String name)
 	{
-		String areaAffix = getAreaAffix(name);
-		if (name.contains("_bt"))
-			return "battle/common/stage/area_" + areaAffix + "/" + name + "/";
+		String baseName = getBaseName(name);
+		String areaAffix = getAreaAffix(baseName);
+		if (!Environment.isDX()) {
+			if (isStageName(name))
+				return "battle/common/stage/area_" + areaAffix + "/" + name + "/";
+			return getAreaPath(areaAffix) + name + "/";
+		}
+
+		if (isStageName(name))
+			return "battle/stage/" + baseName + "/";
 
 		// the map's code can sit in any area, not only the one its name begins with, which is checked first
-		if (hasAreaDirs()) {
-			if (Directories.PROJ_SRC.file(getAreaPath(areaAffix) + name).isDirectory())
-				return getAreaPath(areaAffix) + name + "/";
+		if (Directories.PROJ_SRC.file(getAreaPath(areaAffix) + baseName).isDirectory())
+			return getAreaPath(areaAffix) + baseName + "/";
 
-			File[] areaDirs = Directories.PROJ_SRC_WORLD.file("area").listFiles(File::isDirectory);
-			for (File areaDir : areaDirs) {
-				if (new File(areaDir, name).isDirectory())
-					return "world/area/" + areaDir.getName() + "/" + name + "/";
-			}
+		File[] areaDirs = Directories.PROJ_SRC_WORLD.file("area").listFiles(File::isDirectory);
+		for (File areaDir : areaDirs) {
+			if (new File(areaDir, baseName).isDirectory())
+				return "world/area/" + areaDir.getName() + "/" + baseName + "/";
 		}
-		return getAreaPath(areaAffix) + name + "/";
+		return getAreaPath(areaAffix) + baseName + "/";
+	}
+
+	/**
+	 * In papermario-dx, a map is named for its directory with a prefix: w_ for a world map, as w_kmr_02, and b_
+	 * for a battle stage, as b_trd_05. The prefixes keep a stage and a world map of the same name apart, as their
+	 * geometry shares the map filesystem. Other projects use the game's own names, which give a stage _bt.
+	 */
+	public static final String WORLD_PREFIX = "w_";
+	public static final String STAGE_PREFIX = "b_";
+
+	/** Whether a map is a battle stage's. */
+	public static boolean isStageName(String name)
+	{
+		return Environment.isDX() ? name.startsWith(STAGE_PREFIX) : name.contains("_bt");
+	}
+
+	/** A map's name without its prefix, which is its directory's: kmr_02 for w_kmr_02. */
+	public static String getBaseName(String name)
+	{
+		if (Environment.isDX() && (name.startsWith(WORLD_PREFIX) || name.startsWith(STAGE_PREFIX)))
+			return name.substring(2);
+		return name;
+	}
+
+	/** The file name of a map's source in its directory, without the extension. */
+	public static String getSourceFileName(String name)
+	{
+		return isStageName(name) ? Directories.STAGE_SOURCE_NAME : Directories.MAP_SOURCE_NAME;
 	}
 
 	private static File deriveProjectDirectory(String name)
@@ -402,8 +432,26 @@ public class Map implements XmlSerializable
 		return projDir;
 	}
 
+	/** The name obj gets when given name: a valid one that no other object of its kind has. */
+	public String uniqueName(MapObject obj, String name)
+	{
+		switch (obj.getObjectType()) {
+			case MODEL:
+				return modelTree.uniqueName(name, (Model) obj);
+			case COLLIDER:
+				return colliderTree.uniqueName(name, (Collider) obj);
+			case ZONE:
+				return zoneTree.uniqueName(name, (Zone) obj);
+			case MARKER:
+				return markerTree.uniqueName(name, (Marker) obj);
+			default:
+				return name;
+		}
+	}
+
 	public void add(MapObject obj)
 	{
+		obj.setName(uniqueName(obj, obj.getName()));
 		switch (obj.getObjectType()) {
 			case MODEL:
 				modelTree.add((Model) obj);
@@ -446,6 +494,7 @@ public class Map implements XmlSerializable
 
 	public void create(MapObject obj)
 	{
+		obj.setName(uniqueName(obj, obj.getName()));
 		switch (obj.getObjectType()) {
 			case MODEL:
 				modelTree.create((Model) obj);
@@ -779,6 +828,12 @@ public class Map implements XmlSerializable
 			map.tryLoadFeatures();
 
 		map.fromXML(xmr, xmr.getRootElement());
+		if (Environment.isDX()) {
+			map.modelTree.makeNamesUnique();
+			map.colliderTree.makeNamesUnique();
+			map.zoneTree.makeNamesUnique();
+			map.markerTree.makeNamesUnique();
+		}
 
 		map.lastModified = f.lastModified();
 		map.modified = map.readBackup;
@@ -829,7 +884,7 @@ public class Map implements XmlSerializable
 			}
 		}
 
-		String mapHeaderName = getSourcePath(name) + name + ".h";
+		String mapHeaderName = getSourcePath(name) + getBaseName(name) + ".h";
 		File mapHeader = Directories.PROJ_SRC.file(mapHeaderName);
 
 		mapVarNames.clear();
@@ -867,7 +922,7 @@ public class Map implements XmlSerializable
 
 		int i = 1;
 		for (EditableShadingLight light : profile.lights) {
-			Marker m = new Marker("Light " + i, MarkerType.Light, light.pos[0], light.pos[1], light.pos[2], 0);
+			Marker m = new Marker("Light_" + i, MarkerType.Light, light.pos[0], light.pos[1], light.pos[2], 0);
 			m.lightComponent.color.set(ColorUtils.pack(light.rgb));
 			m.lightComponent.falloffType = light.falloffType;
 			m.lightComponent.setByCoeff(light.falloffCoeff);
@@ -885,7 +940,7 @@ public class Map implements XmlSerializable
 
 		int i = 1;
 		for (EditableShadingLight light : profile.lights) {
-			Marker m = new Marker("Light " + i, MarkerType.Light, light.pos[0], light.pos[1], light.pos[2], 0);
+			Marker m = new Marker("Light_" + i, MarkerType.Light, light.pos[0], light.pos[1], light.pos[2], 0);
 			m.lightComponent.color.set(ColorUtils.pack(light.rgb));
 			m.lightComponent.falloffType = light.falloffType;
 			m.lightComponent.setByCoeff(light.falloffCoeff);
@@ -1020,7 +1075,9 @@ public class Map implements XmlSerializable
 		}
 		// a map source in its own directory takes the directory's name
 		if (name.equals(Directories.MAP_SOURCE_NAME))
-			return f.getParentFile().getName();
+			return (Environment.isDX() ? WORLD_PREFIX : "") + f.getParentFile().getName();
+		if (Environment.isDX() && name.equals(Directories.STAGE_SOURCE_NAME))
+			return STAGE_PREFIX + f.getParentFile().getName();
 		return name;
 	}
 
@@ -1111,8 +1168,16 @@ public class Map implements XmlSerializable
 
 	public String getExpectedTexFilename()
 	{
-		// mac_tex, gv__tex, etc
-		return name.substring(0, 3) + "_tex";
+		return getExpectedTexFilename(name);
+	}
+
+	/** The texture archive a map uses unless it overrides it, such as kmr_tex for kmr_20. */
+	public static String getExpectedTexFilename(String mapName)
+	{
+		// papermario-dx names the game over map's archive gv_tex, after its area, where the original game has gv__tex
+		if (Environment.isDX())
+			return getAreaAffix(getBaseName(mapName)) + "_tex";
+		return mapName.substring(0, 3) + "_tex";
 	}
 
 	public List<MapObject> getCompleteSelection()
@@ -1288,13 +1353,22 @@ public class Map implements XmlSerializable
 		}
 	}
 
+	private void warnIfTexturesDiffer(Prefab prefab)
+	{
+		// with the texture pool, every map can use every archive's textures
+		if (Environment.usingTexturePool())
+			return;
+
+		if (!prefab.texName.equals(texName) && prefab.modelTree.getRoot().getChildCount() > 0)
+			Logger.logWarning("Prefab textures differ from current map: " + prefab.texName);
+	}
+
 	public PrefabImportData importPrefab(File f)
 	{
 		XmlReader xmr = new XmlReader(f);
 		Prefab prefab = Prefab.read(xmr);
 
-		if (!prefab.texName.equals(texName) && prefab.modelTree.getRoot().getChildCount() > 0)
-			Logger.logWarning("Prefab textures differ from current map: " + prefab.texName);
+		warnIfTexturesDiffer(prefab);
 
 		PrefabImportData importData = new PrefabImportData();
 
@@ -1344,8 +1418,7 @@ public class Map implements XmlSerializable
 		PrefabImportData importData = new PrefabImportData();
 
 		if (filterType == MapObjectType.MODEL) {
-			if (!prefab.texName.equals(texName) && prefab.modelTree.getRoot().getChildCount() > 0)
-				Logger.logWarning("Prefab textures differ from current map: " + prefab.texName);
+			warnIfTexturesDiffer(prefab);
 
 			HashMap<LightSet, LightSet> currentLightSets = new HashMap<>();
 			for (LightSet set : lightSets)
@@ -1727,7 +1800,7 @@ public class Map implements XmlSerializable
 
 		for (int i = 0; i < 8; i++) {
 			int[] vec = BATTLE_ENEMY_POSITIONS[i];
-			String name = String.format("Enemy %X", i);
+			String name = String.format("Enemy_%X", i);
 
 			actor = new Marker(name, MarkerType.NPC, vec[0], vec[1], vec[2], 0);
 

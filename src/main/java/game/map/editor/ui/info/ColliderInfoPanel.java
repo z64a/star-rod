@@ -13,6 +13,7 @@ import javax.swing.SwingConstants;
 
 import app.SwingUtils;
 import game.ProjectDatabase;
+import game.map.MapObject;
 import game.map.MapObject.HitType;
 import game.map.MapObject.SetObjectName;
 import game.map.editor.MapEditor;
@@ -55,7 +56,7 @@ public class ColliderInfoPanel extends MapInfoPanel<Collider>
 
 		nameField = new NameTextField((name) -> {
 			MapEditor.execute(() -> new SetObjectName(getData(), name));
-		});
+		}, MapObject::isValidName, MapObject.INVALID_NAME_MESSAGE);
 		SwingUtils.addBorderPadding(nameField);
 
 		flagsField = new HexTextField((flags) -> {

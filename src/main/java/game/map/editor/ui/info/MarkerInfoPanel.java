@@ -12,6 +12,7 @@ import javax.swing.SwingConstants;
 
 import app.SwingUtils;
 import game.entity.EntityInfo.EntityType;
+import game.map.MapObject;
 import game.map.MapObject.SetObjectName;
 import game.map.MutableAngle;
 import game.map.MutablePoint;
@@ -98,7 +99,8 @@ public class MarkerInfoPanel extends MapInfoPanel<Marker> implements ActionListe
 
 	private JPanel createGeneralTab()
 	{
-		nameField = new NameTextField((name) -> MapEditor.execute(() -> new SetObjectName(getData(), name)));
+		nameField = new NameTextField((name) -> MapEditor.execute(() -> new SetObjectName(getData(), name)),
+			MapObject::isValidName, MapObject.INVALID_NAME_MESSAGE);
 		SwingUtils.addBorderPadding(nameField);
 
 		markerTypeBox = new JComboBox<>(MarkerType.values());

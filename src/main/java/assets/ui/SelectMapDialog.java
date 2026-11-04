@@ -144,9 +144,14 @@ public class SelectMapDialog extends JDialog
 
 		newMap.desc = (newMapDesc != null) ? newMapDesc : "";
 
-		// prompt for textures
-		File texFile = SelectTexDialog.showPrompt(parent, newMap.getExpectedTexFilename());
-		newMap.texName = FilenameUtils.getBaseName(texFile.getName());
+		// prompt for textures, unless the texture pool has every archive
+		if (Environment.usingTexturePool()) {
+			newMap.texName = newMap.getExpectedTexFilename();
+		}
+		else {
+			File texFile = SelectTexDialog.showPrompt(parent, newMap.getExpectedTexFilename());
+			newMap.texName = FilenameUtils.getBaseName(texFile.getName());
+		}
 
 		// prompt for background
 		File bgFile = SelectBackgroundDialog.showPrompt(parent, "");
@@ -171,7 +176,7 @@ public class SelectMapDialog extends JDialog
 	/** Asks for a new map's name, and in papermario-dx the area it belongs to, and returns where to save it. */
 	public static File requestNewMapFile()
 	{
-		File file = Map.hasAreaDirs() ? promptAreaAndName() : promptName();
+		File file = Environment.isDX() ? promptAreaAndName() : promptName();
 		if (file == null || !file.exists())
 			return file;
 
@@ -204,7 +209,7 @@ public class SelectMapDialog extends JDialog
 
 	/**
 	 * Asks for a map's area and name together. A map whose code folder already exists keeps that folder's area,
-	 * and a stage, named like kzn_bt05, has no area to choose.
+	 * and a stage, whose name is given with b_ as in b_kzn_05, has no area to choose.
 	 */
 	private static File promptAreaAndName()
 	{
@@ -218,8 +223,8 @@ public class SelectMapDialog extends JDialog
 		JLabel pathLabel = new JLabel(" ");
 
 		Runnable update = () -> {
-			String name = sanitizeName(nameField.getText());
-			boolean isStage = name.contains("_bt");
+			String name = toMapName(sanitizeName(nameField.getText()));
+			boolean isStage = Map.isStageName(name);
 			File existing = name.isEmpty() ? null : Directories.PROJ_SRC.file(Map.getSourcePath(name));
 			boolean fixedArea = isStage || (existing != null && existing.isDirectory());
 			areaBox.setEnabled(!fixedArea);
@@ -256,7 +261,7 @@ public class SelectMapDialog extends JDialog
 		if (choice != JOptionPane.OK_OPTION)
 			return null;
 
-		return getNewMapFile(sanitizeName(nameField.getText()), (String) areaBox.getEditor().getItem());
+		return getNewMapFile(toMapName(sanitizeName(nameField.getText())), (String) areaBox.getEditor().getItem());
 	}
 
 	/** Where a new map is saved: beside its code if that exists, else in the chosen area. Null if either is missing. */
@@ -265,14 +270,15 @@ public class SelectMapDialog extends JDialog
 		if (name.isBlank())
 			return null;
 
-		if (name.contains("_bt") || Directories.PROJ_SRC.file(Map.getSourcePath(name)).isDirectory())
+		if (Map.isStageName(name) || Directories.PROJ_SRC.file(Map.getSourcePath(name)).isDirectory())
 			return AssetManager.getSaveMapFile(name);
 
 		area = area == null ? "" : area.trim();
 		if (area.isBlank())
 			return null;
 
-		String path = "world/area/" + area + "/" + name + "/" + Directories.MAP_SOURCE_NAME + Directories.EXT_MAP;
+		String path = "world/area/" + area + "/" + Map.getBaseName(name) + "/" + Directories.MAP_SOURCE_NAME
+			+ Directories.EXT_MAP;
 		return new AssetHandle(AssetManager.getTopLevelAssetDir(), path);
 	}
 
@@ -280,6 +286,14 @@ public class SelectMapDialog extends JDialog
 	{
 		return Environment.getProjectDirectory().toPath().toAbsolutePath().normalize()
 			.relativize(file.toPath().toAbsolutePath().normalize()).toString().replace('\\', '/');
+	}
+
+	/** The map a typed name means: a stage given with b_, else a world map. */
+	private static String toMapName(String name)
+	{
+		if (name.isEmpty() || name.startsWith(Map.STAGE_PREFIX) || name.startsWith(Map.WORLD_PREFIX))
+			return name;
+		return Map.WORLD_PREFIX + name;
 	}
 
 	private static String sanitizeName(String name)
