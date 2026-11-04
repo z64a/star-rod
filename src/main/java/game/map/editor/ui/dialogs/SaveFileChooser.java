@@ -46,7 +46,7 @@ public class SaveFileChooser
 
 	public ChooseDialogResult prompt()
 	{
-		String defaultPath = (currentDirectory == null) ? null : currentDirectory.getAbsolutePath();
+		String defaultPath = OpenFileChooser.getDefaultPath(currentDirectory);
 		ChooseDialogResult result;
 
 		try (MemoryStack stack = MemoryStack.stackPush()) {
