@@ -3,8 +3,10 @@ package game.audio.engine;
 import java.io.File;
 import java.io.IOException;
 
+import app.Environment;
 import app.input.InputFileException;
 import game.audio.SfxArchive;
+import game.audio.SfxXml;
 
 /** Renders a sound to a WAV file through the same engine the Audio Booth plays with, without an audio device. */
 public class AudioRender
@@ -45,7 +47,8 @@ public class AudioRender
 		SfxArchive.Sound sound = archive.sounds.values().stream().filter(s -> s.name.equals(name)).findFirst()
 			.orElseGet(() -> id == null ? null : archive.sounds.get(id));
 		if (sound == null)
-			throw new InputFileException(new File("sound_effects.xml"), "there is no sound effect named %s", name);
+			throw new InputFileException(new File(Environment.isDX() ? SfxXml.DIR : "sound_effects.xml"),
+				"there is no sound effect named %s", name);
 
 		SfxPlayer player = new SfxPlayer(engine, library);
 		player.attach();

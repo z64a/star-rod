@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
+import app.Environment;
 import app.input.InputFileException;
 import util.xml.XmlKey;
 import util.xml.XmlWrapper.XmlReader;
@@ -22,7 +23,8 @@ import util.xml.XmlWrapper.XmlReader;
 /**
  * The audio tables (songs, banks, ambient sounds, sound effects, presets, drums, and envelopes). Each is an XML file that can exist in several layers of
  * the asset stack. Entries are keyed by name; the highest layer's entry replaces the whole entry of
- * the same name below it, and delete="true" removes it.
+ * the same name below it, and delete="true" removes it. In papermario-dx, the highest layer's presets or drums
+ * replace the whole file below it instead.
  */
 public abstract class AudioTables
 {
@@ -36,14 +38,6 @@ public abstract class AudioTables
 		// @formatter:on
 	}
 
-	public static final int MAX_SONG_ID = 0xFF;
-	public static final int MAX_BANKS = 79;
-	public static final int MIN_BANK_GROUP = 2;
-	public static final int MAX_BANK_GROUP = 6;
-	/** Ambient IDs 0 to 15 are the vanilla sounds and 16 is the radio; IDs above it are added to the INIT resource list. */
-	public static final int RADIO_ID = 0x10;
-	public static final int MAX_AMBIENT_ID = 0xFF;
-	public static final int RADIO_STATIONS = 4;
 	public static final int MAX_PRESET_ID = 0x3F;
 	public static final int MAX_DRUM_ID = 71;
 	public static final int DEFAULT_VOLUME = 0x7F;
@@ -51,19 +45,6 @@ public abstract class AudioTables
 	public static final int DEFAULT_KEY_BASE = 4800;
 
 	private static final Pattern IDENTIFIER = Pattern.compile("[A-Za-z][A-Za-z0-9_]*");
-
-	/** bk holds three auxiliary bank file names, null where the song uses none. */
-	public record Song(String name, int id, String bgm, String[] bk, File source)
-	{}
-
-	public record Bank(String file, int group, int index, File source)
-	{}
-
-	public record AmbientSound(String name, int id, String mseq, File source)
-	{}
-
-	public record Radio(String name, String bank, String[] mseq, File source)
-	{}
 
 	/** An instrument that songs select by ID: a bank instrument with its own volume, pan, reverb, and tuning. */
 	public record Preset(String name, int id, String wav, int envelope, int volume, int pan, int reverb, int coarseTune,
@@ -74,13 +55,6 @@ public abstract class AudioTables
 	public record Drum(String name, int id, String wav, int envelope, int keyBase, int volume, int pan, int reverb,
 		int randTune, int randVolume, int randPan, int randReverb, File source)
 	{}
-
-	public static class Ambient
-	{
-		/** In order of ID. */
-		public final List<AmbientSound> sounds = new ArrayList<>();
-		public Radio radio;
-	}
 
 	static class Entry
 	{
@@ -124,26 +98,26 @@ public abstract class AudioTables
 	}
 
 	/** Songs indexed by ID. Unused IDs below the highest one repeat the lowest song. */
-	public static Song[] readSongs(AudioLayers layers)
+	public static List<Songs.Song> readSongs(AudioLayers layers)
 	{
 		Map<String, Entry> entries = merge(layers, "songs.xml", Key.SongList, Key.Song);
-		assignIds(entries, MAX_SONG_ID);
+		assignIds(entries, Songs.MAX_ID);
 
-		Song[] songs = new Song[entries.values().stream().mapToInt(e -> e.id).max().orElse(-1) + 1];
+		Songs.Song[] songs = new Songs.Song[entries.values().stream().mapToInt(e -> e.id).max().orElse(-1) + 1];
 		for (Entry e : entries.values()) {
 			checkIdentifier(e);
 			String[] bk = { e.optional(Key.bk1), e.optional(Key.bk2), e.optional(Key.bk3) };
-			songs[e.id] = new Song(e.name, e.id, e.required(Key.bgm), bk, e.xmr.getSourceFile());
+			songs[e.id] = new Songs.Song(e.name, e.id, e.required(Key.bgm), bk, e.xmr.getSourceFile());
 		}
 
-		Song filler = Arrays.stream(songs).filter(s -> s != null).findFirst()
+		Songs.Song filler = Arrays.stream(songs).filter(s -> s != null).findFirst()
 			.orElseThrow(() -> new InputFileException(new File("songs.xml"), "there are no songs"));
 		Arrays.setAll(songs, i -> songs[i] == null ? filler : songs[i]);
-		return songs;
+		return List.of(songs);
 	}
 
 	/** Always-loaded banks in table order. */
-	public static List<Bank> readBanks(AudioLayers layers)
+	public static List<Banks.Bank> readBanks(AudioLayers layers)
 	{
 		Map<String, Entry> entries = merge(layers, "banks.xml", Key.BankList, Key.Bank);
 
@@ -154,39 +128,39 @@ public abstract class AudioTables
 			if (hasGroup != (e.optional(Key.index) != null))
 				e.complain("group and index must be given together");
 			if (hasGroup) {
-				int slot = readHex(e, Key.group, MIN_BANK_GROUP, MAX_BANK_GROUP) << 4 | readHex(e, Key.index, 0, 0xF);
+				int slot = readHex(e, Key.group, Banks.MIN_GROUP, Banks.MAX_GROUP) << 4 | readHex(e, Key.index, 0, 0xF);
 				if (!used.add(slot))
 					e.complain(String.format("group %X index %X is used by another bank", slot >> 4, slot & 0xF));
 				slots.put(e.name, slot);
 			}
 		}
 
-		if (entries.size() > MAX_BANKS)
+		if (entries.size() > Banks.MAX_BANKS)
 			throw new InputFileException(new File("banks.xml"), "there are " + entries.size()
-				+ " banks, but the engine loads at most " + MAX_BANKS);
+				+ " banks, but the engine loads at most " + Banks.MAX_BANKS);
 
-		int next = MIN_BANK_GROUP << 4;
+		int next = Banks.MIN_GROUP << 4;
 		for (Entry e : sorted(entries)) {
 			if (slots.containsKey(e.name))
 				continue;
 			while (used.contains(next))
 				next++;
-			if (next >> 4 > MAX_BANK_GROUP)
+			if (next >> 4 > Banks.MAX_GROUP)
 				e.complain("there are no free bank slots");
 			used.add(next);
 			slots.put(e.name, next);
 		}
 
-		List<Bank> banks = new ArrayList<>();
+		List<Banks.Bank> banks = new ArrayList<>();
 		for (Entry e : entries.values())
-			banks.add(new Bank(e.name, slots.get(e.name) >> 4, slots.get(e.name) & 0xF, e.xmr.getSourceFile()));
+			banks.add(new Banks.Bank(e.name, slots.get(e.name) >> 4, slots.get(e.name) & 0xF, e.xmr.getSourceFile()));
 		return banks;
 	}
 
 	/** Presets indexed by ID, with null for unused IDs. */
 	public static Preset[] readPresets(AudioLayers layers)
 	{
-		Map<String, Entry> entries = merge(layers, "presets.xml", Key.Instruments, Key.Instrument);
+		Map<String, Entry> entries = readPresetTable(layers, "presets.xml", Key.Instruments, Key.Instrument);
 		assignIds(entries, MAX_PRESET_ID);
 
 		Preset[] presets = new Preset[entries.values().stream().mapToInt(e -> e.id).max().orElse(-1) + 1];
@@ -203,7 +177,7 @@ public abstract class AudioTables
 	/** Drums indexed by ID, with null for unused IDs. */
 	public static Drum[] readDrums(AudioLayers layers)
 	{
-		Map<String, Entry> entries = merge(layers, "drums.xml", Key.Drums, Key.Drum);
+		Map<String, Entry> entries = readPresetTable(layers, "drums.xml", Key.Drums, Key.Drum);
 		assignIds(entries, MAX_DRUM_ID);
 
 		Drum[] drums = new Drum[entries.values().stream().mapToInt(e -> e.id).max().orElse(-1) + 1];
@@ -218,11 +192,11 @@ public abstract class AudioTables
 		return drums;
 	}
 
-	public static Ambient readAmbient(AudioLayers layers)
+	public static AmbientSounds readAmbient(AudioLayers layers)
 	{
 		Map<String, Entry> entries = merge(layers, "ambient_sounds.xml", Key.AmbientSounds, Key.AmbientSound, Key.Radio);
 
-		Ambient ambient = new Ambient();
+		AmbientSounds ambient = new AmbientSounds();
 		Map<String, Entry> sounds = new LinkedHashMap<>();
 		for (Entry e : entries.values()) {
 			checkIdentifier(e);
@@ -233,26 +207,26 @@ public abstract class AudioTables
 
 			if (ambient.radio != null)
 				e.complain("there can be only one Radio");
-			if (e.id != null && e.id != RADIO_ID)
-				e.complain(String.format("the radio must use ID %X", RADIO_ID));
+			if (e.id != null && e.id != AmbientSounds.RADIO_ID)
+				e.complain(String.format("the radio must use ID %X", AmbientSounds.RADIO_ID));
 
-			String[] mseq = new String[RADIO_STATIONS];
+			String[] mseq = new String[AmbientSounds.RADIO_STATIONS];
 			for (Element station : e.xmr.getTags(e.elem, Key.Station)) {
 				int player = e.xmr.readInt(station, Key.player);
-				if (player < 0 || player >= RADIO_STATIONS || mseq[player] != null)
-					e.complain("Station player must be a unique number from 0 to " + (RADIO_STATIONS - 1));
+				if (player < 0 || player >= AmbientSounds.RADIO_STATIONS || mseq[player] != null)
+					e.complain("Station player must be a unique number from 0 to " + (AmbientSounds.RADIO_STATIONS - 1));
 				e.xmr.requiresAttribute(station, Key.mseq);
 				mseq[player] = mseqFile(e.xmr.getAttribute(station, Key.mseq));
 			}
 			if (Arrays.asList(mseq).contains(null))
-				e.complain("there must be " + RADIO_STATIONS + " stations");
-			ambient.radio = new Radio(e.name, e.required(Key.bank), mseq, e.xmr.getSourceFile());
+				e.complain("there must be " + AmbientSounds.RADIO_STATIONS + " stations");
+			ambient.radio = new AmbientSounds.Radio(e.name, e.required(Key.bank), mseq, e.xmr.getSourceFile());
 		}
 
-		assignIds(sounds, MAX_AMBIENT_ID, RADIO_ID);
+		assignIds(sounds, AmbientSounds.MAX_ID, AmbientSounds.RADIO_ID);
 		for (Entry e : sounds.values())
-			ambient.sounds.add(new AmbientSound(e.name, e.id, mseqFile(e.required(Key.mseq)), e.xmr.getSourceFile()));
-		ambient.sounds.sort(Comparator.comparingInt(AmbientSound::id));
+			ambient.sounds.add(new AmbientSounds.Sound(e.name, e.id, mseqFile(e.required(Key.mseq)), e.xmr.getSourceFile()));
+		ambient.sounds.sort(Comparator.comparingInt(AmbientSounds.Sound::id));
 		return ambient;
 	}
 
@@ -270,37 +244,69 @@ public abstract class AudioTables
 
 		Map<String, Entry> merged = new LinkedHashMap<>();
 		for (File file : files) {
-			XmlReader xmr = new XmlReader(file);
-			if (!xmr.getRootElement().getTagName().equals(root.toString()))
-				xmr.complain("expected root tag " + root);
-
-			Set<String> seen = new HashSet<>();
-			for (Node child = xmr.getRootElement().getFirstChild(); child != null; child = child.getNextSibling()) {
-				if (!(child instanceof Element elem))
-					continue;
-				if (Arrays.stream(tags).noneMatch(tag -> tag.toString().equals(elem.getTagName())))
-					xmr.complain("unexpected tag " + elem.getTagName());
-
-				xmr.requiresAttribute(elem, Key.name);
-				String name = xmr.getAttribute(elem, Key.name);
-				if (!seen.add(name))
-					xmr.complain(elem.getTagName() + " '" + name + "' is listed more than once");
-
-				if (xmr.hasAttribute(elem, Key.delete) && xmr.readBoolean(elem, Key.delete)) {
-					merged.remove(name);
+			for (Entry entry : parse(file, root, tags)) {
+				if (entry.optional(Key.delete) != null && entry.xmr.readBoolean(entry.elem, Key.delete)) {
+					merged.remove(entry.name);
 					continue;
 				}
 
-				Entry entry = new Entry(name, xmr, elem);
-				Entry replaced = merged.get(name);
+				Entry replaced = merged.get(entry.name);
 				if (entry.optional(Key.id) != null)
 					entry.id = readHex(entry, Key.id, 0, Integer.MAX_VALUE);
 				else if (replaced != null)
 					entry.id = replaced.id;
-				merged.put(name, entry);
+				merged.put(entry.name, entry);
 			}
 		}
 		return merged;
+	}
+
+	/** papermario-dx's presets and drums replace the copies below them whole; other projects merge them by entry. */
+	private static Map<String, Entry> readPresetTable(AudioLayers layers, String table, Key root, Key ... tags)
+	{
+		return Environment.isDX() ? readWhole(layers, table, root, tags) : merge(layers, table, root, tags);
+	}
+
+	/** The entries of the highest layer's copy of a table, which replaces the copies below it whole. */
+	private static Map<String, Entry> readWhole(AudioLayers layers, String table, Key root, Key ... tags)
+	{
+		File file = layers.getFile(table);
+		if (file == null)
+			throw new InputFileException(new File(table), "not found in any asset layer");
+
+		Map<String, Entry> entries = new LinkedHashMap<>();
+		for (Entry entry : parse(file, root, tags)) {
+			if (entry.optional(Key.delete) != null)
+				entry.complain("this file replaces the game's whole file, so leave the entry out instead of deleting it");
+			if (entry.optional(Key.id) != null)
+				entry.id = readHex(entry, Key.id, 0, Integer.MAX_VALUE);
+			entries.put(entry.name, entry);
+		}
+		return entries;
+	}
+
+	/** The entries of one copy of a table, in file order. */
+	private static List<Entry> parse(File file, Key root, Key ... tags)
+	{
+		XmlReader xmr = new XmlReader(file);
+		if (!xmr.getRootElement().getTagName().equals(root.toString()))
+			xmr.complain("expected root tag " + root);
+
+		List<Entry> entries = new ArrayList<>();
+		Set<String> seen = new HashSet<>();
+		for (Node child = xmr.getRootElement().getFirstChild(); child != null; child = child.getNextSibling()) {
+			if (!(child instanceof Element elem))
+				continue;
+			if (Arrays.stream(tags).noneMatch(tag -> tag.toString().equals(elem.getTagName())))
+				xmr.complain("unexpected tag " + elem.getTagName());
+
+			xmr.requiresAttribute(elem, Key.name);
+			String name = xmr.getAttribute(elem, Key.name);
+			if (!seen.add(name))
+				xmr.complain(elem.getTagName() + " '" + name + "' is listed more than once");
+			entries.add(new Entry(name, xmr, elem));
+		}
+		return entries;
 	}
 
 	/** Gives each entry without an ID the lowest free one, going through the entries by name. IDs in reserved are never used. */

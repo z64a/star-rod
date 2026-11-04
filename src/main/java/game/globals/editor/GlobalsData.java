@@ -12,6 +12,7 @@ import app.Environment;
 import app.StarRodException;
 import assets.AssetManager;
 import assets.AssetSubdir;
+import game.SimpleItem;
 import game.globals.IconRecord;
 import game.globals.ItemRecord;
 import game.globals.MoveRecord;
@@ -93,7 +94,7 @@ public class GlobalsData
 
 	private void loadItems()
 	{
-		File yamlFile = Directories.PROJ_SRC.file("item_table.yaml");
+		File yamlFile = SimpleItem.tableFile();
 		List<ItemRecord> itemList = ItemRecord.fromYAML(yamlFile);
 		if (itemList == null)
 			throw new StarRodException("Could not load item table: %s", yamlFile);
@@ -116,7 +117,7 @@ public class GlobalsData
 			itemList.add(item);
 		}
 
-		File yamlFile = Directories.PROJ_SRC.file("item_table.yaml");
+		File yamlFile = SimpleItem.tableFile();
 		ItemRecord.toYAML(yamlFile, itemList);
 		for (ItemRecord item : itemList)
 			item.saveBackup();

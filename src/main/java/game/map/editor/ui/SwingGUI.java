@@ -17,15 +17,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 
 import javax.imageio.ImageIO;
 import javax.swing.AbstractButton;
 import javax.swing.ButtonGroup;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JColorChooser;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -186,6 +189,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 	private JPanel texturePreviewPanel;
 	private JScrollPane textureScrollPane;
+	private JComboBox<String> textureArchiveBox;
 
 	private TextureInfoPanel currentTexturePanel;
 	private UVOptionsPanel uvOptionsPanel;
@@ -686,7 +690,7 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		JMenuItem item;
 
 		// papermario-dx compiles each saved map source as part of its own build
-		if (!Map.hasAreaDirs()) {
+		if (!Environment.isDX()) {
 			item = new JMenuItem("Build Geometry");
 			addButtonCommand(item, GuiCommand.COMPILE_SHAPE);
 			menu.add(item);
@@ -725,11 +729,13 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 
 		menu.addSeparator();
 
-		item = new JMenuItem("Change Texture Archive");
-		item.addActionListener((e) -> {
-			prompt_LoadTextureArchive();
-		});
-		menu.add(item);
+		if (!Environment.usingTexturePool()) {
+			item = new JMenuItem("Change Texture Archive");
+			item.addActionListener((e) -> {
+				prompt_LoadTextureArchive();
+			});
+			menu.add(item);
+		}
 
 		item = new JMenuItem("Change Background");
 		item.addActionListener((e) -> {
@@ -1199,12 +1205,17 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 		currentTexturePanel = new TextureInfoPanel(this);
 		currentTexturePanel.setTexture(null);
 
+		textureArchiveBox = new JComboBox<>();
+		textureArchiveBox.addActionListener((e) -> showTextureArchive((String) textureArchiveBox.getSelectedItem()));
+
 		JPanel textureTab = new JPanel();
 		textureTab.setLayout(new MigLayout("fillx, insets 8 8 0 8"));
 
 		textureTab.add(SwingUtils.getLabel("Selected Texture", 14), "span, wrap");
 		textureTab.add(currentTexturePanel, "span, wrap");
 		textureTab.add(SwingUtils.getLabel("Available Textures", 14), "span, wrap");
+		if (Environment.usingTexturePool())
+			textureTab.add(textureArchiveBox, "span, growx, wrap");
 		textureTab.add(textureScrollPane, "span, grow, wrap");
 
 		return textureTab;
@@ -1221,15 +1232,40 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 	public void loadTexturePreviews()
 	{
 		editor.runInEDT(() -> {
-			texturePreviewPanel.removeAll();
-			texturePreviewPanel.setLayout(new MigLayout("wrap 2, fillx"));
-			texturePreviewPanel.add(new TexturePreview(editor, null), "center");
-
+			// in the order they loaded, so the map's own archive comes first
+			LinkedHashMap<String, Integer> archiveUses = new LinkedHashMap<>();
 			for (ModelTexture t : TextureManager.textureList)
-				texturePreviewPanel.add(new TexturePreview(editor, t), "center");
+				archiveUses.merge(t.archiveName, t.modelCount, Integer::sum);
 
-			repaint();
+			String mostUsed = null;
+			for (String archiveName : archiveUses.keySet()) {
+				if (mostUsed == null || archiveUses.get(archiveName) > archiveUses.get(mostUsed))
+					mostUsed = archiveName;
+			}
+
+			DefaultComboBoxModel<String> archives = new DefaultComboBoxModel<>(archiveUses.keySet().toArray(new String[0]));
+			archives.setSelectedItem(mostUsed);
+
+			// set before the box sees the model, so the selection doesn't fire its listener
+			textureArchiveBox.setModel(archives);
+			showTextureArchive(mostUsed);
 		});
+	}
+
+	private void showTextureArchive(String archiveName)
+	{
+		texturePreviewPanel.removeAll();
+		texturePreviewPanel.setLayout(new MigLayout("wrap 2, fillx"));
+		texturePreviewPanel.add(new TexturePreview(editor, null), "center");
+
+		for (ModelTexture t : TextureManager.textureList) {
+			if (t.archiveName.equals(archiveName))
+				texturePreviewPanel.add(new TexturePreview(editor, t), "center");
+		}
+
+		texturePreviewPanel.revalidate();
+		textureScrollPane.getVerticalScrollBar().setValue(0);
+		repaint();
 	}
 
 	public void addButtonCommand(AbstractButton button, GuiCommand cmd)
@@ -1767,14 +1803,24 @@ public final class SwingGUI extends StarRodFrame implements ActionListener, Logg
 			.setOptionsType(JOptionPane.OK_CANCEL_OPTION)
 			.choose();
 
-		if (choice == JOptionPane.OK_OPTION) {
-			editor.runEditorAction(() -> {
-				editor.action_CreateMarker(
-					MarkerOptionsPanel.getMarkerName(),
-					MarkerOptionsPanel.getMarkerType(),
-					parent);
-			});
+		if (choice != JOptionPane.OK_OPTION)
+			return;
+
+		String name = MarkerOptionsPanel.getMarkerName();
+		if (!MapObject.isValidName(name)) {
+			SwingUtils.getErrorDialog()
+				.setParent(this)
+				.setCounter(openDialogCount)
+				.setTitle("Invalid Marker Name")
+				.setMessage(MapObject.INVALID_NAME_MESSAGE)
+				.setOptions("OK")
+				.show();
+			return;
 		}
+
+		editor.runEditorAction(() -> {
+			editor.action_CreateMarker(name, MarkerOptionsPanel.getMarkerType(), parent);
+		});
 	}
 
 	private void prompt_GenerateUV()

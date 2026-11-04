@@ -47,12 +47,20 @@ public class SimpleItem
 		iconTile = tile;
 	}
 
+	/** The project's table of items, which papermario-dx keeps with its other registries. */
+	public static File tableFile()
+	{
+		if (Environment.isDX())
+			return Directories.PROJ_SRC.file("registry/items.yaml");
+		return Directories.PROJ_SRC.file("item_table.yaml");
+	}
+
 	@SuppressWarnings("unchecked")
 	public static List<SimpleItem> readAll()
 	{
 		ArrayList<SimpleItemTemplate> templates = new ArrayList<>();
 
-		File yamlFile = Directories.PROJ_SRC.file("item_table.yaml");
+		File yamlFile = tableFile();
 		ArrayList<Object> itemList = YamlHelper.readAsList(yamlFile);
 		if (itemList == null)
 			return null;

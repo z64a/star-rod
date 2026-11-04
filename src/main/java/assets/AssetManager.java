@@ -13,10 +13,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 
 import app.Environment;
 import app.input.IOUtils;
@@ -104,8 +106,8 @@ public class AssetManager
 	 */
 	public static String getMapSourcePath(String mapName)
 	{
-		if (game.map.Map.hasAreaDirs())
-			return game.map.Map.getSourcePath(mapName) + MAP_SOURCE_NAME + EXT_MAP;
+		if (Environment.isDX())
+			return game.map.Map.getSourcePath(mapName) + game.map.Map.getSourceFileName(mapName) + EXT_MAP;
 		return AssetSubdir.MAP_GEOM + mapName + EXT_MAP;
 	}
 
@@ -141,7 +143,7 @@ public class AssetManager
 	/** Where compiled maps go. In papermario-dx, that is the build directory, where the build puts them. */
 	public static File getMapBuildDir()
 	{
-		if (game.map.Map.hasAreaDirs())
+		if (Environment.isDX())
 			return new File(Environment.getBuildDirectory(), "include/mapfs");
 		return AssetSubdir.MAP_GEOM.getModDir();
 	}
@@ -149,7 +151,7 @@ public class AssetManager
 	/** Where the headers of compiled maps go. */
 	public static File getMapHeaderDir()
 	{
-		if (game.map.Map.hasAreaDirs())
+		if (Environment.isDX())
 			return getMapBuildDir();
 		return PROJ_INCLUDE_MAPFS.toFile();
 	}
@@ -169,6 +171,25 @@ public class AssetManager
 		return get(AssetSubdir.NPC_SPRITE, spriteName + "/" + FN_SPRITESHEET);
 	}
 
+	/** Every NPC sprite in the asset stack that a sidecar doesn't delete, sorted by name, which is the order of their IDs. */
+	public static List<String> getNpcSpriteNames()
+	{
+		Sidecars sidecars = new Sidecars(Environment.assetDirectories);
+		TreeSet<String> names = new TreeSet<>();
+
+		for (File stackDir : Environment.assetDirectories) {
+			File[] spriteDirs = AssetSubdir.NPC_SPRITE.get(stackDir).listFiles(File::isDirectory);
+			if (spriteDirs == null)
+				continue;
+			for (File spriteDir : spriteDirs) {
+				String name = spriteDir.getName();
+				if (new File(spriteDir, FN_SPRITESHEET).isFile() && !sidecars.isDeleted("sprite/npc/" + name))
+					names.add(name);
+			}
+		}
+		return new ArrayList<>(names);
+	}
+
 	public static Map<String, AssetHandle> getNpcSpriteRasters(String spriteName) throws IOException
 	{
 		return getAssetMap(AssetSubdir.NPC_SPRITE, spriteName + "/rasters/", EXT_PNG);
@@ -177,6 +198,24 @@ public class AssetManager
 	public static Map<String, AssetHandle> getNpcSpritePalettes(String spriteName) throws IOException
 	{
 		return getAssetMap(AssetSubdir.NPC_SPRITE, spriteName + "/palettes/", EXT_PNG);
+	}
+
+	/** Every player sprite in the asset stack that a sidecar doesn't delete, sorted by name, which is the order of their IDs. */
+	public static List<String> getPlayerSpriteNames()
+	{
+		Sidecars sidecars = new Sidecars(Environment.assetDirectories);
+		TreeSet<String> names = new TreeSet<>();
+
+		for (File stackDir : Environment.assetDirectories) {
+			File[] spriteFiles = AssetSubdir.PLR_SPRITE.get(stackDir).listFiles((dir, filename) -> filename.endsWith(EXT_SPRITE));
+			if (spriteFiles == null)
+				continue;
+			for (File spriteFile : spriteFiles) {
+				if (spriteFile.isFile() && !sidecars.isDeleted("sprite/player/" + spriteFile.getName()))
+					names.add(FilenameUtils.getBaseName(spriteFile.getName()));
+			}
+		}
+		return new ArrayList<>(names);
 	}
 
 	public static AssetHandle getPlayerSprite(String spriteName)
@@ -197,7 +236,7 @@ public class AssetManager
 	/** Every map source in the asset stack that no sidecar deletes, sorted by map name. */
 	public static Collection<AssetHandle> getMapSources() throws IOException
 	{
-		if (!game.map.Map.hasAreaDirs()) {
+		if (!Environment.isDX()) {
 			return getAssets(AssetSubdir.MAP_GEOM, EXT_MAP, (p) -> {
 				// skip crash and backup files
 				String filename = p.getFileName().toString();
@@ -209,26 +248,40 @@ public class AssetManager
 		Sidecars sidecars = new Sidecars(Environment.assetDirectories);
 
 		for (File stackDir : Environment.assetDirectories) {
-			// maps in their own directories sit two levels below these, as in world/area/kmr/kmr_02
-			for (String parent : List.of("world/area/", "battle/common/stage/")) {
-				File[] groups = new File(stackDir, parent).listFiles(File::isDirectory);
-				if (groups == null)
-					continue;
-				for (File group : groups) {
-					File[] mapDirs = group.listFiles(File::isDirectory);
+			// world maps sit in their area's directory, as in world/area/kmr/kmr_02/map.xml
+			File[] areaDirs = new File(stackDir, "world/area/").listFiles(File::isDirectory);
+			if (areaDirs != null) {
+				for (File areaDir : areaDirs) {
+					File[] mapDirs = areaDir.listFiles(File::isDirectory);
 					if (mapDirs == null)
 						continue;
 					for (File mapDir : mapDirs) {
-						String relPath = parent + group.getName() + "/" + mapDir.getName() + "/" + MAP_SOURCE_NAME + EXT_MAP;
-						AssetHandle ah = new AssetHandle(stackDir, relPath);
-						if (ah.isFile() && !sidecars.isDeleted(relPath))
-							assetMap.putIfAbsent(mapDir.getName(), ah);
+						String relPath = "world/area/" + areaDir.getName() + "/" + mapDir.getName() + "/" + MAP_SOURCE_NAME + EXT_MAP;
+						addMapSource(assetMap, sidecars, stackDir, relPath, game.map.Map.WORLD_PREFIX + mapDir.getName());
 					}
+				}
+			}
+
+			// battle stages sit beside their code, as in battle/stage/trd_05/stage.xml
+			File[] stageDirs = new File(stackDir, "battle/stage/").listFiles(File::isDirectory);
+			if (stageDirs != null) {
+				for (File stageDir : stageDirs) {
+					String relPath = "battle/stage/" + stageDir.getName() + "/" + STAGE_SOURCE_NAME + EXT_MAP;
+					addMapSource(assetMap, sidecars, stackDir, relPath, game.map.Map.STAGE_PREFIX + stageDir.getName());
 				}
 			}
 		}
 
 		return assetMap.values();
+	}
+
+	/** Adds the map source at relPath, unless a higher layer already has the map or a sidecar deletes it. */
+	private static void addMapSource(Map<String, AssetHandle> assetMap, Sidecars sidecars, File stackDir, String relPath,
+		String mapName)
+	{
+		AssetHandle ah = new AssetHandle(stackDir, relPath);
+		if (ah.isFile() && !sidecars.isDeleted(relPath))
+			assetMap.putIfAbsent(mapName, ah);
 	}
 
 	public static Collection<AssetHandle> getBackgrounds() throws IOException
@@ -241,9 +294,12 @@ public class AssetManager
 		return getAssets(AssetSubdir.MAP_TEX, EXT_OLD_TEX);
 	}
 
+	/** Every texture archive in any layer that no sidecar deletes. */
 	public static Collection<AssetHandle> getTextureArchives() throws IOException
 	{
-		return getAssets(AssetSubdir.MAP_TEX, EXT_NEW_TEX);
+		Sidecars sidecars = new Sidecars(Environment.assetDirectories);
+		return getAssets(AssetSubdir.MAP_TEX, EXT_NEW_TEX,
+			file -> !sidecars.isDeleted(AssetSubdir.MAP_TEX + file.getFileName().toString()));
 	}
 
 	/** Physical message files in every layer, highest layer first. Use MessageLibrary for resolved messages. */

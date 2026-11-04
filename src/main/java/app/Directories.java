@@ -72,6 +72,8 @@ public enum Directories
 	public static final String EXT_PNG = ".png";
 	/** The file name of a map source kept in a directory named after the map. */
 	public static final String MAP_SOURCE_NAME = "map";
+	/** The file name of a battle stage's source, kept in the directory of the stage's code. */
+	public static final String STAGE_SOURCE_NAME = "stage";
 	public static final String MAP_BACKUP_SUFFIX = ".backup";
 	public static final String MAP_CRASH_SUFFIX = ".crash";
 
@@ -126,6 +128,15 @@ public enum Directories
 	public File file(String filename)
 	{
 		return new File(this.toString(), filename);
+	}
+
+	/** A project header, which sits in src or include depending on the project. */
+	public static File projectHeader(String filename)
+	{
+		File inSrc = PROJ_SRC.file(filename);
+		if (inSrc.isFile())
+			return inSrc;
+		return PROJ_INCLUDE.file(filename);
 	}
 
 	private enum Root

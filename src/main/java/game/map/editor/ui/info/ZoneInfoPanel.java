@@ -7,6 +7,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.SwingConstants;
 
 import app.SwingUtils;
+import game.map.MapObject;
 import game.map.MapObject.HitType;
 import game.map.MapObject.SetObjectName;
 import game.map.editor.MapEditor;
@@ -44,7 +45,7 @@ public class ZoneInfoPanel extends MapInfoPanel<Zone>
 
 		nameField = new NameTextField((name) -> {
 			MapEditor.execute(() -> new SetObjectName(getData(), name));
-		});
+		}, MapObject::isValidName, MapObject.INVALID_NAME_MESSAGE);
 		SwingUtils.addBorderPadding(nameField);
 
 		hasDataCheckbox = new JCheckBox(" Has camera data?");

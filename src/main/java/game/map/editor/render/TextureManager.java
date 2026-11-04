@@ -18,6 +18,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.lwjgl.BufferUtils;
 
 import app.Directories;
+import app.Environment;
 import app.Resource;
 import app.Resource.ResourceType;
 import app.StarRodMain;
@@ -128,11 +129,31 @@ public abstract class TextureManager
 	}
 
 	/**
-	 * First part of loading a new texture archive. Loads the texture image files and
-	 * binds them to openGL texture objects.
-	 * @return successfully loaded all textures
+	 * First part of loading textures. Loads the map's texture archive, then every other one if the project uses the
+	 * texture pool, and binds their texture images to openGL texture objects.
+	 * @return whether the map's own archive loaded
 	 */
-	public static boolean load(String texArchiveName)
+	public static boolean load(String mapArchiveName)
+	{
+		boolean loadedMapArchive = loadArchive(mapArchiveName);
+
+		if (Environment.usingTexturePool()) {
+			try {
+				for (AssetHandle ah : AssetManager.getTextureArchives()) {
+					String archiveName = FilenameUtils.getBaseName(ah.getName());
+					if (!archiveName.equals(mapArchiveName))
+						loadArchive(archiveName);
+				}
+			}
+			catch (IOException e) {
+				Logger.logError("Could not list texture archives: " + e.getMessage());
+			}
+		}
+
+		return loadedMapArchive;
+	}
+
+	private static boolean loadArchive(String texArchiveName)
 	{
 		TextureArchive ta;
 
@@ -155,7 +176,12 @@ public abstract class TextureManager
 
 		int loaded = 0;
 		for (Texture tx : ta.textureList) {
-			ModelTexture texture = new ModelTexture(tx);
+			if (Environment.usingTexturePool() && textureMap.containsKey(tx.name)) {
+				Logger.logWarning("Texture " + tx.name + " is in more than one archive, using the one from "
+					+ textureMap.get(tx.name).archiveName);
+				continue;
+			}
+			ModelTexture texture = new ModelTexture(tx, texArchiveName);
 			textureMap.put(tx.name, texture);
 			textureList.add(texture);
 			loaded++;

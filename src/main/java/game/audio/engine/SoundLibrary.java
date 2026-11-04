@@ -16,19 +16,21 @@ import java.util.TreeSet;
 import org.apache.commons.io.FilenameUtils;
 
 import app.input.InputFileException;
+import game.audio.AmbientSounds;
 import game.audio.AudioLayers;
 import game.audio.AudioTables;
-import game.audio.AudioTables.Ambient;
-import game.audio.AudioTables.Bank;
 import game.audio.AudioTables.Drum;
 import game.audio.AudioTables.Preset;
 import game.audio.AudioTasks;
+import game.audio.Banks;
+import game.audio.Banks.Bank;
 import game.audio.Mseq;
 import game.audio.Presets;
 import game.audio.SfxArchive;
 import game.audio.SfxBinary;
 import game.audio.SfxFormatException;
 import game.audio.SfxXml;
+import game.audio.Songs;
 import game.audio.SoundBank;
 import game.audio.bgm.Song;
 
@@ -48,7 +50,7 @@ public class SoundLibrary
 
 	private Presets.Addresses addresses;
 	private Presets.Addresses ambientAddresses;
-	private Ambient ambient;
+	private AmbientSounds ambient;
 	private Drum[] drums = new Drum[0];
 	private Preset[] presets = new Preset[0];
 
@@ -58,8 +60,7 @@ public class SoundLibrary
 		layers = AudioLayers.fromEnvironment();
 		layers.checkTables();
 
-		List<Bank> bankTable = AudioTables.readBanks(layers);
-		ambient = AudioTables.readAmbient(layers);
+		ambient = AmbientSounds.read(layers);
 
 		Set<String> names = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 		names.addAll(layers.listDirectories("bank"));
@@ -82,17 +83,19 @@ public class SoundLibrary
 			bankInstruments.put(name, instruments);
 		}
 
+		String radioBank = ambient.radioBank(layers, wav -> samples.containsKey(wav) ? samples.get(wav).bank : null);
+		List<Bank> bankTable = Banks.read(layers, files.keySet(), () -> Banks.songBanks(listSongs(), radioBank));
 		addresses = new Presets.Addresses(bankTable, files);
-		ambientAddresses = ambient.radio != null && files.containsKey(ambient.radio.bank())
-			? addresses.withAuxiliary(AudioTasks.RADIO_BANK_SLOT, files.get(ambient.radio.bank()))
+		ambientAddresses = radioBank != null && files.containsKey(radioBank)
+			? addresses.withAuxiliary(AudioTasks.RADIO_BANK_SLOT, files.get(radioBank))
 			: addresses;
-		if (AudioTasks.usesTables(layers, "drums.xml", "per/SET1.per"))
+		if (AudioTasks.usesPresetTable(layers, "drums.xml", "per/SET1.per"))
 			drums = AudioTables.readDrums(layers);
 		else if (layers.getFile("per/SET1.per") != null) {
 			File file = layers.getFile("per/SET1.per");
 			drums = Presets.readDrums(file, readFile(file), addresses);
 		}
-		if (AudioTasks.usesTables(layers, "presets.xml", "prg/SET1.prg"))
+		if (AudioTasks.usesPresetTable(layers, "presets.xml", "prg/SET1.prg"))
 			presets = AudioTables.readPresets(layers);
 		else if (layers.getFile("prg/SET1.prg") != null) {
 			File file = layers.getFile("prg/SET1.prg");
@@ -141,7 +144,7 @@ public class SoundLibrary
 	}
 
 	/**
-	 * The instrument at a bank and patch address of the engine, or null if no bank in banks.xml provides
+	 * The instrument at a bank and patch address of the engine, or null if no always-loaded bank provides
 	 * it. Bank set 2 is the engine's silent default instrument.
 	 */
 	public Instrument getInstrument(int bank, int patch)
@@ -167,26 +170,26 @@ public class SoundLibrary
 		return id >= 0 && id < presets.length ? presets[id] : null;
 	}
 
-	/** Song table entries, without the duplicate entries used to fill unused IDs. */
-	public List<AudioTables.Song> listSongs()
+	/** The songs in order of ID, without the duplicate entries used to fill unused IDs. */
+	public List<Songs.Song> listSongs()
 	{
-		if (layers.getTables("songs.xml").isEmpty())
+		if (!Songs.exist(layers))
 			return List.of();
-		Map<Integer, AudioTables.Song> songs = new TreeMap<>();
-		for (AudioTables.Song song : AudioTables.readSongs(layers))
+		Map<Integer, Songs.Song> songs = new TreeMap<>();
+		for (Songs.Song song : Songs.read(layers))
 			songs.put(song.id(), song);
 		return List.copyOf(songs.values());
 	}
 
 	/** Resolves auxiliary banks independently for each song, leaving SFX and ambience untouched. */
-	public Song readSong(AudioTables.Song entry)
+	public Song readSong(Songs.Song entry)
 	{
 		File file = layers.getFile("songs/" + entry.bgm());
 		if (file == null)
 			throw new InputFileException(entry.source(), "song %s: songs/%s not found", entry.name(), entry.bgm());
 		Presets.Addresses songAddresses = addresses;
-		for (int i = 0; i < entry.bk().length; i++) {
-			String bankName = entry.bk()[i];
+		for (int i = 0; i < entry.auxBanks().length; i++) {
+			String bankName = entry.auxBanks()[i];
 			if (bankName == null)
 				continue;
 			SoundBank bank = banks.get(baseName(bankName));
@@ -197,10 +200,10 @@ public class SoundLibrary
 		return new Song(file, readFile(file), songAddresses);
 	}
 
-	/** Reads the merged sound effect table, or the binary archive if a layer supplies one. */
+	/** Reads the sound effect sources, or the binary archive if the sources don't replace it. */
 	public SfxArchive readSfx()
 	{
-		if (AudioTasks.usesTables(layers, "sound_effects.xml", SEF_FILE))
+		if (SfxXml.hasSources(layers))
 			return SfxXml.read(layers, addresses);
 
 		File file = layers.getFile(SEF_FILE);
@@ -218,7 +221,7 @@ public class SoundLibrary
 	public Map<String, String> listMseqs()
 	{
 		Map<String, String> uses = new HashMap<>();
-		for (AudioTables.AmbientSound sound : ambient.sounds)
+		for (AmbientSounds.Sound sound : ambient.sounds)
 			uses.put(baseName(sound.mseq()), sound.name());
 		if (ambient.radio != null) {
 			for (int i = 0; i < ambient.radio.mseq().length; i++)

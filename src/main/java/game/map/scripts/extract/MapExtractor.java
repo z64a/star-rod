@@ -194,7 +194,7 @@ public class MapExtractor
 		if (fileText.contains("Vec3f") || fileText.contains("TweesterPath"))
 			PathExtractor.findAndReplace(this);
 
-		if (fileText.contains("EVS_Main") && !map.getName().equals("sbk_99")) //FIXME sbk_99 lol
+		if (fileText.contains("EVS_Main") && !Map.getBaseName(map.getName()).equals("sbk_99")) //FIXME sbk_99 lol
 			CamSetupExtractor.findAndReplace(map, this);
 
 		//	if (fileText.contains("SetPanTarget"))
