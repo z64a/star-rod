@@ -49,7 +49,7 @@ public class PathSubpanel extends JPanel
 		setLayout(new MigLayout("fill, ins 0"));
 		add(pathScrollPane, "growy, pushy, growx, span, wrap");
 		add(cbShowInterp, "growx, pushx");
-		add(addPointButton, "growx, pushx");
+		add(addPointButton, "growx, pushx, wrap");
 	}
 
 	public void updateFields()
@@ -60,6 +60,7 @@ public class PathSubpanel extends JPanel
 		comp.path.markDegenerates();
 
 		cbShowInterp.setSelected(comp.showInterp.get());
+		cbShowInterp.setEnabled(comp.path.isLinear());
 	}
 
 	public void updateDynamicFields(boolean force)
